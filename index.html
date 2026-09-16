@@ -11,38 +11,26 @@
 <style>
 :root{--r-sm:6px;--r-md:10px;--r-lg:12px;--r-xl:16px;--r-full:9999px;--ease:cubic-bezier(.4,0,.2,1);--spring:cubic-bezier(.34,1.56,.64,1);--dur:.15s;--font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--row-pad:12px 16px;--card-pad:20px 22px;--sidebar-w:240px;--sidebar-cw:64px;--accent-custom:#2563eb;--radius-mult:1;}
 [data-theme="professional"]{--bg:#f8f9fb;--surface:#fff;--surface-2:#fafbfc;--surface-3:#f4f6f9;--border:#e5e8ef;--border-2:#eef1f6;--border-3:#d6dbe4;--text:#0d1117;--text-2:#374151;--text-3:#6b7280;--text-4:#9ca3af;--accent:var(--accent-custom);--accent-hover:#1d4ed8;--accent-soft:#eff4ff;--accent-text:#1d4ed8;--green:#059669;--green-soft:#ecfdf5;--green-bd:#a7f3d0;--amber:#d97706;--amber-soft:#fffbeb;--amber-bd:#fde68a;--red:#dc2626;--red-soft:#fef2f2;--red-bd:#fecaca;--purple:#7c3aed;--purple-soft:#f5f3ff;--teal:#0d9488;--teal-soft:#f0fdfa;--shadow-xs:0 1px 2px 0 rgba(13,17,23,.04);--shadow-sm:0 1px 3px 0 rgba(13,17,23,.06);--shadow-md:0 4px 12px -2px rgba(13,17,23,.08);--shadow-lg:0 12px 24px -4px rgba(13,17,23,.1);--shadow-card:none;--neumo:none;}
-[data-theme="linear"]{--bg:#08090a;--surface:#111213;--surface-2:#151617;--surface-3:#1a1b1d;--border:#232427;--border-2:#1c1d1f;--border-3:#2d2f33;--text:#f7f8f8;--text-2:#c9cacd;--text-3:#8a8f98;--text-4:#62666d;--accent-hover:#4c58be;--accent-soft:#1e2033;--accent-text:#a5b4ff;--green:#26b981;--green-soft:#0f2a1f;--green-bd:#134e35;--amber:#f5a623;--amber-soft:#2a1f0a;--amber-bd:#4a3512;--red:#eb5757;--red-soft:#2a1215;--red-bd:#4a1f24;--purple:#a682ff;--purple-soft:#231a3a;--teal:#4ac5b8;--teal-soft:#0f2a28;--shadow-xs:0 1px 2px 0 rgba(0,0,0,.4);--shadow-sm:0 1px 3px 0 rgba(0,0,0,.5);--shadow-md:0 4px 12px -2px rgba(0,0,0,.6);--shadow-lg:0 12px 24px -4px rgba(0,0,0,.7);}
-[data-theme="notion"]{--bg:#f7f6f3;--surface:#fff;--surface-2:#faf9f7;--surface-3:#f1efeb;--border:#e9e7e2;--border-2:#f0eeea;--border-3:#d9d6ce;--text:#37352f;--text-2:#5a574e;--text-3:#8a857a;--text-4:#b8b3a8;--accent-hover:#1a6ec4;--accent-soft:#e7f1fb;--accent-text:#1a6ec4;--green:#0f7b6c;--green-soft:#e3f2ee;--green-bd:#a3d5cb;--amber:#cb7b1c;--amber-soft:#fbf1e1;--amber-bd:#e6c896;--red:#e03e3e;--red-soft:#fbe4e4;--red-bd:#f0aaa9;--purple:#6940a5;--purple-soft:#ece4f6;--teal:#0f7b6c;--teal-soft:#e3f2ee;--shadow-xs:0 1px 2px 0 rgba(15,15,15,.04);--shadow-sm:0 1px 3px 0 rgba(15,15,15,.06);--shadow-md:0 4px 12px -2px rgba(15,15,15,.08);--shadow-lg:0 12px 24px -4px rgba(15,15,15,.1);}
+[data-theme="linear"]{--bg:#08090a;--surface:#111213;--surface-2:#151617;--surface-3:#1a1b1d;--border:#232427;--border-2:#1c1d1f;--border-3:#2d2f33;--text:#f7f8f8;--text-2:#c9cacd;--text-3:#8a8f98;--text-4:#62666d;--accent-hover:#4c58be;--accent-soft:#1e2033;--accent-text:#a5b4ff;--green:#26b981;--green-soft:#0f2a1f;--green-bd:#134e35;--amber:#f5a623;--amber-soft:#2a1f0a;--amber-bd:#4a3512;--red:#eb5757;--red-soft:#2a1215;--red-bd:#4a1f24;--purple:#a682ff;--purple-soft:#231a3a;--teal:#4ac5b8;--teal-soft:#0f2a28;}
+[data-theme="notion"]{--bg:#f7f6f3;--surface:#fff;--surface-2:#faf9f7;--surface-3:#f1efeb;--border:#e9e7e2;--border-2:#f0eeea;--border-3:#d9d6ce;--text:#37352f;--text-2:#5a574e;--text-3:#8a857a;--text-4:#b8b3a8;--accent-hover:#1a6ec4;--accent-soft:#e7f1fb;--accent-text:#1a6ec4;--green:#0f7b6c;--green-soft:#e3f2ee;--green-bd:#a3d5cb;--amber:#cb7b1c;--amber-soft:#fbf1e1;--amber-bd:#e6c896;--red:#e03e3e;--red-soft:#fbe4e4;--red-bd:#f0aaa9;--purple:#6940a5;--purple-soft:#ece4f6;--teal:#0f7b6c;--teal-soft:#e3f2ee;}
 [data-theme="neumorphic"]{--bg:#e0e5ec;--surface:#e0e5ec;--surface-2:#e0e5ec;--surface-3:#d5dbe4;--border:transparent;--border-2:transparent;--border-3:transparent;--text:#2d3748;--text-2:#4a5568;--text-3:#718096;--text-4:#a0aec0;--accent-hover:#4c5cf0;--accent-soft:#dde1f5;--accent-text:#4c5cf0;--green:#38a169;--green-soft:#d7ead9;--green-bd:#b8d9bb;--amber:#dd6b20;--amber-soft:#f5e1d3;--amber-bd:#e8c5a3;--red:#e53e3e;--red-soft:#f2d4d4;--red-bd:#e0a3a3;--purple:#805ad5;--purple-soft:#e0d6f0;--teal:#319795;--teal-soft:#c8e8e6;--shadow-xs:3px 3px 6px #b8c0cc,-3px -3px 6px #fff;--shadow-sm:4px 4px 8px #b8c0cc,-4px -4px 8px #fff;--shadow-md:6px 6px 12px #b8c0cc,-6px -6px 12px #fff;--shadow-lg:10px 10px 20px #b8c0cc,-10px -10px 20px #fff;--shadow-card:6px 6px 12px #b8c0cc,-6px -6px 12px #fff;--neumo:inset 2px 2px 4px #b8c0cc,inset -2px -2px 4px #fff;}
-[data-theme="glass"]{--bg:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);--surface:rgba(255,255,255,.72);--surface-2:rgba(255,255,255,.55);--surface-3:rgba(255,255,255,.4);--border:rgba(255,255,255,.5);--border-2:rgba(255,255,255,.35);--border-3:rgba(255,255,255,.7);--text:#0d1117;--text-2:#374151;--text-3:#6b7280;--text-4:#9ca3af;--accent-hover:#1d4ed8;--accent-soft:rgba(255,255,255,.6);--accent-text:#1d4ed8;--green:#059669;--green-soft:rgba(5,150,105,.15);--green-bd:rgba(5,150,105,.3);--amber:#d97706;--amber-soft:rgba(217,119,6,.15);--amber-bd:rgba(217,119,6,.3);--red:#dc2626;--red-soft:rgba(220,38,38,.15);--red-bd:rgba(220,38,38,.3);--purple:#7c3aed;--purple-soft:rgba(124,58,237,.15);--teal:#0d9488;--teal-soft:rgba(13,148,136,.15);--shadow-xs:0 1px 2px rgba(0,0,0,.08);--shadow-sm:0 2px 6px rgba(0,0,0,.1);--shadow-md:0 8px 24px rgba(0,0,0,.15);--shadow-lg:0 20px 40px rgba(0,0,0,.2);--shadow-card:0 8px 32px rgba(31,38,135,.15);--neumo:none;backdrop-filter:blur(20px) saturate(180%);}
+[data-theme="glass"]{--bg:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);--surface:rgba(255,255,255,.72);--surface-2:rgba(255,255,255,.55);--surface-3:rgba(255,255,255,.4);--border:rgba(255,255,255,.5);--border-2:rgba(255,255,255,.35);--border-3:rgba(255,255,255,.7);--text:#0d1117;--text-2:#374151;--text-3:#6b7280;--text-4:#9ca3af;--accent-hover:#1d4ed8;--accent-soft:rgba(255,255,255,.6);--accent-text:#1d4ed8;--green:#059669;--green-soft:rgba(5,150,105,.15);--green-bd:rgba(5,150,105,.3);--amber:#d97706;--amber-soft:rgba(217,119,6,.15);--amber-bd:rgba(217,119,6,.3);--red:#dc2626;--red-soft:rgba(220,38,38,.15);--red-bd:rgba(220,38,38,.3);--purple:#7c3aed;--purple-soft:rgba(124,58,237,.15);--teal:#0d9488;--teal-soft:rgba(13,148,136,.15);--shadow-card:0 8px 32px rgba(31,38,135,.15);--neumo:none;backdrop-filter:blur(20px) saturate(180%);}
 body.density-compact{--row-pad:7px 10px;--card-pad:14px 16px;}
 body.density-spacious{--row-pad:16px 20px;--card-pad:26px 28px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased;letter-spacing:-.006em;transition:background .3s var(--ease),color .2s var(--ease);}
-h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.02em;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{margin:0;font-weight:600;}
 button,input,select,textarea{font-family:inherit;font-size:inherit;outline:none;}
 button{cursor:pointer;border:none;background:none;}
-::-webkit-scrollbar{width:8px;height:8px;}
-::-webkit-scrollbar-thumb{background:var(--border-3);border-radius:8px;border:2px solid transparent;background-clip:padding-box;}
-.num{font-variant-numeric:tabular-nums;}
-.mono{font-family:var(--mono);font-size:12px;}
-.muted{color:var(--text-3);}
-.small{font-size:11.5px;}
-mark{background:var(--amber-soft);color:inherit;padding:0 2px;border-radius:2px;font-weight:500;}
-.btn,.icon-btn,.nav-item,.tab,.seg-btn,.kpi,.card{transition:all .2s var(--spring);}
-.btn:active{transform:scale(.96);}
-.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
-.card:hover{box-shadow:var(--shadow-sm);}
-.view-enter{animation:viewIn .3s var(--ease);}
-@keyframes viewIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.num{font-variant-numeric:tabular-nums;}.mono{font-family:var(--mono);font-size:12px;}.muted{color:var(--text-3);}.small{font-size:11.5px;}
 .login-overlay{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;}
 .login-overlay.hidden{display:none;}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:48px 40px 40px;max-width:420px;width:100%;box-shadow:var(--shadow-lg);text-align:center;}
 .login-logo{width:56px;height:56px;border-radius:14px;margin:0 auto 24px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600;font-size:20px;}
 .login-card h1{font-size:22px;font-weight:600;margin-bottom:6px;}
 .login-card .tagline{font-size:13.5px;color:var(--text-3);margin-bottom:32px;}
-.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 18px;border-radius:var(--r-md);border:1px solid var(--border-3);background:var(--surface);color:var(--text);font-weight:500;font-size:14px;transition:all var(--dur);box-shadow:var(--shadow-xs);}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 18px;border-radius:var(--r-md);border:1px solid var(--border-3);background:var(--surface);color:var(--text);font-weight:500;font-size:14px;}
 .google-btn:hover{background:var(--surface-2);}
 .google-btn:disabled{opacity:.55;cursor:not-allowed;}
 .google-btn svg{width:18px;height:18px;}
@@ -53,17 +41,15 @@ mark{background:var(--amber-soft);color:inherit;padding:0 2px;border-radius:2px;
 .sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);padding:20px 12px 16px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;transition:width .25s var(--ease),flex-basis .25s var(--ease);}
 body.sidebar-collapsed .sidebar{width:var(--sidebar-cw);flex-basis:var(--sidebar-cw);padding:20px 8px 16px;}
 body.sidebar-collapsed .brand-text,body.sidebar-collapsed .nav-label,body.sidebar-collapsed .nav-item span:not(.ico):not(.badge-count),body.sidebar-collapsed .sidebar-user .info,body.sidebar-collapsed .sidebar-foot{display:none;}
-body.sidebar-collapsed .brand{justify-content:center;padding:4px 0 22px;}
 body.sidebar-collapsed .nav-item{justify-content:center;padding:9px 0;position:relative;}
 body.sidebar-collapsed .nav-item .ico{opacity:1;font-size:15px;width:auto;}
 body.sidebar-collapsed .nav-item .badge-count{position:absolute;top:4px;right:4px;padding:0 5px;font-size:9px;min-width:14px;}
-body.sidebar-collapsed .sidebar-user{justify-content:center;padding:9px 4px;}
 .brand{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;position:relative;}
 .brand-logo{width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px;}
 .brand-text{flex:1;min-width:0;}
 .brand-name{font-weight:600;font-size:14px;line-height:1.2;}
 .brand-sub{font-size:11px;color:var(--text-4);margin-top:1px;}
-.sidebar-toggle{position:absolute;top:50%;right:-13px;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;font-size:11px;color:var(--text-3);z-index:5;transition:all var(--dur);}
+.sidebar-toggle{position:absolute;top:50%;right:-13px;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;font-size:11px;color:var(--text-3);z-index:5;}
 .sidebar-toggle:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
 .nav-group{margin-bottom:18px;}
 .nav-label{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-4);padding:8px 10px 6px;}
@@ -77,7 +63,6 @@ body.sidebar-collapsed .sidebar-user{justify-content:center;padding:9px 4px;}
 .sidebar-foot{margin-top:auto;padding:12px 14px;border-radius:var(--r-md);border:1px solid var(--border-2);background:var(--surface-2);font-size:11.5px;color:var(--text-3);line-height:1.5;}
 .sidebar-foot strong{display:block;color:var(--text-2);font-weight:500;margin-bottom:2px;}
 .sidebar-user{display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:12px;border-radius:var(--r-md);border:1px solid var(--border-2);background:var(--surface-2);cursor:pointer;}
-.sidebar-user:hover{background:var(--surface-3);}
 .sidebar-user .u-avatar{width:30px;height:30px;flex:0 0 30px;border-radius:50%;overflow:hidden;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px;}
 .sidebar-user .u-avatar img{width:100%;height:100%;object-fit:cover;}
 .sidebar-user .info{flex:1;min-width:0;}
@@ -95,13 +80,12 @@ body.sidebar-collapsed .sidebar-user{justify-content:center;padding:9px 4px;}
 .gsearch-results.open{display:block;}
 .gs-sec{padding:8px 12px 4px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-4);}
 .gs-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border-2);font-size:12.5px;color:var(--text-2);}
-.gs-item:hover{background:var(--surface-2);color:var(--text);}
-.gs-item:last-child{border-bottom:none;}
+.gs-item:hover{background:var(--surface-2);}
 .gs-item small{color:var(--text-4);font-size:11px;display:block;margin-top:1px;}
 .bell{position:relative;}
 .bell .dot-badge{position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:9.5px;font-weight:600;border-radius:var(--r-full);padding:1px 5px;min-width:16px;text-align:center;border:2px solid var(--surface);}
 .content{padding:24px 28px 80px;flex:1;max-width:1600px;width:100%;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:calc(var(--r-lg) * var(--radius-mult));box-shadow:var(--shadow-card);padding:var(--card-pad);margin-bottom:16px;position:relative;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:var(--card-pad);margin-bottom:16px;position:relative;}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;}
 .card-head h3{font-size:14px;font-weight:600;}
 .card-head .hint{font-size:12px;color:var(--text-4);font-weight:400;}
@@ -110,20 +94,17 @@ body.sidebar-collapsed .sidebar-user{justify-content:center;padding:9px 4px;}
 .grid-3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
 .grid-4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}
 .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:calc(var(--r-lg) * var(--radius-mult));padding:18px 20px;position:relative;overflow:hidden;}
-.kpi.draggable{cursor:grab;}
-.kpi.draggable.dragging{opacity:.4;cursor:grabbing;}
-.kpi.draggable.over{border-color:var(--accent);border-style:dashed;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;position:relative;overflow:hidden;}
 .k-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
 .k-label{font-size:11px;font-weight:500;color:var(--text-3);}
-.k-value{font-size:22px;font-weight:600;letter-spacing:-.03em;line-height:1.15;font-variant-numeric:tabular-nums;}
+.k-value{font-size:22px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums;}
 .k-value.sm{font-size:17px;}
 .k-sub{font-size:11.5px;color:var(--text-4);margin-top:6px;}
 .k-delta{display:inline-flex;align-items:center;gap:3px;font-weight:500;font-size:11px;padding:2px 7px;border-radius:var(--r-full);}
 .k-delta.up{background:var(--green-soft);color:var(--green);}
 .k-delta.down{background:var(--red-soft);color:var(--red);}
 .k-delta.flat{background:var(--surface-3);color:var(--text-3);}
-.btn{display:inline-flex;align-items:center;gap:6px;justify-content:center;padding:7.5px 14px;border-radius:calc(var(--r-md) * var(--radius-mult));border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-weight:500;font-size:12.5px;white-space:nowrap;box-shadow:var(--shadow-xs);cursor:pointer;}
+.btn{display:inline-flex;align-items:center;gap:6px;justify-content:center;padding:7.5px 14px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-weight:500;font-size:12.5px;white-space:nowrap;}
 .btn:hover{background:var(--surface-2);border-color:var(--border-3);color:var(--text);}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
 .btn.primary:hover{background:var(--accent-hover);}
@@ -138,8 +119,7 @@ body.sidebar-collapsed .sidebar-user{justify-content:center;padding:9px 4px;}
 .icon-btn.danger:hover{background:var(--red-soft);color:var(--red);}
 label.field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:500;color:var(--text-2);}
 label.field .req{color:var(--red);}
-input[type=text],input[type=search],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=month],input[type=password],select,textarea{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:calc(var(--r-md) * var(--radius-mult));background:var(--surface);color:var(--text);font-weight:450;box-shadow:var(--neumo);}
-input:hover,select:hover,textarea:hover{border-color:var(--border-3);}
+input[type=text],input[type=search],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=month],input[type=password],select,textarea{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-weight:450;}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
 input::placeholder,textarea::placeholder{color:var(--text-4);}
 input[type=color]{height:38px;padding:3px;}
@@ -149,14 +129,13 @@ input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--accent);cur
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
 .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap;}
 .switch{position:relative;width:38px;height:22px;flex:0 0 38px;background:var(--border-3);border-radius:var(--r-full);cursor:pointer;transition:background .2s;display:inline-block;}
-.switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15);}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;}
 .switch.on{background:var(--accent);}
 .switch.on::after{transform:translateX(16px);}
-.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:calc(var(--r-lg) * var(--radius-mult));background:var(--surface);position:relative;}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);position:relative;}
 table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px;}
 thead th{background:var(--surface-2);text-align:left;padding:11px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2;}
 tbody td{padding:var(--row-pad);border-bottom:1px solid var(--border-2);vertical-align:middle;color:var(--text-2);}
-tbody tr:last-child td{border-bottom:none;}
 tbody tr:hover{background:var(--surface-2);}
 th.sortable{cursor:pointer;user-select:none;}
 th.sortable:hover{color:var(--accent);}
@@ -164,7 +143,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:now
 tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);border-top:1px solid var(--border);color:var(--text);}
 .empty{padding:48px 20px;text-align:center;color:var(--text-4);font-size:12.5px;}
 .empty .big{font-size:32px;display:block;margin-bottom:10px;opacity:.4;}
-.bulk-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);padding:12px 20px;display:flex;gap:14px;align-items:center;z-index:100;transition:transform .3s var(--spring);}
+.bulk-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);padding:12px 20px;display:flex;gap:14px;align-items:center;z-index:100;transition:transform .3s;}
 .bulk-bar.on{transform:translateX(-50%) translateY(0);}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--r-full);font-size:11px;font-weight:500;white-space:nowrap;border:1px solid transparent;}
 .badge.green{background:var(--green-soft);color:var(--green);border-color:var(--green-bd);}
@@ -173,13 +152,11 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .badge.blue{background:var(--accent-soft);color:var(--accent-text);}
 .badge.purple{background:var(--purple-soft);color:var(--purple);}
 .badge.gray{background:var(--surface-3);color:var(--text-3);border-color:var(--border);}
-.badge.teal{background:var(--teal-soft);color:var(--teal);}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 7px;}
 .bar-row{display:grid;grid-template-columns:minmax(80px,140px) 1fr minmax(80px,120px);gap:12px;align-items:center;font-size:12px;margin-bottom:12px;}
 .bar-label{font-weight:500;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bar-track{height:6px;background:var(--surface-3);border-radius:var(--r-full);overflow:hidden;}
 .bar-fill{height:100%;border-radius:var(--r-full);background:var(--accent);}
-.bar-fill.g{background:var(--green);}.bar-fill.a{background:var(--amber);}.bar-fill.r{background:var(--red);}.bar-fill.p{background:var(--purple);}.bar-fill.t{background:var(--teal);}
 .bar-val{text-align:right;font-weight:500;font-variant-numeric:tabular-nums;color:var(--text);}
 .ring{transform:rotate(-90deg);}
 .ring circle{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .8s var(--ease);}
@@ -224,13 +201,12 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .user-row .u-meta{font-size:11.5px;color:var(--text-4);margin-top:2px;}
 .chq-row{display:grid;grid-template-columns:110px 1fr 130px 130px 120px 32px;gap:8px;align-items:end;padding:12px;border:1px solid var(--border-2);border-radius:var(--r-md);background:var(--surface-2);margin-bottom:8px;}
 .chq-row input{padding:7px 10px;font-size:12px;}
-.chq-row label{font-size:10.5px;color:var(--text-4);font-weight:600;letter-spacing:.02em;text-transform:uppercase;display:flex;flex-direction:column;gap:4px;}
+.chq-row label{font-size:10.5px;color:var(--text-4);font-weight:600;text-transform:uppercase;display:flex;flex-direction:column;gap:4px;}
 .picker-toolbar{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;}
 .picker-toolbar input,.picker-toolbar select{padding:7px 10px;font-size:12px;}
 .picker-bulk{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface-3);border-radius:var(--r-md);margin-bottom:8px;font-size:12px;}
 .picker-list{max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);}
-.picker-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border-2);cursor:pointer;transition:background var(--dur);}
-.picker-row:last-child{border-bottom:none;}
+.picker-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border-2);cursor:pointer;}
 .picker-row:hover{background:var(--surface-2);}
 .picker-row.selected{background:var(--accent-soft);}
 .picker-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
@@ -239,7 +215,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .picker-amt{font-weight:600;font-variant-numeric:tabular-nums;font-size:13px;}
 .own-chq-row{display:grid;grid-template-columns:1.2fr 120px 130px 130px 120px 1fr 32px;gap:8px;align-items:end;padding:12px;border:1px solid var(--border-2);border-radius:var(--r-md);background:var(--surface-2);margin-bottom:8px;}
 .own-chq-row input,.own-chq-row select{padding:7px 10px;font-size:12px;}
-.own-chq-row label{font-size:10.5px;color:var(--text-4);font-weight:600;letter-spacing:.02em;text-transform:uppercase;display:flex;flex-direction:column;gap:4px;}
+.own-chq-row label{font-size:10.5px;color:var(--text-4);font-weight:600;text-transform:uppercase;display:flex;flex-direction:column;gap:4px;}
 .cbook-card{padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;}
 .cbook-info{flex:1;min-width:0;}
 .cbook-info .bank{font-weight:600;font-size:13px;}
@@ -255,7 +231,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .settings-nav-item.active .ico{color:var(--accent);}
 .settings-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;}
 .settings-panel-head{padding:22px 26px;border-bottom:1px solid var(--border);background:var(--surface-2);}
-.settings-panel-head h2{font-size:16px;font-weight:600;letter-spacing:-.02em;}
+.settings-panel-head h2{font-size:16px;font-weight:600;}
 .settings-panel-head .desc{font-size:12.5px;color:var(--text-3);margin-top:4px;}
 .settings-body{padding:22px 26px;}
 .settings-section{margin-bottom:20px;padding:18px 20px;border:1px solid var(--border-2);border-radius:var(--r-md);background:var(--surface-2);}
@@ -275,42 +251,34 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .ledger-tile.active .t-label{color:var(--accent-text);}
 #modalWrap{position:fixed;inset:0;z-index:500;display:none;}
 #modalWrap.open{display:block;}
-.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.42);backdrop-filter:blur(2px);animation:fadeIn .2s;}
-@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-.modal{position:relative;background:var(--surface);border-radius:var(--r-xl);max-width:680px;width:calc(100% - 32px);margin:6vh auto;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);overflow:hidden;animation:modalIn .3s var(--spring);}
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.42);backdrop-filter:blur(2px);}
+.modal{position:relative;background:var(--surface);border-radius:var(--r-xl);max-width:680px;width:calc(100% - 32px);margin:6vh auto;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);overflow:hidden;}
 .modal.wide{max-width:1000px;}
-.modal.xl{max-width:1180px;}
-@keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(.96);}to{opacity:1;transform:none;}}
 .modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border);}
 .modal-head h3{font-size:14.5px;font-weight:600;}
 .modal-body{padding:22px;overflow:auto;}
 #toast{position:fixed;right:20px;bottom:20px;z-index:900;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
-.toast{pointer-events:auto;background:var(--text);color:var(--surface);padding:11px 16px;border-radius:var(--r-md);font-size:12.5px;font-weight:500;box-shadow:var(--shadow-lg);animation:ti .3s var(--spring);max-width:380px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;}
+.toast{pointer-events:auto;background:var(--text);color:var(--surface);padding:11px 16px;border-radius:var(--r-md);font-size:12.5px;font-weight:500;box-shadow:var(--shadow-lg);max-width:380px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;animation:ti .3s;}
 .toast.error{background:var(--red);color:#fff;}
 .toast.info{background:var(--accent);color:#fff;}
 .toast.warn{background:var(--amber);color:#fff;}
 .toast.success{background:var(--green);color:#fff;}
 .toast.out{opacity:0;transform:translateX(16px);transition:.3s;}
-.toast .undo{background:rgba(255,255,255,.15);color:inherit;padding:3px 9px;border-radius:var(--r-sm);font-weight:600;font-size:11.5px;margin-left:auto;border:1px solid rgba(255,255,255,.25);}
 .toast .progress-bar{position:absolute;bottom:0;left:0;height:2px;background:rgba(255,255,255,.4);animation:tprog 3s linear forwards;}
 @keyframes tprog{from{width:100%;}to{width:0;}}
 @keyframes ti{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:none;}}
-#notifPanel{position:fixed;top:0;right:0;bottom:0;width:400px;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:80;transform:translateX(100%);transition:transform .3s var(--ease);display:flex;flex-direction:column;}
+#notifPanel{position:fixed;top:0;right:0;bottom:0;width:400px;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:80;transform:translateX(100%);transition:transform .25s;display:flex;flex-direction:column;}
 #notifPanel.open{transform:none;}
 .notif-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .notif-body{flex:1;overflow:auto;padding:12px;}
 .notif-item{padding:14px;border-radius:var(--r-md);border:1px solid var(--border-2);background:var(--surface);margin-bottom:8px;cursor:pointer;display:flex;gap:12px;}
-.notif-item:hover{background:var(--surface-2);}
 .notif-item .ni-icon{width:32px;height:32px;flex:0 0 32px;border-radius:6px;display:grid;place-items:center;font-size:14px;background:var(--surface-3);}
-.notif-item.high .ni-icon{background:var(--red-soft);color:var(--red);}
-.notif-item.med .ni-icon{background:var(--amber-soft);color:var(--amber);}
-.notif-item.low .ni-icon{background:var(--accent-soft);color:var(--accent);}
 .ni-title{font-weight:500;font-size:12.5px;}
 .ni-desc{color:var(--text-3);font-size:11.5px;margin-top:3px;}
 .ni-time{font-size:11px;color:var(--text-4);margin-top:4px;}
 .notif-empty{padding:72px 22px;text-align:center;color:var(--text-4);font-size:13px;}
 .fab{position:fixed;right:24px;bottom:24px;z-index:60;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;font-size:22px;display:grid;place-items:center;box-shadow:var(--shadow-md);cursor:pointer;}
-.fab:hover{background:var(--accent-hover);transform:translateY(-2px);}
+.fab:hover{background:var(--accent-hover);}
 .fab.open{transform:rotate(45deg);}
 .fab-menu{position:fixed;right:24px;bottom:80px;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:6px;min-width:220px;display:none;flex-direction:column;}
 .fab-menu.open{display:flex;}
@@ -318,43 +286,41 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .fab-item:hover{background:var(--surface-3);color:var(--text);}
 #cmdPalette{position:fixed;inset:0;z-index:700;display:none;}
 #cmdPalette.open{display:block;}
-.cmd-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);animation:fadeIn .15s;}
-.cmd-box{position:relative;background:var(--surface);border-radius:var(--r-xl);max-width:600px;width:calc(100% - 32px);margin:12vh auto;box-shadow:var(--shadow-lg);overflow:hidden;animation:modalIn .25s var(--spring);}
+.cmd-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);}
+.cmd-box{position:relative;background:var(--surface);border-radius:var(--r-xl);max-width:600px;width:calc(100% - 32px);margin:12vh auto;box-shadow:var(--shadow-lg);overflow:hidden;}
 .cmd-input{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
-.cmd-input input{width:100%;padding:0;border:none;background:transparent;font-size:16px;font-weight:500;box-shadow:none;}
+.cmd-input input{width:100%;padding:0;border:none;background:transparent;font-size:16px;font-weight:500;}
 .cmd-list{max-height:420px;overflow:auto;padding:6px;}
 .cmd-group{padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--text-4);text-transform:uppercase;letter-spacing:.06em;}
 .cmd-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--r-sm);cursor:pointer;font-size:13px;color:var(--text-2);}
 .cmd-item:hover,.cmd-item.active{background:var(--accent-soft);color:var(--accent-text);}
 .cmd-item .ico{width:20px;text-align:center;opacity:.7;}
-.cmd-item .kbd{margin-left:auto;font-size:10.5px;font-family:var(--mono);color:var(--text-4);padding:2px 6px;background:var(--surface-3);border-radius:4px;}
 .confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9998;}
 .tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;}
 .tour-overlay.on{display:block;}
 .tour-spotlight{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.7),0 0 0 3px var(--accent) inset;border-radius:8px;transition:all .4s var(--ease);pointer-events:none;}
-.tour-popover{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;max-width:340px;box-shadow:var(--shadow-lg);z-index:10000;animation:modalIn .3s;}
+.tour-popover{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;max-width:340px;box-shadow:var(--shadow-lg);z-index:10000;}
 .tour-popover h4{font-size:14px;font-weight:600;margin-bottom:8px;}
 .tour-popover p{font-size:12.5px;color:var(--text-3);line-height:1.6;margin-bottom:14px;}
 .tour-popover .tour-nav{display:flex;justify-content:space-between;align-items:center;gap:10px;}
 .tour-popover .tour-dots{display:flex;gap:4px;}
 .tour-popover .tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border-3);}
 .tour-popover .tour-dot.on{background:var(--accent);width:16px;border-radius:3px;}
-#dtGuard{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#1a1a1a,#000);color:#fff;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;font-family:var(--font);}
+#dtGuard{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#1a1a1a,#000);color:#fff;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;}
 #dtGuard.on{display:flex;}
 #dtGuard .inner{max-width:520px;}
-#dtGuard .lock{font-size:64px;margin-bottom:20px;filter:drop-shadow(0 0 20px #dc2626);}
+#dtGuard .lock{font-size:64px;margin-bottom:20px;}
 #dtGuard h1{font-size:26px;margin-bottom:12px;}
 #dtGuard p{font-size:14px;line-height:1.7;color:rgba(255,255,255,.7);margin-bottom:8px;}
 #dtGuard .btn{margin-top:24px;background:var(--red);color:#fff;padding:12px 24px;font-size:14px;border:none;}
 #dtGuard .logged{margin-top:16px;font-size:11px;color:rgba(255,255,255,.4);font-family:var(--mono);}
 .tb-swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
 .tb-swatch.on{border-color:var(--text);}
-@media print{.sidebar,.topbar-actions,.btn,.icon-btn,.seg,.tabs,.fab,.fab-menu,#notifPanel,.gsearch,.bulk-bar{display:none!important;}.content{padding:0;}.card{box-shadow:none;border:none;page-break-inside:avoid;}.app{display:block;}.watermark{position:fixed;inset:0;pointer-events:none;opacity:.06;font-size:60px;color:#000;display:grid;place-items:center;transform:rotate(-30deg);z-index:-1;}}
+@media print{.sidebar,.topbar-actions,.btn,.icon-btn,.seg,.tabs,.fab,.fab-menu,#notifPanel,.gsearch,.bulk-bar{display:none!important;}.content{padding:0;}.card{box-shadow:none;border:none;}.app{display:block;}}
 @media (max-width:840px){
   .app{flex-direction:column;}
   .sidebar,body.sidebar-collapsed .sidebar{width:100%;flex:none;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--border);padding:14px 12px;}
   body.sidebar-collapsed .brand-text,body.sidebar-collapsed .nav-label,body.sidebar-collapsed .nav-item span,body.sidebar-collapsed .sidebar-foot{display:initial;}
-  .brand{padding:0 0 12px;}
   .sidebar nav{display:flex;overflow-x:auto;gap:4px;padding-bottom:4px;}
   .nav-group{display:flex;gap:4px;margin-bottom:0;}
   .nav-label{display:none;}
@@ -370,7 +336,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
   .settings-nav{position:relative;top:0;}
   .chq-row,.own-chq-row{grid-template-columns:1fr 1fr;}
   .picker-toolbar{grid-template-columns:1fr 1fr;}
-  .bulk-bar{width:calc(100% - 24px);}
 }
 </style>
 </head>
@@ -436,18 +401,16 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 'use strict';
 
 /* ============================================================
-   DEVTOOLS GUARD — minimal, non-interfering
-   Only intercepts known devtools key combos. Uses bubble phase.
-   Does NOT call stopPropagation. Does NOT poll window size.
+   DEVTOOLS GUARD — passive, non-interfering
    ============================================================ */
 (function(){
-  function initGuard(){
+  function init(){
     const overlay = document.getElementById('dtGuard');
     const log = document.getElementById('dtLog');
     if(!overlay) return;
     let shown = false;
     function show(){
-      if(shown || overlay.classList.contains('on')) return;
+      if(shown) return;
       shown = true;
       const now = new Date().toISOString();
       overlay.classList.add('on');
@@ -460,30 +423,24 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
       setTimeout(() => { location.reload(); }, 8000);
     }
     document.addEventListener('keydown', function(e){
-      const k = String(e.key || '');
-      const up = k.toUpperCase();
-      // F12
-      if (k === 'F12'){ e.preventDefault(); show(); return; }
-      // Ctrl/Cmd + Shift + I/J/C/K/E  (windows/linux + mac cross-combos)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','J','C','K','E'].indexOf(up) !== -1){ e.preventDefault(); show(); return; }
-      // Mac: Cmd+Option+I/J/C/U
-      if (e.metaKey && e.altKey && ['I','J','C','U'].indexOf(up) !== -1){ e.preventDefault(); show(); return; }
-      // Ctrl/Cmd+U
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && k.toLowerCase() === 'u'){ e.preventDefault(); show(); return; }
-    }); // bubble phase only — no stopPropagation
-    // Right-click block (except on inputs)
+      const k = String(e.key || ''), up = k.toUpperCase();
+      if(k === 'F12'){ e.preventDefault(); show(); return; }
+      if((e.ctrlKey || e.metaKey) && e.shiftKey && ['I','J','C','K','E'].indexOf(up) !== -1){ e.preventDefault(); show(); return; }
+      if(e.metaKey && e.altKey && ['I','J','C','U'].indexOf(up) !== -1){ e.preventDefault(); show(); return; }
+      if((e.ctrlKey || e.metaKey) && !e.shiftKey && k.toLowerCase() === 'u'){ e.preventDefault(); show(); return; }
+    });
     document.addEventListener('contextmenu', function(e){
       const t = e.target;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       e.preventDefault();
     });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initGuard);
-  else initGuard();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
 
 /* ============================================================
-   FIREBASE CONFIG — UNCHANGED
+   FIREBASE CONFIG
    ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyD8Rq3fBzmUM9oACPkKc8HMEZSXB7tQUEw",
@@ -499,7 +456,7 @@ const ROOT = 'lanka_shoe';
 const ACCESS_DOC_PATH = ROOT + '/access';
 const DATA_DOC_PATH = ROOT + '/data';
 const USERS_COL_PATH = ROOT + '/users';
-const APP_NAME = 'Lanka Shoe Enterprise', APP_VER = '6.1.0';
+const APP_NAME = 'Lanka Shoe Enterprise', APP_VER = '6.2.0';
 
 let firebaseApp = null, auth = null, firestore = null;
 let currentUser = null, currentUserRole = 'user', currentUserPerms = null, firebaseReady = false;
@@ -514,18 +471,16 @@ const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const nowISO = () => new Date().toISOString();
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-const sum = (arr,k) => (arr || []).reduce((a,b) => a + num(k ? b[k] : b), 0);
-const uniq = arr => Array.from(new Set(arr));
-const groupBy = (arr, fn) => (arr || []).reduce((a,x) => { const k = fn(x); (a[k] = a[k] || []).push(x); return a; }, {});
 const arr = x => Array.isArray(x) ? x : [];
-const moneyPlain = n => { const s = (db && db.settings) || {}; const dp = num(s.decimalPlaces); const v = num(n); let f = Math.abs(v).toFixed(isNaN(dp)?2:dp); const [ip, dc] = f.split('.'); const ipf = ip.replace(/\B(?=(\d{3})+(?!\d))/g, s.thousandsSeparator || ','); return (v<0?'-':'') + ipf + (dc ? (s.decimalSeparator||'.') + dc : ''); };
-const money = n => { const s = (db && db.settings) || {}; const cur = s.currency || 'Rs.'; return (s.currencyPosition === 'after') ? `${moneyPlain(n)} ${cur}` : `${cur} ${moneyPlain(n)}`; };
-const fmt = moneyPlain;
-window.money = money;
+const sum = (list,k) => arr(list).reduce((a,b) => a + num(k ? b[k] : b), 0);
+const uniq = list => Array.from(new Set(list));
+const groupBy = (list, fn) => arr(list).reduce((a,x) => { const k = fn(x); (a[k] = a[k] || []).push(x); return a; }, {});
+const moneyPlain = n => { const s = (db && db.settings) || {}; const dp = num(s.decimalPlaces); const v = num(n); let f = Math.abs(v).toFixed(isNaN(dp)?2:dp); const parts = f.split('.'); const ipf = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, s.thousandsSeparator || ','); return (v<0?'-':'') + ipf + (parts[1] ? (s.decimalSeparator||'.') + parts[1] : ''); };
+const money = n => { const s = (db && db.settings) || {}; const cur = s.currency || 'Rs.'; return (s.currencyPosition === 'after') ? moneyPlain(n) + ' ' + cur : cur + ' ' + moneyPlain(n); };
 const fmtCompact = n => { const v = num(n); if(Math.abs(v) >= 1e9) return (v/1e9).toFixed(2) + 'B'; if(Math.abs(v) >= 1e6) return (v/1e6).toFixed(2) + 'M'; if(Math.abs(v) >= 1e3) return (v/1e3).toFixed(1) + 'K'; return moneyPlain(v); };
 const dateFmt = d => { if(!d) return '—'; const dt = new Date(d + 'T00:00:00'); return isNaN(dt) ? esc(d) : dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
 const dateTimeFmt = ts => ts ? new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-const monthLabel = k => { if(!k) return '—'; const [y,m] = k.split('-'); return new Date(Number(y), Number(m)-1, 1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'}); };
+const monthLabel = k => { if(!k) return '—'; const p = k.split('-'); return new Date(Number(p[0]), Number(p[1])-1, 1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'}); };
 const daysBetween = (a,b) => (!a || !b) ? 0 : Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000);
 const shiftDate = (date, days) => { const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() + days); return d.toISOString().slice(0,10); };
 const lastMonths = n => { const out = []; const d = new Date(); d.setDate(1); for(let i = n-1; i >= 0; i--){ const x = new Date(d.getFullYear(), d.getMonth()-i, 1); out.push(x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0')); } return out; };
@@ -537,68 +492,47 @@ const thisYear = () => today().slice(0,4);
 const inMonth = (d, ym) => (d || '').slice(0,7) === ym;
 const inYear = (d, y) => (d || '').slice(0,4) === y;
 const inRange = (d, f, t) => { if(!d) return false; if(f && d < f) return false; if(t && d > t) return false; return true; };
-const sortRows = (rows, key, dir) => (rows || []).slice().sort((a,b) => { let x = a[key], y = b[key]; if(typeof x === 'string' || typeof y === 'string'){ x = String(x ?? '').toLowerCase(); y = String(y ?? '').toLowerCase(); } if(x < y) return -1*dir; if(x > y) return 1*dir; return 0; });
+const sortRows = (rows, key, dir) => arr(rows).slice().sort((a,b) => { let x = a[key], y = b[key]; if(typeof x === 'string' || typeof y === 'string'){ x = String(x ?? '').toLowerCase(); y = String(y ?? '').toLowerCase(); } if(x < y) return -1*dir; if(x > y) return 1*dir; return 0; });
 const csvEscape = v => { const s = (v === undefined || v === null) ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
 const toCSV = (headers, rows) => '\uFEFF' + [headers.map(csvEscape).join(',')].concat(rows.map(r => r.map(csvEscape).join(','))).join('\n');
 const download = (filename, content, type) => { const blob = new Blob([content], { type: type || 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1500); };
 
-function sparkline(values, opts){ opts = opts || {}; const w = opts.w || 200, h = opts.h || 30, color = opts.color || 'var(--accent)'; if(!values.length) return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px"></svg>`; const max = Math.max(1, ...values), min = Math.min(0, ...values), range = max - min || 1; const step = values.length > 1 ? w/(values.length-1) : w; const pts = values.map((v,i) => [i*step, h-((v-min)/range)*(h-4)-2]); const line = pts.map(p => p.join(',')).join(' '); return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px"><path d="M0,${h} L${line.replace(/ /g,' L')} L${w},${h} Z" fill="${color}" opacity=".08"/><path d="M${line.replace(/ /g,' L')}" stroke="${color}" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
-function progressRing(value, total, color, size){ size = size || 90; const pct = total > 0 ? Math.min(1, value/total) : 0; const r = (size - 8)/2, c = size/2, circ = 2 * Math.PI * r; return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${c}" cy="${c}" r="${r}" stroke="var(--surface-3)" stroke-dasharray="${circ}"/><circle cx="${c}" cy="${c}" r="${r}" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - pct)}"/></svg>`; }
-function lineChartSVG(series, opts){ opts = opts || {}; const w = opts.w || 400, h = opts.h || 140, pad = {l:44,r:12,t:12,b:26}; const pW = w-pad.l-pad.r, pH = h-pad.t-pad.b; const max = Math.max(1, ...series.flatMap(s => s.values)); const n = series[0] ? series[0].values.length : 0; const sX = n > 1 ? pW/(n-1) : pW; let grid = ''; for(let i = 0; i <= 4; i++){ const y = pad.t + (pH*i/4); grid += `<line x1="${pad.l}" y1="${y}" x2="${pad.l+pW}" y2="${y}" stroke="var(--border-2)"/>`; grid += `<text x="${pad.l-6}" y="${y+3}" font-size="9.5" fill="var(--text-4)" text-anchor="end">${fmtCompact(max*(4-i)/4)}</text>`; } let lines = ''; series.forEach(s => { if(!s.values.length) return; const pts = s.values.map((v,i) => [pad.l+i*sX, pad.t+pH-(v/max)*pH]); lines += `<path d="M${pts.map(p => p.join(',')).join(' L')}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`; pts.forEach((p,i) => { lines += `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="var(--surface)" stroke="${s.color}" stroke-width="1.6"><title>${(opts.labels||[])[i] || ''}: ${moneyPlain(s.values[i])}</title></circle>`; }); }); const labels = (opts.labels || []).map((l,i) => `<text x="${pad.l+i*sX}" y="${h-8}" font-size="9.5" fill="var(--text-4)" text-anchor="middle">${esc(l)}</text>`).join(''); return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">${grid}${lines}${labels}</svg>`; }
+function sparkline(values, opts){ opts = opts || {}; const w = opts.w || 200, h = opts.h || 30, color = opts.color || 'var(--accent)'; if(!values.length) return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:' + h + 'px"></svg>'; const max = Math.max(1, Math.max.apply(null, values)), min = Math.min(0, Math.min.apply(null, values)), range = max - min || 1; const step = values.length > 1 ? w/(values.length-1) : w; const pts = values.map((v,i) => [i*step, h-((v-min)/range)*(h-4)-2]); const line = pts.map(p => p.join(',')).join(' '); return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:' + h + 'px"><path d="M0,' + h + ' L' + line.replace(/ /g,' L') + ' L' + w + ',' + h + ' Z" fill="' + color + '" opacity=".08"/><path d="M' + line.replace(/ /g,' L') + '" stroke="' + color + '" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>'; }
+function progressRing(value, total, color, size){ size = size || 90; const pct = total > 0 ? Math.min(1, value/total) : 0; const r = (size - 8)/2, c = size/2, circ = 2 * Math.PI * r; return '<svg class="ring" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + c + '" cy="' + c + '" r="' + r + '" stroke="var(--surface-3)" stroke-dasharray="' + circ + '"/><circle cx="' + c + '" cy="' + c + '" r="' + r + '" stroke="' + color + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + (circ * (1 - pct)) + '"/></svg>'; }
+function lineChartSVG(series, opts){ opts = opts || {}; const w = opts.w || 400, h = opts.h || 140, pad = {l:44,r:12,t:12,b:26}; const pW = w-pad.l-pad.r, pH = h-pad.t-pad.b; const max = Math.max(1, Math.max.apply(null, series.flatMap(s => s.values))); const n = series[0] ? series[0].values.length : 0; const sX = n > 1 ? pW/(n-1) : pW; let grid = ''; for(let i = 0; i <= 4; i++){ const y = pad.t + (pH*i/4); grid += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (pad.l+pW) + '" y2="' + y + '" stroke="var(--border-2)"/>'; grid += '<text x="' + (pad.l-6) + '" y="' + (y+3) + '" font-size="9.5" fill="var(--text-4)" text-anchor="end">' + fmtCompact(max*(4-i)/4) + '</text>'; } let lines = ''; series.forEach(s => { if(!s.values.length) return; const pts = s.values.map((v,i) => [pad.l+i*sX, pad.t+pH-(v/max)*pH]); lines += '<path d="M' + pts.map(p => p.join(',')).join(' L') + '" fill="none" stroke="' + s.color + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'; pts.forEach((p,i) => { lines += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="2.5" fill="var(--surface)" stroke="' + s.color + '" stroke-width="1.6"><title>' + ((opts.labels||[])[i] || '') + ': ' + moneyPlain(s.values[i]) + '</title></circle>'; }); }); const labels = (opts.labels || []).map((l,i) => '<text x="' + (pad.l+i*sX) + '" y="' + (h-8) + '" font-size="9.5" fill="var(--text-4)" text-anchor="middle">' + esc(l) + '</text>').join(''); return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' + grid + lines + labels + '</svg>'; }
 
 /* ============================================================
    DEFAULTS / SEED
    ============================================================ */
 function defaultSettings(){
-  return {
-    shopName:'Lanka Shoe', shopTagline:'Enterprise Suite', businessAddress:'', businessPhone:'', businessEmail:'', taxId:'', logoText:'',
-    uiTheme:'professional', density:'comfortable', fontSize:13.5, sidebarCollapsed:false,
-    customAccent:'#2563eb', customRadius:1,
-    currency:'Rs.', currencyPosition:'before', decimalPlaces:2, thousandsSeparator:',', decimalSeparator:'.',
-    autoNumbering:true, nextPurchaseNo:1000, nextPaymentNo:1, nextJournalNo:1,
-    defaultBank:'', defaultChequeDays:30,
-    defaultSupplierCreditDays:30, defaultSupplierCreditLimit:0,
-    supplierAgingBuckets:[30,60,90], flagOverLimit:true,
-    defaultCustomerCreditDays:0, defaultCustomerCreditLimit:0,
-    chequeReminderDays:7, agingCriticalDays:90,
-    notifEnabled:true, notifOverdueCheques:true, notifDueSoon:true, notifAging90:true,
-    notifCreditLimit:true, notifBounced:true, notifOwnCheques:true, notifSmartAlerts:true, notifThresholdAmount:0,
-    autoSave:true, confirmBeforeDelete:true, enableActivityLog:true, maxLogEntries:3000,
-    undoWindowSeconds:30,
-    readOnlyMode:false, readOnlyUntil:'',
-    requireExportApproval:false, watermarkExports:true,
-    fiscalYearStart:'01-01', currentFiscalYear:thisYear(), closedFiscalYears:[],
-    dashboardKpisOrder:['payable','receivable','purchases','receipts','expenses','aging90','bounced','ownCheques'],
-    onboardingDone:false
-  };
+  return { shopName:'Lanka Shoe', shopTagline:'Enterprise Suite', businessAddress:'', businessPhone:'', businessEmail:'', taxId:'', logoText:'', uiTheme:'professional', density:'comfortable', fontSize:13.5, sidebarCollapsed:false, customAccent:'#2563eb', customRadius:1, currency:'Rs.', currencyPosition:'before', decimalPlaces:2, thousandsSeparator:',', decimalSeparator:'.', autoNumbering:true, nextPurchaseNo:1000, nextPaymentNo:1, nextJournalNo:1, defaultBank:'', defaultChequeDays:30, defaultSupplierCreditDays:30, defaultSupplierCreditLimit:0, supplierAgingBuckets:[30,60,90], flagOverLimit:true, defaultCustomerCreditDays:0, defaultCustomerCreditLimit:0, chequeReminderDays:7, agingCriticalDays:90, notifEnabled:true, notifOverdueCheques:true, notifDueSoon:true, notifAging90:true, notifCreditLimit:true, notifBounced:true, notifOwnCheques:true, notifSmartAlerts:true, notifThresholdAmount:0, autoSave:true, confirmBeforeDelete:true, enableActivityLog:true, maxLogEntries:3000, undoWindowSeconds:30, readOnlyMode:false, watermarkExports:true, dashboardKpisOrder:['payable','receivable','purchases','receipts','expenses','aging90','bounced','ownCheques'], onboardingDone:false };
 }
 function seed(){
-  return {
-    settings: defaultSettings(),
-    categories:[{id:uid(),name:'Shoes',color:'#2563eb'},{id:uid(),name:'Slippers',color:'#7c3aed'}],
-    customers:[], suppliers:[], purchases:[],
-    receipts:[], customerCheques:[], ownCheques:[], chequeBooks:[], payments:[],
-    bankAccounts:[], expenses:[], journals:[],
-    activityLog:[], auditTrail:[], loginHistory:[],
-    fiscalYears:[], notifRead:{},
-    allowedEmails:[ADMIN_EMAIL], userPerms:{}
-  };
+  return { settings: defaultSettings(), categories:[{id:uid(),name:'Shoes',color:'#2563eb'},{id:uid(),name:'Slippers',color:'#7c3aed'}], customers:[], suppliers:[], purchases:[], receipts:[], customerCheques:[], ownCheques:[], chequeBooks:[], payments:[], bankAccounts:[], expenses:[], journals:[], activityLog:[], auditTrail:[], loginHistory:[], fiscalYears:[], notifRead:{}, allowedEmails:[ADMIN_EMAIL], userPerms:{} };
 }
 let db = seed();
-
-/* Ensure every seed collection exists and is an array */
 function normalizeDb(){
   const base = seed();
   Object.keys(base).forEach(k => {
-    if(k === 'settings'){
-      db.settings = Object.assign(defaultSettings(), db.settings || {});
-    } else if(Array.isArray(base[k])){
-      if(!Array.isArray(db[k])) db[k] = base[k];
-    } else if(typeof base[k] === 'object' && base[k] !== null){
-      if(!db[k] || typeof db[k] !== 'object') db[k] = base[k];
-    }
+    if(k === 'settings') db.settings = Object.assign(defaultSettings(), db.settings || {});
+    else if(Array.isArray(base[k])){ if(!Array.isArray(db[k])) db[k] = base[k]; }
+    else if(typeof base[k] === 'object' && base[k] !== null){ if(!db[k] || typeof db[k] !== 'object') db[k] = base[k]; }
   });
 }
+
+/* ============================================================
+   PERMISSIONS — ★ THIS WAS THE MISSING FUNCTION ★
+   ============================================================ */
+function can(action){
+  if(currentUserRole === 'admin') return true;
+  const role = (currentUserPerms && currentUserPerms.role) || 'editor';
+  if(role === 'viewer') return action === 'view';
+  if(role === 'editor' || role === 'manager') return ['view','create','edit'].includes(action);
+  return false;
+}
+window.can = can;
+function canWrite(){ if(db.settings.readOnlyMode){ toast('Read-only mode active. Toggle in Settings → Security.', 'error'); return false; } return true; }
+window.canWrite = canWrite;
 
 /* ============================================================
    FIREBASE
@@ -624,24 +558,19 @@ async function loadAccessList(){
     await firestore.doc(ACCESS_DOC_PATH).set({ allowedEmails:[ADMIN_EMAIL], userPerms:{}, updatedAt:nowISO(), updatedBy:'system' });
     db.allowedEmails = [ADMIN_EMAIL]; db.userPerms = {};
     return [ADMIN_EMAIL];
-  }catch(e){
-    console.error('loadAccessList failed:', e);
-    if(!Array.isArray(db.allowedEmails) || !db.allowedEmails.length) db.allowedEmails = [ADMIN_EMAIL];
-    return db.allowedEmails;
-  }
+  }catch(e){ console.error('loadAccessList:', e); if(!Array.isArray(db.allowedEmails) || !db.allowedEmails.length) db.allowedEmails = [ADMIN_EMAIL]; return db.allowedEmails; }
 }
 async function saveAccessList(list, perms, note){
-  const clean = uniq((list || []).map(e => String(e).trim().toLowerCase()).filter(Boolean));
+  const clean = uniq(arr(list).map(e => String(e).trim().toLowerCase()).filter(Boolean));
   if(!clean.some(e => e === ADMIN_EMAIL.toLowerCase())) clean.push(ADMIN_EMAIL);
   try{
-    await firestore.doc(ACCESS_DOC_PATH).set({ allowedEmails: clean, userPerms: perms || db.userPerms || {}, updatedAt: nowISO(), updatedBy: currentUser?.email || 'system', note: note || '' });
+    await firestore.doc(ACCESS_DOC_PATH).set({ allowedEmails: clean, userPerms: perms || db.userPerms || {}, updatedAt: nowISO(), updatedBy: (currentUser && currentUser.email) || 'system', note: note || '' });
     db.allowedEmails = clean; if(perms) db.userPerms = perms;
-    // Also save locally so it persists even if sync fails later
     try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); }catch(e){}
     return true;
   }catch(e){
-    console.error('saveAccessList failed:', e);
-    const msg = e.code === 'permission-denied' ? 'Firestore rules block writes to the access doc. Update your rules to allow the admin to write.' : (e.code || e.message);
+    console.error('saveAccessList:', e);
+    const msg = e.code === 'permission-denied' ? 'Firestore rules block writes to /lanka_shoe/access. Update your rules to allow the admin to write.' : (e.code || e.message || 'Unknown error');
     toast('Failed to save user: ' + msg, 'error');
     return false;
   }
@@ -655,25 +584,16 @@ async function loadFromFirestore(){
       const remote = doc.data() || {};
       delete remote.allowedEmails; delete remote.userPerms;
       const merged = Object.assign(seed(), remote);
-      // Fix: ensure every base key exists and is the right type
-      Object.keys(seed()).forEach(k => {
-        if(k === 'settings') return;
-        const base = seed()[k];
-        if(Array.isArray(base) && !Array.isArray(merged[k])) merged[k] = base;
-        else if(!Array.isArray(base) && (merged[k] === undefined || merged[k] === null)) merged[k] = base;
-      });
+      Object.keys(seed()).forEach(k => { if(k === 'settings') return; const base = seed()[k]; if(Array.isArray(base) && !Array.isArray(merged[k])) merged[k] = base; else if(!Array.isArray(base) && (merged[k] === undefined || merged[k] === null)) merged[k] = base; });
       merged.settings = Object.assign(defaultSettings(), remote.settings || {});
-      db = merged;
-      normalizeDb();
-      // Persist fixed data back so subsequent loads are fast
+      db = merged; normalizeDb();
       try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); }catch(e){}
     } else {
       const initial = seed(); delete initial.allowedEmails; delete initial.userPerms;
       await firestore.doc(DATA_DOC_PATH).set(initial);
     }
   }catch(e){
-    console.error('loadFromFirestore failed:', e);
-    // Fall back to local cache
+    console.error('loadFromFirestore:', e);
     await loadLocalCache();
     if(e.code === 'permission-denied') toast('Cloud data blocked by Firestore rules — using local cache', 'warn');
   }
@@ -689,7 +609,7 @@ async function pushToFirestore(){
     await firestore.doc(DATA_DOC_PATH).set(payload);
     if(st) st.textContent = 'Synced ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }catch(e){
-    console.error('pushToFirestore failed:', e);
+    console.error('pushToFirestore:', e);
     if(st) st.textContent = 'Local • Queued';
     if(e.code === 'permission-denied') toast('Cloud save blocked by Firestore rules — data saved locally', 'warn');
   }
@@ -700,17 +620,11 @@ async function loadLocalCache(){
     if(l){
       const p = JSON.parse(l);
       const merged = Object.assign(seed(), p);
-      Object.keys(seed()).forEach(k => {
-        if(k === 'settings') return;
-        const base = seed()[k];
-        if(Array.isArray(base) && !Array.isArray(merged[k])) merged[k] = base;
-        else if(!Array.isArray(base) && (merged[k] === undefined || merged[k] === null)) merged[k] = base;
-      });
+      Object.keys(seed()).forEach(k => { if(k === 'settings') return; const base = seed()[k]; if(Array.isArray(base) && !Array.isArray(merged[k])) merged[k] = base; else if(!Array.isArray(base) && (merged[k] === undefined || merged[k] === null)) merged[k] = base; });
       merged.settings = Object.assign(defaultSettings(), p.settings || {});
-      db = merged;
-      normalizeDb();
+      db = merged; normalizeDb();
     }
-  }catch(e){ console.error('loadLocalCache failed:', e); }
+  }catch(e){ console.error('loadLocalCache:', e); }
 }
 function save(){
   try{
@@ -773,7 +687,6 @@ function setDensity(d){ db.settings.density = d; save(); applySettings(); render
 window.setDensity = setDensity;
 function toggleSidebar(){ db.settings.sidebarCollapsed = !db.settings.sidebarCollapsed; save(); applySettings(); }
 window.toggleSidebar = toggleSidebar;
-function canWrite(){ if(db.settings.readOnlyMode){ toast('Read-only mode active. Toggle in Settings → Security.', 'error'); return false; } return true; }
 
 /* ============================================================
    CONFETTI
@@ -786,12 +699,7 @@ function confetti(){
   const particles = [];
   for(let i = 0; i < 120; i++) particles.push({ x: c.width/2, y: c.height/2, vx: (Math.random()-.5)*12, vy: (Math.random()-1)*12, size: 6+Math.random()*6, color: colors[Math.floor(Math.random()*colors.length)], rot: Math.random()*6, rotV: (Math.random()-.5)*.3 });
   let frame = 0;
-  function tick(){
-    frame++;
-    ctx.clearRect(0, 0, c.width, c.height);
-    particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .3; p.rot += p.rotV; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, 1 - frame/120); ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore(); });
-    if(frame < 120) requestAnimationFrame(tick); else ctx.clearRect(0, 0, c.width, c.height);
-  }
+  function tick(){ frame++; ctx.clearRect(0, 0, c.width, c.height); particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .3; p.rot += p.rotV; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, 1 - frame/120); ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore(); }); if(frame < 120) requestAnimationFrame(tick); else ctx.clearRect(0, 0, c.width, c.height); }
   tick();
 }
 
@@ -802,10 +710,8 @@ const catName = id => { const c = arr(db.categories).find(x => x.id === id); ret
 const supName = id => { const s = arr(db.suppliers).find(x => x.id === id); return s ? s.name : '—'; };
 const supObj = id => arr(db.suppliers).find(x => x.id === id);
 const custObj = id => arr(db.customers).find(x => x.id === id);
-const custName = id => { const c = arr(db.customers).find(x => x.id === id); return c ? c.name : '—'; };
 const bookObj = id => arr(db.chequeBooks).find(x => x.id === id);
 const payDesc = p => { const parts = []; if(num(p.partyAmount) > 0) parts.push('Party:' + (p.partyChequeIds||[]).length); if(num(p.ownAmount) > 0) parts.push('Own:' + (p.ownChequeIds||[]).length); return parts.join(' + ') || '—'; };
-
 function supplierLedger(id, from, to){
   const s = supObj(id); if(!s) return { rows:[], balance:0 };
   const rows = [];
@@ -817,7 +723,7 @@ function supplierLedger(id, from, to){
   let bal = 0; rows.forEach(r => { bal += r.credit - r.debit; r.balance = bal; });
   let out = rows;
   if(from) out = out.filter(r => (r.date||'') >= from);
-  if(to)   out = out.filter(r => (r.date||'') <= to);
+  if(to) out = out.filter(r => (r.date||'') <= to);
   return { rows:out, balance:bal, opening:num(s.openingBalance) };
 }
 function supplierBalance(id){ return supplierLedger(id).balance; }
@@ -833,7 +739,7 @@ function customerLedger(id, from, to){
   let bal = 0; rows.forEach(r => { bal += r.credit - r.debit; r.balance = bal; });
   let out = rows;
   if(from) out = out.filter(r => (r.date||'') >= from);
-  if(to)   out = out.filter(r => (r.date||'') <= to);
+  if(to) out = out.filter(r => (r.date||'') <= to);
   return { rows:out, balance:bal, opening:num(c.openingBalance) };
 }
 function customerBalance(id){ return customerLedger(id).balance; }
@@ -868,7 +774,7 @@ function supplierAging(sid){
   items.forEach(it => {
     if(avail >= it.amount){ avail -= it.amount; return; }
     const amt = it.amount - avail; avail = 0;
-    const age = daysBetween(it.date, ts), credit = (supObj(sid)?.creditDays) || num(db.settings.defaultSupplierCreditDays) || 30;
+    const age = daysBetween(it.date, ts), credit = ((supObj(sid) && supObj(sid).creditDays) || num(db.settings.defaultSupplierCreditDays) || 30);
     const eff = Math.max(0, age - credit);
     if(eff <= b1) b.current += amt; else if(eff <= b2) b.d30 += amt; else if(eff <= b3) b.d60 += amt; else b.d90 += amt;
     rem.push(Object.assign({}, it, { remaining:amt, age:eff }));
@@ -909,13 +815,10 @@ function clearCheque(chequeId, isOwn){
 }
 window.clearCheque = clearCheque;
 
-/* ============================================================
-   SMART ALERTS
-   ============================================================ */
 function detectSmartAlerts(){
   const out = [];
   const bouncedByCust = groupBy(arr(db.customerCheques).filter(c => c.status === 'Bounced'), c => c.customerId);
-  Object.entries(bouncedByCust).forEach(([cid, list]) => { if(list.length >= 3) out.push({ severity:'high', icon:'🚨', title:'Repeat bounced cheques', desc:custName(cid) + ' has ' + list.length + ' bounced cheques', link:{view:'ccheques'} }); });
+  Object.keys(bouncedByCust).forEach(cid => { const list = bouncedByCust[cid]; if(list.length >= 3) out.push({ severity:'high', icon:'🚨', title:'Repeat bounced cheques', desc:(custObj(cid)?custObj(cid).name:'Customer') + ' has ' + list.length + ' bounced cheques', link:{view:'ccheques'} }); });
   const allAmounts = arr(db.receipts).map(r => num(r.amount));
   if(allAmounts.length >= 5){ const avg = sum(allAmounts)/allAmounts.length; arr(db.receipts).filter(r => num(r.amount) > avg * 3 && daysBetween(r.date, today()) <= 7).forEach(r => out.push({ severity:'med', icon:'💥', title:'Unusually large receipt', desc:r.customerName + ' • ' + money(r.amount), link:{view:'receipts'} })); }
   const overdue = arr(db.customerCheques).filter(c => c.status === 'In Hand' && c.dueDate && c.dueDate < today());
@@ -928,10 +831,8 @@ function detectSmartAlerts(){
    ============================================================ */
 const ui = {
   view:'dashboard',
-  sup:{ q:'', sort:'name', dir:1 },
-  cust:{ q:'', sort:'name', dir:1 },
-  pur:{ q:'', sort:'date', dir:-1 },
-  cat:{ q:'', sort:'name', dir:1 },
+  sup:{ q:'', sort:'name', dir:1 }, cust:{ q:'', sort:'name', dir:1 },
+  pur:{ q:'', sort:'date', dir:-1 }, cat:{ q:'', sort:'name', dir:1 },
   rcp:{ q:'', sort:'date', dir:-1 },
   cc:{ q:'', from:'', to:'', sort:'date', dir:-1, tab:'In Hand', category:'' },
   own:{ q:'', sort:'date', dir:-1, tab:'Issued' },
@@ -975,14 +876,7 @@ window.openModal = openModal; window.closeModal = closeModal;
    ============================================================ */
 function renderNav(){
   const n = document.getElementById('nav'); if(!n) return;
-  const c = {
-    customers:arr(db.customers).length, suppliers:arr(db.suppliers).length, purchases:arr(db.purchases).length,
-    categories:arr(db.categories).length, receipts:arr(db.receipts).length,
-    ccheques:arr(db.customerCheques).filter(x => x.status === 'In Hand').length,
-    own:arr(db.ownCheques).filter(o => o.status === 'Issued').length,
-    banks:arr(db.bankAccounts).length, payments:arr(db.payments).length,
-    expenses:arr(db.expenses).length, journals:arr(db.journals).length, cbooks:arr(db.chequeBooks).length
-  };
+  const c = { customers:arr(db.customers).length, suppliers:arr(db.suppliers).length, purchases:arr(db.purchases).length, categories:arr(db.categories).length, receipts:arr(db.receipts).length, ccheques:arr(db.customerCheques).filter(x => x.status === 'In Hand').length, own:arr(db.ownCheques).filter(o => o.status === 'Issued').length, banks:arr(db.bankAccounts).length, payments:arr(db.payments).length, expenses:arr(db.expenses).length, journals:arr(db.journals).length, cbooks:arr(db.chequeBooks).length };
   const it = (v, i, l, cnt) => '<div class="nav-item ' + (ui.view === v ? 'active' : '') + '" data-action="nav" data-view="' + v + '" title="' + esc(l) + '"><span class="ico">' + i + '</span><span>' + esc(l) + '</span>' + (cnt !== undefined && cnt > 0 ? '<span class="badge-count">' + cnt + '</span>' : '') + '</div>';
   n.innerHTML = '<div class="nav-group">' + it('dashboard','▦','Dashboard') + '</div>' +
     '<div class="nav-group"><div class="nav-label">Master</div>' + it('customers','👥','Customers', c.customers) + it('suppliers','🏭','Suppliers', c.suppliers) + it('purchases','🛒','Purchases', c.purchases) + it('categories','🏷️','Categories', c.categories) + '</div>' +
@@ -1008,11 +902,7 @@ function onGlobalSearch(){
   arr(db.customerCheques).filter(x => (x.chequeNo||'').toLowerCase().includes(q) || (x.customerName||'').toLowerCase().includes(q)).slice(0,4).forEach(x => r.push({ type:'Cheque', label:x.customerName + ' • ' + x.chequeNo, sub:money(x.amount) + ' • ' + x.status, action:'data-action="nav" data-view="ccheques"' }));
   arr(db.receipts).filter(x => (x.customerName||'').toLowerCase().includes(q)).slice(0,3).forEach(x => r.push({ type:'Receipt', label:x.customerName + ' • ' + money(x.amount), sub:x.method + ' • ' + dateFmt(x.date), action:'data-action="nav" data-view="receipts"' }));
   if(!r.length) box.innerHTML = '<div class="empty" style="padding:20px">No results</div>';
-  else {
-    const g = groupBy(r, x => x.type);
-    const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'ig');
-    box.innerHTML = Object.entries(g).map(([t, items]) => '<div class="gs-sec">' + esc(t) + '</div>' + items.map(x => '<div class="gs-item" ' + x.action + '>' + esc(x.label).replace(re,'<mark>$1</mark>') + '<small>' + esc(x.sub) + '</small></div>').join('')).join('');
-  }
+  else { const g = groupBy(r, x => x.type); box.innerHTML = Object.keys(g).map(t => '<div class="gs-sec">' + esc(t) + '</div>' + g[t].map(x => '<div class="gs-item" ' + x.action + '>' + esc(x.label) + '<small>' + esc(x.sub) + '</small></div>').join('')).join(''); }
   box.classList.add('open');
 }
 window.onGlobalSearch = onGlobalSearch;
@@ -1034,15 +924,8 @@ const COMMANDS = [
   { g:'Navigate', ico:'📊', label:'Reports', act:() => { ui.view='reports'; render(); } },
   { g:'Navigate', ico:'📈', label:'Analytics', act:() => { ui.view='analytics'; render(); } },
   { g:'Navigate', ico:'🔍', label:'Audit Trail', act:() => { ui.view='audit'; render(); } },
-  { g:'Navigate', ico:'🔐', label:'Login History', act:() => { ui.view='logins'; render(); } },
   { g:'Navigate', ico:'⚙️', label:'Settings', act:() => { ui.view='settings'; render(); } },
-  { g:'Create', ico:'📥', label:'New Receipt', act:() => { ui.view='receipts'; render(); setTimeout(openReceiptForm, 100); } },
-  { g:'Create', ico:'💸', label:'New Payment', act:() => { ui.view='payments'; render(); } },
-  { g:'Create', ico:'👤', label:'New Customer', act:() => { ui.view='customers'; render(); setTimeout(openCustomerForm, 100); } },
-  { g:'Create', ico:'🏭', label:'New Supplier', act:() => { ui.view='suppliers'; render(); setTimeout(openSupplierForm, 100); } },
-  { g:'Action', ico:'🖨', label:'Executive Dashboard PDF', act:() => execDashboardPdf() },
   { g:'Action', ico:'💾', label:'Download JSON Backup', act:() => { download('lankashoe_' + today() + '.json', JSON.stringify(buildBackup(), null, 2), 'application/json'); } },
-  { g:'Action', ico:'🌓', label:'Toggle Dark Theme', act:() => { db.settings.uiTheme = db.settings.uiTheme === 'linear' ? 'professional' : 'linear'; save(); applySettings(); } },
   { g:'Action', ico:'🔒', label:'Toggle Read-Only Mode', act:() => toggleReadOnly() },
   { g:'Action', ico:'↔️', label:'Toggle Sidebar', act:() => toggleSidebar() },
   { g:'Action', ico:'🎓', label:'Start Onboarding Tour', act:() => startTour() }
@@ -1055,10 +938,7 @@ function renderCmdResults(){
   if(cmdActiveIndex >= filtered.length) cmdActiveIndex = 0;
   const groups = groupBy(filtered, c => c.g);
   let html = ''; let idx = 0;
-  Object.entries(groups).forEach(([g, items]) => {
-    html += '<div class="cmd-group">' + esc(g) + '</div>';
-    items.forEach(c => { html += '<div class="cmd-item ' + (idx === cmdActiveIndex ? 'active' : '') + '" onclick="runCmdIndex(' + idx + ')"><span class="ico">' + c.ico + '</span><span>' + esc(c.label) + '</span></div>'; idx++; });
-  });
+  Object.keys(groups).forEach(g => { html += '<div class="cmd-group">' + esc(g) + '</div>'; groups[g].forEach(c => { html += '<div class="cmd-item ' + (idx === cmdActiveIndex ? 'active' : '') + '" onclick="runCmdIndex(' + idx + ')"><span class="ico">' + c.ico + '</span><span>' + esc(c.label) + '</span></div>'; idx++; }); });
   list.innerHTML = html;
   window._cmdFiltered = filtered;
 }
@@ -1073,12 +953,10 @@ function getNotifications(){
   const s = db.settings || {};
   if(!s.notifEnabled) return [];
   const out = [], t = today(), thr = num(s.notifThresholdAmount) || 0, rd = num(s.chequeReminderDays) || 7;
-  if(s.notifOverdueCheques) arr(db.customerCheques).filter(r => r.status === 'In Hand' && r.dueDate && r.dueDate < t && num(r.amount) >= thr).forEach(r => { const d = Math.abs(daysBetween(r.dueDate, t)); out.push({ id:'od-'+r.id, severity:d>30?'high':'med', icon:'⏰', title:'Overdue cheque — '+d+'d', desc:r.customerName + ' • ' + r.chequeNo + ' • ' + money(r.amount), time: dateFmt(r.dueDate), link:{ view:'ccheques' } }); });
+  if(s.notifOverdueCheques) arr(db.customerCheques).filter(r => r.status === 'In Hand' && r.dueDate && r.dueDate < t && num(r.amount) >= thr).forEach(r => { const d = Math.abs(daysBetween(r.dueDate, t)); out.push({ id:'od-'+r.id, severity:d>30?'high':'med', icon:'⏰', title:'Overdue cheque — '+d+'d', desc:r.customerName + ' • ' + r.chequeNo, time: dateFmt(r.dueDate), link:{ view:'ccheques' } }); });
   if(s.notifDueSoon) arr(db.customerCheques).filter(r => r.status === 'In Hand' && r.dueDate && r.dueDate >= t && daysBetween(t, r.dueDate) <= rd && num(r.amount) >= thr).forEach(r => out.push({ id:'due-'+r.id, severity:'low', icon:'📅', title:'Cheque due in '+daysBetween(t,r.dueDate)+'d', desc:r.customerName + ' • ' + r.chequeNo, time: dateFmt(r.dueDate), link:{ view:'ccheques' } }));
   if(s.notifAging90) arr(db.suppliers).forEach(su => { const a = supplierAging(su.id); if(a.d90 > 0 && a.d90 >= thr) out.push({ id:'ag90-'+su.id, severity:'high', icon:'⚠', title:s.agingCriticalDays+'+ days outstanding', desc:su.name + ' • ' + money(a.d90), time:'Aging', link:{ view:'aging' } }); });
-  if(s.notifCreditLimit) arr(db.suppliers).filter(su => su.creditLimit > 0 && supplierBalance(su.id) > num(su.creditLimit)).forEach(su => { const o = supplierBalance(su.id) - num(su.creditLimit); if(o >= thr) out.push({ id:'cl-'+su.id, severity:'high', icon:'⛔', title:'Over credit limit', desc:su.name + ' • ' + money(o) + ' over', time:'Limit', link:{ view:'suppliers' } }); });
   if(s.notifBounced) arr(db.customerCheques).filter(r => r.status === 'Bounced' && num(r.amount) >= thr).forEach(r => out.push({ id:'bn-'+r.id, severity:'high', icon:'⛔', title:'Bounced cheque', desc:r.customerName + ' • ' + r.chequeNo, time: dateFmt(r.bouncedDate||r.date), link:{ view:'ccheques' } }));
-  if(s.notifOwnCheques) arr(db.ownCheques).filter(o => o.status === 'Issued' && o.dueDate && daysBetween(t, o.dueDate) >= 0 && daysBetween(t, o.dueDate) <= rd).forEach(o => out.push({ id:'own-'+o.id, severity:'low', icon:'🏦', title:'Own cheque due in '+daysBetween(t,o.dueDate)+'d', desc:o.chequeNo + ' • ' + o.bank, time: dateFmt(o.dueDate), link:{ view:'own' } }));
   if(s.notifSmartAlerts) detectSmartAlerts().forEach((a, i) => out.push(Object.assign({ id:'smart-'+i, time:'Smart Alert' }, a)));
   return out;
 }
@@ -1097,9 +975,6 @@ function renderNotifPanel(){
 function markAllNotifRead(){ getNotifications().forEach(n => { db.notifRead[n.id] = true; }); save(); renderNav(); renderNotifPanel(); toast('All marked read'); }
 window.markAllNotifRead = markAllNotifRead;
 
-/* ============================================================
-   FAB
-   ============================================================ */
 function toggleFab(){
   const m = document.getElementById('fabMenu'), b = document.getElementById('fabBtn');
   if(!m.classList.contains('open')){
@@ -1109,9 +984,6 @@ function toggleFab(){
 }
 window.toggleFab = toggleFab;
 
-/* ============================================================
-   BULK
-   ============================================================ */
 function toggleBulkRow(id, checked){ if(checked) ui.selectedRows.add(id); else ui.selectedRows.delete(id); renderBulkBar(); }
 window.toggleBulkRow = toggleBulkRow;
 function clearSelection(){ ui.selectedRows.clear(); renderBulkBar(); document.querySelectorAll('.bulk-check').forEach(c => c.checked = false); }
@@ -1129,38 +1001,24 @@ window.bulkDelete = bulkDelete; window.bulkExport = bulkExport;
 /* ============================================================
    RENDER
    ============================================================ */
-const views = {
-  dashboard:viewDashboard, customers:viewCustomers, suppliers:viewSuppliers, purchases:viewPurchases,
-  categories:viewCategories, receipts:viewReceipts, ccheques:viewCCheques, payments:viewPayments,
-  own:viewOwn, chequeBooks:viewChequeBooks, banks:viewBanks, expenses:viewExpenses, journals:viewJournals,
-  ledger:viewLedger, aging:viewAging, reports:viewReports, analytics:viewAnalytics, timeline:viewTimeline,
-  audit:viewAudit, logins:viewLogins, log:viewLog, fiscal:viewFiscal, backup:viewBackup, settings:viewSettings
-};
+const views = { dashboard:viewDashboard, customers:viewCustomers, suppliers:viewSuppliers, purchases:viewPurchases, categories:viewCategories, receipts:viewReceipts, ccheques:viewCCheques, payments:viewPayments, own:viewOwn, chequeBooks:viewChequeBooks, banks:viewBanks, expenses:viewExpenses, journals:viewJournals, ledger:viewLedger, aging:viewAging, reports:viewReports, analytics:viewAnalytics, timeline:viewTimeline, audit:viewAudit, logins:viewLogins, log:viewLog, fiscal:viewFiscal, backup:viewBackup, settings:viewSettings };
 const titles = { dashboard:'Dashboard', customers:'Customers', suppliers:'Suppliers', purchases:'Purchases', categories:'Categories', receipts:'Receipts', ccheques:'Customer Cheques', payments:'Supplier Payments', own:'Own Cheques', chequeBooks:'Cheque Books', banks:'Bank Accounts', expenses:'Expenses', journals:'Journal Entry', ledger:'Ledger', aging:'Aging Report', reports:'Reports & Analytics', analytics:'Analytics', timeline:'Timeline', audit:'Audit Trail', logins:'Login History', log:'Activity Log', fiscal:'Fiscal Years', backup:'Backup & Export', settings:'Settings' };
 function render(){
   normalizeDb();
   applySettings(); renderNav();
   const el = document.getElementById('view');
-  try{
-    el.innerHTML = (views[ui.view] ? views[ui.view]() : '<div class="empty">View not found</div>');
-  }catch(e){
-    console.error('render error:', e);
-    el.innerHTML = '<div class="alert danger"><span class="ico">!</span><div><strong>Render error:</strong> ' + esc(e.message || String(e)) + '<br><br>Try opening Backup → Erase All to reset.</div></div>';
-  }
-  el.classList.remove('view-enter'); void el.offsetWidth; el.classList.add('view-enter');
+  try{ el.innerHTML = (views[ui.view] ? views[ui.view]() : '<div class="empty">View not found</div>'); }
+  catch(e){ console.error('render error:', e); el.innerHTML = '<div class="alert danger"><span class="ico">!</span><div><strong>Render error:</strong> ' + esc(e.message || String(e)) + '<br><br>Try opening Backup → Erase All to reset.</div></div>'; }
   document.getElementById('pageTitle').textContent = titles[ui.view] || 'Dashboard';
   document.getElementById('pageSub').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}) + (db.settings.readOnlyMode ? ' • READ-ONLY' : '');
-  document.getElementById('globalSearch').value = '';
   const gs = document.getElementById('gsResults'); if(gs) gs.classList.remove('open');
   const fm = document.getElementById('fabMenu'); if(fm) fm.classList.remove('open');
   const fb = document.getElementById('fabBtn'); if(fb) fb.classList.remove('open');
-  updateSidebarUser();
-  renderBulkBar();
+  updateSidebarUser(); renderBulkBar();
   if(ui.view === 'payments') setTimeout(() => { try{ renderPartyList(); addOwnRow(); updatePayTotals(); }catch(e){ console.error(e); } }, 0);
-  if(!document.getElementById('wmEl') && db.settings.watermarkExports){ const w = document.createElement('div'); w.id = 'wmEl'; w.style.cssText = 'position:fixed;bottom:8px;right:8px;font-size:9px;color:var(--text-4);opacity:.4;pointer-events:none;z-index:1;font-family:var(--mono)'; w.textContent = 'CONFIDENTIAL • ' + ((currentUser && currentUser.email) || ''); document.body.appendChild(w); }
 }
 window.render = render;
-function refreshTable(n){ const e = document.getElementById('tbl-' + n); if(e && tables[n]){ try{ e.innerHTML = tables[n](); }catch(err){ console.error('refreshTable error:', err); } } }
+function refreshTable(n){ const e = document.getElementById('tbl-' + n); if(e && tables[n]){ try{ e.innerHTML = tables[n](); }catch(err){ console.error('refreshTable:', err); } } }
 window.refreshTable = refreshTable;
 const tables = { sup:tableSuppliers, cust:tableCustomers, pur:tablePurchases, cat:tableCategories, rcp:tableReceipts, cc:tableCCheques, pay:tablePay, own:tableOwn, bank:tableBanks, cbook:tableChequeBooks, exp:tableExpenses, jrn:tableJournals };
 function setSort(t, k){ const s = ui[t]; if(!s) return; if(s.sort === k) s.dir *= -1; else { s.sort = k; s.dir = 1; } refreshTable(t); }
@@ -1555,10 +1413,10 @@ function toggleBlacklistSupplier(id){ if(!canWrite()) return; const s = supObj(i
 window.toggleBlacklistSupplier = toggleBlacklistSupplier;
 function showSupplierAging(id){ const s = supObj(id); if(!s) return; const a = supplierAging(id); openModal('Aging — ' + s.name, '<div class="grid grid-4" style="margin-bottom:20px"><div><div class="k-label">Current</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(a.current) + '</div></div><div><div class="k-label">Warn</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(a.d30) + '</div></div><div><div class="k-label">Critical</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(a.d60) + '</div></div><div><div class="k-label">Overdue</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(a.d90) + '</div></div></div><div class="section-title">Items</div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th class="num">Remaining</th><th class="num">Age</th></tr></thead><tbody>' + (a.items.length ? a.items.map(it => '<tr><td>' + dateFmt(it.date) + '</td><td><span class="badge ' + (it.type==='Opening'?'purple':'blue') + '">' + esc(it.type) + '</span></td><td class="mono">' + esc(it.ref) + '</td><td class="num">' + moneyPlain(it.remaining) + '</td><td class="num"><span class="aging-badge ' + (it.age>90?'aging-3':it.age>60?'aging-2':it.age>30?'aging-1':'aging-0') + '">' + it.age + 'd</span></td></tr>').join('') : emptyRow(5, 'None')) + '</tbody></table></div><div class="form-actions"><button class="btn" data-action="close-modal">Close</button></div>', 'wide'); }
 window.showSupplierAging = showSupplierAging;
-window.printCustomerStatement = function(id){ const c = custObj(id); if(!c) return; const ledger = customerLedger(id); const w = window.open('', '_blank'); w.document.write('<html><head><title>Statement</title><style>body{font-family:Inter,Arial,sans-serif;padding:32px;color:#0d1117}h1{margin:0 0 6px}.meta{color:#6b7280;margin-bottom:22px;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e5e8ef;padding:10px 12px;text-align:left}th{background:#f8f9fb;text-transform:uppercase;font-size:10.5px;color:#6b7280}.r{text-align:right}.wm{position:fixed;inset:0;pointer-events:none;display:grid;place-items:center;font-size:80px;color:#000;opacity:.04;transform:rotate(-30deg);z-index:-1}</style></head><body><div class="wm">CONFIDENTIAL</div><h1>Statement of Account</h1><div class="meta">' + esc(db.settings.shopName) + ' • ' + new Date().toLocaleString('en-GB') + '<br>Customer: <strong>' + esc(c.name) + '</strong> • ' + esc(c.phone||'') + '</div><table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th class="r">Payment</th><th class="r">Charge</th><th class="r">Balance</th></tr></thead><tbody>' + ledger.rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.ref) + '</td><td class="r">' + (r.debit?moneyPlain(r.debit):'') + '</td><td class="r">' + (r.credit?moneyPlain(r.credit):'') + '</td><td class="r"><b>' + moneyPlain(r.balance) + '</b></td></tr>').join('') + '</tbody><tfoot><tr><td colspan="5" class="r"><b>Outstanding</b></td><td class="r"><b>' + moneyPlain(ledger.balance) + '</b></td></tr></tfoot></table></body></html>'); w.document.close(); setTimeout(() => w.print(), 300); };
+window.printCustomerStatement = function(id){ const c = custObj(id); if(!c) return; const ledger = customerLedger(id); const w = window.open('', '_blank'); w.document.write('<html><head><title>Statement</title><style>body{font-family:Inter,Arial,sans-serif;padding:32px;color:#0d1117}h1{margin:0 0 6px}.meta{color:#6b7280;margin-bottom:22px;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e5e8ef;padding:10px 12px;text-align:left}th{background:#f8f9fb;text-transform:uppercase;font-size:10.5px;color:#6b7280}.r{text-align:right}</style></head><body><h1>Statement of Account</h1><div class="meta">' + esc(db.settings.shopName) + ' • ' + new Date().toLocaleString('en-GB') + '<br>Customer: <strong>' + esc(c.name) + '</strong></div><table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th class="r">Payment</th><th class="r">Charge</th><th class="r">Balance</th></tr></thead><tbody>' + ledger.rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.ref) + '</td><td class="r">' + (r.debit?moneyPlain(r.debit):'') + '</td><td class="r">' + (r.credit?moneyPlain(r.credit):'') + '</td><td class="r"><b>' + moneyPlain(r.balance) + '</b></td></tr>').join('') + '</tbody><tfoot><tr><td colspan="5" class="r"><b>Outstanding</b></td><td class="r"><b>' + moneyPlain(ledger.balance) + '</b></td></tr></tfoot></table></body></html>'); w.document.close(); setTimeout(() => w.print(), 300); };
 
 /* ============================================================
-   PURCHASES / CATEGORIES / BANKS / EXPENSES / JOURNALS
+   PURCHASES / CATEGORIES / BANKS / CHEQUE BOOKS / EXPENSES / JOURNALS
    ============================================================ */
 function viewPurchases(){ return '<div class="card"><div class="card-head"><h3>Purchases</h3>' + (can('create') ? '<button class="btn primary" data-action="add-purchase">Record Purchase</button>' : '') + '</div><div id="tbl-pur">' + tablePurchases() + '</div></div>'; }
 function tablePurchases(){ const rows = sortRows(arr(db.purchases).map(p => ({ id:p.id, date:p.date, supplier:supName(p.supplierId), invoiceNo:p.invoiceNo, amount:num(p.amount) })), ui.pur.sort, ui.pur.dir); const total = sum(rows, 'amount'); return '<div class="table-wrap"><table><thead><tr>' + th('pur','date','Date') + th('pur','supplier','Supplier') + th('pur','invoiceNo','Invoice') + th('pur','amount','Amount','num') + '<th style="width:120px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td>' + esc(r.supplier) + '</td><td class="mono">' + esc(r.invoiceNo||'—') + '</td><td class="num">' + moneyPlain(r.amount) + '</td><td><div class="row-flex">' + (can('edit') ? '<button class="btn xs" data-action="edit-purchase" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-purchase" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(5, 'None')) + '</tbody>' + (rows.length ? '<tfoot><tr><td colspan="3">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '') + '</table></div>'; }
@@ -1589,7 +1447,7 @@ function openExpenseForm(id){ const e = id ? arr(db.expenses).find(x => x.id ===
 function saveExpense(e){ e.preventDefault(); if(!canWrite()) return; const f = e.target, id = f.dataset.id; const data = { date:f.eDate.value||today(), category:f.eCat.value.trim(), amount:num(f.eAmount.value), description:f.eDesc.value.trim() }; if(data.amount <= 0){ toast('Amount required','error'); return; } if(id){ Object.assign(arr(db.expenses).find(x => x.id === id), data); logAct('Update Expense','Expense',id,data.category); } else { const eid = uid(); if(!Array.isArray(db.expenses)) db.expenses = []; db.expenses.push(Object.assign({ id:eid, createdAt:nowISO() }, data)); logAct('Add Expense','Expense',eid,data.category); } save(); closeModal(); render(); toast('Saved', 'success'); }
 function deleteExpense(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } if(!confirm('Delete?')) return; db.expenses = arr(db.expenses).filter(x => x.id !== id); save(); render(); toast('Deleted'); }
 function viewJournals(){ return '<div class="card"><div class="card-head"><h3>Journal Entries</h3>' + (can('create') ? '<button class="btn primary" data-action="add-journal">New Journal</button>' : '') + '</div><div id="tbl-jrn">' + tableJournals() + '</div></div>'; }
-function tableJournals(){ const rows = sortRows(arr(db.journals).map(j => ({ id:j.id, date:j.date, reference:j.reference, entityType:j.entityType, entity: j.entityType === 'supplier' ? supName(j.entityId) : custName(j.entityId), debit:num(j.debit), credit:num(j.credit) })), ui.jrn.sort, ui.jrn.dir); return '<div class="table-wrap"><table><thead><tr>' + th('jrn','date','Date') + '<th>Ref</th><th>Type</th><th>Entity</th><th class="num">Debit</th><th class="num">Credit</th><th style="width:120px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td class="mono">' + esc(r.reference||'—') + '</td><td><span class="badge ' + (r.entityType === 'supplier' ? 'purple' : 'blue') + '">' + esc(r.entityType) + '</span></td><td>' + esc(r.entity) + '</td><td class="num">' + (r.debit?moneyPlain(r.debit):'—') + '</td><td class="num">' + (r.credit?moneyPlain(r.credit):'—') + '</td><td>' + (can('delete') ? '<button class="btn xs danger" data-action="del-journal" data-id="' + r.id + '">Del</button>' : '') + '</td></tr>').join('') : emptyRow(7, 'None')) + '</tbody></table></div>'; }
+function tableJournals(){ const rows = sortRows(arr(db.journals).map(j => ({ id:j.id, date:j.date, reference:j.reference, entityType:j.entityType, entity: j.entityType === 'supplier' ? supName(j.entityId) : ((custObj(j.entityId) && custObj(j.entityId).name) || '—'), debit:num(j.debit), credit:num(j.credit) })), ui.jrn.sort, ui.jrn.dir); return '<div class="table-wrap"><table><thead><tr>' + th('jrn','date','Date') + '<th>Ref</th><th>Type</th><th>Entity</th><th class="num">Debit</th><th class="num">Credit</th><th style="width:120px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td class="mono">' + esc(r.reference||'—') + '</td><td><span class="badge ' + (r.entityType === 'supplier' ? 'purple' : 'blue') + '">' + esc(r.entityType) + '</span></td><td>' + esc(r.entity) + '</td><td class="num">' + (r.debit?moneyPlain(r.debit):'—') + '</td><td class="num">' + (r.credit?moneyPlain(r.credit):'—') + '</td><td>' + (can('delete') ? '<button class="btn xs danger" data-action="del-journal" data-id="' + r.id + '">Del</button>' : '') + '</td></tr>').join('') : emptyRow(7, 'None')) + '</tbody></table></div>'; }
 function openJournalForm(){ openModal('New Journal Entry', '<form onsubmit="saveJournal(event)"><div class="form-grid"><label class="field">Date <span class="req">*</span><input name="jDate" type="date" required value="' + today() + '"></label><label class="field">Ref<input name="jRef" value="JRN-' + String(num(db.settings.nextJournalNo)||1).padStart(4,'0') + '"></label><label class="field">Entity <span class="req">*</span><select name="jEntityType" onchange="document.getElementById(\'jSupWrap\').style.display=this.value===\'supplier\'?\'\':\'none\';document.getElementById(\'jCustWrap\').style.display=this.value===\'customer\'?\'\':\'none\';"><option value="supplier">Supplier</option><option value="customer">Customer</option></select></label><label class="field" id="jSupWrap">Supplier<select name="jSupplier"><option value="">—</option>' + arr(db.suppliers).map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('') + '</select></label><label class="field" id="jCustWrap" style="display:none">Customer<select name="jCustomer"><option value="">—</option>' + arr(db.customers).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label><label class="field">Debit<input name="jDebit" type="number" step="0.01" value="0"></label><label class="field">Credit<input name="jCredit" type="number" step="0.01" value="0"></label></div><label class="field" style="margin-top:14px">Description<textarea name="jDesc"></textarea></label><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">Save</button></div></form>'); }
 function saveJournal(e){ e.preventDefault(); if(!canWrite()) return; const f = e.target; const entityType = f.jEntityType.value; const entityId = entityType === 'supplier' ? f.jSupplier.value : f.jCustomer.value; if(!entityId){ toast('Select entity','error'); return; } const data = { date:f.jDate.value||today(), reference:f.jRef.value.trim(), entityType, entityId, debit:num(f.jDebit.value), credit:num(f.jCredit.value), description:f.jDesc.value.trim() }; if(data.debit === 0 && data.credit === 0){ toast('Enter debit or credit','error'); return; } const jid = uid(); if(!Array.isArray(db.journals)) db.journals = []; db.journals.push(Object.assign({ id:jid, createdAt:nowISO() }, data)); db.settings.nextJournalNo = (num(db.settings.nextJournalNo)||1)+1; logAct('Add Journal','Journal',jid, entityType); save(); closeModal(); render(); toast('Saved', 'success'); }
 function deleteJournal(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } if(!confirm('Delete?')) return; db.journals = arr(db.journals).filter(x => x.id !== id); save(); render(); toast('Deleted'); }
@@ -1619,7 +1477,7 @@ function renderLedgerBody(){
   else if(t === 'cheque'){ columns = [{key:'date',label:'Date'},{key:'customer',label:'Customer'},{key:'chequeNo',label:'Cheque'},{key:'bank',label:'Bank'},{key:'category',label:'Category'},{key:'amount',label:'Amount',cls:'num'},{key:'status',label:'Status'}]; arr(db.customerCheques).filter(cq => inRange(cq.date, f.from, f.to)).forEach(c => rows.push({ date: dateFmt(c.date), customer: c.customerName, chequeNo: c.chequeNo, bank: c.bank || '—', category: c.categoryId ? catName(c.categoryId) : '—', amount: moneyPlain(c.amount), status: statusBadge(c.status) })); }
   else if(t === 'payment'){ columns = [{key:'date',label:'Date'},{key:'supplier',label:'Supplier'},{key:'ref',label:'Reference'},{key:'party',label:'Party',cls:'num'},{key:'own',label:'Own',cls:'num'},{key:'amount',label:'Total',cls:'num'}]; arr(db.payments).filter(p => inRange(p.date, f.from, f.to)).forEach(p => rows.push({ date: dateFmt(p.date), supplier: supName(p.supplierId), ref: p.reference || '—', party: moneyPlain(p.partyAmount), own: moneyPlain(p.ownAmount), amount: moneyPlain(p.amount) })); }
   else if(t === 'receipt'){ columns = [{key:'date',label:'Date'},{key:'customer',label:'Customer'},{key:'category',label:'Category'},{key:'method',label:'Method'},{key:'amount',label:'Amount',cls:'num'}]; arr(db.receipts).filter(r => inRange(r.date, f.from, f.to)).forEach(r => rows.push({ date: dateFmt(r.date), customer: r.customerName, category: r.categoryId ? catName(r.categoryId) : '—', method: r.method, amount: moneyPlain(r.amount) })); }
-  else if(t === 'full'){ columns = [{key:'date',label:'Date'},{key:'type',label:'Type'},{key:'entity',label:'Entity'},{key:'ref',label:'Reference'},{key:'amount',label:'Amount',cls:'num'}]; arr(db.purchases).forEach(p => { if(inRange(p.date, f.from, f.to)) rows.push({ date: dateFmt(p.date), type:'Purchase', entity: supName(p.supplierId), ref: p.invoiceNo||'—', amount: moneyPlain(p.amount) }); }); arr(db.payments).forEach(p => { if(inRange(p.date, f.from, f.to)) rows.push({ date: dateFmt(p.date), type:'Payment', entity: supName(p.supplierId), ref: p.reference||'—', amount: moneyPlain(p.amount) }); }); arr(db.receipts).forEach(r => { if(inRange(r.date, f.from, f.to)) rows.push({ date: dateFmt(r.date), type:'Receipt', entity: r.customerName, ref: catName(r.categoryId)||'—', amount: moneyPlain(r.amount) }); }); arr(db.expenses).forEach(e => { if(inRange(e.date, f.from, f.to)) rows.push({ date: dateFmt(e.date), type:'Expense', entity: e.category||'—', ref: e.description||'—', amount: moneyPlain(e.amount) }); }); rows.sort((a,b) => (a.date < b.date ? -1 : 1)); }
+  else if(t === 'full'){ columns = [{key:'date',label:'Date'},{key:'type',label:'Type'},{key:'entity',label:'Entity'},{key:'ref',label:'Reference'},{key:'amount',label:'Amount',cls:'num'}]; arr(db.purchases).forEach(p => { if(inRange(p.date, f.from, f.to)) rows.push({ date: dateFmt(p.date), type:'Purchase', entity: supName(p.supplierId), ref: p.invoiceNo||'—', amount: moneyPlain(p.amount) }); }); arr(db.payments).forEach(p => { if(inRange(p.date, f.from, f.to)) rows.push({ date: dateFmt(p.date), type:'Payment', entity: supName(p.supplierId), ref: p.reference||'—', amount: moneyPlain(p.amount) }); }); arr(db.receipts).forEach(r => { if(inRange(r.date, f.from, f.to)) rows.push({ date: dateFmt(r.date), type:'Receipt', entity: r.customerName, ref: catName(r.categoryId)||'—', amount: moneyPlain(r.amount) }); }); rows.sort((a,b) => (a.date < b.date ? -1 : 1)); }
   const q = (ui.ledger.q || '').trim().toLowerCase();
   if(q) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)));
   if(!rows.length) return '<div class="empty">No entries match</div>';
@@ -1635,9 +1493,9 @@ function viewAging(){
   const rows = arr(db.suppliers).map(s => Object.assign({ id:s.id, name:s.name }, supplierAging(s.id))).filter(r => r.total > 0).sort((a,b) => b.total - a.total);
   return '<div class="kpi-strip">' +
     '<div class="kpi"><div class="k-top"><span class="k-label">Current</span></div><div class="k-value sm">' + moneyPlain(ga.current) + '</div><div style="margin-top:10px">' + progressRing(ga.current, total, 'var(--green)', 60) + '</div></div>' +
-    '<div class="kpi"><div class="k-top"><span class="k-label">' + b1 + '-' + b2 + ' days</span></div><div class="k-value sm">' + moneyPlain(ga.d30) + '</div><div style="margin-top:10px">' + progressRing(ga.d30, total, 'var(--amber)', 60) + '</div></div>' +
-    '<div class="kpi"><div class="k-top"><span class="k-label">' + b2 + '-' + b3 + ' days</span></div><div class="k-value sm">' + moneyPlain(ga.d60) + '</div><div style="margin-top:10px">' + progressRing(ga.d60, total, '#ea580c', 60) + '</div></div>' +
-    '<div class="kpi"><div class="k-top"><span class="k-label">' + b3 + '+ days</span></div><div class="k-value sm">' + moneyPlain(ga.d90) + '</div><div style="margin-top:10px">' + progressRing(ga.d90, total, 'var(--red)', 60) + '</div></div>' +
+    '<div class="kpi"><div class="k-top"><span class="k-label">' + b1 + '-' + b2 + '</span></div><div class="k-value sm">' + moneyPlain(ga.d30) + '</div><div style="margin-top:10px">' + progressRing(ga.d30, total, 'var(--amber)', 60) + '</div></div>' +
+    '<div class="kpi"><div class="k-top"><span class="k-label">' + b2 + '-' + b3 + '</span></div><div class="k-value sm">' + moneyPlain(ga.d60) + '</div><div style="margin-top:10px">' + progressRing(ga.d60, total, '#ea580c', 60) + '</div></div>' +
+    '<div class="kpi"><div class="k-top"><span class="k-label">' + b3 + '+</span></div><div class="k-value sm">' + moneyPlain(ga.d90) + '</div><div style="margin-top:10px">' + progressRing(ga.d90, total, 'var(--red)', 60) + '</div></div>' +
   '</div>' +
   '<div class="card"><div class="card-head"><h3>Aging Report</h3><button class="btn" onclick="exportAgingCSV()">Export CSV</button></div>' +
   '<div class="table-wrap"><table><thead><tr><th>Supplier</th><th class="num">Current</th><th class="num">' + b1 + '-' + b2 + '</th><th class="num">' + b2 + '-' + b3 + '</th><th class="num">' + b3 + '+</th><th class="num">Total</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + (r.current?moneyPlain(r.current):'—') + '</td><td class="num">' + (r.d30?moneyPlain(r.d30):'—') + '</td><td class="num">' + (r.d60?moneyPlain(r.d60):'—') + '</td><td class="num" style="color:var(--red)">' + (r.d90?moneyPlain(r.d90):'—') + '</td><td class="num"><strong>' + moneyPlain(r.total) + '</strong></td></tr>').join('') : emptyRow(6, 'No aging')) + '</tbody></table></div></div>';
@@ -1663,35 +1521,33 @@ function renderReportTab(){
   if(t === 'clv') return reportCLV();
   return '';
 }
-function reportExec(){ const ga = globalAging(); const inHand = arr(db.customerCheques).filter(c => c.status === 'In Hand'); const issued = arr(db.customerCheques).filter(c => c.status === 'Issued'); return '<div class="alert info"><span class="ico">ℹ</span><div>Print-ready executive dashboard. Uses browser Print → Save as PDF.</div></div><button class="btn primary" onclick="execDashboardPdf()">📄 Generate Executive PDF</button><div class="section-title">Preview</div><div class="grid grid-3">' + kpiCard('Total Payable', moneyPlain(totalPayable()), '', { small:true }) + kpiCard('Total Receivable', moneyPlain(arr(db.customers).reduce((a,c) => a + Math.max(0, customerAging(c.id).total), 0)), '', { small:true }) + kpiCard('Cheques In Hand', moneyPlain(sum(inHand, 'amount')), inHand.length + ' cheque(s)', { small:true }) + kpiCard('Cheques Issued', moneyPlain(sum(issued, 'amount')), issued.length + ' cheque(s)', { small:true }) + kpiCard('Aging 90+', moneyPlain(ga.d90), '', { small:true }) + kpiCard('Customers', arr(db.customers).length, 'Total', { small:true }) + '</div>'; }
-function execDashboardPdf(){ const ga = globalAging(); const inHand = arr(db.customerCheques).filter(c => c.status === 'In Hand'); const issued = arr(db.customerCheques).filter(c => c.status === 'Issued'); const topSup = arr(db.suppliers).map(s => ({ name:s.name, bal: supplierBalance(s.id) })).sort((a,b) => b.bal - a.bal).slice(0, 5); const topCust = arr(db.customers).map(c => ({ name:c.name, pend: customerAging(c.id).total })).sort((a,b) => b.pend - a.pend).slice(0, 5); const w = window.open('', '_blank'); w.document.write('<html><head><title>Executive Dashboard</title><style>body{font-family:Inter,Arial,sans-serif;padding:40px;color:#0d1117;max-width:900px;margin:0 auto}h1{font-size:26px;margin:0 0 6px;font-weight:700}h2{font-size:16px;margin:28px 0 12px;color:#374151}.meta{color:#6b7280;font-size:12px;margin-bottom:24px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}.kpi{padding:16px;border:1px solid #e5e8ef;border-radius:10px}.kpi .l{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:600}.kpi .v{font-size:20px;font-weight:700;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 12px;border-bottom:1px solid #e5e8ef;text-align:left}th{background:#f8f9fb;font-size:10px;text-transform:uppercase;color:#6b7280}.r{text-align:right}.wm{position:fixed;inset:0;pointer-events:none;display:grid;place-items:center;font-size:120px;color:#000;opacity:.03;transform:rotate(-30deg);z-index:-1}</style></head><body><div class="wm">CONFIDENTIAL</div><h1>' + esc(db.settings.shopName) + '</h1><div class="meta">Executive Dashboard • ' + new Date().toLocaleString('en-GB') + ' • By ' + esc((currentUser && currentUser.email) || '') + '</div><div class="kpis"><div class="kpi"><div class="l">Total Payable</div><div class="v">' + money(totalPayable()) + '</div></div><div class="kpi"><div class="l">Total Receivable</div><div class="v">' + money(arr(db.customers).reduce((a,c) => a + Math.max(0, customerAging(c.id).total), 0)) + '</div></div><div class="kpi"><div class="l">Cheques In Hand</div><div class="v">' + money(sum(inHand, 'amount')) + '</div></div><div class="kpi"><div class="l">Cheques Issued</div><div class="v">' + money(sum(issued, 'amount')) + '</div></div><div class="kpi"><div class="l">Aging 90+ Days</div><div class="v">' + money(ga.d90) + '</div></div><div class="kpi"><div class="l">Customers</div><div class="v">' + arr(db.customers).length + '</div></div></div><h2>Top 5 Suppliers by Payable</h2><table><thead><tr><th>Supplier</th><th class="r">Payable</th></tr></thead><tbody>' + topSup.map(s => '<tr><td>' + esc(s.name) + '</td><td class="r">' + money(s.bal) + '</td></tr>').join('') + '</tbody></table><h2>Top 5 Customers by Pending</h2><table><thead><tr><th>Customer</th><th class="r">Pending</th></tr></thead><tbody>' + topCust.map(c => '<tr><td>' + esc(c.name) + '</td><td class="r">' + money(c.pend) + '</td></tr>').join('') + '</tbody></table><h2>Aging Summary</h2><table><thead><tr><th>Bucket</th><th class="r">Amount</th></tr></thead><tbody><tr><td>Current</td><td class="r">' + money(ga.current) + '</td></tr><tr><td>30-60</td><td class="r">' + money(ga.d30) + '</td></tr><tr><td>60-90</td><td class="r">' + money(ga.d60) + '</td></tr><tr><td>90+</td><td class="r">' + money(ga.d90) + '</td></tr></tbody></table></body></html>'); w.document.close(); setTimeout(() => w.print(), 500); }
+function reportExec(){ const ga = globalAging(); const inHand = arr(db.customerCheques).filter(c => c.status === 'In Hand'); const issued = arr(db.customerCheques).filter(c => c.status === 'Issued'); return '<div class="alert info"><span class="ico">ℹ</span><div>Print-ready executive dashboard.</div></div><button class="btn primary" onclick="execDashboardPdf()">📄 Generate Executive PDF</button><div class="section-title">Preview</div><div class="grid grid-3">' + kpiCard('Total Payable', moneyPlain(totalPayable()), '', { small:true }) + kpiCard('Total Receivable', moneyPlain(arr(db.customers).reduce((a,c) => a + Math.max(0, customerAging(c.id).total), 0)), '', { small:true }) + kpiCard('Cheques In Hand', moneyPlain(sum(inHand, 'amount')), inHand.length + ' cheque(s)', { small:true }) + kpiCard('Cheques Issued', moneyPlain(sum(issued, 'amount')), issued.length + ' cheque(s)', { small:true }) + kpiCard('Aging 90+', moneyPlain(ga.d90), '', { small:true }) + kpiCard('Customers', arr(db.customers).length, 'Total', { small:true }) + '</div>'; }
+function execDashboardPdf(){ const ga = globalAging(); const inHand = arr(db.customerCheques).filter(c => c.status === 'In Hand'); const issued = arr(db.customerCheques).filter(c => c.status === 'Issued'); const topSup = arr(db.suppliers).map(s => ({ name:s.name, bal: supplierBalance(s.id) })).sort((a,b) => b.bal - a.bal).slice(0, 5); const w = window.open('', '_blank'); w.document.write('<html><head><title>Executive Dashboard</title><style>body{font-family:Inter,Arial,sans-serif;padding:40px;color:#0d1117;max-width:900px;margin:0 auto}h1{font-size:26px;margin:0 0 6px}h2{font-size:16px;margin:28px 0 12px;color:#374151}.meta{color:#6b7280;font-size:12px;margin-bottom:24px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}.kpi{padding:16px;border:1px solid #e5e8ef;border-radius:10px}.kpi .l{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:600}.kpi .v{font-size:20px;font-weight:700;margin-top:6px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 12px;border-bottom:1px solid #e5e8ef;text-align:left}th{background:#f8f9fb;font-size:10px;text-transform:uppercase;color:#6b7280}.r{text-align:right}</style></head><body><h1>' + esc(db.settings.shopName) + '</h1><div class="meta">Executive Dashboard • ' + new Date().toLocaleString('en-GB') + '</div><div class="kpis"><div class="kpi"><div class="l">Total Payable</div><div class="v">' + money(totalPayable()) + '</div></div><div class="kpi"><div class="l">Total Receivable</div><div class="v">' + money(arr(db.customers).reduce((a,c) => a + Math.max(0, customerAging(c.id).total), 0)) + '</div></div><div class="kpi"><div class="l">Cheques In Hand</div><div class="v">' + money(sum(inHand, 'amount')) + '</div></div><div class="kpi"><div class="l">Cheques Issued</div><div class="v">' + money(sum(issued, 'amount')) + '</div></div><div class="kpi"><div class="l">Aging 90+</div><div class="v">' + money(ga.d90) + '</div></div></div><h2>Top Suppliers</h2><table><thead><tr><th>Supplier</th><th class="r">Payable</th></tr></thead><tbody>' + topSup.map(s => '<tr><td>' + esc(s.name) + '</td><td class="r">' + money(s.bal) + '</td></tr>').join('') + '</tbody></table></body></html>'); w.document.close(); setTimeout(() => w.print(), 500); }
 window.execDashboardPdf = execDashboardPdf;
-function reportCompare(){ const yrs = []; for(let y = Number(thisYear()) - 5; y <= Number(thisYear()); y++) yrs.push(y); const metrics = ['Purchases','Payments','Receipts','Expenses']; const valBy = (metric, y) => { if(metric === 'Purchases') return sum(arr(db.purchases).filter(p => inYear(p.date, y)), 'amount'); if(metric === 'Payments') return sum(arr(db.payments).filter(p => inYear(p.date, y)), 'amount'); if(metric === 'Receipts') return sum(arr(db.receipts).filter(r => inYear(r.date, y)), 'amount'); if(metric === 'Expenses') return sum(arr(db.expenses).filter(e => inYear(e.date, y)), 'amount'); return 0; }; const yr = Number(ui.reports.compareY || thisYear()); return '<div class="row-flex" style="margin-bottom:16px"><label class="field">Compare Year<select onchange="ui.reports.compareY=this.value; render()">' + yrs.map(y => '<option value="' + y + '" ' + (yr===y?'selected':'') + '>' + y + '</option>').join('') + '</select></label></div><div class="table-wrap"><table><thead><tr><th>Metric</th>' + yrs.map(y => '<th class="num">' + y + '</th>').join('') + '<th class="num">YoY %</th></tr></thead><tbody>' + metrics.map(m => { const cur = valBy(m, yr), prev = valBy(m, yr - 1); const d = pctDelta(cur, prev); return '<tr><td><strong>' + m + '</strong></td>' + yrs.map(y => '<td class="num">' + moneyPlain(valBy(m,y)) + '</td>').join('') + '<td class="num"><span class="k-delta ' + (d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat') + '">' + (d > 0 ? '↑' : d < 0 ? '↓' : '−') + ' ' + Math.abs(d).toFixed(1) + '%</span></td></tr>'; }).join('') + '</tbody></table></div><div class="card"><div class="card-head"><h3>Year Trend</h3></div>' + lineChartSVG([{values: yrs.map(y => valBy('Purchases', y)), color:'var(--accent)'},{values: yrs.map(y => valBy('Receipts', y)), color:'var(--teal)'}], { w:900, h:200, labels: yrs.map(String) }) + '</div>'; }
-function reportBuilder(){ const type = ui.builder.type || 'all'; let rows = []; if(type === 'all' || type === 'purchases') arr(db.purchases).forEach(p => rows.push({ _type:'Purchase', date:p.date, entity:supName(p.supplierId), ref:p.invoiceNo||'', amount:num(p.amount) })); if(type === 'all' || type === 'payments') arr(db.payments).forEach(p => rows.push({ _type:'Payment', date:p.date, entity:supName(p.supplierId), ref:p.reference||'', amount:num(p.amount) })); if(type === 'all' || type === 'receipts') arr(db.receipts).forEach(r => rows.push({ _type:'Receipt', date:r.date, entity:r.customerName, ref:catName(r.categoryId)||'', amount:num(r.amount) })); if(type === 'all' || type === 'expenses') arr(db.expenses).forEach(e => rows.push({ _type:'Expense', date:e.date, entity:e.category||'', ref:e.description||'', amount:num(e.amount) })); const q = ui.builder.q.trim().toLowerCase(); if(q) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q))); rows.sort((a,b) => a.date < b.date ? 1 : -1); const total = sum(rows, 'amount'); return '<div class="form-grid" style="margin-bottom:16px"><label class="field">Type<select onchange="ui.builder.type=this.value; render()">' + ['all','purchases','payments','receipts','expenses'].map(x => '<option value="' + x + '" ' + (type===x?'selected':'') + '>' + x + '</option>').join('') + '</select></label><label class="field">Search<input type="search" value="' + esc(ui.builder.q) + '" oninput="ui.builder.q=this.value; render()"></label><div><div class="small muted">Export</div><button class="btn" style="margin-top:6px" onclick="exportBuilderCSV()">⬇ CSV</button></div></div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Date</th><th>Entity</th><th>Ref</th><th class="num">Amount</th></tr></thead><tbody>' + (rows.length ? rows.slice(0,500).map(r => '<tr><td><span class="badge gray">' + r._type + '</span></td><td>' + dateFmt(r.date) + '</td><td>' + esc(r.entity) + '</td><td class="mono small">' + esc(r.ref) + '</td><td class="num">' + moneyPlain(r.amount) + '</td></tr>').join('') : emptyRow(5, 'No data')) + '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">' + moneyPlain(total) + '</td></tr></tfoot></table></div>'; }
-function exportBuilderCSV(){ const table = document.querySelector('#rptBody table'); if(!table){ toast('No data','error'); return; } const headers = Array.from(table.querySelectorAll('thead th')).map(t => t.textContent.trim()); const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())); download('custom_report_' + today() + '.csv', toCSV(headers, rows), 'text/csv'); toast('Exported'); }
-window.exportBuilderCSV = exportBuilderCSV;
-function reportSupplierAnalysis(){ const rows = arr(db.suppliers).map(s => { const payments = arr(db.payments).filter(p => p.supplierId === s.id); const avgDays = payments.length ? payments.reduce((a,p) => a + daysBetween((s.createdAt||today()).slice(0,10), p.date), 0) / payments.length : 0; return { id:s.id, name:s.name, totalPaid: sum(payments, 'amount'), count: payments.length, avgDays: Math.round(avgDays), balance: supplierBalance(s.id) }; }).sort((a,b) => b.totalPaid - a.totalPaid); return '<div class="alert info"><span class="ico">ℹ</span><div>Analyze supplier payment patterns and delays.</div></div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th class="num">Payments</th><th class="num">Total Paid</th><th class="num">Avg Days</th><th class="num">Current Payable</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + r.count + '</td><td class="num">' + moneyPlain(r.totalPaid) + '</td><td class="num">' + r.avgDays + 'd</td><td class="num">' + moneyPlain(r.balance) + '</td></tr>').join('') : emptyRow(5, 'No suppliers')) + '</tbody></table></div>'; }
-function reportChequeCycle(){ const cleared = arr(db.customerCheques).filter(c => c.status === 'Cleared'); const rows = cleared.map(c => ({ c, days: daysBetween(c.date, c.clearedDate || c.date) })); const avg = rows.length ? rows.reduce((a,b) => a + b.days, 0) / rows.length : 0; const byBank = groupBy(cleared, c => c.bank || 'Unknown'); return '<div class="grid grid-3" style="margin-bottom:16px">' + kpiCard('Cleared Cheques', cleared.length, '', { small:true }) + kpiCard('Avg Cycle', Math.round(avg) + ' days', 'Receipt to clearance', { small:true }) + kpiCard('Fastest', rows.length ? Math.min.apply(null, rows.map(r => r.days)) + 'd' : '—', '', { small:true }) + '</div><div class="section-title">By Bank</div><div class="table-wrap"><table><thead><tr><th>Bank</th><th class="num">Count</th><th class="num">Avg Days</th></tr></thead><tbody>' + (Object.entries(byBank).map(([bank, list]) => { const avgDays = list.reduce((a,c) => a + daysBetween(c.date, c.clearedDate||c.date), 0) / list.length; return '<tr><td>' + esc(bank) + '</td><td class="num">' + list.length + '</td><td class="num">' + Math.round(avgDays) + 'd</td></tr>'; }).join('') || emptyRow(3, 'No data')) + '</tbody></table></div>'; }
-function reportCLV(){ const rows = arr(db.customers).map(c => { const receipts = arr(db.receipts).filter(r => r.customerId === c.id); const lifetime = sum(receipts, 'amount'); const since = c.createdAt ? daysBetween(c.createdAt.slice(0,10), today()) : 0; return { id:c.id, name:c.name, receipts: receipts.length, lifetime, since, pending: customerAging(c.id).total }; }).sort((a,b) => b.lifetime - a.lifetime); return '<div class="alert info"><span class="ico">ℹ</span><div>Customer Lifetime Value — total received from each customer.</div></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th class="num">Receipts</th><th class="num">Lifetime Value</th><th class="num">Days Customer</th><th class="num">Pending</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + r.receipts + '</td><td class="num" style="color:var(--green);font-weight:500">' + moneyPlain(r.lifetime) + '</td><td class="num">' + r.since + 'd</td><td class="num">' + moneyPlain(r.pending) + '</td></tr>').join('') : emptyRow(5, 'No customers')) + '</tbody></table></div>'; }
-function viewAnalytics(){ const ms = lastMonths(12); const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount')); const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m)), 'amount')); const recS = ms.map(m => sum(arr(db.receipts).filter(r => inMonth(r.date, m)), 'amount')); const inHand = arr(db.customerCheques).filter(c => c.status === 'In Hand'); const issued = arr(db.customerCheques).filter(c => c.status === 'Issued'); const cleared = arr(db.customerCheques).filter(c => c.status === 'Cleared'); const bounced = arr(db.customerCheques).filter(c => c.status === 'Bounced'); const totalCQ = sum(arr(db.customerCheques), 'amount') || 1; const catData = arr(db.categories).map(c => ({ name:c.name, color:c.color, received: sum(arr(db.receipts).filter(r => r.categoryId === c.id), 'amount') })).filter(c => c.received > 0).sort((a,b) => b.received - a.received); return '<div class="card"><div class="card-head"><h3>12-Month Cash Flow</h3></div>' + lineChartSVG([{values:purS,color:'var(--accent)'},{values:payS,color:'var(--green)'},{values:recS,color:'var(--teal)'}], { w:900, h:240, labels: ms.map(monthLabel) }) + '</div><div class="card"><div class="card-head"><h3>Cheque Flow</h3><span class="hint">Click any ring for drill-down</span></div><div class="grid grid-4" style="text-align:center"><div onclick="drilldown(\'inhand\')" style="cursor:pointer">' + progressRing(sum(inHand,'amount'), totalCQ, 'var(--amber)', 100) + '<div style="font-weight:600;margin-top:8px">In Hand</div><div class="muted small">' + moneyPlain(sum(inHand,'amount')) + '</div></div><div onclick="drilldown(\'issued\')" style="cursor:pointer">' + progressRing(sum(issued,'amount'), totalCQ, 'var(--accent)', 100) + '<div style="font-weight:600;margin-top:8px">Issued</div><div class="muted small">' + moneyPlain(sum(issued,'amount')) + '</div></div><div onclick="drilldown(\'cleared\')" style="cursor:pointer">' + progressRing(sum(cleared,'amount'), totalCQ, 'var(--green)', 100) + '<div style="font-weight:600;margin-top:8px">Cleared</div><div class="muted small">' + moneyPlain(sum(cleared,'amount')) + '</div></div><div onclick="drilldown(\'bounced\')" style="cursor:pointer">' + progressRing(sum(bounced,'amount'), totalCQ, 'var(--red)', 100) + '<div style="font-weight:600;margin-top:8px">Bounced</div><div class="muted small">' + moneyPlain(sum(bounced,'amount')) + '</div></div></div></div><div class="card"><div class="card-head"><h3>Category Performance</h3></div>' + (catData.length ? catData.map(c => '<div class="bar-row"><span class="bar-label"><span class="dot" style="background:' + c.color + ';margin-right:6px"></span>' + esc(c.name) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (c.received/Math.max(1,catData[0].received)*100).toFixed(1) + '%"></div></div><span class="bar-val">' + moneyPlain(c.received) + '</span></div>').join('') : '<div class="empty">No category data</div>') + '</div>'; }
-function drilldown(type){ const map = { inhand:'In Hand', issued:'Issued', cleared:'Cleared', bounced:'Bounced' }; const status = map[type]; const rows = arr(db.customerCheques).filter(c => c.status === status); openModal('Drill-Down — ' + status + ' (' + rows.length + ')', '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Cheque</th><th>Bank</th><th class="num">Amount</th></tr></thead><tbody>' + (rows.length ? rows.map(c => '<tr><td>' + dateFmt(c.date) + '</td><td>' + esc(c.customerName) + '</td><td class="mono">' + esc(c.chequeNo) + '</td><td>' + esc(c.bank||'') + '</td><td class="num">' + moneyPlain(c.amount) + '</td></tr>').join('') : emptyRow(5, 'None')) + '</tbody></table></div><div class="form-actions"><button class="btn" data-action="close-modal">Close</button></div>', 'wide'); }
+function reportCompare(){ const yrs = []; for(let y = Number(thisYear()) - 5; y <= Number(thisYear()); y++) yrs.push(y); const metrics = ['Purchases','Payments','Receipts','Expenses']; const valBy = (metric, y) => { if(metric === 'Purchases') return sum(arr(db.purchases).filter(p => inYear(p.date, y)), 'amount'); if(metric === 'Payments') return sum(arr(db.payments).filter(p => inYear(p.date, y)), 'amount'); if(metric === 'Receipts') return sum(arr(db.receipts).filter(r => inYear(r.date, y)), 'amount'); if(metric === 'Expenses') return sum(arr(db.expenses).filter(e => inYear(e.date, y)), 'amount'); return 0; }; const yr = Number(ui.reports.compareY || thisYear()); return '<div class="row-flex" style="margin-bottom:16px"><label class="field">Compare Year<select onchange="ui.reports.compareY=this.value; render()">' + yrs.map(y => '<option value="' + y + '" ' + (yr===y?'selected':'') + '>' + y + '</option>').join('') + '</select></label></div><div class="table-wrap"><table><thead><tr><th>Metric</th>' + yrs.map(y => '<th class="num">' + y + '</th>').join('') + '<th class="num">YoY %</th></tr></thead><tbody>' + metrics.map(m => { const cur = valBy(m, yr), prev = valBy(m, yr - 1); const d = pctDelta(cur, prev); return '<tr><td><strong>' + m + '</strong></td>' + yrs.map(y => '<td class="num">' + moneyPlain(valBy(m,y)) + '</td>').join('') + '<td class="num"><span class="k-delta ' + (d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat') + '">' + (d > 0 ? '↑' : d < 0 ? '↓' : '−') + ' ' + Math.abs(d).toFixed(1) + '%</span></td></tr>'; }).join('') + '</tbody></table></div>'; }
+function reportBuilder(){ const type = ui.builder.type || 'all'; let rows = []; if(type === 'all' || type === 'purchases') arr(db.purchases).forEach(p => rows.push({ _type:'Purchase', date:p.date, entity:supName(p.supplierId), ref:p.invoiceNo||'', amount:num(p.amount) })); if(type === 'all' || type === 'payments') arr(db.payments).forEach(p => rows.push({ _type:'Payment', date:p.date, entity:supName(p.supplierId), ref:p.reference||'', amount:num(p.amount) })); if(type === 'all' || type === 'receipts') arr(db.receipts).forEach(r => rows.push({ _type:'Receipt', date:r.date, entity:r.customerName, ref:catName(r.categoryId)||'', amount:num(r.amount) })); const q = ui.builder.q.trim().toLowerCase(); if(q) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q))); rows.sort((a,b) => a.date < b.date ? 1 : -1); const total = sum(rows, 'amount'); return '<div class="form-grid" style="margin-bottom:16px"><label class="field">Type<select onchange="ui.builder.type=this.value; render()">' + ['all','purchases','payments','receipts'].map(x => '<option value="' + x + '" ' + (type===x?'selected':'') + '>' + x + '</option>').join('') + '</select></label><label class="field">Search<input type="search" value="' + esc(ui.builder.q) + '" oninput="ui.builder.q=this.value; render()"></label></div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Date</th><th>Entity</th><th>Ref</th><th class="num">Amount</th></tr></thead><tbody>' + (rows.length ? rows.slice(0,500).map(r => '<tr><td><span class="badge gray">' + r._type + '</span></td><td>' + dateFmt(r.date) + '</td><td>' + esc(r.entity) + '</td><td class="mono small">' + esc(r.ref) + '</td><td class="num">' + moneyPlain(r.amount) + '</td></tr>').join('') : emptyRow(5, 'No data')) + '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">' + moneyPlain(total) + '</td></tr></tfoot></table></div>'; }
+function reportSupplierAnalysis(){ const rows = arr(db.suppliers).map(s => { const payments = arr(db.payments).filter(p => p.supplierId === s.id); return { id:s.id, name:s.name, totalPaid: sum(payments, 'amount'), count: payments.length, balance: supplierBalance(s.id) }; }).sort((a,b) => b.totalPaid - a.totalPaid); return '<div class="table-wrap"><table><thead><tr><th>Supplier</th><th class="num">Payments</th><th class="num">Total Paid</th><th class="num">Payable</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + r.count + '</td><td class="num">' + moneyPlain(r.totalPaid) + '</td><td class="num">' + moneyPlain(r.balance) + '</td></tr>').join('') : emptyRow(4, 'No suppliers')) + '</tbody></table></div>'; }
+function reportChequeCycle(){ const cleared = arr(db.customerCheques).filter(c => c.status === 'Cleared'); const rows = cleared.map(c => ({ c, days: daysBetween(c.date, c.clearedDate || c.date) })); const avg = rows.length ? rows.reduce((a,b) => a + b.days, 0) / rows.length : 0; const byBank = groupBy(cleared, c => c.bank || 'Unknown'); return '<div class="grid grid-3" style="margin-bottom:16px">' + kpiCard('Cleared', cleared.length, '', { small:true }) + kpiCard('Avg Cycle', Math.round(avg) + ' days', '', { small:true }) + kpiCard('Fastest', rows.length ? Math.min.apply(null, rows.map(r => r.days)) + 'd' : '—', '', { small:true }) + '</div><div class="table-wrap"><table><thead><tr><th>Bank</th><th class="num">Count</th><th class="num">Avg Days</th></tr></thead><tbody>' + (Object.keys(byBank).map(bank => { const list = byBank[bank]; const avgDays = list.reduce((a,c) => a + daysBetween(c.date, c.clearedDate||c.date), 0) / list.length; return '<tr><td>' + esc(bank) + '</td><td class="num">' + list.length + '</td><td class="num">' + Math.round(avgDays) + 'd</td></tr>'; }).join('') || emptyRow(3, 'No data')) + '</tbody></table></div>'; }
+function reportCLV(){ const rows = arr(db.customers).map(c => { const receipts = arr(db.receipts).filter(r => r.customerId === c.id); const lifetime = sum(receipts, 'amount'); return { id:c.id, name:c.name, receipts: receipts.length, lifetime, pending: customerAging(c.id).total }; }).sort((a,b) => b.lifetime - a.lifetime); return '<div class="table-wrap"><table><thead><tr><th>Customer</th><th class="num">Receipts</th><th class="num">Lifetime Value</th><th class="num">Pending</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + r.receipts + '</td><td class="num" style="color:var(--green)">' + moneyPlain(r.lifetime) + '</td><td class="num">' + moneyPlain(r.pending) + '</td></tr>').join('') : emptyRow(4, 'No customers')) + '</tbody></table></div>'; }
+function viewAnalytics(){ const ms = lastMonths(12); const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount')); const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m)), 'amount')); const recS = ms.map(m => sum(arr(db.receipts).filter(r => inMonth(r.date, m)), 'amount')); const inHand = arr(db.customerCheques).filter(c => c.status === 'In Hand'); const issued = arr(db.customerCheques).filter(c => c.status === 'Issued'); const cleared = arr(db.customerCheques).filter(c => c.status === 'Cleared'); const bounced = arr(db.customerCheques).filter(c => c.status === 'Bounced'); const totalCQ = sum(arr(db.customerCheques), 'amount') || 1; const catData = arr(db.categories).map(c => ({ name:c.name, color:c.color, received: sum(arr(db.receipts).filter(r => r.categoryId === c.id), 'amount') })).filter(c => c.received > 0).sort((a,b) => b.received - a.received); return '<div class="card"><div class="card-head"><h3>12-Month Cash Flow</h3></div>' + lineChartSVG([{values:purS,color:'var(--accent)'},{values:payS,color:'var(--green)'},{values:recS,color:'var(--teal)'}], { w:900, h:240, labels: ms.map(monthLabel) }) + '</div><div class="card"><div class="card-head"><h3>Cheque Flow</h3></div><div class="grid grid-4" style="text-align:center"><div onclick="drilldown(\'inhand\')" style="cursor:pointer">' + progressRing(sum(inHand,'amount'), totalCQ, 'var(--amber)', 100) + '<div style="font-weight:600;margin-top:8px">In Hand</div><div class="muted small">' + moneyPlain(sum(inHand,'amount')) + '</div></div><div onclick="drilldown(\'issued\')" style="cursor:pointer">' + progressRing(sum(issued,'amount'), totalCQ, 'var(--accent)', 100) + '<div style="font-weight:600;margin-top:8px">Issued</div><div class="muted small">' + moneyPlain(sum(issued,'amount')) + '</div></div><div onclick="drilldown(\'cleared\')" style="cursor:pointer">' + progressRing(sum(cleared,'amount'), totalCQ, 'var(--green)', 100) + '<div style="font-weight:600;margin-top:8px">Cleared</div><div class="muted small">' + moneyPlain(sum(cleared,'amount')) + '</div></div><div onclick="drilldown(\'bounced\')" style="cursor:pointer">' + progressRing(sum(bounced,'amount'), totalCQ, 'var(--red)', 100) + '<div style="font-weight:600;margin-top:8px">Bounced</div><div class="muted small">' + moneyPlain(sum(bounced,'amount')) + '</div></div></div></div>'; }
+function drilldown(type){ const map = { inhand:'In Hand', issued:'Issued', cleared:'Cleared', bounced:'Bounced' }; const status = map[type]; const rows = arr(db.customerCheques).filter(c => c.status === status); openModal('Drill-Down — ' + status + ' (' + rows.length + ')', '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Cheque</th><th class="num">Amount</th></tr></thead><tbody>' + (rows.length ? rows.map(c => '<tr><td>' + dateFmt(c.date) + '</td><td>' + esc(c.customerName) + '</td><td class="mono">' + esc(c.chequeNo) + '</td><td class="num">' + moneyPlain(c.amount) + '</td></tr>').join('') : emptyRow(4, 'None')) + '</tbody></table></div><div class="form-actions"><button class="btn" data-action="close-modal">Close</button></div>', 'wide'); }
 window.drilldown = drilldown;
 
 /* ============================================================
    TIMELINE / AUDIT / LOGINS / LOG / FISCAL / BACKUP
    ============================================================ */
-function viewTimeline(){ const entries = arr(db.activityLog).slice().reverse().slice(0, 200); const days = groupBy(entries, e => (e.timestamp || '').slice(0,10)); const dayKeys = Object.keys(days).sort((a,b) => b.localeCompare(a)); return '<div class="card"><div class="card-head"><h3>Timeline</h3></div>' + (dayKeys.length ? dayKeys.map(day => { const items = days[day]; const label = day === today() ? 'Today' : new Date(day + 'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); return '<div class="tl-day"><div class="tl-day-head"><div class="d">' + label + '</div><div class="c">' + items.length + '</div></div>' + items.map(e => { const ico = e.action.indexOf('Delete') !== -1 ? '🗑' : e.action.indexOf('Sign In') !== -1 ? '🔓' : e.action.indexOf('Add') !== -1 ? '＋' : e.action.indexOf('Bounce') !== -1 ? '⛔' : '✎'; const ts = new Date(e.timestamp).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); return '<div class="tl-event"><div class="tl-icon">' + ico + '</div><div class="tl-body"><div class="tl-title">' + esc(e.action) + ' <span class="badge gray">' + esc(e.entity) + '</span>' + (e.userRole ? ' <span class="badge ' + (e.userRole === 'admin' ? 'blue' : 'gray') + '">' + esc(e.userRole) + '</span>' : '') + '</div>' + (e.details ? '<div class="tl-desc">' + esc(e.details) + '</div>' : '') + '<div class="tl-meta"><span>' + esc(e.userEmail || 'system') + '</span><span>' + ts + '</span></div></div></div>'; }).join('') + '</div>'; }).join('') : '<div class="empty">No timeline events</div>') + '</div>'; }
-function viewAudit(){ let rows = arr(db.auditTrail).slice().reverse().slice(0, 500); const q = ui.audit.q.trim().toLowerCase(); if(q) rows = rows.filter(r => (r.action||'').toLowerCase().includes(q) || (r.entity||'').toLowerCase().includes(q) || (r.details||'').toLowerCase().includes(q)); return '<div class="card"><div class="card-head"><h3>Audit Trail (Field-Level)</h3></div><div class="form-grid" style="margin-bottom:16px"><label class="field">Search<input type="search" value="' + esc(ui.audit.q) + '" oninput="ui.audit.q=this.value; render()"></label></div><div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Entity</th><th>User</th><th>Role</th><th>Before</th><th>After</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.timestamp) + '</td><td><strong>' + esc(r.action) + '</strong></td><td><span class="badge gray">' + esc(r.entity) + '</span></td><td class="small">' + esc(r.userEmail||'—') + '</td><td><span class="badge ' + (r.userRole === 'admin' ? 'blue' : 'gray') + '">' + esc(r.userRole || '—') + '</span></td><td class="muted small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">' + (r.before ? esc(JSON.stringify(r.before).slice(0,60)) : '—') + '</td><td class="muted small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">' + (r.after ? esc(JSON.stringify(r.after).slice(0,60)) : '—') + '</td></tr>').join('') : emptyRow(7, 'No audit entries')) + '</tbody></table></div></div>'; }
-function viewLogins(){ const rows = arr(db.loginHistory).slice().reverse(); return '<div class="card"><div class="card-head"><h3>Login History</h3></div><div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Platform</th><th>Screen</th><th>Language</th><th>Device</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.at) + '</td><td><strong>' + esc(r.email) + '</strong></td><td>' + esc(r.platform||'—') + '</td><td>' + esc(r.screen||'—') + '</td><td>' + esc(r.lang||'—') + '</td><td class="muted small" style="max-width:280px;overflow:hidden;text-overflow:ellipsis">' + esc((r.ua||'').slice(0,70)) + '</td></tr>').join('') : emptyRow(6, 'No logins recorded')) + '</tbody></table></div></div>'; }
+function viewTimeline(){ const entries = arr(db.activityLog).slice().reverse().slice(0, 200); const days = groupBy(entries, e => (e.timestamp || '').slice(0,10)); const dayKeys = Object.keys(days).sort((a,b) => b.localeCompare(a)); return '<div class="card"><div class="card-head"><h3>Timeline</h3></div>' + (dayKeys.length ? dayKeys.map(day => { const items = days[day]; const label = day === today() ? 'Today' : new Date(day + 'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); return '<div class="tl-day"><div class="tl-day-head"><div class="d">' + label + '</div><div class="c">' + items.length + '</div></div>' + items.map(e => { const ts = new Date(e.timestamp).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); return '<div class="tl-event"><div class="tl-icon">✎</div><div class="tl-body"><div class="tl-title">' + esc(e.action) + ' <span class="badge gray">' + esc(e.entity) + '</span></div>' + (e.details ? '<div class="tl-desc">' + esc(e.details) + '</div>' : '') + '<div class="tl-meta"><span>' + esc(e.userEmail || 'system') + '</span><span>' + ts + '</span></div></div></div>'; }).join('') + '</div>'; }).join('') : '<div class="empty">No timeline events</div>') + '</div>'; }
+function viewAudit(){ const rows = arr(db.auditTrail).slice().reverse().slice(0, 500); return '<div class="card"><div class="card-head"><h3>Audit Trail (Field-Level)</h3></div><div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Entity</th><th>User</th><th>Role</th><th>Before</th><th>After</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.timestamp) + '</td><td><strong>' + esc(r.action) + '</strong></td><td><span class="badge gray">' + esc(r.entity) + '</span></td><td class="small">' + esc(r.userEmail||'—') + '</td><td><span class="badge ' + (r.userRole === 'admin' ? 'blue' : 'gray') + '">' + esc(r.userRole || '—') + '</span></td><td class="muted small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">' + (r.before ? esc(JSON.stringify(r.before).slice(0,60)) : '—') + '</td><td class="muted small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">' + (r.after ? esc(JSON.stringify(r.after).slice(0,60)) : '—') + '</td></tr>').join('') : emptyRow(7, 'No audit entries')) + '</tbody></table></div></div>'; }
+function viewLogins(){ const rows = arr(db.loginHistory).slice().reverse(); return '<div class="card"><div class="card-head"><h3>Login History</h3></div><div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Platform</th><th>Screen</th><th>Language</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.at) + '</td><td><strong>' + esc(r.email) + '</strong></td><td>' + esc(r.platform||'—') + '</td><td>' + esc(r.screen||'—') + '</td><td>' + esc(r.lang||'—') + '</td></tr>').join('') : emptyRow(5, 'No logins recorded')) + '</tbody></table></div></div>'; }
 function viewLog(){ const rows = arr(db.activityLog).slice().reverse().slice(0, 500); return '<div class="card"><div class="card-head"><h3>Activity Log</h3><button class="btn" onclick="exportLogCSV()">Export CSV</button></div><div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Entity</th><th>Role</th><th>User</th><th>Details</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.timestamp) + '</td><td><strong>' + esc(r.action) + '</strong></td><td><span class="badge gray">' + esc(r.entity) + '</span></td><td><span class="badge ' + (r.userRole === 'admin' ? 'blue' : 'gray') + '">' + esc(r.userRole || '—') + '</span></td><td class="small">' + esc(r.userEmail||'—') + '</td><td class="muted small">' + esc(r.details||'—') + '</td></tr>').join('') : emptyRow(6, 'No activity')) + '</tbody></table></div></div>'; }
 function exportLogCSV(){ const rows = arr(db.activityLog).map(r => [r.timestamp, r.action, r.entity, r.userRole, r.details, r.userEmail]); download('log_' + today() + '.csv', toCSV(['Timestamp','Action','Entity','Role','Details','User'], rows), 'text/csv'); toast('Exported'); }
 window.exportLogCSV = exportLogCSV;
-function viewFiscal(){ const years = arr(db.fiscalYears); return '<div class="card"><div class="card-head"><h3>Fiscal Years</h3>' + (currentUserRole === 'admin' ? '<button class="btn primary" data-action="close-fiscal">Close Current Fiscal Year</button>' : '') + '</div><div class="alert info"><span class="ico">ℹ</span><div>Closing a fiscal year locks all entries for that year and requires admin.</div></div>' + (years.length ? '<div class="table-wrap"><table><thead><tr><th>Year</th><th>Closed</th><th>Closed By</th><th class="num">Entries</th></tr></thead><tbody>' + years.map(y => '<tr><td><strong>' + y.year + '</strong></td><td>' + dateTimeFmt(y.closedAt) + '</td><td>' + esc(y.closedBy) + '</td><td class="num">' + y.entries + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty">No fiscal years closed yet</div>') + '</div>'; }
-function closeFiscalYear(){ if(currentUserRole !== 'admin'){ toast('Admin only','error'); return; } const year = thisYear(); if(arr(db.fiscalYears).some(y => y.year === year)){ toast('Year already closed','error'); return; } if(!confirm('Close fiscal year ' + year + '?\n\nThis locks all entries for this year.')) return; const entries = arr(db.purchases).filter(p => inYear(p.date, year)).length + arr(db.receipts).filter(r => inYear(r.date, year)).length + arr(db.payments).filter(p => inYear(p.date, year)).length + arr(db.expenses).filter(e => inYear(e.date, year)).length; if(!Array.isArray(db.fiscalYears)) db.fiscalYears = []; db.fiscalYears.push({ year, closedAt: nowISO(), closedBy: (currentUser && currentUser.email), entries }); logAct('Close Fiscal Year','System',null, year + ' • ' + entries + ' entries'); save(); render(); toast('Fiscal year ' + year + ' closed', 'success'); confetti(); }
+function viewFiscal(){ const years = arr(db.fiscalYears); return '<div class="card"><div class="card-head"><h3>Fiscal Years</h3>' + (currentUserRole === 'admin' ? '<button class="btn primary" data-action="close-fiscal">Close Current Fiscal Year</button>' : '') + '</div>' + (years.length ? '<div class="table-wrap"><table><thead><tr><th>Year</th><th>Closed</th><th>Closed By</th><th class="num">Entries</th></tr></thead><tbody>' + years.map(y => '<tr><td><strong>' + y.year + '</strong></td><td>' + dateTimeFmt(y.closedAt) + '</td><td>' + esc(y.closedBy) + '</td><td class="num">' + y.entries + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty">No fiscal years closed yet</div>') + '</div>'; }
+function closeFiscalYear(){ if(currentUserRole !== 'admin'){ toast('Admin only','error'); return; } const year = thisYear(); if(arr(db.fiscalYears).some(y => y.year === year)){ toast('Year already closed','error'); return; } if(!confirm('Close fiscal year ' + year + '?')) return; if(!Array.isArray(db.fiscalYears)) db.fiscalYears = []; db.fiscalYears.push({ year, closedAt: nowISO(), closedBy: (currentUser && currentUser.email), entries: 0 }); logAct('Close Fiscal Year','System',null, year); save(); render(); toast('Fiscal year closed', 'success'); confetti(); }
 window.closeFiscalYear = closeFiscalYear;
-function viewBackup(){ const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })(); const counts = { customers: arr(db.customers).length, suppliers: arr(db.suppliers).length, receipts: arr(db.receipts).length, customerCheques: arr(db.customerCheques).length, payments: arr(db.payments).length, expenses: arr(db.expenses).length }; return '<div class="kpi-strip">' + kpiCard('Records', Object.values(counts).reduce((a,b) => a+b,0), '', { small:true }) + kpiCard('DB Size', size, '', { small:true }) + kpiCard('Firebase', firebaseReady && !offlineMode ? 'Ready' : 'Offline', '', { small:true }) + '</div><div class="card"><div class="card-head"><h3>Backup & Export</h3></div><div class="section-title">Export</div><div class="row-flex"><button class="btn primary" data-action="backup-json">Download JSON</button><button class="btn" data-action="force-sync">Force Sync</button></div><div class="section-title">CSV Exports</div><div class="row-flex"><button class="btn" data-action="csv" data-set="customers">Customers</button><button class="btn" data-action="csv" data-set="suppliers">Suppliers</button><button class="btn" data-action="csv" data-set="receipts">Receipts</button><button class="btn" data-action="csv" data-set="customerCheques">Cheques</button><button class="btn" data-action="csv" data-set="payments">Payments</button><button class="btn" data-action="csv" data-set="aging">Aging</button></div><div class="section-title">Import</div><div class="row-flex"><input type="file" id="importFile" accept="application/json" style="max-width:320px"><button class="btn primary" data-action="import-json">Import</button></div><div class="section-title">Utilities</div><div class="row-flex"><button class="btn" data-action="load-sample">Load Sample</button><button class="btn danger" data-action="clear-all">Erase All</button><button class="btn danger" data-action="emergency-wipe">🚨 Emergency Wipe</button></div></div>'; }
+function viewBackup(){ const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })(); return '<div class="card"><div class="card-head"><h3>Backup & Export</h3></div><div class="section-title">Export</div><div class="row-flex"><button class="btn primary" data-action="backup-json">Download JSON</button><button class="btn" data-action="force-sync">Force Sync</button></div><div class="section-title">CSV Exports</div><div class="row-flex"><button class="btn" data-action="csv" data-set="customers">Customers</button><button class="btn" data-action="csv" data-set="suppliers">Suppliers</button><button class="btn" data-action="csv" data-set="receipts">Receipts</button><button class="btn" data-action="csv" data-set="customerCheques">Cheques</button><button class="btn" data-action="csv" data-set="payments">Payments</button><button class="btn" data-action="csv" data-set="aging">Aging</button></div><div class="section-title">Import</div><div class="row-flex"><input type="file" id="importFile" accept="application/json" style="max-width:320px"><button class="btn primary" data-action="import-json">Import</button></div><div class="section-title">Utilities</div><div class="row-flex"><button class="btn" data-action="load-sample">Load Sample</button><button class="btn danger" data-action="clear-all">Erase All</button><button class="btn danger" data-action="emergency-wipe">🚨 Emergency Wipe</button></div></div>'; }
 function buildBackup(){ const data = JSON.parse(JSON.stringify(db)); delete data.allowedEmails; delete data.userPerms; return { meta:{ app:APP_NAME, version:APP_VER, exportedAt:nowISO(), by: (currentUser && currentUser.email) || '' }, data }; }
-function exportCSV(set){ let h = [], r = []; if(set === 'customers'){ h = ['Name','Phone','Opening','Pending']; r = arr(db.customers).map(c => [c.name, c.phone, num(c.openingBalance), customerAging(c.id).total]); } else if(set === 'suppliers'){ h = ['Name','Phone','Opening','Purchases','Paid','Payable']; r = arr(db.suppliers).map(s => [s.name, s.phone, num(s.openingBalance), sum(arr(db.purchases).filter(p => p.supplierId === s.id),'amount'), sum(arr(db.payments).filter(p => p.supplierId === s.id),'amount'), supplierBalance(s.id)]); } else if(set === 'receipts'){ h = ['Date','Customer','Category','Method','Cheques','Amount']; r = arr(db.receipts).map(x => [x.date, x.customerName, catName(x.categoryId), x.method, x.chequeCount||0, num(x.amount)]); } else if(set === 'customerCheques'){ h = ['Date','Customer','Cheque','Bank','Category','Amount','Status']; r = arr(db.customerCheques).map(x => [x.date, x.customerName, x.chequeNo, x.bank, catName(x.categoryId), num(x.amount), x.status]); } else if(set === 'payments'){ h = ['Date','Supplier','Party','Own','Total']; r = arr(db.payments).map(p => [p.date, supName(p.supplierId), num(p.partyAmount), num(p.ownAmount), num(p.amount)]); } else if(set === 'aging'){ h = ['Supplier','Current','Warn','Crit','Overdue','Total']; r = arr(db.suppliers).map(s => { const a = supplierAging(s.id); return [s.name, a.current, a.d30, a.d60, a.d90, a.total]; }); } download(set + '_' + today() + '.csv', toCSV(h, r), 'text/csv'); toast('Exported' + (db.settings.watermarkExports ? ' (watermarked)' : '')); }
+function exportCSV(set){ let h = [], r = []; if(set === 'customers'){ h = ['Name','Phone','Opening','Pending']; r = arr(db.customers).map(c => [c.name, c.phone, num(c.openingBalance), customerAging(c.id).total]); } else if(set === 'suppliers'){ h = ['Name','Phone','Opening','Purchases','Paid','Payable']; r = arr(db.suppliers).map(s => [s.name, s.phone, num(s.openingBalance), sum(arr(db.purchases).filter(p => p.supplierId === s.id),'amount'), sum(arr(db.payments).filter(p => p.supplierId === s.id),'amount'), supplierBalance(s.id)]); } else if(set === 'receipts'){ h = ['Date','Customer','Category','Method','Amount']; r = arr(db.receipts).map(x => [x.date, x.customerName, catName(x.categoryId), x.method, num(x.amount)]); } else if(set === 'customerCheques'){ h = ['Date','Customer','Cheque','Bank','Amount','Status']; r = arr(db.customerCheques).map(x => [x.date, x.customerName, x.chequeNo, x.bank, num(x.amount), x.status]); } else if(set === 'payments'){ h = ['Date','Supplier','Party','Own','Total']; r = arr(db.payments).map(p => [p.date, supName(p.supplierId), num(p.partyAmount), num(p.ownAmount), num(p.amount)]); } else if(set === 'aging'){ h = ['Supplier','Current','Warn','Crit','Overdue','Total']; r = arr(db.suppliers).map(s => { const a = supplierAging(s.id); return [s.name, a.current, a.d30, a.d60, a.d90, a.total]; }); } download(set + '_' + today() + '.csv', toCSV(h, r), 'text/csv'); toast('Exported'); }
 function importBackup(){ const input = document.getElementById('importFile'); if(!input || !input.files.length){ toast('Choose a file','error'); return; } const reader = new FileReader(); reader.onload = e => { try{ const parsed = JSON.parse(e.target.result); const data = parsed.data || parsed; if(!confirm('Import replaces current data. Continue?')) return; const merged = Object.assign(seed(), data); merged.settings = Object.assign(defaultSettings(), data.settings || {}); db = merged; normalizeDb(); save(); render(); toast('Imported', 'success'); }catch(err){ toast('Invalid file','error'); } }; reader.readAsText(input.files[0]); }
 function clearAll(){ if(!confirm('Erase ALL data?')) return; if(!confirm('Final confirmation?')) return; db = seed(); applySettings(); save(); render(); toast('Erased'); }
 function emergencyWipe(){ if(currentUserRole !== 'admin'){ toast('Admin only','error'); return; } const c = prompt('Type "WIPE EVERYTHING" (case-sensitive):'); if(c !== 'WIPE EVERYTHING'){ toast('Cancelled','info'); return; } if(!confirm('FINAL WARNING — cannot be undone. Continue?')) return; try{ localStorage.clear(); }catch(e){} db = seed(); toast('Emergency wipe complete','error'); setTimeout(() => { pushToFirestore().then(() => location.reload()); }, 500); }
@@ -1731,13 +1587,13 @@ function settingsSection(key){
 function settingsProfile(s){ return '<div class="settings-panel-head"><h2>Business Profile</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Identity</div><div class="form-grid"><label class="field">Shop Name<input name="st_shopName" value="' + esc(s.shopName) + '"></label><label class="field">Tagline<input name="st_shopTagline" value="' + esc(s.shopTagline || '') + '"></label><label class="field">Logo Initials<input name="st_logoText" maxlength="3" value="' + esc(s.logoText || '') + '"></label></div></div><div class="settings-section"><div class="settings-section-title">Contact</div><div class="form-grid"><label class="field">Phone<input name="st_businessPhone" value="' + esc(s.businessPhone || '') + '"></label><label class="field">Email<input name="st_businessEmail" value="' + esc(s.businessEmail || '') + '"></label><label class="field">Address<input name="st_businessAddress" value="' + esc(s.businessAddress || '') + '"></label></div></div></div>'; }
 function settingsAppearance(s){
   const themes = [{n:'Professional',v:'professional'},{n:'Linear (Dark)',v:'linear'},{n:'Notion',v:'notion'},{n:'Neumorphic',v:'neumorphic'},{n:'Glassmorphism',v:'glass'}];
-  return '<div class="settings-panel-head"><h2>Appearance</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Theme</div><div class="grid grid-2">' + themes.map(t => '<label class="chkbox ' + (s.uiTheme === t.v ? 'on' : '') + '" onclick="applyTheme(\'' + t.v + '\', this)" style="padding:14px"><input type="radio" name="st_uiTheme" value="' + t.v + '" ' + (s.uiTheme === t.v ? 'checked' : '') + ' onclick="event.stopPropagation()" style="display:none"><div style="flex:1"><div style="font-weight:600">' + t.n + '</div></div></label>').join('') + '</div></div><div class="settings-section"><div class="settings-section-title">Density</div><div class="seg"><button type="button" class="seg-btn ' + (s.density === 'compact' ? 'active' : '') + '" onclick="setDensity(\'compact\'); render()">Compact</button><button type="button" class="seg-btn ' + (s.density === 'comfortable' ? 'active' : '') + '" onclick="setDensity(\'comfortable\'); render()">Comfortable</button><button type="button" class="seg-btn ' + (s.density === 'spacious' ? 'active' : '') + '" onclick="setDensity(\'spacious\'); render()">Spacious</button></div></div><div class="settings-section"><div class="settings-section-title">Font Size</div><label class="field">Base Font (px)<input type="number" name="st_fontSize" min="11" max="17" step="0.5" value="' + (num(s.fontSize) || 13.5) + '"></label></div></div>';
+  return '<div class="settings-panel-head"><h2>Appearance</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Theme</div><div class="grid grid-2">' + themes.map(t => '<label class="chkbox ' + (s.uiTheme === t.v ? 'on' : '') + '" onclick="applyTheme(\'' + t.v + '\', this)" style="padding:14px;cursor:pointer;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center"><div style="flex:1"><div style="font-weight:600">' + t.n + '</div></div></label>').join('') + '</div></div><div class="settings-section"><div class="settings-section-title">Density</div><div class="seg"><button type="button" class="seg-btn ' + (s.density === 'compact' ? 'active' : '') + '" onclick="setDensity(\'compact\'); render()">Compact</button><button type="button" class="seg-btn ' + (s.density === 'comfortable' ? 'active' : '') + '" onclick="setDensity(\'comfortable\'); render()">Comfortable</button><button type="button" class="seg-btn ' + (s.density === 'spacious' ? 'active' : '') + '" onclick="setDensity(\'spacious\'); render()">Spacious</button></div></div><div class="settings-section"><div class="settings-section-title">Font Size</div><label class="field">Base Font (px)<input type="number" name="st_fontSize" min="11" max="17" step="0.5" value="' + (num(s.fontSize) || 13.5) + '"></label></div></div>';
 }
 function applyTheme(v, el){ db.settings.uiTheme = v; save(); applySettings(); if(el){ document.querySelectorAll('.chkbox').forEach(c => c.classList.remove('on')); el.classList.add('on'); } toast('Theme: ' + v, 'info'); }
 window.applyTheme = applyTheme;
 function settingsThemeBuilder(s){
   const accents = ['#2563eb','#7c3aed','#059669','#dc2626','#d97706','#0d9488','#db2777','#1e293b'];
-  return '<div class="settings-panel-head"><h2>Theme Builder</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Accent Color</div><div class="row-flex">' + accents.map(a => '<div class="tb-swatch ' + (s.customAccent === a ? 'on' : '') + '" style="background:' + a + '" onclick="setCustomAccent(\'' + a + '\')"></div>').join('') + '</div><div class="form-grid" style="margin-top:14px"><label class="field">Custom<input type="color" value="' + esc(s.customAccent) + '" onchange="setCustomAccent(this.value)"></label></div></div><div class="settings-section"><div class="settings-section-title">Border Radius</div><div class="seg"><button type="button" class="seg-btn ' + (s.customRadius == 0.5 ? 'active' : '') + '" onclick="setCustomRadius(0.5)">Sharp</button><button type="button" class="seg-btn ' + (s.customRadius == 1 ? 'active' : '') + '" onclick="setCustomRadius(1)">Default</button><button type="button" class="seg-btn ' + (s.customRadius == 1.8 ? 'active' : '') + '" onclick="setCustomRadius(1.8)">Round</button></div></div><div class="settings-section"><div class="settings-section-title">Preview</div><div class="card" style="padding:20px"><div style="font-weight:600">Sample Card</div><div class="muted small" style="margin-top:6px">Preview of custom settings</div><button class="btn primary" style="margin-top:12px">Primary Button</button></div></div></div>';
+  return '<div class="settings-panel-head"><h2>Theme Builder</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Accent Color</div><div class="row-flex">' + accents.map(a => '<div class="tb-swatch ' + (s.customAccent === a ? 'on' : '') + '" style="background:' + a + '" onclick="setCustomAccent(\'' + a + '\')"></div>').join('') + '</div><div class="form-grid" style="margin-top:14px"><label class="field">Custom<input type="color" value="' + esc(s.customAccent) + '" onchange="setCustomAccent(this.value)"></label></div></div><div class="settings-section"><div class="settings-section-title">Border Radius</div><div class="seg"><button type="button" class="seg-btn ' + (s.customRadius == 0.5 ? 'active' : '') + '" onclick="setCustomRadius(0.5)">Sharp</button><button type="button" class="seg-btn ' + (s.customRadius == 1 ? 'active' : '') + '" onclick="setCustomRadius(1)">Default</button><button type="button" class="seg-btn ' + (s.customRadius == 1.8 ? 'active' : '') + '" onclick="setCustomRadius(1.8)">Round</button></div></div></div>';
 }
 function setCustomAccent(c){ db.settings.customAccent = c; save(); applySettings(); render(); }
 window.setCustomAccent = setCustomAccent;
@@ -1747,18 +1603,22 @@ function settingsFinancial(s){ return '<div class="settings-panel-head"><h2>Fina
 function settingsCheque(s){ return '<div class="settings-panel-head"><h2>Cheque Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Default Bank<input name="st_defaultBank" value="' + esc(s.defaultBank || '') + '"></label><label class="field">Default Due Days<input type="number" name="st_defaultChequeDays" value="' + num(s.defaultChequeDays) + '"></label></div></div></div>'; }
 function settingsSupplier(s){ return '<div class="settings-panel-head"><h2>Supplier Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Credit Days<input type="number" name="st_defaultSupplierCreditDays" value="' + num(s.defaultSupplierCreditDays) + '"></label><label class="field">Credit Limit<input type="number" step="0.01" name="st_defaultSupplierCreditLimit" value="' + num(s.defaultSupplierCreditLimit) + '"></label></div></div><div class="settings-section"><div class="settings-section-title">Aging Buckets</div><div class="form-grid"><label class="field">Bucket 1<input type="number" name="st_ageB1" value="' + num((s.supplierAgingBuckets||[30,60,90])[0]) + '"></label><label class="field">Bucket 2<input type="number" name="st_ageB2" value="' + num((s.supplierAgingBuckets||[30,60,90])[1]) + '"></label><label class="field">Bucket 3<input type="number" name="st_ageB3" value="' + num((s.supplierAgingBuckets||[30,60,90])[2]) + '"></label></div></div></div>'; }
 function settingsCustomer(s){ return '<div class="settings-panel-head"><h2>Customer Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Credit Days<input type="number" name="st_defaultCustomerCreditDays" value="' + num(s.defaultCustomerCreditDays) + '"></label><label class="field">Credit Limit<input type="number" step="0.01" name="st_defaultCustomerCreditLimit" value="' + num(s.defaultCustomerCreditLimit) + '"></label></div></div></div>'; }
-function settingsNotifications(s){ const row = (l, k) => '<div class="settings-toggle-row"><div class="settings-toggle-label">' + l + '</div><div class="switch ' + (s[k] ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_' + k + '\')"><input type="checkbox" name="st_' + k + '" ' + (s[k] ? 'checked' : '') + ' hidden></div></div>'; return '<div class="settings-panel-head"><h2>Notifications</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Master</div>' + row('Enable Notifications','notifEnabled') + '</div><div class="settings-section"><div class="settings-section-title">Alert Types</div>' + row('Overdue Cheques','notifOverdueCheques') + row('Cheques Due Soon','notifDueSoon') + row('Aging Critical','notifAging90') + row('Credit Limit Breaches','notifCreditLimit') + row('Bounced Cheques','notifBounced') + row('Own Cheques Due','notifOwnCheques') + row('Smart Alerts','notifSmartAlerts') + '</div><div class="settings-section"><div class="settings-section-title">Threshold</div><label class="field">Min Amount<input type="number" step="0.01" name="st_notifThresholdAmount" value="' + num(s.notifThresholdAmount) + '"></label></div></div>'; }
-function settingsSecurity(s){
-  return '<div class="settings-panel-head"><h2>Security</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Read-Only Mode</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Read-Only Mode</div><div class="settings-toggle-desc">Freeze all writes.</div></div><div class="switch ' + (s.readOnlyMode ? 'on' : '') + '" onclick="toggleReadOnly()"><input type="checkbox" ' + (s.readOnlyMode ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Export Security</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Watermark Exports</div></div><div class="switch ' + (s.watermarkExports ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_watermarkExports\')"><input type="checkbox" name="st_watermarkExports" ' + (s.watermarkExports ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">DevTools Protection</div><div class="alert success"><span class="ico">✓</span><div><strong>Active</strong> — F12, Ctrl/Cmd+Shift+I/J/C/K/E, Cmd+Option+I/J/C/U, Ctrl+U, and right-click are blocked. Triggers only on actual open attempts.</div></div></div><div class="settings-section"><div class="settings-section-title">Emergency Actions</div><button type="button" class="btn danger" onclick="emergencyWipe()">🚨 Emergency Wipe</button></div></div>';
-}
+function settingsNotifications(s){ const row = (l, k) => '<div class="settings-toggle-row"><div class="settings-toggle-label">' + l + '</div><div class="switch ' + (s[k] ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_' + k + '\')"><input type="checkbox" name="st_' + k + '" ' + (s[k] ? 'checked' : '') + ' hidden></div></div>'; return '<div class="settings-panel-head"><h2>Notifications</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Master</div>' + row('Enable Notifications','notifEnabled') + '</div><div class="settings-section"><div class="settings-section-title">Alert Types</div>' + row('Overdue Cheques','notifOverdueCheques') + row('Cheques Due Soon','notifDueSoon') + row('Aging Critical','notifAging90') + row('Bounced Cheques','notifBounced') + row('Own Cheques Due','notifOwnCheques') + row('Smart Alerts','notifSmartAlerts') + '</div></div>'; }
+function settingsSecurity(s){ return '<div class="settings-panel-head"><h2>Security</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Read-Only Mode</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Read-Only Mode</div><div class="settings-toggle-desc">Freeze all writes.</div></div><div class="switch ' + (s.readOnlyMode ? 'on' : '') + '" onclick="toggleReadOnly()"><input type="checkbox" ' + (s.readOnlyMode ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Export Security</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Watermark Exports</div></div><div class="switch ' + (s.watermarkExports ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_watermarkExports\')"><input type="checkbox" name="st_watermarkExports" ' + (s.watermarkExports ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">DevTools Protection</div><div class="alert success"><span class="ico">✓</span><div><strong>Active</strong> — devtools key combos and right-click are blocked.</div></div></div><div class="settings-section"><div class="settings-section-title">Emergency</div><button type="button" class="btn danger" onclick="emergencyWipe()">🚨 Emergency Wipe</button></div></div>'; }
 function toggleReadOnly(){ db.settings.readOnlyMode = !db.settings.readOnlyMode; save(); applySettings(); render(); toast(db.settings.readOnlyMode ? 'READ-ONLY ON' : 'Read-only OFF', 'warn'); }
 window.toggleReadOnly = toggleReadOnly;
 function settingsUsers(s){
   const allowed = Array.isArray(db.allowedEmails) && db.allowedEmails.length ? db.allowedEmails : [ADMIN_EMAIL];
   const isAdmin = currentUserRole === 'admin';
   const adminLower = ADMIN_EMAIL.toLowerCase();
-  return '<div class="settings-panel-head"><h2>Users & Permissions</h2></div><div class="settings-body">' +
-    '<div class="alert info"><span class="ico">i</span><div><strong>Admin:</strong> ' + esc(ADMIN_EMAIL) + '</div></div>' +
+  // ★ ALWAYS show the add-user section when user is admin
+  const addSection = isAdmin ? '<div class="settings-section"><div class="settings-section-title">➕ Add New User</div>' +
+    '<div class="form-grid"><label class="field">Email Address<input id="newAllowedEmail" type="email" placeholder="user@example.com"></label><label class="field">Role<select id="newUserRole"><option value="viewer">Viewer (read-only)</option><option value="editor" selected>Editor (create & edit)</option><option value="manager">Manager (full CRUD)</option></select></label></div>' +
+    '<div class="row-flex" style="margin-top:14px"><button type="button" class="btn primary" onclick="addAllowedEmail()">➕ Add User</button><button type="button" class="btn" onclick="refreshAccessList()">🔄 Refresh List</button></div>' +
+    '<div class="alert info" style="margin-top:14px"><span class="ico">i</span><div>Firestore rules must allow admin writes to <code class="mono">lanka_shoe/access</code>. If it fails, you\'ll see a specific error message.</div></div></div>' : '';
+  return '<div class="settings-panel-head"><h2>Users & Permissions</h2><div class="desc">Manage who can access this system</div></div><div class="settings-body">' +
+    '<div class="alert info"><span class="ico">i</span><div><strong>Admin (always authorized):</strong> ' + esc(ADMIN_EMAIL) + '<br>You are signed in as: <strong>' + ((currentUser && currentUser.email) || '—') + '</strong> (' + currentUserRole + ')</div></div>' +
+    addSection +
     '<div class="settings-section"><div class="settings-section-title">Authorized Users (' + allowed.length + ')</div>' +
     allowed.map(email => {
       const isDefAdmin = String(email).toLowerCase() === adminLower;
@@ -1767,13 +1627,12 @@ function settingsUsers(s){
       return '<div class="user-row"><div class="u-avatar">' + String(email).slice(0,1).toUpperCase() + '</div><div class="u-info"><div class="u-email">' + esc(email) + ' ' + (isDefAdmin ? '<span class="badge blue">Admin</span>' : '') + '</div><div class="u-meta">Role: <strong>' + role + '</strong></div></div>' + ((!isDefAdmin && isAdmin) ? '<select onchange="changeUserRole(\'' + esc(email) + '\', this.value)" style="width:130px"><option value="viewer" ' + (role==='viewer'?'selected':'') + '>Viewer</option><option value="editor" ' + (role==='editor'?'selected':'') + '>Editor</option><option value="manager" ' + (role==='manager'?'selected':'') + '>Manager</option></select><button class="btn xs danger" onclick="removeAllowedEmail(\'' + esc(email) + '\')">Remove</button>' : '') + '</div>';
     }).join('') +
     '</div>' +
-    (isAdmin ? '<div class="settings-section"><div class="settings-section-title">Add User</div><div class="form-grid"><label class="field">Email<input id="newAllowedEmail" type="email" placeholder="user@example.com"></label><label class="field">Role<select id="newUserRole"><option value="viewer">Viewer</option><option value="editor" selected>Editor</option><option value="manager">Manager</option></select></label></div><div class="row-flex" style="margin-top:14px"><button type="button" class="btn primary" onclick="addAllowedEmail()">Add User</button><button type="button" class="btn" onclick="refreshAccessList()">Refresh</button></div><div class="alert info" style="margin-top:14px"><span class="ico">i</span><div>Firestore rules must allow admin writes to <code class="mono">lanka_shoe/access</code>. If it fails, you\'ll see the error message.</div></div></div>' : '') +
   '</div>';
 }
-function changeUserRole(email, role){ if(!db.userPerms) db.userPerms = {}; db.userPerms[email.toLowerCase()] = { role }; saveAccessList(db.allowedEmails, db.userPerms, 'Role changed').then(ok => { if(ok) { save(); render(); toast('Role: ' + email + ' → ' + role, 'success'); } }); }
+function changeUserRole(email, role){ if(!db.userPerms) db.userPerms = {}; db.userPerms[email.toLowerCase()] = { role }; saveAccessList(db.allowedEmails, db.userPerms, 'Role changed').then(ok => { if(ok) { save(); render(); toast('Role updated: ' + email + ' → ' + role, 'success'); } }); }
 window.changeUserRole = changeUserRole;
-function settingsAdvanced(s){ return '<div class="settings-panel-head"><h2>Advanced</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Safety</div><div class="settings-toggle-row"><div class="settings-toggle-label">Confirm Before Delete</div><div class="switch ' + (s.confirmBeforeDelete ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_confirmBeforeDelete\')"><input type="checkbox" name="st_confirmBeforeDelete" ' + (s.confirmBeforeDelete ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Undo Window</div><label class="field">Seconds<input type="number" name="st_undoWindow" value="' + (num(s.undoWindowSeconds) || 30) + '"></label></div><div class="settings-section"><div class="settings-section-title">Activity Log</div><div class="settings-toggle-row"><div class="settings-toggle-label">Enable</div><div class="switch ' + (s.enableActivityLog ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_enableActivityLog\')"><input type="checkbox" name="st_enableActivityLog" ' + (s.enableActivityLog ? 'checked' : '') + ' hidden></div></div><label class="field" style="margin-top:12px">Max Entries<input type="number" name="st_maxLogEntries" value="' + num(s.maxLogEntries) + '"></label></div></div>'; }
-function settingsAbout(){ const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })(); return '<div class="settings-panel-head"><h2>About</h2></div><div class="settings-body"><div class="settings-section"><div class="grid grid-3"><div><div class="muted small">App</div><strong>' + APP_NAME + '</strong></div><div><div class="muted small">Version</div><strong>' + APP_VER + '</strong></div><div><div class="muted small">DB Size</div><strong>' + size + '</strong></div><div><div class="muted small">Firebase</div><strong>' + (firebaseReady ? 'Ready' : 'Off') + '</strong></div><div><div class="muted small">Signed in</div><strong>' + esc((currentUser && currentUser.email) || '—') + '</strong></div></div></div></div>'; }
+function settingsAdvanced(s){ return '<div class="settings-panel-head"><h2>Advanced</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Safety</div><div class="settings-toggle-row"><div class="settings-toggle-label">Confirm Before Delete</div><div class="switch ' + (s.confirmBeforeDelete ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_confirmBeforeDelete\')"><input type="checkbox" name="st_confirmBeforeDelete" ' + (s.confirmBeforeDelete ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Undo Window</div><label class="field">Seconds<input type="number" name="st_undoWindow" value="' + (num(s.undoWindowSeconds) || 30) + '"></label></div></div>'; }
+function settingsAbout(){ const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })(); return '<div class="settings-panel-head"><h2>About</h2></div><div class="settings-body"><div class="settings-section"><div class="grid grid-3"><div><div class="muted small">App</div><strong>' + APP_NAME + '</strong></div><div><div class="muted small">Version</div><strong>' + APP_VER + '</strong></div><div><div class="muted small">DB Size</div><strong>' + size + '</strong></div><div><div class="muted small">Firebase</div><strong>' + (firebaseReady ? 'Ready' : 'Off') + '</strong></div></div></div></div>'; }
 function toggleSwitch(el, name){ const on = !el.classList.contains('on'); el.classList.toggle('on', on); const cb = el.querySelector('input[type=checkbox]'); if(cb) cb.checked = on; }
 window.toggleSwitch = toggleSwitch;
 function saveSettings(e){
@@ -1795,9 +1654,7 @@ function saveSettings(e){
   if(b1 && b2 && b3 && b1 < b2 && b2 < b3) s.supplierAgingBuckets = [b1, b2, b3];
   if($('st_defaultCustomerCreditDays') !== undefined) s.defaultCustomerCreditDays = num($('st_defaultCustomerCreditDays'));
   if($('st_defaultCustomerCreditLimit') !== undefined) s.defaultCustomerCreditLimit = num($('st_defaultCustomerCreditLimit'));
-  ['notifEnabled','notifOverdueCheques','notifDueSoon','notifAging90','notifCreditLimit','notifBounced','notifOwnCheques','notifSmartAlerts','confirmBeforeDelete','enableActivityLog','watermarkExports'].forEach(k => { if($cb('st_' + k) !== undefined) s[k] = $cb('st_' + k); });
-  if($('st_notifThresholdAmount') !== undefined) s.notifThresholdAmount = num($('st_notifThresholdAmount'));
-  if($('st_maxLogEntries') !== undefined) s.maxLogEntries = num($('st_maxLogEntries'));
+  ['notifEnabled','notifOverdueCheques','notifDueSoon','notifAging90','notifBounced','notifOwnCheques','notifSmartAlerts','confirmBeforeDelete','watermarkExports'].forEach(k => { if($cb('st_' + k) !== undefined) s[k] = $cb('st_' + k); });
   if($('st_undoWindow') !== undefined) s.undoWindowSeconds = num($('st_undoWindow'));
   logAct('Update Settings','System',null,'', null, s);
   save(); applySettings(); render(); toast('Settings saved', 'success');
@@ -1815,13 +1672,13 @@ async function addAllowedEmail(){
   let list = [];
   try{ const d = await firestore.doc(ACCESS_DOC_PATH).get(); list = d.exists ? (d.data().allowedEmails || []) : [ADMIN_EMAIL]; }catch(e){ list = arr(db.allowedEmails).slice(); if(!list.length) list = [ADMIN_EMAIL]; }
   if(list.map(e => String(e).toLowerCase().trim()).includes(email)){ toast('Already authorized','warn'); return; }
-  const perms = Object.assign({}, db.userPerms || {}, ({}[email] = { role }, {}));
+  const perms = Object.assign({}, db.userPerms || {});
   perms[email] = { role };
   const newList = list.concat([email]);
   const ok = await saveAccessList(newList, perms, 'Added ' + email);
   if(!ok) return;
-  logAct('Add Authorized User','System',null,email);
-  save(); render(); toast('User added: ' + email, 'success');
+  logAct('Add Authorized User','System',null,email + ' (' + role + ')');
+  save(); render(); toast('✅ User added: ' + email, 'success');
   if(el) el.value = '';
 }
 window.addAllowedEmail = addAllowedEmail;
@@ -1844,38 +1701,28 @@ window.refreshAccessList = refreshAccessList;
 /* ============================================================
    PDF
    ============================================================ */
-function generateReceiptPdf(id){
-  const r = arr(db.receipts).find(x => x.id === id); if(!r) return;
-  const cheques = arr(db.customerCheques).filter(cq => cq.receiptId === id);
-  const w = window.open('', '_blank');
-  w.document.write('<html><head><title>Receipt</title><style>body{font-family:Inter,Arial,sans-serif;padding:40px;color:#0d1117;max-width:700px;margin:0 auto}h1{font-size:24px;margin:0 0 4px}h2{font-size:14px;margin:24px 0 8px;color:#374151}.meta{color:#6b7280;font-size:12px;margin-bottom:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}.grid>div{padding:12px;border:1px solid #e5e8ef;border-radius:8px}.grid .l{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:600}.grid .v{font-size:14px;font-weight:600;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 12px;border-bottom:1px solid #e5e8ef;text-align:left}th{background:#f8f9fb;font-size:10px;text-transform:uppercase;color:#6b7280}.r{text-align:right}.wm{position:fixed;inset:0;pointer-events:none;display:grid;place-items:center;font-size:100px;color:#000;opacity:.04;transform:rotate(-30deg);z-index:-1}</style></head><body><div class="wm">' + (db.settings.watermarkExports ? 'CONFIDENTIAL' : '') + '</div><h1>' + esc(db.settings.shopName) + '</h1><div class="meta">Receipt #' + esc(r.id.slice(0,8).toUpperCase()) + ' • ' + dateFmt(r.date) + '</div><div class="grid"><div><div class="l">Customer</div><div class="v">' + esc(r.customerName) + '</div></div><div><div class="l">Method</div><div class="v">' + esc(r.method) + '</div></div><div><div class="l">Category</div><div class="v">' + esc(catName(r.categoryId)) + '</div></div><div><div class="l">Total</div><div class="v">' + money(r.amount) + '</div></div></div>' + (cheques.length ? '<h2>Cheques (' + cheques.length + ')</h2><table><thead><tr><th>Cheque No</th><th>Bank</th><th>Due Date</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>' + cheques.map(c => '<tr><td>' + esc(c.chequeNo) + '</td><td>' + esc(c.bank||'') + '</td><td>' + dateFmt(c.dueDate) + '</td><td class="r">' + money(c.amount) + '</td><td>' + esc(c.status) + '</td></tr>').join('') + '</tbody></table>' : '') + '</body></html>');
-  w.document.close();
-  setTimeout(() => w.print(), 400);
-}
+function generateReceiptPdf(id){ const r = arr(db.receipts).find(x => x.id === id); if(!r) return; const cheques = arr(db.customerCheques).filter(cq => cq.receiptId === id); const w = window.open('', '_blank'); w.document.write('<html><head><title>Receipt</title><style>body{font-family:Inter,Arial,sans-serif;padding:40px;color:#0d1117;max-width:700px;margin:0 auto}h1{font-size:24px}h2{font-size:14px;margin:24px 0 8px;color:#374151}.meta{color:#6b7280;font-size:12px;margin-bottom:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}.grid>div{padding:12px;border:1px solid #e5e8ef;border-radius:8px}.grid .l{font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:600}.grid .v{font-size:14px;font-weight:600;margin-top:4px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 12px;border-bottom:1px solid #e5e8ef;text-align:left}th{background:#f8f9fb;font-size:10px;text-transform:uppercase;color:#6b7280}.r{text-align:right}</style></head><body><h1>' + esc(db.settings.shopName) + '</h1><div class="meta">Receipt • ' + dateFmt(r.date) + '</div><div class="grid"><div><div class="l">Customer</div><div class="v">' + esc(r.customerName) + '</div></div><div><div class="l">Total</div><div class="v">' + money(r.amount) + '</div></div></div>' + (cheques.length ? '<h2>Cheques</h2><table><thead><tr><th>Cheque</th><th>Bank</th><th>Due</th><th class="r">Amount</th></tr></thead><tbody>' + cheques.map(c => '<tr><td>' + esc(c.chequeNo) + '</td><td>' + esc(c.bank||'') + '</td><td>' + dateFmt(c.dueDate) + '</td><td class="r">' + money(c.amount) + '</td></tr>').join('') + '</tbody></table>' : '') + '</body></html>'); w.document.close(); setTimeout(() => w.print(), 400); }
 window.generateReceiptPdf = generateReceiptPdf;
 
 /* ============================================================
-   ONBOARDING TOUR
+   ONBOARDING
    ============================================================ */
 const TOUR_STEPS = [
   { sel:'[data-action="toggle-sidebar"]', title:'Collapse Sidebar', text:'Click here (or Ctrl+B) to collapse the sidebar.' },
   { sel:'.gsearch input', title:'Global Search', text:'Search anything. Ctrl+K for command palette.' },
-  { sel:'[data-action="nav"][data-view="dashboard"]', title:'Dashboard', text:'Drag KPI cards to reorder.' },
-  { sel:'[data-action="toggle-notif"]', title:'Notifications', text:'Real-time alerts.' },
-  { sel:'[data-action="nav"][data-view="ccheques"]', title:'Customer Cheques', text:'Track every cheque lifecycle.' },
-  { sel:'[data-action="nav"][data-view="settings"]', title:'Settings', text:'Configure everything.' }
+  { sel:'[data-action="nav"][data-view="settings"]', title:'Settings', text:'Configure everything here.' }
 ];
 let _tourIndex = 0;
-function startTour(){ _tourIndex = 0; document.getElementById('tourOverlay').classList.add('on'); showTourStep(); }
+function startTour(){ _tourIndex = 0; const o = document.getElementById('tourOverlay'); if(o) o.classList.add('on'); showTourStep(); }
 window.startTour = startTour;
 function showTourStep(){ const s = TOUR_STEPS[_tourIndex]; if(!s){ endTour(); return; } const el = document.querySelector(s.sel); if(!el){ _tourIndex++; showTourStep(); return; } const rect = el.getBoundingClientRect(); const spot = document.getElementById('tourSpotlight'); spot.style.top = (rect.top - 6) + 'px'; spot.style.left = (rect.left - 6) + 'px'; spot.style.width = (rect.width + 12) + 'px'; spot.style.height = (rect.height + 12) + 'px'; const pop = document.getElementById('tourPopover'); pop.style.top = Math.min(window.innerHeight - 200, rect.bottom + 16) + 'px'; pop.style.left = Math.max(20, Math.min(window.innerWidth - 360, rect.left)) + 'px'; pop.innerHTML = '<h4>' + esc(s.title) + '</h4><p>' + esc(s.text) + '</p><div class="tour-nav"><div class="tour-dots">' + TOUR_STEPS.map((_,i) => '<div class="tour-dot ' + (i === _tourIndex ? 'on' : '') + '"></div>').join('') + '</div><div><button class="btn xs" onclick="endTour()">Skip</button> <button class="btn xs primary" onclick="nextTourStep()">' + (_tourIndex === TOUR_STEPS.length - 1 ? 'Done' : 'Next') + '</button></div></div>'; }
 function nextTourStep(){ _tourIndex++; showTourStep(); }
 window.nextTourStep = nextTourStep;
-function endTour(){ document.getElementById('tourOverlay').classList.remove('on'); db.settings.onboardingDone = true; save(); }
+function endTour(){ const o = document.getElementById('tourOverlay'); if(o) o.classList.remove('on'); db.settings.onboardingDone = true; save(); }
 window.endTour = endTour;
 
 /* ============================================================
-   AUTH & BOOT — UNCHANGED LOGIN
+   AUTH
    ============================================================ */
 async function checkAccess(email){
   if(!email) return false;
@@ -1922,8 +1769,7 @@ function enterOfflineMode(){
   offlineMode = true;
   currentUser = { uid:'local', email: ADMIN_EMAIL, name:'Local Admin', photo:null };
   currentUserRole = 'admin'; currentUserPerms = { role:'admin' };
-  loadLocalCache();
-  normalizeDb();
+  loadLocalCache(); normalizeDb();
   if(!Array.isArray(db.allowedEmails) || !db.allowedEmails.length) db.allowedEmails = [ADMIN_EMAIL];
   applySettings(); updateSidebarUser(); showApp(); render();
   toast('Offline mode — local only','info');
@@ -2011,9 +1857,6 @@ document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){ closeModal(); const np = document.getElementById('notifPanel'); if(np) np.classList.remove('open'); const fm = document.getElementById('fabMenu'); if(fm) fm.classList.remove('open'); const fb = document.getElementById('fabBtn'); if(fb) fb.classList.remove('open'); closeCmdPalette(); }
   if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); openCmdPalette(); }
   if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b'){ e.preventDefault(); toggleSidebar(); }
-  if(e.key === 'ArrowDown' && document.getElementById('cmdPalette') && document.getElementById('cmdPalette').classList.contains('open')){ e.preventDefault(); cmdActiveIndex = (cmdActiveIndex + 1) % ((window._cmdFiltered && window._cmdFiltered.length) || 1); renderCmdResults(); }
-  if(e.key === 'ArrowUp' && document.getElementById('cmdPalette') && document.getElementById('cmdPalette').classList.contains('open')){ e.preventDefault(); cmdActiveIndex = (cmdActiveIndex - 1 + ((window._cmdFiltered && window._cmdFiltered.length) || 1)) % ((window._cmdFiltered && window._cmdFiltered.length) || 1); renderCmdResults(); }
-  if(e.key === 'Enter' && document.getElementById('cmdPalette') && document.getElementById('cmdPalette').classList.contains('open')){ e.preventDefault(); runCmdIndex(cmdActiveIndex); }
 });
 
 /* ============================================================

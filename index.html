@@ -19,7 +19,6 @@ button,input,select,textarea{font-family:inherit;}
 ::-webkit-scrollbar{width:9px;height:9px;}::-webkit-scrollbar-thumb{background:#cdd7e5;border-radius:8px;border:2px solid var(--bg);}
 .num{font-variant-numeric:tabular-nums;}.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px;}
 mark{background:linear-gradient(180deg,transparent 55%,#fef3c7 55%);padding:0 2px;border-radius:2px;font-weight:700;}
-/* LOGIN */
 .login-overlay{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);padding:20px;}
 .login-overlay.hidden{display:none;}
 .login-card{background:#fff;border-radius:24px;padding:40px 34px;max-width:440px;width:100%;box-shadow:0 40px 80px -20px rgba(15,23,42,.4);text-align:center;animation:lp .5s var(--ease);}
@@ -34,7 +33,6 @@ mark{background:linear-gradient(180deg,transparent 55%,#fef3c7 55%);padding:0 2p
 .login-note{font-size:11.5px;color:var(--muted);margin-top:20px;line-height:1.55;}
 .login-error{margin-top:16px;padding:12px 14px;border-radius:10px;background:var(--red-s2);color:#991b1b;font-size:12px;font-weight:600;border:1px solid #fecaca;display:none;text-align:left;white-space:pre-wrap;line-height:1.5;}
 .login-error.show{display:block;}
-/* APP */
 .app{display:flex;min-height:100vh;}
 .sidebar{width:250px;flex:0 0 250px;background:var(--surface);border-right:1px solid var(--line);padding:20px 14px 18px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
 .brand{display:flex;align-items:center;gap:12px;padding:4px 8px 20px;}
@@ -79,7 +77,6 @@ mark{background:linear-gradient(180deg,transparent 55%,#fef3c7 55%);padding:0 2p
 .bell{position:relative;}
 .bell .dot-badge{position:absolute;top:-3px;right:-3px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:9.5px;font-weight:800;border-radius:20px;padding:1px 5px;min-width:17px;text-align:center;border:2px solid #fff;}
 .content{padding:22px 24px 80px;flex:1;}
-/* CARDS */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:18px 20px;margin-bottom:16px;}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;}
 .card-head h3{font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;}
@@ -109,7 +106,6 @@ mark{background:linear-gradient(180deg,transparent 55%,#fef3c7 55%);padding:0 2p
 .k-delta.down{background:#fee2e2;color:#991b1b;}
 .k-delta.flat{background:var(--surface-3);color:var(--muted);}
 .k-spark{margin-top:8px;height:26px;}
-/* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;justify-content:center;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text-2);font:inherit;font-weight:650;font-size:12.5px;cursor:pointer;transition:all var(--dur);white-space:nowrap;box-shadow:var(--sh-1);}
 .btn:hover{background:var(--surface-3);border-color:var(--line-3);transform:translateY(-1px);box-shadow:var(--sh-2);}
 .btn.primary{background:linear-gradient(135deg,#6366f1,#4f46e5);border-color:transparent;color:#fff;box-shadow:0 4px 12px -2px rgba(99,102,241,.4);}
@@ -124,7 +120,6 @@ mark{background:linear-gradient(180deg,transparent 55%,#fef3c7 55%);padding:0 2p
 .btn.icon{padding:8px;width:36px;height:36px;}
 .icon-btn{background:transparent;border:1px solid transparent;border-radius:9px;width:30px;height:30px;cursor:pointer;color:var(--muted);font-size:14px;display:inline-flex;align-items:center;justify-content:center;transition:all var(--dur);}
 .icon-btn:hover{background:var(--surface-3);color:var(--text);}
-/* INPUTS */
 label.field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;color:var(--muted);}
 label.field .req{color:var(--red);}
 input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:12.5px;background:var(--surface);color:var(--text);outline:none;transition:all var(--dur);font-weight:550;}
@@ -135,7 +130,6 @@ textarea{resize:vertical;min-height:64px;}
 select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4.5l4 4 4-4' stroke='%2364748b' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;}
 .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
-/* TABLES */
 .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--sh-1);}
 table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:600px;}
 thead th{background:linear-gradient(180deg,#fbfcfe,#f3f5fb);text-align:left;padding:11px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);font-weight:800;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;z-index:2;}
@@ -148,7 +142,6 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:now
 tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-top:1px solid var(--line);}
 .empty{padding:44px 20px;text-align:center;color:var(--muted);font-size:12.5px;}
 .empty .big{font-size:34px;display:block;margin-bottom:10px;opacity:.4;}
-/* BADGES */
 .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:800;white-space:nowrap;border:1px solid transparent;}
 .badge.green{background:#ecfdf5;color:#065f46;border-color:#a7f3d0;}
 .badge.amber{background:#fffbeb;color:#92400e;border-color:#fde68a;}
@@ -160,7 +153,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .badge.pink{background:#fdf2f8;color:#9d174d;border-color:#fbcfe8;}
 .badge.cyan{background:#ecfeff;color:#155e75;border-color:#a5f3fc;}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 8px;}
-/* BARS */
 .bar-row{display:grid;grid-template-columns:minmax(80px,140px) 1fr minmax(78px,120px);gap:12px;align-items:center;font-size:12px;}
 .bar-label{font-weight:650;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;}
 .bar-track{height:10px;background:var(--surface-3);border-radius:20px;overflow:hidden;}
@@ -176,14 +168,12 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .bar-val{text-align:right;font-weight:750;font-variant-numeric:tabular-nums;font-size:11.5px;}
 .progress{height:8px;background:var(--surface-3);border-radius:20px;overflow:hidden;margin-top:6px;}
 .progress>span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#6366f1,#4f46e5);}
-/* SEG/TABS */
 .seg{display:inline-flex;background:var(--surface-3);border-radius:11px;padding:3px;gap:3px;flex-wrap:wrap;}
 .seg-btn{border:none;background:transparent;padding:6.5px 14px;border-radius:8px;font:inherit;font-weight:700;font-size:11.5px;color:var(--muted);cursor:pointer;}
 .seg-btn.active{background:#fff;color:var(--primary-d);box-shadow:0 1px 3px rgba(15,23,42,.1);}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto;}
 .tab{padding:10px 16px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
 .tab.active{color:var(--primary-d);border-bottom-color:var(--primary);background:linear-gradient(180deg,transparent,#eef2ff);}
-/* SETTINGS */
 .settings-layout{display:grid;grid-template-columns:240px 1fr;gap:20px;align-items:start;}
 @media (max-width:900px){.settings-layout{grid-template-columns:1fr;}}
 .settings-nav{position:sticky;top:80px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:8px;box-shadow:var(--sh-1);}
@@ -210,7 +200,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .color-swatches{display:flex;gap:8px;flex-wrap:wrap;}
 .color-swatch{width:36px;height:36px;border-radius:10px;cursor:pointer;border:2px solid transparent;}
 .color-swatch.active{border-color:var(--text);box-shadow:0 0 0 3px var(--primary-ring);}
-/* MISC */
 .muted{color:var(--muted);}.small{font-size:11px;}
 .row-flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .divider{height:1px;background:var(--line);margin:16px 0;}
@@ -231,7 +220,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .aging-1{background:#fefce8;color:#713f12;}
 .aging-2{background:#fffbeb;color:#92400e;}
 .aging-3{background:#fef2f2;color:#991b1b;}
-/* TIMELINE */
 .tl-wrap{position:relative;padding-left:32px;}
 .tl-day{margin-bottom:24px;position:relative;}
 .tl-day::before{content:"";position:absolute;left:-30px;top:6px;width:14px;height:14px;border-radius:50%;background:#6366f1;border:3px solid #fff;box-shadow:0 0 0 3px rgba(99,102,241,.15);}
@@ -252,7 +240,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .tl-meta{font-size:10.5px;color:var(--faint);margin-top:4px;font-weight:700;display:flex;gap:10px;flex-wrap:wrap;}
 .tl-user{display:inline-flex;align-items:center;gap:4px;}
 .tl-user img{width:14px;height:14px;border-radius:50%;}
-/* LEDGER TILES */
 .ledger-type-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
 .ledger-type-tile{padding:12px 14px;border-radius:11px;background:var(--surface);border:1.5px solid var(--line);cursor:pointer;transition:all var(--dur);display:flex;align-items:center;gap:10px;}
 .ledger-type-tile:hover{border-color:var(--primary-s2);background:var(--surface-2);transform:translateY(-1px);}
@@ -260,13 +247,11 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .ledger-type-tile .l-icon{width:34px;height:34px;flex:0 0 34px;border-radius:9px;display:grid;place-items:center;font-size:15px;background:var(--surface-3);}
 .ledger-type-tile.active .l-icon{background:#fff;}
 .ledger-type-tile .l-label{font-size:12.5px;font-weight:700;}
-/* USER ROW */
 .user-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface);margin-bottom:8px;}
 .user-row .u-avatar{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px;}
 .user-row .u-info{flex:1;min-width:0;}
 .user-row .u-email{font-weight:700;font-size:13px;}
 .user-row .u-meta{font-size:11px;color:var(--muted);margin-top:2px;}
-/* CHQ */
 .chk-list{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);}
 .chk-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line-2);cursor:pointer;}
 .chk-row:hover{background:var(--surface-3);}
@@ -274,7 +259,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .chk-main strong{font-size:12.5px;}
 .chk-main small{color:var(--muted);font-size:11px;}
 .chk-amt{font-weight:800;font-variant-numeric:tabular-nums;font-size:13px;}
-/* MODAL */
 #modalWrap{position:fixed;inset:0;z-index:500;display:none;}
 #modalWrap.open{display:block;}
 .modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(6px);}
@@ -284,7 +268,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);}
 .modal-head h3{font-size:15px;font-weight:800;}
 .modal-body{padding:22px;overflow:auto;}
-/* TOAST */
 #toast{position:fixed;right:20px;bottom:20px;z-index:900;display:flex;flex-direction:column;gap:10px;pointer-events:none;}
 .toast{pointer-events:auto;background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;padding:12px 18px;border-radius:12px;font-size:12.5px;font-weight:650;box-shadow:0 12px 28px -8px rgba(15,23,42,.4);animation:ti .3s;max-width:360px;display:flex;align-items:center;gap:9px;}
 .toast.ok{background:linear-gradient(135deg,#059669,#047857);}
@@ -293,7 +276,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .toast.warn{background:linear-gradient(135deg,#d97706,#b45309);}
 .toast.out{opacity:0;transform:translateX(20px);transition:.35s;}
 @keyframes ti{from{opacity:0;transform:translateX(20px) scale(.95);}to{opacity:1;transform:none;}}
-/* NOTIF */
 #notifPanel{position:fixed;top:0;right:0;bottom:0;width:400px;background:var(--surface);border-left:1px solid var(--line);box-shadow:-24px 0 60px -20px rgba(15,23,42,.2);z-index:80;transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column;}
 #notifPanel.open{transform:none;}
 .notif-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
@@ -308,7 +290,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 .ni-desc{color:var(--muted);font-size:11.5px;margin-top:2px;}
 .ni-time{font-size:10.5px;color:var(--faint);margin-top:4px;font-weight:700;}
 .notif-empty{padding:70px 22px;text-align:center;color:var(--muted);}
-/* FAB */
 .fab{position:fixed;right:22px;bottom:22px;z-index:60;width:56px;height:56px;border-radius:18px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5,#8b5cf6);color:#fff;font-size:24px;cursor:pointer;box-shadow:0 12px 28px -6px rgba(99,102,241,.5);display:grid;place-items:center;transition:all .25s;}
 .fab:hover{transform:translateY(-3px) scale(1.03);}
 .fab.open{transform:rotate(45deg);}
@@ -335,7 +316,6 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <div class="login-logo" id="loginLogo">LS</div>
@@ -380,7 +360,7 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 <script>
 'use strict';
 /* ============================================================
-   FIREBASE CONFIG — YOUR DETAILS EXACTLY AS PROVIDED
+   FIREBASE CONFIG
    ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyD8Rq3fBzmUM9OACpKc8HMEZSXB7tQUEw",
@@ -399,7 +379,6 @@ let firebaseApp = null, auth = null, firestore = null;
 let currentUser = null, currentUserRole = 'user', firebaseReady = false;
 let firebaseInitError = null, offlineMode = false;
 
-/* ---------- UTILITIES ---------- */
 const uid = () => 'x' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 const today = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
@@ -435,7 +414,6 @@ const shade = (h,a) => { const {r,g,b} = hexToRgb(h); return rgbToHex(r+a,g+a,b+
 const tint = (h,a) => { const {r,g,b} = hexToRgb(h); return rgbToHex(r*a+255*(1-a),g*a+255*(1-a),b*a+255*(1-a)); };
 const hexA = (h,a) => { const {r,g,b} = hexToRgb(h); return `rgba(${r},${g},${b},${a})`; };
 
-/* ---------- SVG ---------- */
 function sparkline(values, opts = {}){
   const w = opts.w || 200, h = opts.h || 30, color = opts.color || 'var(--primary)';
   if(!values.length) return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px"></svg>`;
@@ -467,7 +445,6 @@ function lineChartSVG(series, opts = {}){
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">${grid}${lines}${labels}</svg>`;
 }
 
-/* ---------- SETTINGS DEFAULTS ---------- */
 function defaultSettings(){
   return {
     shopName:'Lanka Shoe', shopTagline:'Ultimate Suite', businessAddress:'', businessPhone:'', businessEmail:'', businessWebsite:'', taxId:'', logoText:'',
@@ -493,7 +470,6 @@ function seed(){
 }
 let db = seed();
 
-/* ---------- FIREBASE INIT (NO BLOCKING VALIDATION) ---------- */
 async function initFirebase(){
   try{
     firebaseApp = firebase.initializeApp(firebaseConfig);
@@ -502,12 +478,12 @@ async function initFirebase(){
     try{ firestore.settings({ merge:true }); }catch(e){}
     firebaseReady = true;
     firebaseInitError = null;
-    console.log('✅ Firebase initialized:', firebaseConfig.projectId);
+    console.log('Firebase initialized:', firebaseConfig.projectId);
     return true;
   }catch(e){
     firebaseReady = false;
     firebaseInitError = e.message || String(e);
-    console.error('❌ Firebase init error:', e);
+    console.error('Firebase init error:', e);
     return false;
   }
 }
@@ -541,7 +517,6 @@ async function loadLocalCache(){
 }
 function save(){ try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); const el = document.getElementById('dbSize'); if(el){ try{ el.textContent = (new Blob([JSON.stringify(db)]).size/1024).toFixed(1) + ' KB'; }catch(e){} } if(db.settings.autoSave !== false) pushToFirestore(); }catch(e){ toast('Storage full','error'); } }
 
-/* ---------- AUTH ---------- */
 async function checkAccess(email){
   if(!email) return false;
   if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return 'admin';
@@ -571,9 +546,9 @@ async function handleSignIn(){
     console.error('Sign-in error:', e);
     if(e.code === 'auth/popup-closed-by-user') showLoginError('Sign-in was cancelled.');
     else if(e.code === 'auth/popup-blocked') showLoginError('Popup blocked. Please allow popups and try again.');
-    else if(e.code === 'auth/unauthorized-domain') showLoginError('⚠ This domain is not authorized.\n\nFix: Firebase Console → Authentication → Settings → Authorized domains → Add "' + location.hostname + '"');
-    else if(e.code === 'auth/operation-not-allowed') showLoginError('⚠ Google sign-in is not enabled.\n\nFix: Firebase Console → Authentication → Sign-in method → Enable Google');
-    else if(e.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') showLoginError('⚠ Firebase API key invalid.\n\nRe-copy from Firebase Console → Project Settings → Your apps → Web app.');
+    else if(e.code === 'auth/unauthorized-domain') showLoginError('This domain is not authorized.\n\nFix: Firebase Console → Authentication → Settings → Authorized domains → Add "' + location.hostname + '"');
+    else if(e.code === 'auth/operation-not-allowed') showLoginError('Google sign-in is not enabled.\n\nFix: Firebase Console → Authentication → Sign-in method → Enable Google');
+    else if(e.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') showLoginError('Firebase API key invalid.\n\nRe-copy from Firebase Console → Project Settings → Your apps → Web app.');
     else showLoginError('Sign-in failed: ' + (e.code || '') + '\n' + (e.message || ''));
     btn.disabled = false; txt.textContent = 'Sign in with Google';
   }
@@ -596,7 +571,7 @@ async function onAuthStateChanged(user){
   txt.textContent = 'Verifying access…'; btn.disabled = true;
   const role = await checkAccess(user.email);
   if(!role){
-    showLoginError('❌ Access denied.\n\n' + user.email + ' is not authorized.\nContact ' + ADMIN_EMAIL + ' for access.');
+    showLoginError('Access denied.\n\n' + user.email + ' is not authorized.\nContact ' + ADMIN_EMAIL + ' for access.');
     setTimeout(() => auth.signOut(), 3500);
     return;
   }
@@ -628,7 +603,6 @@ function updateSidebarUser(){
   el.onclick = () => { ui.view = 'settings'; ui.settings.tab = 'users'; render(); };
 }
 
-/* ---------- APPLY SETTINGS ---------- */
 function applySettings(){
   const s = db.settings || defaultSettings();
   const root = document.documentElement;
@@ -646,7 +620,6 @@ function applySettings(){
 }
 window.applySettings = applySettings;
 
-/* ---------- ACTIVITY LOG ---------- */
 function logAct(action, entity, entityId, details){
   if(!(db.settings || {}).enableActivityLog) return;
   db.activityLog.push({ id:uid(), timestamp:nowISO(), action, entity, entityId: entityId || null, details: details || '', userEmail: currentUser?.email || 'system', userName: currentUser?.name || 'System', userPhoto: currentUser?.photo || '' });
@@ -654,7 +627,6 @@ function logAct(action, entity, entityId, details){
   if(db.activityLog.length > max) db.activityLog = db.activityLog.slice(-max);
 }
 
-/* ---------- DOMAIN HELPERS ---------- */
 const catName = id => db.categories.find(x => x.id === id)?.name || '—';
 const catColor = id => db.categories.find(x => x.id === id)?.color || '#94a3b8';
 const supName = id => db.suppliers.find(x => x.id === id)?.name || '—';
@@ -689,7 +661,6 @@ function supplierAging(sid){
 }
 function globalAging(){ const o = { current:0, d30:0, d60:0, d90:0 }; db.suppliers.forEach(s => { const a = supplierAging(s.id); o.current += a.current; o.d30 += a.d30; o.d60 += a.d60; o.d90 += a.d90; }); return o; }
 
-/* ---------- NOTIFICATIONS ---------- */
 function getNotifications(){
   const s = db.settings || {};
   if(!s.notifEnabled) return [];
@@ -704,7 +675,6 @@ function getNotifications(){
 }
 function getUnreadCount(){ return getNotifications().filter(n => !db.notifRead[n.id]).length; }
 
-/* ---------- UI STATE ---------- */
 const ui = {
   view:'dashboard',
   sup:{ q:'', group:'', sort:'name', dir:1 }, cust:{ q:'', sort:'name', dir:1 },
@@ -722,14 +692,12 @@ window.ui = ui;
 let payMode = 'party';
 const titles = { dashboard:'Dashboard', customers:'Customers', suppliers:'Suppliers', purchases:'Purchases', categories:'Categories', receipts:'Customer Receipts', payments:'Supplier Payments', own:'Own Cheques', banks:'Bank Accounts', ledger:'Ledger Generator', aging:'Aging Report', timeline:'Timeline', analytics:'Analytics', log:'Activity Log', backup:'Backup & Export', settings:'Settings' };
 
-/* ---------- TOAST / MODAL ---------- */
 function toast(msg, type){ const box = document.getElementById('toast'); const el = document.createElement('div'); el.className = 'toast ' + (type || 'ok'); el.textContent = msg; box.appendChild(el); setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 2900); }
 window.toast = toast;
 function openModal(title, body, size){ const w = document.getElementById('modalWrap'); w.innerHTML = '<div class="modal-backdrop" data-action="close-modal"></div><div class="modal ' + (size||'') + '"><div class="modal-head"><h3>' + esc(title) + '</h3><button class="icon-btn" data-action="close-modal">✕</button></div><div class="modal-body">' + body + '</div></div>'; w.classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeModal(){ const w = document.getElementById('modalWrap'); w.classList.remove('open'); w.innerHTML = ''; document.body.style.overflow = ''; }
 window.openModal = openModal; window.closeModal = closeModal;
 
-/* ---------- NAV ---------- */
 function renderNav(){
   const n = document.getElementById('nav');
   const c = { customers:db.customers.length, suppliers:db.suppliers.length, purchases:db.purchases.length, categories:db.categories.length, receipts:db.receipts.length, own:db.ownCheques.length, banks:db.bankAccounts.length, payments:db.payments.length };
@@ -744,7 +712,6 @@ function renderNav(){
   const b = document.getElementById('notifCount'); if(b){ const u = getUnreadCount(); b.textContent = u; b.style.display = u > 0 ? '' : 'none'; }
 }
 
-/* ---------- GLOBAL SEARCH ---------- */
 function onGlobalSearch(){
   const q = (val('globalSearch') || '').trim().toLowerCase();
   const box = document.getElementById('gsResults');
@@ -764,7 +731,6 @@ function onGlobalSearch(){
 }
 window.onGlobalSearch = onGlobalSearch;
 
-/* ---------- NOTIFICATIONS PANEL ---------- */
 function toggleNotif(){ const p = document.getElementById('notifPanel'); p.classList.toggle('open'); if(p.classList.contains('open')) renderNotifPanel(); }
 window.toggleNotif = toggleNotif;
 function renderNotifPanel(){
@@ -779,7 +745,6 @@ function renderNotifPanel(){
 function markAllNotifRead(){ getNotifications().forEach(n => { db.notifRead[n.id] = true; }); save(); renderNav(); renderNotifPanel(); toast('All marked read'); }
 window.markAllNotifRead = markAllNotifRead;
 
-/* ---------- FAB ---------- */
 function toggleFab(){
   const m = document.getElementById('fabMenu'), b = document.getElementById('fabBtn');
   if(!m.classList.contains('open')){
@@ -789,7 +754,6 @@ function toggleFab(){
 }
 window.toggleFab = toggleFab;
 
-/* ---------- RENDER ENGINE ---------- */
 const views = { dashboard:viewDashboard, customers:viewCustomers, suppliers:viewSuppliers, purchases:viewPurchases, categories:viewCategories, receipts:viewReceipts, payments:viewPayments, own:viewOwn, banks:viewBanks, ledger:viewLedger, aging:viewAging, timeline:viewTimeline, analytics:viewAnalytics, log:viewLog, backup:viewBackup, settings:viewSettings };
 function render(){
   applySettings(); renderNav();
@@ -814,9 +778,6 @@ function emptyRow(c, m){ return '<tr><td colspan="' + c + '"><div class="empty">
 function statusBadge(s){ const map = { 'Pending':'amber','Cleared':'green','Issued':'blue','Bounced':'red','Cancelled':'gray','Returned':'gray','Paid':'green','Received':'green' }; return '<span class="badge ' + (map[s] || 'gray') + '">' + esc(s) + '</span>'; }
 function kpiCard(l, v, sub, o = {}){ const d = o.delta !== undefined ? o.delta : null; return `<div class="kpi ${o.color||'primary'}"><div class="k-top"><span class="k-label">${esc(l)}</span>${d !== null ? `<span class="k-delta ${d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat'}">${d > 0.5 ? '▲' : d < -0.5 ? '▼' : '■'} ${Math.abs(d).toFixed(1)}%</span>` : ''}</div><div class="${o.small ? 'k-value sm' : 'k-value'}">${v}</div><div class="k-sub">${sub}</div>${o.spark ? '<div class="k-spark">' + o.spark + '</div>' : ''}</div>`; }
 
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
 function viewDashboard(){
   const t = today(), tm = thisMonth(), pm = prevMonth();
   const purTM = sum(db.purchases.filter(p => inMonth(p.date, tm)), 'amount');
@@ -842,20 +803,20 @@ function viewDashboard(){
   <div class="kpi-strip">
     ${kpiCard('Total Payable', moneyPlain(totalPayable()), `${db.suppliers.length} supplier(s)`, { color:'p', small:true, spark: db.settings.showSparklines ? sparkline(purS, {color:'#8b5cf6'}) : '' })}
     ${kpiCard('Cheques In Hand', moneyPlain(sum(cih, 'amount')), `${cih.length} cheque(s)`, { color:'a', small:true, spark: db.settings.showSparklines ? sparkline(recS, {color:'#f59e0b'}) : '' })}
-    ${kpiCard('Purchases · MTD', moneyPlain(purTM), `All time ${fmtCompact(sum(db.purchases, 'amount'))}`, { color:'i', small:true, delta:pctDelta(purTM, purPM) })}
-    ${kpiCard('Payments · MTD', moneyPlain(payTM), `All time ${fmtCompact(sum(db.payments, 'amount'))}`, { color:'g', small:true, delta:pctDelta(payTM, payPM) })}
-    ${kpiCard('Receipts · MTD', moneyPlain(recTM), `All time ${fmtCompact(sum(db.receipts, 'amount'))}`, { color:'t', small:true, delta:pctDelta(recTM, recPM) })}
+    ${kpiCard('Purchases MTD', moneyPlain(purTM), `All time ${fmtCompact(sum(db.purchases, 'amount'))}`, { color:'i', small:true, delta:pctDelta(purTM, purPM) })}
+    ${kpiCard('Payments MTD', moneyPlain(payTM), `All time ${fmtCompact(sum(db.payments, 'amount'))}`, { color:'g', small:true, delta:pctDelta(payTM, payPM) })}
+    ${kpiCard('Receipts MTD', moneyPlain(recTM), `All time ${fmtCompact(sum(db.receipts, 'amount'))}`, { color:'t', small:true, delta:pctDelta(recTM, recPM) })}
     ${kpiCard('Issued to Suppliers', moneyPlain(sum(iss, 'amount')), `${iss.length} cheque(s)`, { color:'c', small:true })}
     ${kpiCard('Own Cheques Out', moneyPlain(sum(ownOut, 'amount')), `${ownOut.length} cheque(s)`, { color:'k', small:true })}
-    ${kpiCard(db.settings.agingCriticalDays + '+ days', moneyPlain(ga.d90), ga.d90 > 0 ? '⚠ Action needed' : '✓ All clear', { color: ga.d90 > 0 ? 'r' : 'g', small:true })}
+    ${kpiCard(db.settings.agingCriticalDays + '+ days', moneyPlain(ga.d90), ga.d90 > 0 ? 'Action needed' : 'All clear', { color: ga.d90 > 0 ? 'r' : 'g', small:true })}
   </div>
   <div class="grid grid-2">
-    <div class="card"><div class="card-head"><h3>📈 6-Month Cash Flow</h3></div>${lineChartSVG([{values:purS,color:'#6366f1'},{values:payS,color:'#10b981'},{values:recS,color:'#14b8a6'}], { w:600, h:160, labels: ms6.map(monthLabel) })}</div>
-    <div class="card"><div class="card-head"><h3>💳 Receipts by Method</h3></div>
+    <div class="card"><div class="card-head"><h3>6-Month Cash Flow</h3></div>${lineChartSVG([{values:purS,color:'#6366f1'},{values:payS,color:'#10b981'},{values:recS,color:'#14b8a6'}], { w:600, h:160, labels: ms6.map(monthLabel) })}</div>
+    <div class="card"><div class="card-head"><h3>Receipts by Method</h3></div>
       ${methodSegs.length ? `<div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div style="position:relative">${donut(methodSegs.map(m => ({ value:m.value, color: { 'Cheque':'#6366f1','Cash':'#10b981','Bank Transfer':'#14b8a6','Card':'#8b5cf6','Other':'#94a3b8' }[m.label] })), { size:120, thickness:14 })}<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800">${moneyPlain(sum(methodSegs, 'value'))}</div></div><div style="flex:1;min-width:160px">${methodSegs.map(m => `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed var(--line-2)"><span style="display:flex;align-items:center;gap:8px;font-weight:650"><span class="dot" style="background:${{ 'Cheque':'#6366f1','Cash':'#10b981','Bank Transfer':'#14b8a6','Card':'#8b5cf6','Other':'#94a3b8' }[m.label]}"></span>${esc(m.label)} <span class="muted small">(${m.count})</span></span><strong>${moneyPlain(m.value)}</strong></div>`).join('')}</div></div>` : '<div class="empty">No receipts yet</div>'}
     </div>
   </div>
-  <div class="card"><div class="card-head"><h3>⏳ Aging Summary</h3><span class="hint">Buckets: ${(db.settings.supplierAgingBuckets||[30,60,90]).join(' / ')}</span></div>
+  <div class="card"><div class="card-head"><h3>Aging Summary</h3><span class="hint">Buckets: ${(db.settings.supplierAgingBuckets||[30,60,90]).join(' / ')}</span></div>
     <div class="grid grid-4">
       <div class="kpi g" style="box-shadow:none"><div class="k-label">Current</div><div class="k-value sm">${moneyPlain(ga.current)}</div><div class="progress"><span style="width:${ga.total?(ga.current/ga.total*100):0}%;background:linear-gradient(90deg,#34d399,#059669)"></span></div></div>
       <div class="kpi a" style="box-shadow:none"><div class="k-label">Warning</div><div class="k-value sm">${moneyPlain(ga.d30)}</div><div class="progress"><span style="width:${ga.total?(ga.d30/ga.total*100):0}%;background:linear-gradient(90deg,#fbbf24,#d97706)"></span></div></div>
@@ -864,26 +825,23 @@ function viewDashboard(){
     </div>
   </div>
   <div class="grid grid-2">
-    <div class="card"><div class="card-head"><h3>⏰ Cheques Due Soon</h3></div>
+    <div class="card"><div class="card-head"><h3>Cheques Due Soon</h3></div>
       <div class="table-wrap"><table><thead><tr><th>Due</th><th>Customer</th><th>Cheque</th><th class="num">Amount</th><th>Status</th></tr></thead>
         <tbody>${up.length ? up.map(c => { const d = daysBetween(t, c.dueDate); const tag = d < 0 ? `<span class="badge red">${Math.abs(d)}d overdue</span>` : d === 0 ? '<span class="badge amber">Today</span>' : `<span class="badge gray">in ${d}d</span>`; return `<tr><td>${dateFmt(c.dueDate)} ${tag}</td><td><strong>${esc(c.customerName)}</strong></td><td class="mono">${esc(c.chequeNo||'—')}</td><td class="num">${moneyPlain(c.amount)}</td><td>${statusBadge(c.status)}</td></tr>`; }).join('') : emptyRow(5, 'No cheques due soon')}</tbody>
       </table></div>
     </div>
-    <div class="card"><div class="card-head"><h3>🏭 Top Supplier Payables</h3></div>
+    <div class="card"><div class="card-head"><h3>Top Supplier Payables</h3></div>
       ${supR.length ? supR.map(s => `<div class="bar-row"><span class="bar-label">${esc(s.name)}</span><div class="bar-track"><div class="bar-fill ${s.bal > 0 ? 'p' : 'g'}" style="width:${(Math.abs(s.bal)/supMax*100).toFixed(1)}%"></div></div><span class="bar-val">${moneyPlain(s.bal)}</span></div>`).join('') : '<div class="empty">No suppliers</div>'}
     </div>
   </div>
-  <div class="card"><div class="card-head"><h3>🕘 Recent Activity</h3></div>
-    ${recent.length ? `<div class="tl-wrap">${recent.map(r => { const cls = r.action.includes('Delete') ? 'delete' : r.action.includes('Sign') ? 'login' : r.action.includes('Payment') ? 'payment' : r.action.includes('Add') ? 'create' : 'update'; return `<div class="tl-event ${cls}" style="margin-left:0"><div class="tl-body"><div class="tl-title"><strong>${esc(r.action)}</strong> · ${esc(r.entity)}</div><div class="tl-desc">${esc(r.details || '—')}</div><div class="tl-meta">${r.userEmail ? `<span class="tl-user">${esc(r.userEmail)}</span>` : ''}<span>🕐 ${dateTimeFmt(r.timestamp)}</span></div></div></div>`; }).join('')}</div>` : '<div class="empty">No activity</div>'}
+  <div class="card"><div class="card-head"><h3>Recent Activity</h3></div>
+    ${recent.length ? `<div class="tl-wrap">${recent.map(r => { const cls = r.action.includes('Delete') ? 'delete' : r.action.includes('Sign') ? 'login' : r.action.includes('Payment') ? 'payment' : r.action.includes('Add') ? 'create' : 'update'; return `<div class="tl-event ${cls}" style="margin-left:0"><div class="tl-body"><div class="tl-title"><strong>${esc(r.action)}</strong> · ${esc(r.entity)}</div><div class="tl-desc">${esc(r.details || '—')}</div><div class="tl-meta">${r.userEmail ? `<span class="tl-user">${esc(r.userEmail)}</span>` : ''}<span>${dateTimeFmt(r.timestamp)}</span></div></div></div>`; }).join('')}</div>` : '<div class="empty">No activity</div>'}
   </div>`;
 }
 
-/* ============================================================
-   CUSTOMERS
-   ============================================================ */
 function viewCustomers(){
-  return `<div class="card"><div class="card-head"><div><h3>Customers</h3></div><button class="btn primary" data-action="add-customer">＋ Add Customer</button></div>
-    <div class="form-grid" style="margin-bottom:14px"><label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.cust.q)}" oninput="ui.cust.q=this.value; refreshTable('cust')"></label></div>
+  return `<div class="card"><div class="card-head"><div><h3>Customers</h3></div><button class="btn primary" data-action="add-customer">Add Customer</button></div>
+    <div class="form-grid" style="margin-bottom:14px"><label class="field">Search<input type="search" placeholder="Search name or phone" value="${esc(ui.cust.q)}" oninput="ui.cust.q=this.value; refreshTable('cust')"></label></div>
     <div id="tbl-cust">${tableCustomers()}</div></div>`;
 }
 function tableCustomers(){
@@ -893,7 +851,7 @@ function tableCustomers(){
   rows = sortRows(rows, ui.cust.sort, ui.cust.dir);
   const total = rows.reduce((a,b) => a + b.total, 0);
   return `<div class="table-wrap"><table><thead><tr>${th('cust','name','Customer')}${th('cust','phone','Phone')}<th class="num">Receipts</th><th class="num">Total</th><th class="num">Cheques</th><th>Last</th><th style="width:160px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => `<tr><td><strong>${esc(r.name)}</strong>${r.email ? '<br><span class="muted small">' + esc(r.email) + '</span>' : ''}</td><td>${esc(r.phone || '—')}</td><td class="num">${r.count}</td><td class="num">${moneyPlain(r.total)}</td><td class="num">${r.chequeCount}</td><td>${r.lastDate ? dateFmt(r.lastDate) : '—'}</td><td><div class="row-flex"><button class="btn xs" data-action="customer-detail" data-id="${r.id}">👁</button><button class="btn xs" data-action="edit-customer" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-customer" data-id="${r.id}">🗑</button></div></td></tr>`).join('') : emptyRow(7, 'No customers yet')}</tbody>
+    <tbody>${rows.length ? rows.map(r => `<tr><td><strong>${esc(r.name)}</strong>${r.email ? '<br><span class="muted small">' + esc(r.email) + '</span>' : ''}</td><td>${esc(r.phone || '—')}</td><td class="num">${r.count}</td><td class="num">${moneyPlain(r.total)}</td><td class="num">${r.chequeCount}</td><td>${r.lastDate ? dateFmt(r.lastDate) : '—'}</td><td><div class="row-flex"><button class="btn xs" data-action="customer-detail" data-id="${r.id}">View</button><button class="btn xs" data-action="edit-customer" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-customer" data-id="${r.id}">Del</button></div></td></tr>`).join('') : emptyRow(7, 'No customers yet')}</tbody>
     ${rows.length ? `<tfoot><tr><td colspan="3">Total</td><td class="num">${moneyPlain(total)}</td><td colspan="3"></td></tr></tfoot>` : ''}
   </table></div>`;
 }
@@ -949,14 +907,11 @@ function showCustomerDetail(id){
   `, 'wide');
 }
 
-/* ============================================================
-   SUPPLIERS
-   ============================================================ */
 function viewSuppliers(){
   const groups = uniq(db.suppliers.map(s => s.group).filter(Boolean));
-  return `<div class="card"><div class="card-head"><div><h3>Suppliers</h3></div><button class="btn primary" data-action="add-supplier">＋ Add Supplier</button></div>
+  return `<div class="card"><div class="card-head"><div><h3>Suppliers</h3></div><button class="btn primary" data-action="add-supplier">Add Supplier</button></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.sup.q)}" oninput="ui.sup.q=this.value; refreshTable('sup')"></label>
+      <label class="field">Search<input type="search" placeholder="Search name or phone" value="${esc(ui.sup.q)}" oninput="ui.sup.q=this.value; refreshTable('sup')"></label>
       <label class="field">Group<select onchange="ui.sup.group=this.value; refreshTable('sup')"><option value="">All</option>${groups.map(g => `<option value="${esc(g)}" ${ui.sup.group===g?'selected':''}>${esc(g)}</option>`).join('')}</select></label>
     </div>
     <div id="tbl-sup">${tableSuppliers()}</div></div>`;
@@ -969,7 +924,7 @@ function tableSuppliers(){
   rows = sortRows(rows, ui.sup.sort, ui.sup.dir);
   const total = rows.reduce((a,b) => a + b.balance, 0);
   return `<div class="table-wrap"><table><thead><tr>${th('sup','name','Supplier')}${th('sup','contact','Contact')}<th>Group</th><th class="num">Purchases</th><th class="num">Paid</th>${th('sup','balance','Payable','num')}<th>Aging</th><th style="width:200px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => { const a = r.aging; const worst = a.d90>0?'aging-3':a.d60>0?'aging-2':a.d30>0?'aging-1':'aging-0'; return `<tr><td><strong>${esc(r.name)}</strong>${r.overLimit?' <span class="badge red">Over Limit</span>':''}${r.rating?'<br><span class="muted small" style="color:#f59e0b">'+'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)+'</span>':''}</td><td>${esc(r.contact||'—')}<br><span class="muted small">${esc(r.phone||'')}</span></td><td>${r.group?'<span class="badge gray">'+esc(r.group)+'</span>':'—'}</td><td class="num">${moneyPlain(r.purchases)}</td><td class="num">${moneyPlain(r.paid)}</td><td class="num"><strong style="color:${r.balance>0?'#b91c1c':'#047857'}">${moneyPlain(r.balance)}</strong></td><td><span class="aging-badge ${worst}">${a.d90>0?db.settings.agingCriticalDays+'+ '+fmtCompact(a.d90):a.d60>0?'Mid':a.d30>0?'Warn':'Current'}</span></td><td><div class="row-flex"><button class="btn xs" data-action="supplier-ledger" data-id="${r.id}">📒</button><button class="btn xs" data-action="supplier-aging" data-id="${r.id}">⏳</button><button class="btn xs" data-action="edit-supplier" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-supplier" data-id="${r.id}">🗑</button></div></td></tr>`; }).join('') : emptyRow(8, 'No suppliers yet')}</tbody>
+    <tbody>${rows.length ? rows.map(r => { const a = r.aging; const worst = a.d90>0?'aging-3':a.d60>0?'aging-2':a.d30>0?'aging-1':'aging-0'; return `<tr><td><strong>${esc(r.name)}</strong>${r.overLimit?' <span class="badge red">Over Limit</span>':''}${r.rating?'<br><span class="muted small" style="color:#f59e0b">'+'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)+'</span>':''}</td><td>${esc(r.contact||'—')}<br><span class="muted small">${esc(r.phone||'')}</span></td><td>${r.group?'<span class="badge gray">'+esc(r.group)+'</span>':'—'}</td><td class="num">${moneyPlain(r.purchases)}</td><td class="num">${moneyPlain(r.paid)}</td><td class="num"><strong style="color:${r.balance>0?'#b91c1c':'#047857'}">${moneyPlain(r.balance)}</strong></td><td><span class="aging-badge ${worst}">${a.d90>0?db.settings.agingCriticalDays+'+ '+fmtCompact(a.d90):a.d60>0?'Mid':a.d30>0?'Warn':'Current'}</span></td><td><div class="row-flex"><button class="btn xs" data-action="supplier-ledger" data-id="${r.id}">Ledger</button><button class="btn xs" data-action="supplier-aging" data-id="${r.id}">Aging</button><button class="btn xs" data-action="edit-supplier" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-supplier" data-id="${r.id}">Del</button></div></td></tr>`; }).join('') : emptyRow(8, 'No suppliers yet')}</tbody>
     ${rows.length ? `<tfoot><tr><td colspan="5">Total</td><td class="num">${moneyPlain(total)}</td><td colspan="2"></td></tr></tfoot>` : ''}
   </table></div>`;
 }
@@ -984,7 +939,7 @@ function openSupplierForm(id){
         <label class="field">Phone<input name="sPhone" value="${esc(s ? s.phone : '')}"></label>
         <label class="field">Email<input name="sEmail" type="email" value="${esc(s ? s.email : '')}"></label>
         <label class="field">Group<input name="sGroup" value="${esc(s ? s.group : '')}"></label>
-        <label class="field">Rating<select name="sRating"><option value="0" ${s&&!s.rating?'selected':''}>—</option>${[1,2,3,4,5].map(n => `<option value="${n}" ${(s && s.rating === n) || (!s && dr === n) ? 'selected' : ''}>${'★'.repeat(n)}${'☆'.repeat(5-n)}</option>`).join('')}</select></label>
+        <label class="field">Rating<select name="sRating"><option value="0" ${s&&!s.rating?'selected':''}>Not rated</option>${[1,2,3,4,5].map(n => `<option value="${n}" ${(s && s.rating === n) || (!s && dr === n) ? 'selected' : ''}>${'★'.repeat(n)}${'☆'.repeat(5-n)}</option>`).join('')}</select></label>
         <label class="field">Opening<input name="sOpen" type="number" step="0.01" value="${s ? num(s.openingBalance) : 0}"></label>
         <label class="field">Credit Limit<input name="sLimit" type="number" step="0.01" value="${s ? num(s.creditLimit) : dl}"></label>
         <label class="field">Credit Days<input name="sDays" type="number" value="${s ? num(s.creditDays) : dd}"></label>
@@ -1035,13 +990,10 @@ function showSupplierAging(id){
   `, 'wide');
 }
 
-/* ============================================================
-   PURCHASES
-   ============================================================ */
 function viewPurchases(){
-  return `<div class="card"><div class="card-head"><div><h3>Purchases</h3></div><button class="btn primary" data-action="add-purchase">＋ Record Purchase</button></div>
+  return `<div class="card"><div class="card-head"><div><h3>Purchases</h3></div><button class="btn primary" data-action="add-purchase">Record Purchase</button></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.pur.q)}" oninput="ui.pur.q=this.value; refreshTable('pur')"></label>
+      <label class="field">Search<input type="search" placeholder="Search invoice or supplier" value="${esc(ui.pur.q)}" oninput="ui.pur.q=this.value; refreshTable('pur')"></label>
       <label class="field">Supplier<select onchange="ui.pur.supplier=this.value; refreshTable('pur')"><option value="">All</option>${db.suppliers.map(s => `<option value="${s.id}" ${ui.pur.supplier===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>
       <label class="field">Category<select onchange="ui.pur.category=this.value; refreshTable('pur')"><option value="">All</option>${db.categories.map(c => `<option value="${c.id}" ${ui.pur.category===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
       <label class="field">From<input type="date" value="${ui.pur.from}" onchange="ui.pur.from=this.value; refreshTable('pur')"></label>
@@ -1060,7 +1012,7 @@ function tablePurchases(){
   rows = sortRows(rows, ui.pur.sort, ui.pur.dir);
   const total = rows.reduce((a,b) => a + b.amount, 0);
   return `<div class="table-wrap"><table><thead><tr>${th('pur','date','Date')}${th('pur','supplier','Supplier')}${th('pur','invoiceNo','Invoice')}${th('pur','category','Category')}<th>Description</th>${th('pur','amount','Amount','num')}<th style="width:100px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => `<tr><td>${dateFmt(r.date)}</td><td>${esc(r.supplier)}</td><td class="mono">${esc(r.invoiceNo||'—')}</td><td><span class="badge" style="background:${catColor(r.categoryId)}18;color:${catColor(r.categoryId)}">${esc(r.category)}</span></td><td class="muted small">${esc(r.description||'—')}</td><td class="num">${moneyPlain(r.amount)}</td><td><button class="btn xs" data-action="edit-purchase" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-purchase" data-id="${r.id}">🗑</button></td></tr>`).join('') : emptyRow(7, 'No purchases')}</tbody>
+    <tbody>${rows.length ? rows.map(r => `<tr><td>${dateFmt(r.date)}</td><td>${esc(r.supplier)}</td><td class="mono">${esc(r.invoiceNo||'—')}</td><td><span class="badge" style="background:${catColor(r.categoryId)}18;color:${catColor(r.categoryId)}">${esc(r.category)}</span></td><td class="muted small">${esc(r.description||'—')}</td><td class="num">${moneyPlain(r.amount)}</td><td><button class="btn xs" data-action="edit-purchase" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-purchase" data-id="${r.id}">Del</button></td></tr>`).join('') : emptyRow(7, 'No purchases')}</tbody>
     ${rows.length ? `<tfoot><tr><td colspan="5">Total</td><td class="num">${moneyPlain(total)}</td><td></td></tr></tfoot>` : ''}
   </table></div>`;
 }
@@ -1071,10 +1023,10 @@ function openPurchaseForm(id){
   openModal(p ? 'Edit Purchase' : 'Record Purchase', `
     <form onsubmit="savePurchase(event)" data-id="${p ? p.id : ''}">
       <div class="form-grid">
-        <label class="field">Supplier <span class="req">*</span><select name="pSupplier" required><option value="">—</option>${db.suppliers.map(s => `<option value="${s.id}" ${p && p.supplierId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>
+        <label class="field">Supplier <span class="req">*</span><select name="pSupplier" required><option value="">Select</option>${db.suppliers.map(s => `<option value="${s.id}" ${p && p.supplierId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>
         <label class="field">Date <span class="req">*</span><input name="pDate" type="date" required value="${p ? p.date : today()}"></label>
         <label class="field">Invoice<input name="pInvoice" value="${esc(p ? p.invoiceNo : autoInv)}"></label>
-        <label class="field">Category<select name="pCat"><option value="">—</option>${db.categories.map(c => `<option value="${c.id}" ${p && p.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
+        <label class="field">Category<select name="pCat"><option value="">None</option>${db.categories.map(c => `<option value="${c.id}" ${p && p.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
         <label class="field">Amount <span class="req">*</span><input name="pAmount" type="number" step="0.01" min="0" required value="${p ? num(p.amount) : ''}"></label>
       </div>
       <label class="field" style="margin-top:14px">Description<textarea name="pDesc">${esc(p ? p.description : '')}</textarea></label>
@@ -1099,12 +1051,9 @@ function deletePurchase(id){
   save(); render(); toast('Deleted');
 }
 
-/* ============================================================
-   CATEGORIES
-   ============================================================ */
 function viewCategories(){
-  return `<div class="card"><div class="card-head"><div><h3>Categories</h3></div><button class="btn primary" data-action="add-cat">＋ Add Category</button></div>
-    <div class="form-grid" style="margin-bottom:14px"><label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.cat.q)}" oninput="ui.cat.q=this.value; refreshTable('cat')"></label></div>
+  return `<div class="card"><div class="card-head"><div><h3>Categories</h3></div><button class="btn primary" data-action="add-cat">Add Category</button></div>
+    <div class="form-grid" style="margin-bottom:14px"><label class="field">Search<input type="search" placeholder="Search category" value="${esc(ui.cat.q)}" oninput="ui.cat.q=this.value; refreshTable('cat')"></label></div>
     <div id="tbl-cat">${tableCategories()}</div></div>`;
 }
 function tableCategories(){
@@ -1113,7 +1062,7 @@ function tableCategories(){
   if(q) rows = rows.filter(r => r.name.toLowerCase().includes(q));
   rows = sortRows(rows, ui.cat.sort, ui.cat.dir);
   return `<div class="table-wrap"><table><thead><tr>${th('cat','name','Category')}${th('cat','count','Receipts','num')}${th('cat','total','Receipt Value','num')}<th class="num">Purchases</th>${th('cat','purchaseTotal','Purchase Value','num')}<th style="width:100px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => `<tr><td><span class="dot" style="background:${r.color};margin-right:8px"></span><strong>${esc(r.name)}</strong></td><td class="num">${r.count}</td><td class="num">${moneyPlain(r.total)}</td><td class="num">${r.purchases}</td><td class="num">${moneyPlain(r.purchaseTotal)}</td><td><button class="btn xs" data-action="edit-cat" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-cat" data-id="${r.id}">🗑</button></td></tr>`).join('') : emptyRow(6, 'No categories')}</tbody>
+    <tbody>${rows.length ? rows.map(r => `<tr><td><span class="dot" style="background:${r.color};margin-right:8px"></span><strong>${esc(r.name)}</strong></td><td class="num">${r.count}</td><td class="num">${moneyPlain(r.total)}</td><td class="num">${r.purchases}</td><td class="num">${moneyPlain(r.purchaseTotal)}</td><td><button class="btn xs" data-action="edit-cat" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-cat" data-id="${r.id}">Del</button></td></tr>`).join('') : emptyRow(6, 'No categories')}</tbody>
   </table></div>`;
 }
 function openCatForm(id){
@@ -1146,9 +1095,6 @@ function deleteCat(id){
   save(); render(); toast('Deleted');
 }
 
-/* ============================================================
-   RECEIPTS
-   ============================================================ */
 function viewReceipts(){
   const totals = { pending: sum(db.receipts.filter(r => r.status === 'Pending'), 'amount'), cleared: sum(db.receipts.filter(r => r.status === 'Cleared'), 'amount'), issued: sum(db.receipts.filter(r => r.status === 'Issued'), 'amount'), bounced: sum(db.receipts.filter(r => r.status === 'Bounced'), 'amount') };
   const banks = uniq(db.receipts.map(r => r.bank).filter(Boolean));
@@ -1160,10 +1106,10 @@ function viewReceipts(){
     ${kpiCard('Bounced', moneyPlain(totals.bounced), db.receipts.filter(r => r.status==='Bounced').length+' receipt(s)', { color:'r', small:true })}
   </div>
   <div class="card"><div class="card-head"><div><h3>Customer Receipts</h3></div><div class="row-flex">
-    <div class="seg"><button class="seg-btn ${ui.rec.view==='list'?'active':''}" onclick="ui.rec.view='list'; render()">☰ List</button><button class="seg-btn ${ui.rec.view==='calendar'?'active':''}" onclick="ui.rec.view='calendar'; render()">🗓 Calendar</button></div>
-    <button class="btn primary" data-action="add-receipt">＋ Add Receipt</button></div></div>
+    <div class="seg"><button class="seg-btn ${ui.rec.view==='list'?'active':''}" onclick="ui.rec.view='list'; render()">List</button><button class="seg-btn ${ui.rec.view==='calendar'?'active':''}" onclick="ui.rec.view='calendar'; render()">Calendar</button></div>
+    <button class="btn primary" data-action="add-receipt">Add Receipt</button></div></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.rec.q)}" oninput="ui.rec.q=this.value; refreshTable('rec')"></label>
+      <label class="field">Search<input type="search" placeholder="Search customer or cheque" value="${esc(ui.rec.q)}" oninput="ui.rec.q=this.value; refreshTable('rec')"></label>
       <label class="field">Customer<select onchange="ui.rec.customer=this.value; refreshTable('rec')"><option value="">All</option>${db.customers.map(c => `<option value="${c.id}" ${ui.rec.customer===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
       <label class="field">Method<select onchange="ui.rec.method=this.value; refreshTable('rec')">${['','Cheque','Cash','Bank Transfer','Card','Other'].map(m => `<option value="${m}" ${ui.rec.method===m?'selected':''}>${m||'All'}</option>`).join('')}</select></label>
       <label class="field">Status<select onchange="ui.rec.status=this.value; refreshTable('rec')">${['','Pending','Cleared','Issued','Bounced','Returned'].map(s => `<option value="${s}" ${ui.rec.status===s?'selected':''}>${s||'All'}</option>`).join('')}</select></label>
@@ -1183,7 +1129,7 @@ function calendarReceipts(){
   return `<div style="margin-bottom:12px"><h3 style="font-size:14px">${now.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</h3></div>
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">
     ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(h => `<div style="font-size:10px;font-weight:800;color:var(--faint);text-align:center;padding:7px 0">${h}</div>`).join('')}
-    ${cells.map(c => { const rs = dm[c.date] || []; return `<div style="min-height:80px;border:1px solid var(--line-2);border-radius:10px;padding:7px;background:${c.date===ts?'#eef2ff':'#fff'};${c.other?'opacity:.35':''}"><div style="font-weight:800;font-size:11px">${c.day||''}</div>${rs.slice(0,2).map(r => `<span style="display:block;margin-top:3px;font-size:9.5px;padding:2px 6px;border-radius:5px;font-weight:700;background:${r.status==='Cleared'?'#d1fae5':r.status==='Pending'?'#fef3c7':'#dbeafe'};color:${r.status==='Cleared'?'#065f46':r.status==='Pending'?'#92400e':'#1e40af'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.customerName).slice(0,14)} · ${moneyPlain(r.amount)}</span>`).join('')}</div>`; }).join('')}
+    ${cells.map(c => { const rs = dm[c.date] || []; return `<div style="min-height:80px;border:1px solid var(--line-2);border-radius:10px;padding:7px;background:${c.date===ts?'#eef2ff':'#fff'};${c.other?'opacity:.35':''}"><div style="font-weight:800;font-size:11px">${c.day||''}</div>${rs.slice(0,2).map(r => `<span style="display:block;margin-top:3px;font-size:9.5px;padding:2px 6px;border-radius:5px;font-weight:700;background:${r.status==='Cleared'?'#d1fae5':r.status==='Pending'?'#fef3c7':'#dbeafe'};color:${r.status==='Cleared'?'#065f46':r.status==='Pending'?'#92400e':'#1e40af'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.customerName).slice(0,14)} ${moneyPlain(r.amount)}</span>`).join('')}</div>`; }).join('')}
   </div>`;
 }
 function tableReceipts(){
@@ -1198,7 +1144,7 @@ function tableReceipts(){
   rows = sortRows(rows, ui.rec.sort, ui.rec.dir);
   const total = rows.reduce((a,b) => a + b.amount, 0), t = today();
   return `<div class="table-wrap"><table><thead><tr>${th('rec','date','Date')}${th('rec','customerName','Customer')}${th('rec','method','Method')}<th>Reference</th>${th('rec','dueDate','Due')}${th('rec','amount','Amount','num')}${th('rec','status','Status')}<th style="width:180px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => { const od = isCheque(r) && r.dueDate && r.dueDate < t && (r.status === 'Pending' || r.status === 'Cleared'); const mc = {'Cheque':'blue','Cash':'green','Bank Transfer':'teal','Card':'purple','Other':'gray'}[r.method]||'gray'; return `<tr><td>${dateFmt(r.date)}</td><td><strong>${esc(r.customerName)}</strong></td><td><span class="badge ${mc}">${esc(r.method)}</span></td><td class="mono small">${esc(r.chequeNo||'—')}${r.bank?'<br><span class="muted">'+esc(r.bank)+'</span>':''}</td><td>${r.dueDate?dateFmt(r.dueDate):'—'}${od?' <span class="badge red">Late</span>':''}</td><td class="num">${moneyPlain(r.amount)}</td><td>${statusBadge(r.status)}</td><td><div class="row-flex">${isCheque(r)&&r.status==='Pending'?`<button class="btn xs green" data-action="rec-cleared" data-id="${r.id}">✔</button>`:''}${isCheque(r)&&r.status!=='Issued'&&r.status!=='Bounced'?`<button class="btn xs danger" data-action="rec-bounced" data-id="${r.id}">⚠</button>`:''}<button class="btn xs" data-action="edit-receipt" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-receipt" data-id="${r.id}">🗑</button></div></td></tr>`; }).join('') : emptyRow(8, 'No receipts')}</tbody>
+    <tbody>${rows.length ? rows.map(r => { const od = isCheque(r) && r.dueDate && r.dueDate < t && (r.status === 'Pending' || r.status === 'Cleared'); const mc = {'Cheque':'blue','Cash':'green','Bank Transfer':'teal','Card':'purple','Other':'gray'}[r.method]||'gray'; return `<tr><td>${dateFmt(r.date)}</td><td><strong>${esc(r.customerName)}</strong></td><td><span class="badge ${mc}">${esc(r.method)}</span></td><td class="mono small">${esc(r.chequeNo||'—')}${r.bank?'<br><span class="muted">'+esc(r.bank)+'</span>':''}</td><td>${r.dueDate?dateFmt(r.dueDate):'—'}${od?' <span class="badge red">Late</span>':''}</td><td class="num">${moneyPlain(r.amount)}</td><td>${statusBadge(r.status)}</td><td><div class="row-flex">${isCheque(r)&&r.status==='Pending'?`<button class="btn xs green" data-action="rec-cleared" data-id="${r.id}">Clear</button>`:''}${isCheque(r)&&r.status!=='Issued'&&r.status!=='Bounced'?`<button class="btn xs danger" data-action="rec-bounced" data-id="${r.id}">Bounce</button>`:''}<button class="btn xs" data-action="edit-receipt" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-receipt" data-id="${r.id}">Del</button></div></td></tr>`; }).join('') : emptyRow(8, 'No receipts')}</tbody>
     ${rows.length ? `<tfoot><tr><td colspan="5">Total</td><td class="num">${moneyPlain(total)}</td><td colspan="2"></td></tr></tfoot>` : ''}
   </table></div>`;
 }
@@ -1211,10 +1157,10 @@ function openReceiptForm(id, methodPreset){
     <form onsubmit="saveReceipt(event)" data-id="${r ? r.id : ''}">
       <div class="form-grid">
         <label class="field">Method <span class="req">*</span><select name="rMethod" id="rMethod" required onchange="toggleReceiptFields()">${['Cheque','Cash','Bank Transfer','Card','Other'].map(m => `<option value="${m}" ${method===m?'selected':''}>${m}</option>`).join('')}</select></label>
-        <label class="field">Customer <span class="req">*</span><select name="rCustomer" required><option value="">—</option>${db.customers.map(c => `<option value="${c.id}" ${r&&r.customerId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
+        <label class="field">Customer <span class="req">*</span><select name="rCustomer" required><option value="">Select</option>${db.customers.map(c => `<option value="${c.id}" ${r&&r.customerId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
         <label class="field">Date <span class="req">*</span><input name="rDate" type="date" required value="${r ? r.date : today()}"></label>
         <label class="field">Amount <span class="req">*</span><input name="rAmount" type="number" step="0.01" min="0" required value="${r ? num(r.amount) : ''}"></label>
-        <label class="field">Category<select name="rCat"><option value="">—</option>${db.categories.map(c => `<option value="${c.id}" ${r&&r.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
+        <label class="field">Category<select name="rCat"><option value="">None</option>${db.categories.map(c => `<option value="${c.id}" ${r&&r.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
         <label class="field">Reference<input name="rRef" value="${esc(r ? r.reference : '')}"></label>
       </div>
       <div id="chqFields" style="display:${isChq?'':'none'};margin-top:14px">
@@ -1244,8 +1190,8 @@ function saveReceipt(e){
     if(!data.chequeNo){ toast('Cheque number required','error'); return; }
     if(!db.settings.allowDuplicateChequeNo && !id){ const dup = db.receipts.find(x => x.chequeNo === data.chequeNo && x.bank === data.bank); if(dup){ toast('Duplicate cheque','error'); return; } }
   } else { data.status = 'Cleared'; data.clearedDate = data.date; }
-  if(id){ Object.assign(db.receipts.find(x => x.id === id), data); logAct('Update Receipt','Receipt',id, customer.name + ' • ' + money(data.amount)); toast('Updated'); }
-  else { const rid = uid(); db.receipts.push(Object.assign({ id:rid, createdAt:nowISO() }, data)); logAct('Add Receipt','Receipt',rid, customer.name + ' • ' + money(data.amount)); toast('Added'); }
+  if(id){ Object.assign(db.receipts.find(x => x.id === id), data); logAct('Update Receipt','Receipt',id, customer.name + ' ' + money(data.amount)); toast('Updated'); }
+  else { const rid = uid(); db.receipts.push(Object.assign({ id:rid, createdAt:nowISO() }, data)); logAct('Add Receipt','Receipt',rid, customer.name + ' ' + money(data.amount)); toast('Added'); }
   save(); closeModal(); render();
 }
 function deleteReceipt(id){
@@ -1266,25 +1212,22 @@ function markReceipt(id, status){
   save(); render(); toast('Marked ' + status);
 }
 
-/* ============================================================
-   PAYMENTS
-   ============================================================ */
 function viewPayments(){
   const avail = db.receipts.filter(r => isCheque(r) && (r.status === 'Pending' || r.status === 'Cleared'));
   return `
   <div class="card"><div class="card-head"><div><h3>Issue Payment to Supplier</h3></div></div>
-    ${avail.length === 0 ? '<div class="alert warn"><span class="ico">⚠</span><div>No customer cheques available.</div></div>' : ''}
+    ${avail.length === 0 ? '<div class="alert warn"><span class="ico">!</span><div>No customer cheques available.</div></div>' : ''}
     <form onsubmit="savePayment(event)">
       <div class="form-grid">
-        <label class="field">Supplier <span class="req">*</span><select id="paySupplier" required><option value="">—</option>${db.suppliers.map(s => `<option value="${s.id}">${esc(s.name)} — ${moneyPlain(supplierBalance(s.id))}</option>`).join('')}</select></label>
+        <label class="field">Supplier <span class="req">*</span><select id="paySupplier" required><option value="">Select</option>${db.suppliers.map(s => `<option value="${s.id}">${esc(s.name)} — ${moneyPlain(supplierBalance(s.id))}</option>`).join('')}</select></label>
         <label class="field">Date <span class="req">*</span><input type="date" id="payDate" required value="${today()}"></label>
         <label class="field">Reference<input id="payRef" value="${db.settings.autoNumbering?(db.settings.paymentPrefix||'PAY-')+String(num(db.settings.nextPaymentNo)||1).padStart(4,'0'):''}"></label>
       </div>
       <div style="margin:18px 0 14px"><div class="section-title" style="margin-top:0">Method</div>
-        <div class="seg" id="payMode"><button type="button" class="seg-btn active" data-mode="party" onclick="setPayMode('party')">🧾 Party</button><button type="button" class="seg-btn" data-mode="own" onclick="setPayMode('own')">🏦 Own</button><button type="button" class="seg-btn" data-mode="both" onclick="setPayMode('both')">🔀 Both</button></div>
+        <div class="seg" id="payMode"><button type="button" class="seg-btn active" data-mode="party" onclick="setPayMode('party')">Party Cheques</button><button type="button" class="seg-btn" data-mode="own" onclick="setPayMode('own')">Own Cheques</button><button type="button" class="seg-btn" data-mode="both" onclick="setPayMode('both')">Both</button></div>
       </div>
-      <div id="partySection"><div class="card-head" style="margin-bottom:10px"><h3 style="font-size:12.5px">Select Cheques</h3><input type="search" id="partySearch" placeholder="🔍" style="width:220px" oninput="renderPartyList()"></div><div class="chk-list" id="partyList"></div></div>
-      <div id="ownSection" style="display:none"><div class="card-head" style="margin-bottom:10px"><h3 style="font-size:12.5px">Own Cheques</h3><button type="button" class="btn sm" onclick="addOwnRow()">＋ Add Row</button></div><div id="ownRows"></div></div>
+      <div id="partySection"><div class="card-head" style="margin-bottom:10px"><h3 style="font-size:12.5px">Select Cheques</h3><input type="search" id="partySearch" placeholder="Filter" style="width:220px" oninput="renderPartyList()"></div><div class="chk-list" id="partyList"></div></div>
+      <div id="ownSection" style="display:none"><div class="card-head" style="margin-bottom:10px"><h3 style="font-size:12.5px">Own Cheques</h3><button type="button" class="btn sm" onclick="addOwnRow()">Add Row</button></div><div id="ownRows"></div></div>
       <div class="divider"></div>
       <div class="grid grid-3">
         <div class="kpi g" style="box-shadow:none"><div class="k-label">Party Total</div><div class="k-value sm" id="totParty">0.00</div></div>
@@ -1292,12 +1235,12 @@ function viewPayments(){
         <div class="kpi" style="box-shadow:none"><div class="k-label">Total</div><div class="k-value sm" id="totAll">0.00</div></div>
       </div>
       <label class="field" style="margin-top:14px">Notes<input id="payNotes"></label>
-      <div class="form-actions"><button type="button" class="btn" onclick="resetPaymentForm()">Reset</button><button type="submit" class="btn primary">💾 Save Payment</button></div>
+      <div class="form-actions"><button type="button" class="btn" onclick="resetPaymentForm()">Reset</button><button type="submit" class="btn primary">Save Payment</button></div>
     </form>
   </div>
   <div class="card"><div class="card-head"><h3>Payment History</h3></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.pay.q)}" oninput="ui.pay.q=this.value; refreshTable('pay')"></label>
+      <label class="field">Search<input type="search" placeholder="Search reference" value="${esc(ui.pay.q)}" oninput="ui.pay.q=this.value; refreshTable('pay')"></label>
       <label class="field">Supplier<select onchange="ui.pay.supplier=this.value; refreshTable('pay')"><option value="">All</option>${db.suppliers.map(s => `<option value="${s.id}" ${ui.pay.supplier===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>
       <label class="field">From<input type="date" value="${ui.pay.from}" onchange="ui.pay.from=this.value; refreshTable('pay')"></label>
       <label class="field">To<input type="date" value="${ui.pay.to}" onchange="ui.pay.to=this.value; refreshTable('pay')"></label>
@@ -1315,7 +1258,7 @@ function tablePay(){
   const total = rows.reduce((a,b) => a + b.amount, 0);
   const ml = { party:'Party', own:'Own', both:'Both' }, mc = { party:'blue', own:'purple', both:'green' };
   return `<div class="table-wrap"><table><thead><tr>${th('pay','date','Date')}${th('pay','supplier','Supplier')}${th('pay','mode','Method')}<th>Reference</th><th class="num">Party</th><th class="num">Own</th>${th('pay','amount','Total','num')}<th style="width:100px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => `<tr><td>${dateFmt(r.date)}</td><td><strong>${esc(r.supplier)}</strong></td><td><span class="badge ${mc[r.mode]||'gray'}">${ml[r.mode]||r.mode}</span></td><td class="mono">${esc(r.reference||'—')}</td><td class="num">${r.partyCount}</td><td class="num">${r.ownCount}</td><td class="num"><strong>${moneyPlain(r.amount)}</strong></td><td><div class="row-flex"><button class="btn xs" data-action="view-payment" data-id="${r.id}">👁</button><button class="btn xs danger" data-action="del-payment" data-id="${r.id}">🗑</button></div></td></tr>`).join('') : emptyRow(8, 'No payments')}</tbody>
+    <tbody>${rows.length ? rows.map(r => `<tr><td>${dateFmt(r.date)}</td><td><strong>${esc(r.supplier)}</strong></td><td><span class="badge ${mc[r.mode]||'gray'}">${ml[r.mode]||r.mode}</span></td><td class="mono">${esc(r.reference||'—')}</td><td class="num">${r.partyCount}</td><td class="num">${r.ownCount}</td><td class="num"><strong>${moneyPlain(r.amount)}</strong></td><td><div class="row-flex"><button class="btn xs" data-action="view-payment" data-id="${r.id}">View</button><button class="btn xs danger" data-action="del-payment" data-id="${r.id}">Del</button></div></td></tr>`).join('') : emptyRow(8, 'No payments')}</tbody>
     ${rows.length ? `<tfoot><tr><td colspan="6">Total</td><td class="num">${moneyPlain(total)}</td><td></td></tr></tfoot>` : ''}
   </table></div>`;
 }
@@ -1336,7 +1279,7 @@ function renderPartyList(){
   if(q) list = list.filter(c => (c.customerName||'').toLowerCase().includes(q) || (c.chequeNo||'').toLowerCase().includes(q));
   list.sort((a,b) => (a.date||'') < (b.date||'') ? 1 : -1);
   if(!list.length){ box.innerHTML = '<div class="empty">None available</div>'; return; }
-  box.innerHTML = list.map(c => `<label class="chk-row"><input type="checkbox" class="party-chk" data-id="${c.id}" data-amount="${num(c.amount)}" onchange="updatePayTotals()"><span class="chk-main"><strong>${esc(c.customerName)}</strong><small>${esc(c.chequeNo||'—')} • ${esc(c.bank||'')} • ${dateFmt(c.date)}</small></span><span class="chk-amt">${moneyPlain(c.amount)}</span></label>`).join('');
+  box.innerHTML = list.map(c => `<label class="chk-row"><input type="checkbox" class="party-chk" data-id="${c.id}" data-amount="${num(c.amount)}" onchange="updatePayTotals()"><span class="chk-main"><strong>${esc(c.customerName)}</strong><small>${esc(c.chequeNo||'—')} ${esc(c.bank||'')} ${dateFmt(c.date)}</small></span><span class="chk-amt">${moneyPlain(c.amount)}</span></label>`).join('');
 }
 window.renderPartyList = renderPartyList;
 function ensureOwnRows(){ const box = document.getElementById('ownRows'); if(box && box.querySelectorAll('.own-row').length === 0) addOwnRow(); }
@@ -1345,7 +1288,7 @@ function addOwnRow(){
   const div = document.createElement('div');
   div.className = 'own-row';
   div.style.cssText = 'display:grid;grid-template-columns:100px 1fr 120px 120px 112px 1fr 32px;gap:8px;align-items:center;margin-bottom:8px;padding:8px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;';
-  div.innerHTML = `<input class="own-no" placeholder="Chq No" style="padding:7px 10px;font-size:11.5px"><input class="own-bank" placeholder="Bank" value="${esc(db.settings.defaultBank||'')}" style="padding:7px 10px;font-size:11.5px"><input class="own-date" type="date" value="${today()}" style="padding:7px 10px;font-size:11.5px"><input class="own-due" type="date" value="${shiftDate(today(), num(db.settings.defaultChequeDays)||30)}" style="padding:7px 10px;font-size:11.5px"><input class="own-amt" type="number" step="0.01" min="0" placeholder="Amount" oninput="updatePayTotals()" style="padding:7px 10px;font-size:11.5px"><input class="own-payee" placeholder="Payee" style="padding:7px 10px;font-size:11.5px"><button type="button" class="icon-btn danger" onclick="this.closest('.own-row').remove(); updatePayTotals();">✕</button>`;
+  div.innerHTML = `<input class="own-no" placeholder="Chq No" style="padding:7px 10px;font-size:11.5px"><input class="own-bank" placeholder="Bank" value="${esc(db.settings.defaultBank||'')}" style="padding:7px 10px;font-size:11.5px"><input class="own-date" type="date" value="${today()}" style="padding:7px 10px;font-size:11.5px"><input class="own-due" type="date" value="${shiftDate(today(), num(db.settings.defaultChequeDays)||30)}" style="padding:7px 10px;font-size:11.5px"><input class="own-amt" type="number" step="0.01" min="0" placeholder="Amount" oninput="updatePayTotals()" style="padding:7px 10px;font-size:11.5px"><input class="own-payee" placeholder="Payee" style="padding:7px 10px;font-size:11.5px"><button type="button" class="icon-btn danger" onclick="this.closest('.own-row').remove(); updatePayTotals();">X</button>`;
   box.appendChild(div); updatePayTotals();
 }
 window.addOwnRow = addOwnRow;
@@ -1388,7 +1331,7 @@ function savePayment(e){
   od.forEach(o => { o.paymentId = p.id; db.ownCheques.push(o); });
   db.payments.push(p);
   if(db.settings.autoNumbering) db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo)||1)+1;
-  logAct('Add Payment','Payment',p.id, s.name + ' • ' + money(p.amount));
+  logAct('Add Payment','Payment',p.id, s.name + ' ' + money(p.amount));
   save(); render(); toast('Payment ' + moneyPlain(p.amount) + ' saved');
 }
 function deletePayment(id){
@@ -1419,17 +1362,14 @@ function viewPayment(id){
   `, 'wide');
 }
 
-/* ============================================================
-   OWN CHEQUES
-   ============================================================ */
 function viewOwn(){
   const banks = uniq(db.ownCheques.map(o => o.bank).filter(Boolean));
   const bs = ['Issued','Cleared','Cancelled'].map(s => ({ s, count: db.ownCheques.filter(o => o.status === s).length, total: sum(db.ownCheques.filter(o => o.status === s), 'amount') }));
   return `
   <div class="kpi-strip">${bs.map(x => kpiCard(x.s, moneyPlain(x.total), x.count+' cheque(s)', { color: x.s==='Issued'?'a':x.s==='Cleared'?'g':'p', small:true })).join('')}${kpiCard('Total Issued', moneyPlain(sum(db.ownCheques, 'amount')), db.ownCheques.length+' cheque(s)', { color:'t', small:true })}</div>
-  <div class="card"><div class="card-head"><div><h3>Own Cheques</h3></div><button class="btn primary" data-action="add-own">＋ Add Own Cheque</button></div>
+  <div class="card"><div class="card-head"><div><h3>Own Cheques</h3></div><button class="btn primary" data-action="add-own">Add Own Cheque</button></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.own.q)}" oninput="ui.own.q=this.value; refreshTable('own')"></label>
+      <label class="field">Search<input type="search" placeholder="Search cheque or bank" value="${esc(ui.own.q)}" oninput="ui.own.q=this.value; refreshTable('own')"></label>
       <label class="field">Status<select onchange="ui.own.status=this.value; refreshTable('own')">${['','Issued','Cleared','Cancelled'].map(s => `<option value="${s}" ${ui.own.status===s?'selected':''}>${s||'All'}</option>`).join('')}</select></label>
       <label class="field">Bank<select onchange="ui.own.bank=this.value; refreshTable('own')"><option value="">All</option>${banks.map(b => `<option value="${esc(b)}" ${ui.own.bank===b?'selected':''}>${esc(b)}</option>`).join('')}</select></label>
       <label class="field">From<input type="date" value="${ui.own.from}" onchange="ui.own.from=this.value; refreshTable('own')"></label>
@@ -1448,7 +1388,7 @@ function tableOwn(){
   rows = sortRows(rows, ui.own.sort, ui.own.dir);
   const total = rows.reduce((a,b) => a + b.amount, 0);
   return `<div class="table-wrap"><table><thead><tr>${th('own','chequeNo','Cheque No')}${th('own','bank','Bank')}${th('own','date','Date')}${th('own','dueDate','Due')}<th>Payee</th>${th('own','amount','Amount','num')}${th('own','status','Status')}<th style="width:160px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => `<tr><td class="mono"><strong>${esc(r.chequeNo||'—')}</strong></td><td>${esc(r.bank||'—')}</td><td>${dateFmt(r.date)}</td><td>${dateFmt(r.dueDate)}</td><td>${esc(r.supplier||r.payee||'—')}</td><td class="num">${moneyPlain(r.amount)}</td><td>${statusBadge(r.status)}</td><td><div class="row-flex">${r.status==='Issued'?`<button class="btn xs green" data-action="own-cleared" data-id="${r.id}">✔</button>`:''}${r.status==='Issued'?`<button class="btn xs danger" data-action="own-cancel" data-id="${r.id}">✖</button>`:''}<button class="btn xs" data-action="edit-own" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-own" data-id="${r.id}">🗑</button></div></td></tr>`).join('') : emptyRow(8, 'No own cheques')}</tbody>
+    <tbody>${rows.length ? rows.map(r => `<tr><td class="mono"><strong>${esc(r.chequeNo||'—')}</strong></td><td>${esc(r.bank||'—')}</td><td>${dateFmt(r.date)}</td><td>${dateFmt(r.dueDate)}</td><td>${esc(r.supplier||r.payee||'—')}</td><td class="num">${moneyPlain(r.amount)}</td><td>${statusBadge(r.status)}</td><td><div class="row-flex">${r.status==='Issued'?`<button class="btn xs green" data-action="own-cleared" data-id="${r.id}">Clear</button>`:''}${r.status==='Issued'?`<button class="btn xs danger" data-action="own-cancel" data-id="${r.id}">Cancel</button>`:''}<button class="btn xs" data-action="edit-own" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-own" data-id="${r.id}">Del</button></div></td></tr>`).join('') : emptyRow(8, 'No own cheques')}</tbody>
     ${rows.length ? `<tfoot><tr><td colspan="5">Total</td><td class="num">${moneyPlain(total)}</td><td colspan="2"></td></tr></tfoot>` : ''}
   </table></div>`;
 }
@@ -1462,7 +1402,7 @@ function openOwnForm(id){
         <label class="field">Date<input name="oDate" type="date" value="${o ? (o.date||today()) : today()}"></label>
         <label class="field">Due Date<input name="oDue" type="date" value="${o ? (o.dueDate||'') : ''}"></label>
         <label class="field">Amount <span class="req">*</span><input name="oAmount" type="number" step="0.01" min="0" required value="${o ? num(o.amount) : ''}"></label>
-        <label class="field">Supplier<select name="oSupplier"><option value="">—</option>${db.suppliers.map(s => `<option value="${s.id}" ${o&&o.supplierId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>
+        <label class="field">Supplier<select name="oSupplier"><option value="">None</option>${db.suppliers.map(s => `<option value="${s.id}" ${o&&o.supplierId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>
         <label class="field">Payee<input name="oPayee" value="${esc(o ? o.payee : '')}"></label>
         <label class="field">Status<select name="oStatus">${['Issued','Cleared','Cancelled'].map(s => `<option value="${s}" ${o&&o.status===s?'selected':''}>${s}</option>`).join('')}</select></label>
       </div>
@@ -1493,17 +1433,14 @@ function setOwnStatus(id, status){
   save(); render(); toast('Marked ' + status);
 }
 
-/* ============================================================
-   BANKS
-   ============================================================ */
 function viewBanks(){
-  return `<div class="card"><div class="card-head"><div><h3>Bank Accounts</h3></div><button class="btn primary" data-action="add-bank">＋ Add Bank</button></div>
+  return `<div class="card"><div class="card-head"><div><h3>Bank Accounts</h3></div><button class="btn primary" data-action="add-bank">Add Bank</button></div>
     <div id="tbl-bank">${tableBanks()}</div></div>`;
 }
 function tableBanks(){
   const rows = db.bankAccounts.map(b => { const chqs = db.ownCheques.filter(o => o.bank === b.bankName); return { id:b.id, bankName:b.bankName, accountNo:b.accountNo, branch:b.branch, chequeCount: chqs.length, totalIssued: sum(chqs, 'amount'), outstanding: sum(chqs.filter(o => o.status === 'Issued'), 'amount') }; });
   return `<div class="table-wrap"><table><thead><tr><th>Bank</th><th>Account No</th><th>Branch</th><th class="num">Cheques</th><th class="num">Total Issued</th><th class="num">Outstanding</th><th style="width:100px">Actions</th></tr></thead>
-    <tbody>${rows.length ? rows.map(r => `<tr><td><strong>${esc(r.bankName)}</strong></td><td class="mono">${esc(r.accountNo||'—')}</td><td>${esc(r.branch||'—')}</td><td class="num">${r.chequeCount}</td><td class="num">${moneyPlain(r.totalIssued)}</td><td class="num"><strong style="color:${r.outstanding>0?'#b91c1c':'#047857'}">${moneyPlain(r.outstanding)}</strong></td><td><button class="btn xs" data-action="edit-bank" data-id="${r.id}">✏️</button><button class="btn xs danger" data-action="del-bank" data-id="${r.id}">🗑</button></td></tr>`).join('') : emptyRow(7, 'No banks')}</tbody>
+    <tbody>${rows.length ? rows.map(r => `<tr><td><strong>${esc(r.bankName)}</strong></td><td class="mono">${esc(r.accountNo||'—')}</td><td>${esc(r.branch||'—')}</td><td class="num">${r.chequeCount}</td><td class="num">${moneyPlain(r.totalIssued)}</td><td class="num"><strong style="color:${r.outstanding>0?'#b91c1c':'#047857'}">${moneyPlain(r.outstanding)}</strong></td><td><button class="btn xs" data-action="edit-bank" data-id="${r.id}">Edit</button><button class="btn xs danger" data-action="del-bank" data-id="${r.id}">Del</button></td></tr>`).join('') : emptyRow(7, 'No banks')}</tbody>
   </table></div>`;
 }
 function openBankForm(id){
@@ -1536,27 +1473,24 @@ function deleteBank(id){
   save(); render(); toast('Deleted');
 }
 
-/* ============================================================
-   LEDGER GENERATOR — 11 TYPES
-   ============================================================ */
 const LEDGER_TYPES = [
-  { key:'supplier', label:'Supplier Ledger', icon:'🏭' },
-  { key:'customer', label:'Customer Ledger', icon:'👥' },
-  { key:'bank', label:'Bank Ledger', icon:'🏛️' },
-  { key:'cheque', label:'Cheque Ledger', icon:'🧾' },
-  { key:'own_cheque', label:'Own Cheque Ledger', icon:'🏦' },
-  { key:'payment', label:'Payment Ledger', icon:'💸' },
-  { key:'receipt', label:'Receipt Ledger', icon:'💰' },
-  { key:'purchase', label:'Purchase Ledger', icon:'🛒' },
-  { key:'category', label:'Category Ledger', icon:'🏷️' },
-  { key:'aging', label:'Aging Ledger', icon:'⏳' },
-  { key:'full', label:'Full Ledger', icon:'📒' }
+  { key:'supplier', label:'Supplier Ledger', icon:'S' },
+  { key:'customer', label:'Customer Ledger', icon:'C' },
+  { key:'bank', label:'Bank Ledger', icon:'B' },
+  { key:'cheque', label:'Cheque Ledger', icon:'Q' },
+  { key:'own_cheque', label:'Own Cheque Ledger', icon:'O' },
+  { key:'payment', label:'Payment Ledger', icon:'P' },
+  { key:'receipt', label:'Receipt Ledger', icon:'R' },
+  { key:'purchase', label:'Purchase Ledger', icon:'U' },
+  { key:'category', label:'Category Ledger', icon:'G' },
+  { key:'aging', label:'Aging Ledger', icon:'A' },
+  { key:'full', label:'Full Ledger', icon:'F' }
 ];
 function viewLedger(){
   const t = ui.ledger.type || 'supplier';
   return `<div class="card">
-    <div class="card-head"><div><h3>📒 Ledger Generator</h3><div class="hint">Generate any type of ledger with filters, sorting, and date range.</div></div>
-      <div class="row-flex"><button class="btn" onclick="exportLedgerCSV()">⬇ CSV</button><button class="btn" onclick="window.print()">🖨 Print</button></div>
+    <div class="card-head"><div><h3>Ledger Generator</h3><div class="hint">Generate any type of ledger with filters, sorting, and date range.</div></div>
+      <div class="row-flex"><button class="btn" onclick="exportLedgerCSV()">Export CSV</button><button class="btn" onclick="window.print()">Print</button></div>
     </div>
     <div class="ledger-type-grid">
       ${LEDGER_TYPES.map(lt => `<div class="ledger-type-tile ${t === lt.key ? 'active' : ''}" onclick="setLedgerType('${lt.key}')"><div class="l-icon">${lt.icon}</div><div class="l-label">${esc(lt.label)}</div></div>`).join('')}
@@ -1569,16 +1503,16 @@ function viewLedger(){
       ${ledgerSecondaryFilter(t)}
       <label class="field">Sort By<select onchange="ui.ledger.sort=this.value; refreshLedger()">${ledgerSortOptions(t).map(([k,l]) => `<option value="${k}" ${ui.ledger.sort===k?'selected':''}>${esc(l)}</option>`).join('')}</select></label>
       <label class="field">Order<select onchange="ui.ledger.dir=Number(this.value); refreshLedger()"><option value="-1" ${ui.ledger.dir===-1?'selected':''}>Descending</option><option value="1" ${ui.ledger.dir===1?'selected':''}>Ascending</option></select></label>
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.ledger.q)}" oninput="ui.ledger.q=this.value; refreshLedger()"></label>
+      <label class="field">Search<input type="search" placeholder="Filter" value="${esc(ui.ledger.q)}" oninput="ui.ledger.q=this.value; refreshLedger()"></label>
     </div>
     <div id="ledgerBody">${renderLedgerBody()}</div>
   </div>`;
 }
 function ledgerEntityFilter(t){
-  if(t === 'supplier') return `<label class="field">Supplier<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">— All —</option>${db.suppliers.map(s => `<option value="${s.id}" ${ui.ledger.entityId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>`;
-  if(t === 'customer') return `<label class="field">Customer<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">— All —</option>${db.customers.map(c => `<option value="${c.id}" ${ui.ledger.entityId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
-  if(t === 'bank') return `<label class="field">Bank<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">— All —</option>${db.bankAccounts.map(b => `<option value="${b.id}" ${ui.ledger.entityId===b.id?'selected':''}>${esc(b.bankName)}</option>`).join('')}</select></label>`;
-  if(t === 'category') return `<label class="field">Category<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">— All —</option>${db.categories.map(c => `<option value="${c.id}" ${ui.ledger.entityId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+  if(t === 'supplier') return `<label class="field">Supplier<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">All</option>${db.suppliers.map(s => `<option value="${s.id}" ${ui.ledger.entityId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>`;
+  if(t === 'customer') return `<label class="field">Customer<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">All</option>${db.customers.map(c => `<option value="${c.id}" ${ui.ledger.entityId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+  if(t === 'bank') return `<label class="field">Bank<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">All</option>${db.bankAccounts.map(b => `<option value="${b.id}" ${ui.ledger.entityId===b.id?'selected':''}>${esc(b.bankName)}</option>`).join('')}</select></label>`;
+  if(t === 'category') return `<label class="field">Category<select onchange="ui.ledger.entityId=this.value; refreshLedger()"><option value="">All</option>${db.categories.map(c => `<option value="${c.id}" ${ui.ledger.entityId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
   return '';
 }
 function ledgerSecondaryFilter(t){
@@ -1597,12 +1531,11 @@ function setLedgerType(t){ ui.ledger.type = t; ui.ledger.entityId = ''; ui.ledge
 window.setLedgerType = setLedgerType;
 function refreshLedger(){ const el = document.getElementById('ledgerBody'); if(el) el.innerHTML = renderLedgerBody(); }
 window.refreshLedger = refreshLedger;
-
 function renderLedgerBody(){
   const t = ui.ledger.type;
   const gen = ledgerGenerators[t] || ledgerGenerators.supplier;
   const { columns, rows, totals, summary } = gen();
-  if(!rows.length) return `<div class="empty"><span class="big">📒</span>No data for the selected filters</div>`;
+  if(!rows.length) return `<div class="empty"><span class="big">-</span>No data for the selected filters</div>`;
   return `${summary ? `<div class="kpi-strip" style="margin-bottom:14px">${summary}</div>` : ''}
   <div class="table-wrap"><table>
     <thead><tr>${columns.map(c => `<th class="${c.cls||''}">${esc(c.label)}</th>`).join('')}</tr></thead>
@@ -1675,7 +1608,6 @@ const ledgerGenerators = {
     return { columns:[{key:'date',label:'Date'},{key:'due',label:'Due'},{key:'chequeNo',label:'Cheque No'},{key:'bank',label:'Bank'},{key:'supplier',label:'Payee'},{key:'amount',label:'Amount',cls:'num'},{key:'status',label:'Status'}], rows: sortLedgerRows(filterLedgerRows(rows)), totals:{ amount: moneyPlain(sum(list, 'amount')) } };
   },
   payment(){
-    const f = ui.ledger;
     let list = db.payments;
     const rows = list.map(p => ({ date: dateFmt(p.date), supplier: supName(p.supplierId), reference: p.reference || '—', method: p.mode, total: moneyPlain(p.amount), _date: p.date, _amount: num(p.amount) }));
     return { columns:[{key:'date',label:'Date'},{key:'supplier',label:'Supplier'},{key:'reference',label:'Reference'},{key:'method',label:'Method'},{key:'total',label:'Total',cls:'num'}], rows: sortLedgerRows(filterLedgerRows(rows)), totals:{ total: moneyPlain(sum(list, 'amount')) } };
@@ -1705,13 +1637,13 @@ const ledgerGenerators = {
     const [b1,b2,b3] = db.settings.supplierAgingBuckets || [30,60,90];
     let sups = f.entityId ? [supObj(f.entityId)].filter(Boolean) : db.suppliers;
     const rows = sups.map(s => { const a = supplierAging(s.id); return { name: s.name, current: moneyPlain(a.current), warn: moneyPlain(a.d30), crit: moneyPlain(a.d60), overdue: moneyPlain(a.d90), total: moneyPlain(a.total), _date:'', _amount: a.total, _total: a.total, _d90: a.d90 }; }).filter(r => r._total > 0);
-    return { columns:[{key:'name',label:'Supplier'},{key:'current',label:`Current (0-${b1})`,cls:'num'},{key:'warn',label:`${b1}-${b2}`,cls:'num'},{key:'crit',label:`${b2}-${b3}`,cls:'num'},{key:'overdue',label:`${b3}+`,cls:'num'},{key:'total',label:'Total',cls:'num'}], rows: sortLedgerRows(filterLedgerRows(rows)) };
+    return { columns:[{key:'name',label:'Supplier'},{key:'current',label:'Current (0-'+b1+')',cls:'num'},{key:'warn',label:b1+'-'+b2,cls:'num'},{key:'crit',label:b2+'-'+b3,cls:'num'},{key:'overdue',label:b3+'+',cls:'num'},{key:'total',label:'Total',cls:'num'}], rows: sortLedgerRows(filterLedgerRows(rows)) };
   },
   full(){
     const rows = [];
     db.purchases.forEach(p => rows.push({ date: dateFmt(p.date), type:'Purchase', entity: supName(p.supplierId), ref: p.invoiceNo || '—', desc: p.description || '—', amount: moneyPlain(p.amount), _date: p.date, _amount: num(p.amount) }));
     db.payments.forEach(p => rows.push({ date: dateFmt(p.date), type:'Payment', entity: supName(p.supplierId), ref: p.reference || '—', desc: p.mode, amount: moneyPlain(p.amount), _date: p.date, _amount: num(p.amount) }));
-    db.receipts.forEach(r => rows.push({ date: dateFmt(r.date), type:'Receipt', entity: r.customerName, ref: r.chequeNo || r.reference || '—', desc: r.method + ' • ' + r.status, amount: moneyPlain(r.amount), _date: r.date, _amount: num(r.amount) }));
+    db.receipts.forEach(r => rows.push({ date: dateFmt(r.date), type:'Receipt', entity: r.customerName, ref: r.chequeNo || r.reference || '—', desc: r.method + ' ' + r.status, amount: moneyPlain(r.amount), _date: r.date, _amount: num(r.amount) }));
     db.ownCheques.forEach(o => rows.push({ date: dateFmt(o.date), type:'Own Cheque', entity: o.bank || '—', ref: o.chequeNo || '—', desc: o.payee || '', amount: moneyPlain(o.amount), _date: o.date, _amount: num(o.amount) }));
     return { columns:[{key:'date',label:'Date'},{key:'type',label:'Type'},{key:'entity',label:'Entity'},{key:'ref',label:'Reference'},{key:'desc',label:'Details'},{key:'amount',label:'Amount',cls:'num'}], rows: sortLedgerRows(filterLedgerRows(rows)) };
   }
@@ -1720,7 +1652,7 @@ function ledgerRows(id, from, to){
   const s = supObj(id); if(!s) return [];
   const rows = [];
   rows.push({ date: s.createdAt ? s.createdAt.slice(0,10) : '', type:'Opening', ref:'—', desc:'Opening balance', debit:0, credit:num(s.openingBalance), ts:0 });
-  db.purchases.filter(p => p.supplierId === id).forEach(p => rows.push({ date:p.date, type:'Purchase', ref:p.invoiceNo || '—', desc:(p.categoryId ? catName(p.categoryId) + ' • ' : '') + (p.description || ''), debit:0, credit:num(p.amount), ts:1 }));
+  db.purchases.filter(p => p.supplierId === id).forEach(p => rows.push({ date:p.date, type:'Purchase', ref:p.invoiceNo || '—', desc:(p.categoryId ? catName(p.categoryId) + ' ' : '') + (p.description || ''), debit:0, credit:num(p.amount), ts:1 }));
   db.payments.filter(p => p.supplierId === id).forEach(p => rows.push({ date:p.date, type:'Payment', ref:p.reference || '—', desc: payDesc(p), debit:num(p.amount), credit:0, ts:2 }));
   rows.sort((a,b) => a.date === b.date ? a.ts - b.ts : (a.date < b.date ? -1 : 1));
   let bal = 0; rows.forEach(r => { bal += r.credit - r.debit; r.balance = bal; });
@@ -1742,9 +1674,6 @@ function exportLedgerCSV(){
 }
 window.exportLedgerCSV = exportLedgerCSV;
 
-/* ============================================================
-   AGING
-   ============================================================ */
 function viewAging(){
   const ga = globalAging();
   const total = ga.current + ga.d30 + ga.d60 + ga.d90 || 1;
@@ -1760,9 +1689,9 @@ function viewAging(){
     ${kpiCard(b3+'+', moneyPlain(ga.d90), ((ga.d90/total)*100).toFixed(1)+'%', { color:'r', small:true })}
     ${kpiCard('Total', moneyPlain(ga.current+ga.d30+ga.d60+ga.d90), rows.length+' supplier(s)', { color:'p', small:true })}
   </div>
-  <div class="card"><div class="card-head"><h3>⏳ Aging Report</h3><div class="row-flex">
+  <div class="card"><div class="card-head"><h3>Aging Report</h3><div class="row-flex">
     <select onchange="ui.aging.bucket=this.value; render()" style="width:190px"><option value="">All buckets</option><option value="current" ${ui.aging.bucket==='current'?'selected':''}>Has Current</option><option value="d30" ${ui.aging.bucket==='d30'?'selected':''}>Has ${b1}-${b2}</option><option value="d60" ${ui.aging.bucket==='d60'?'selected':''}>Has ${b2}-${b3}</option><option value="d90" ${ui.aging.bucket==='d90'?'selected':''}>Has ${b3}+</option></select>
-    <button class="btn" onclick="exportAgingCSV()">⬇ CSV</button></div></div>
+    <button class="btn" onclick="exportAgingCSV()">Export CSV</button></div></div>
     <div style="display:flex;height:18px;border-radius:20px;overflow:hidden;background:var(--surface-3);margin-bottom:16px">
       <div style="width:${ga.current/total*100}%;background:linear-gradient(90deg,#34d399,#059669)"></div>
       <div style="width:${ga.d30/total*100}%;background:linear-gradient(90deg,#fbbf24,#d97706)"></div>
@@ -1782,9 +1711,6 @@ function exportAgingCSV(){
 }
 window.exportAgingCSV = exportAgingCSV;
 
-/* ============================================================
-   TIMELINE
-   ============================================================ */
 function viewTimeline(){
   let entries = (db.activityLog || []).slice().reverse();
   const f = ui.timeline, q = f.q.trim().toLowerCase();
@@ -1800,9 +1726,9 @@ function viewTimeline(){
   const grouped = groupBy(entries, e => (e.timestamp || '').slice(0,10));
   const days = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
   return `<div class="card">
-    <div class="card-head"><div><h3>⏱️ Timeline</h3><div class="hint">Every action, every user, every moment.</div></div><button class="btn" onclick="exportTimelineCSV()">⬇ CSV</button></div>
+    <div class="card-head"><div><h3>Timeline</h3><div class="hint">Every action, every user, every moment.</div></div><button class="btn" onclick="exportTimelineCSV()">Export CSV</button></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(f.q)}" oninput="ui.timeline.q=this.value; render()"></label>
+      <label class="field">Search<input type="search" placeholder="Search" value="${esc(f.q)}" oninput="ui.timeline.q=this.value; render()"></label>
       <label class="field">Type<select onchange="ui.timeline.type=this.value; render()"><option value="">All types</option><option value="create" ${f.type==='create'?'selected':''}>Created</option><option value="update" ${f.type==='update'?'selected':''}>Updated</option><option value="delete" ${f.type==='delete'?'selected':''}>Deleted</option><option value="login" ${f.type==='login'?'selected':''}>Sign in/out</option><option value="payment" ${f.type==='payment'?'selected':''}>Payments</option></select></label>
       <label class="field">Entity<select onchange="ui.timeline.entity=this.value; render()"><option value="">All</option>${entities.map(e => `<option value="${esc(e)}" ${f.entity===e?'selected':''}>${esc(e)}</option>`).join('')}</select></label>
       <label class="field">User<select onchange="ui.timeline.user=this.value; render()"><option value="">All</option>${users.map(u => `<option value="${esc(u)}" ${f.user===u?'selected':''}>${esc(u)}</option>`).join('')}</select></label>
@@ -1816,12 +1742,12 @@ function viewTimeline(){
       return `<div class="tl-day"><div class="tl-day-head"><div class="d">${label}</div><div class="c">${items.length} event${items.length !== 1 ? 's' : ''}</div></div>
         ${items.map(e => {
           const cls = e.action.includes('Delete') ? 'delete' : e.action.includes('Sign') ? 'login' : e.action.includes('Payment') ? 'payment' : e.action.includes('Add') ? 'create' : 'update';
-          const ico = e.action.includes('Delete') ? '🗑' : e.action.includes('Sign In') ? '🔓' : e.action.includes('Sign Out') ? '🔒' : e.action.includes('Payment') ? '💸' : e.action.includes('Add') ? '➕' : e.action.includes('Update') ? '✏️' : '📌';
+          const ico = e.action.includes('Delete') ? 'D' : e.action.includes('Sign In') ? 'I' : e.action.includes('Sign Out') ? 'O' : e.action.includes('Payment') ? 'P' : e.action.includes('Add') ? '+' : e.action.includes('Update') ? 'E' : '*';
           const ts = new Date(e.timestamp).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-          return `<div class="tl-event ${cls}"><div class="tl-icon">${ico}</div><div class="tl-body"><div class="tl-title">${esc(e.action)} <span class="muted">•</span> <span class="badge gray">${esc(e.entity)}</span></div>${e.details ? `<div class="tl-desc">${esc(e.details)}</div>` : ''}<div class="tl-meta"><span class="tl-user">${e.userPhoto ? `<img src="${esc(e.userPhoto)}">` : ''}${esc(e.userEmail || 'system')}</span><span>🕐 ${ts}</span></div></div></div>`;
+          return `<div class="tl-event ${cls}"><div class="tl-icon">${ico}</div><div class="tl-body"><div class="tl-title">${esc(e.action)} · <span class="badge gray">${esc(e.entity)}</span></div>${e.details ? `<div class="tl-desc">${esc(e.details)}</div>` : ''}<div class="tl-meta"><span class="tl-user">${e.userPhoto ? `<img src="${esc(e.userPhoto)}">` : ''}${esc(e.userEmail || 'system')}</span><span>${ts}</span></div></div></div>`;
         }).join('')}
       </div>`;
-    }).join('') : '<div class="empty"><span class="big">⏱️</span>No timeline events yet</div>'}
+    }).join('') : '<div class="empty"><span class="big">-</span>No timeline events yet</div>'}
   </div>`;
 }
 function exportTimelineCSV(){
@@ -1832,13 +1758,10 @@ function exportTimelineCSV(){
 }
 window.exportTimelineCSV = exportTimelineCSV;
 
-/* ============================================================
-   ANALYTICS
-   ============================================================ */
 function viewAnalytics(){
-  const tabs = [['overview','📊 Overview'],['comparison','📈 Comparison'],['concentration','🎯 Concentration'],['receipts','💳 Receipts'],['cashflow','💰 Cash Flow']];
+  const tabs = [['overview','Overview'],['comparison','Comparison'],['concentration','Concentration'],['receipts','Receipts'],['cashflow','Cash Flow']];
   return `<div class="card">
-    <div class="card-head"><div><h3>Analytics Filters</h3></div><button class="btn" onclick="resetAnalytics()">↺ Reset</button></div>
+    <div class="card-head"><div><h3>Analytics Filters</h3></div><button class="btn" onclick="resetAnalytics()">Reset</button></div>
     <div class="form-grid">
       <label class="field">From<input type="date" value="${ui.ana.from}" onchange="ui.ana.from=this.value; refreshAnalytics()"></label>
       <label class="field">To<input type="date" value="${ui.ana.to}" onchange="ui.ana.to=this.value; refreshAnalytics()"></label>
@@ -1847,10 +1770,10 @@ function viewAnalytics(){
     </div>
     <div class="divider"></div>
     <div class="row-flex"><span class="small muted" style="font-weight:700">Quick:</span>
-      <span class="btn xs" onclick="applyAnaPreset('thisMonth')">This Month</span>
-      <span class="btn xs" onclick="applyAnaPreset('lastMonth')">Last Month</span>
-      <span class="btn xs" onclick="applyAnaPreset('ytd')">YTD</span>
-      <span class="btn xs" onclick="applyAnaPreset('last12')">Last 12M</span>
+      <button class="btn xs" onclick="applyAnaPreset('thisMonth')">This Month</button>
+      <button class="btn xs" onclick="applyAnaPreset('lastMonth')">Last Month</button>
+      <button class="btn xs" onclick="applyAnaPreset('ytd')">YTD</button>
+      <button class="btn xs" onclick="applyAnaPreset('last12')">Last 12M</button>
     </div>
   </div>
   <div class="tabs">${tabs.map(([k,l]) => `<div class="tab ${ui.ana.tab===k?'active':''}" onclick="setAnaTab('${k}')">${l}</div>`).join('')}</div>
@@ -1900,15 +1823,15 @@ function anaOverview(purchases, payments, receipts, own){
     ${kpiCard('Receipts', moneyPlain(recT), receipts.length+' record(s)', { color:'t', small:true })}
     ${kpiCard('Own Cheques', moneyPlain(ownT), own.length+' cheque(s)', { color:'p', small:true })}
   </div>
-  <div class="card"><div class="card-head"><h3>📈 Monthly Trend — Last 12 Months</h3></div>${lineChartSVG([{values:purS,color:'#6366f1'},{values:payS,color:'#10b981'},{values:recS,color:'#14b8a6'}], { w:800, h:200, labels: ms.map(monthLabel) })}</div>
+  <div class="card"><div class="card-head"><h3>Monthly Trend — Last 12 Months</h3></div>${lineChartSVG([{values:purS,color:'#6366f1'},{values:payS,color:'#10b981'},{values:recS,color:'#14b8a6'}], { w:800, h:200, labels: ms.map(monthLabel) })}</div>
   <div class="grid grid-2">
-    <div class="card"><div class="card-head"><h3>🏷️ Category Analysis</h3></div>
+    <div class="card"><div class="card-head"><h3>Category Analysis</h3></div>
       ${catRows.length ? catRows.map(r => `<div style="margin-bottom:14px"><div class="small" style="font-weight:800;margin-bottom:6px"><span class="dot" style="background:${r.color};margin-right:7px"></span>${esc(r.name)}</div>
         <div class="bar-row" style="grid-template-columns:60px 1fr 100px;margin-bottom:0;font-size:11px"><span class="bar-label small">Receipts</span><div class="bar-track"><div class="bar-fill i" style="width:${(r.chq/catMax*100).toFixed(1)}%"></div></div><span class="bar-val">${moneyPlain(r.chq)}</span></div>
         <div class="bar-row" style="grid-template-columns:60px 1fr 100px;margin-bottom:0;font-size:11px"><span class="bar-label small">Purchases</span><div class="bar-track"><div class="bar-fill a" style="width:${(r.pur/catMax*100).toFixed(1)}%"></div></div><span class="bar-val">${moneyPlain(r.pur)}</span></div>
       </div>`).join('') : '<div class="empty">No data</div>'}
     </div>
-    <div class="card"><div class="card-head"><h3>🧾 Status Breakdown</h3></div>
+    <div class="card"><div class="card-head"><h3>Status Breakdown</h3></div>
       ${stRows.map(r => `<div class="bar-row"><span class="bar-label">${r.name} <small>(${r.count})</small></span><div class="bar-track"><div class="bar-fill ${r.name==='Cleared'?'g':r.name==='Bounced'?'r':r.name==='Issued'?'c':'a'}" style="width:${(r.total/stMax*100).toFixed(1)}%"></div></div><span class="bar-val">${moneyPlain(r.total)}</span></div>`).join('')}
     </div>
   </div>`;
@@ -1917,14 +1840,14 @@ function anaComparison(){
   const tm = thisMonth(), pm = prevMonth(), ty = thisYear(), py = prevYear();
   const mk = (arr, m) => sum(arr.filter(x => inMonth(x.date, m)), 'amount');
   const yr = (arr, y) => sum(arr.filter(x => inYear(x.date, y)), 'amount');
-  const cmp = (title, cur, prev, color) => { const d = pctDelta(cur, prev), cls = d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat'; const max = Math.max(cur, prev, 1); return `<div style="border:1px solid var(--line);border-radius:12px;padding:14px"><div style="font-size:10.5px;font-weight:800;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:9px">${esc(title)}</div><div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px"><span class="muted">This</span><strong>${moneyPlain(cur)}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px"><span class="muted">Last</span><strong class="muted">${moneyPlain(prev)}</strong></div><div class="progress"><span style="width:${cur/max*100}%;background:${color}"></span></div><div style="margin-top:9px"><span class="k-delta ${cls}">${d > 0 ? '▲' : d < 0 ? '▼' : '■'} ${Math.abs(d).toFixed(1)}%</span></div></div>`; };
+  const cmp = (title, cur, prev, color) => { const d = pctDelta(cur, prev), cls = d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat'; const max = Math.max(cur, prev, 1); return `<div style="border:1px solid var(--line);border-radius:12px;padding:14px"><div style="font-size:10.5px;font-weight:800;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:9px">${esc(title)}</div><div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px"><span class="muted">This</span><strong>${moneyPlain(cur)}</strong></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px"><span class="muted">Last</span><strong class="muted">${moneyPlain(prev)}</strong></div><div class="progress"><span style="width:${cur/max*100}%;background:${color}"></span></div><div style="margin-top:9px"><span class="k-delta ${cls}">${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'} ${Math.abs(d).toFixed(1)}%</span></div></div>`; };
   return `<div class="grid grid-2">
-    <div class="card"><div class="card-head"><h3>📅 Month-over-Month</h3></div><div class="grid grid-3">
+    <div class="card"><div class="card-head"><h3>Month-over-Month</h3></div><div class="grid grid-3">
       ${cmp('Purchases', mk(db.purchases, tm), mk(db.purchases, pm), '#6366f1')}
       ${cmp('Payments', mk(db.payments, tm), mk(db.payments, pm), '#10b981')}
       ${cmp('Receipts', mk(db.receipts, tm), mk(db.receipts, pm), '#14b8a6')}
     </div></div>
-    <div class="card"><div class="card-head"><h3>📆 Year-over-Year</h3></div><div class="grid grid-3">
+    <div class="card"><div class="card-head"><h3>Year-over-Year</h3></div><div class="grid grid-3">
       ${cmp('Purchases', yr(db.purchases, ty), yr(db.purchases, py), '#6366f1')}
       ${cmp('Payments', yr(db.payments, ty), yr(db.payments, py), '#10b981')}
       ${cmp('Receipts', yr(db.receipts, ty), yr(db.receipts, py), '#14b8a6')}
@@ -1941,7 +1864,7 @@ function anaConcentration(purchases){
     ${kpiCard('Top 3 Concentration', pareto.slice(0,3).reduce((a,b) => a + b.pct, 0).toFixed(1)+'%', 'of total', { color:'p', small:true })}
     ${kpiCard('Top 5 Concentration', pareto.slice(0,5).reduce((a,b) => a + b.pct, 0).toFixed(1)+'%', 'of total', { color:'t', small:true })}
   </div>
-  <div class="card"><div class="card-head"><h3>🎯 Supplier Pareto</h3></div>
+  <div class="card"><div class="card-head"><h3>Supplier Pareto</h3></div>
     ${pareto.length ? pareto.map(r => `<div style="display:grid;grid-template-columns:140px 1fr 100px 80px;gap:12px;align-items:center;font-size:11.5px;margin-bottom:8px"><span class="bar-label">${esc(r.name)}</span><div class="bar-track" style="position:relative"><div class="bar-fill i" style="width:${r.pct}%"></div><div style="position:absolute;top:0;bottom:0;left:${Math.min(100,r.cum)}%;width:2px;background:#4f46e5"></div></div><span class="bar-val">${moneyPlain(r.purchases)}</span><span style="font-weight:800;color:#4f46e5;text-align:right">${r.cum.toFixed(1)}%</span></div>`).join('') : '<div class="empty">No data</div>'}
   </div>`;
 }
@@ -1955,7 +1878,7 @@ function anaReceipts(receipts, own){
     ${kpiCard('Pending', moneyPlain(sum(receipts.filter(r => r.status === 'Pending'), 'amount')), pending+' receipt(s)', { color:'a', small:true })}
     ${kpiCard('Issued', moneyPlain(sum(receipts.filter(r => r.status === 'Issued'), 'amount')), issued+' receipt(s)', { color:'c', small:true })}
   </div>
-  <div class="card"><div class="card-head"><h3>💳 By Method</h3></div>
+  <div class="card"><div class="card-head"><h3>By Method</h3></div>
     ${mRows.length ? mRows.map(r => `<div class="bar-row"><span class="bar-label">${esc(r.name)} <small>(${r.count})</small></span><div class="bar-track"><div class="bar-fill ${r.name==='Cheque'?'i':r.name==='Cash'?'g':r.name==='Bank Transfer'?'t':'p'}" style="width:${(r.total/mMax*100).toFixed(1)}%"></div></div><span class="bar-val">${moneyPlain(r.total)}</span></div>`).join('') : '<div class="empty">No data</div>'}
   </div>`;
 }
@@ -1968,9 +1891,9 @@ function anaCashflow(){
   return `<div class="kpi-strip">
     ${kpiCard('Inflow (30d)', moneyPlain(inF), uc.length+' cheque(s)', { color:'g', small:true })}
     ${kpiCard('Outflow (30d)', moneyPlain(outF), uo.length+' own cheque(s)', { color:'r', small:true })}
-    ${kpiCard('Net (30d)', moneyPlain(inF-outF), (inF-outF)>=0?'✓ Positive':'⚠ Deficit', { color: (inF-outF)>=0?'g':'r', small:true })}
+    ${kpiCard('Net (30d)', moneyPlain(inF-outF), (inF-outF)>=0?'Positive':'Deficit', { color: (inF-outF)>=0?'g':'r', small:true })}
   </div>
-  <div class="card"><div class="card-head"><h3>💰 Aging Exposure</h3></div>
+  <div class="card"><div class="card-head"><h3>Aging Exposure</h3></div>
     <div class="grid grid-4">
       <div class="kpi g" style="box-shadow:none"><div class="k-label">Current</div><div class="k-value sm">${moneyPlain(ga.current)}</div></div>
       <div class="kpi a" style="box-shadow:none"><div class="k-label">Warning</div><div class="k-value sm">${moneyPlain(ga.d30)}</div></div>
@@ -1980,9 +1903,6 @@ function anaCashflow(){
   </div>`;
 }
 
-/* ============================================================
-   ACTIVITY LOG
-   ============================================================ */
 function viewLog(){
   let rows = (db.activityLog || []).slice().reverse();
   const q = ui.log.q.trim().toLowerCase();
@@ -1992,9 +1912,9 @@ function viewLog(){
   if(ui.log.to) rows = rows.filter(r => r.timestamp.slice(0,10) <= ui.log.to);
   rows = rows.slice(0, 500);
   const entities = uniq((db.activityLog || []).map(r => r.entity).filter(Boolean));
-  return `<div class="card"><div class="card-head"><div><h3>Activity Log</h3></div><button class="btn" onclick="exportLogCSV()">⬇ CSV</button></div>
+  return `<div class="card"><div class="card-head"><div><h3>Activity Log</h3></div><button class="btn" onclick="exportLogCSV()">Export CSV</button></div>
     <div class="form-grid" style="margin-bottom:14px">
-      <label class="field">Search<input type="search" placeholder="🔍" value="${esc(ui.log.q)}" oninput="ui.log.q=this.value; render()"></label>
+      <label class="field">Search<input type="search" placeholder="Search" value="${esc(ui.log.q)}" oninput="ui.log.q=this.value; render()"></label>
       <label class="field">Entity<select onchange="ui.log.entity=this.value; render()"><option value="">All</option>${entities.map(e => `<option value="${esc(e)}" ${ui.log.entity===e?'selected':''}>${esc(e)}</option>`).join('')}</select></label>
       <label class="field">From<input type="date" value="${ui.log.from}" onchange="ui.log.from=this.value; render()"></label>
       <label class="field">To<input type="date" value="${ui.log.to}" onchange="ui.log.to=this.value; render()"></label>
@@ -2011,9 +1931,6 @@ function exportLogCSV(){
 }
 window.exportLogCSV = exportLogCSV;
 
-/* ============================================================
-   BACKUP
-   ============================================================ */
 function viewBackup(){
   const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })();
   const counts = { customers: db.customers.length, suppliers: db.suppliers.length, purchases: db.purchases.length, categories: db.categories.length, receipts: db.receipts.length, ownCheques: db.ownCheques.length, bankAccounts: db.bankAccounts.length, payments: db.payments.length, activityLog: db.activityLog.length };
@@ -2022,9 +1939,9 @@ function viewBackup(){
     ${kpiCard('Total Records', Object.values(counts).reduce((a,b) => a + b, 0), 'All sets', { color:'primary', small:true })}
     ${kpiCard('DB Size', size, 'JSON', { color:'t', small:true })}
     ${kpiCard('Backups', db.backupHistory.length, 'Tracked', { color:'p', small:true })}
-    ${kpiCard('Firebase', firebaseReady ? '✓ Ready' : '✗ Offline', currentUser?.email || '', { color: firebaseReady ? 'g' : 'r', small:true })}
+    ${kpiCard('Firebase', firebaseReady ? 'Ready' : 'Offline', currentUser?.email || '', { color: firebaseReady ? 'g' : 'r', small:true })}
   </div>
-  <div class="card"><div class="card-head"><h3>💾 Backup & Export</h3></div>
+  <div class="card"><div class="card-head"><h3>Backup & Export</h3></div>
     <div class="section-title">1. Select Data Sets</div>
     <div class="chkbox-grid">${sets.map(([k,label,c]) => `<label class="chkbox ${ui.bk.sets[k]?'on':''}" onclick="toggleBkSet('${k}',this)"><input type="checkbox" ${ui.bk.sets[k]?'checked':''} onclick="event.stopPropagation()"><span>${esc(label)}</span><span class="badge gray">${c}</span></label>`).join('')}</div>
     <div class="section-title">2. Date Range</div>
@@ -2034,10 +1951,10 @@ function viewBackup(){
     </div>
     <div class="section-title">3. Export</div>
     <div class="row-flex">
-      <button class="btn primary" data-action="backup-json">⬇ Download JSON</button>
-      <button class="btn" data-action="backup-full">🗄 Full Backup</button>
-      <button class="btn" data-action="force-sync">☁️ Force Cloud Sync</button>
-      <button class="btn" data-action="print-report">🖨 Print Summary</button>
+      <button class="btn primary" data-action="backup-json">Download JSON</button>
+      <button class="btn" data-action="backup-full">Full Backup</button>
+      <button class="btn" data-action="force-sync">Force Cloud Sync</button>
+      <button class="btn" data-action="print-report">Print Summary</button>
     </div>
     <div class="section-title">4. CSV Exports</div>
     <div class="row-flex">
@@ -2050,10 +1967,10 @@ function viewBackup(){
       <button class="btn" data-action="csv" data-set="aging">Aging</button>
     </div>
     <div class="section-title">5. Import</div>
-    <div class="alert warn"><span class="ico">⚠</span><div>Import replaces selected data sets.</div></div>
-    <div class="row-flex"><input type="file" id="importFile" accept="application/json" style="max-width:320px"><button class="btn primary" data-action="import-json">⬆ Import</button></div>
+    <div class="alert warn"><span class="ico">!</span><div>Import replaces selected data sets.</div></div>
+    <div class="row-flex"><input type="file" id="importFile" accept="application/json" style="max-width:320px"><button class="btn primary" data-action="import-json">Import</button></div>
     <div class="section-title">6. Utilities</div>
-    <div class="row-flex"><button class="btn" data-action="load-sample">🧪 Load Sample</button><button class="btn danger" data-action="clear-all">🗑 Erase All</button></div>
+    <div class="row-flex"><button class="btn" data-action="load-sample">Load Sample</button><button class="btn danger" data-action="clear-all">Erase All</button></div>
   </div>`;
 }
 function toggleBkSet(k, el){ ui.bk.sets[k] = !ui.bk.sets[k]; el.classList.toggle('on', ui.bk.sets[k]); const cb = el.querySelector('input'); if(cb) cb.checked = ui.bk.sets[k]; }
@@ -2137,23 +2054,20 @@ function printReport(){
   setTimeout(() => w.print(), 350);
 }
 
-/* ============================================================
-   SETTINGS
-   ============================================================ */
 const SETTINGS_SECTIONS = [
-  { key:'profile', ico:'🏪', label:'Business Profile', group:'General' },
-  { key:'appearance', ico:'🎨', label:'Appearance & Theme', group:'General' },
-  { key:'financial', ico:'💰', label:'Financial', group:'Financial' },
-  { key:'numbering', ico:'🔢', label:'Numbering', group:'Financial' },
-  { key:'cheque', ico:'🧾', label:'Cheque Defaults', group:'Financial' },
-  { key:'supplier', ico:'🏭', label:'Supplier Defaults', group:'Defaults' },
-  { key:'customer', ico:'👥', label:'Customer Defaults', group:'Defaults' },
-  { key:'reminders', ico:'⏰', label:'Reminders & Aging', group:'Automation' },
-  { key:'notifications', ico:'🔔', label:'Notifications', group:'Automation' },
-  { key:'users', ico:'🔐', label:'Users & Access', group:'Security' },
-  { key:'backup', ico:'💾', label:'Backup & Data', group:'System' },
-  { key:'advanced', ico:'⚙️', label:'Advanced', group:'System' },
-  { key:'about', ico:'ℹ️', label:'About', group:'System' }
+  { key:'profile', ico:'P', label:'Business Profile', group:'General' },
+  { key:'appearance', ico:'A', label:'Appearance & Theme', group:'General' },
+  { key:'financial', ico:'$', label:'Financial', group:'Financial' },
+  { key:'numbering', ico:'#', label:'Numbering', group:'Financial' },
+  { key:'cheque', ico:'Q', label:'Cheque Defaults', group:'Financial' },
+  { key:'supplier', ico:'S', label:'Supplier Defaults', group:'Defaults' },
+  { key:'customer', ico:'C', label:'Customer Defaults', group:'Defaults' },
+  { key:'reminders', ico:'T', label:'Reminders & Aging', group:'Automation' },
+  { key:'notifications', ico:'N', label:'Notifications', group:'Automation' },
+  { key:'users', ico:'U', label:'Users & Access', group:'Security' },
+  { key:'backup', ico:'B', label:'Backup & Data', group:'System' },
+  { key:'advanced', ico:'X', label:'Advanced', group:'System' },
+  { key:'about', ico:'i', label:'About', group:'System' }
 ];
 const THEME_PRESETS = [
   { name:'Indigo', primary:'#6366f1', accent:'#8b5cf6' },
@@ -2173,7 +2087,7 @@ function viewSettings(){
     <aside class="settings-nav">${order.map(g => groups[g] ? `<div class="settings-nav-group">${g}</div>${groups[g].map(sec => `<div class="settings-nav-item ${active === sec.key ? 'active' : ''}" onclick="ui.settings.tab='${sec.key}'; render()"><span class="ico">${sec.ico}</span>${esc(sec.label)}</div>`).join('')}` : '').join('')}</aside>
     <form class="settings-panel" onsubmit="saveSettings(event)">
       ${settingsSection(active)}
-      <div class="settings-sticky-actions"><button type="button" class="btn" onclick="resetCurrentSettingsSection()">↺ Reset Section</button><button type="submit" class="btn primary">💾 Save Settings</button></div>
+      <div class="settings-sticky-actions"><button type="button" class="btn" onclick="resetCurrentSettingsSection()">Reset Section</button><button type="submit" class="btn primary">Save Settings</button></div>
     </form>
   </div>`;
 }
@@ -2183,7 +2097,7 @@ function settingsSection(key){
   return (map[key] || settingsProfile)(s);
 }
 function settingsProfile(s){
-  return `<div class="settings-panel-head"><h2>🏪 Business Profile</h2><div class="desc">Your shop identity across reports and the UI.</div></div>
+  return `<div class="settings-panel-head"><h2>Business Profile</h2><div class="desc">Your shop identity across reports and the UI.</div></div>
     <div class="settings-section"><div class="settings-section-title">Identity</div>
       <div class="form-grid">
         <label class="field">Shop Name<input name="st_shopName" value="${esc(s.shopName)}"></label>
@@ -2202,7 +2116,7 @@ function settingsProfile(s){
     </div>`;
 }
 function settingsAppearance(s){
-  return `<div class="settings-panel-head"><h2>🎨 Appearance</h2><div class="desc">Customize the look.</div></div>
+  return `<div class="settings-panel-head"><h2>Appearance</h2><div class="desc">Customize the look.</div></div>
     <div class="settings-section"><div class="settings-section-title">Colors</div>
       <div class="form-grid" style="margin-bottom:14px">
         <label class="field">Primary<input type="color" name="st_themePrimary" value="${esc(s.themePrimary || '#6366f1')}"></label>
@@ -2223,7 +2137,7 @@ function settingsAppearance(s){
     </div>`;
 }
 function settingsFinancial(s){
-  return `<div class="settings-panel-head"><h2>💰 Financial & Currency</h2></div>
+  return `<div class="settings-panel-head"><h2>Financial & Currency</h2></div>
     <div class="settings-section"><div class="settings-section-title">Currency</div>
       <div class="form-grid">
         <label class="field">Symbol<input name="st_currency" value="${esc(s.currency)}"></label>
@@ -2232,11 +2146,11 @@ function settingsFinancial(s){
         <label class="field">Thousands Sep<input name="st_thousandsSeparator" maxlength="1" value="${esc(s.thousandsSeparator)}"></label>
         <label class="field">Decimal Sep<input name="st_decimalSeparator" maxlength="1" value="${esc(s.decimalSeparator)}"></label>
       </div>
-      <div class="alert info" style="margin-top:14px"><span class="ico">💡</span><div>Preview: <strong>${money(1234567.89)}</strong></div></div>
+      <div class="alert info" style="margin-top:14px"><span class="ico">i</span><div>Preview: <strong>${money(1234567.89)}</strong></div></div>
     </div>`;
 }
 function settingsNumbering(s){
-  return `<div class="settings-panel-head"><h2>🔢 Numbering & Prefixes</h2></div>
+  return `<div class="settings-panel-head"><h2>Numbering & Prefixes</h2></div>
     <div class="settings-section"><div class="settings-section-title">Auto-Numbering</div>
       <div class="settings-toggle-row"><div class="settings-toggle-info"><div class="settings-toggle-label">Enable</div></div><div class="toggle-switch ${s.autoNumbering ? 'on' : ''}" onclick="toggleSettingSwitch(this,'st_autoNumbering')"><input type="checkbox" name="st_autoNumbering" ${s.autoNumbering ? 'checked' : ''} hidden></div></div>
     </div>
@@ -2250,7 +2164,7 @@ function settingsNumbering(s){
 }
 function settingsCheque(s){
   const banks = db.bankAccounts.map(b => b.bankName);
-  return `<div class="settings-panel-head"><h2>🧾 Cheque Defaults</h2></div>
+  return `<div class="settings-panel-head"><h2>Cheque Defaults</h2></div>
     <div class="settings-section"><div class="settings-section-title">Defaults</div>
       <div class="form-grid">
         <label class="field">Default Bank<input name="st_defaultBank" list="bankList" value="${esc(s.defaultBank || '')}"><datalist id="bankList">${banks.map(b => `<option value="${esc(b)}">`).join('')}</datalist></label>
@@ -2261,7 +2175,7 @@ function settingsCheque(s){
     </div>`;
 }
 function settingsSupplier(s){
-  return `<div class="settings-panel-head"><h2>🏭 Supplier Defaults</h2></div>
+  return `<div class="settings-panel-head"><h2>Supplier Defaults</h2></div>
     <div class="settings-section"><div class="settings-section-title">New Supplier</div>
       <div class="form-grid">
         <label class="field">Credit Days<input type="number" min="0" name="st_defaultSupplierCreditDays" value="${num(s.defaultSupplierCreditDays)}"></label>
@@ -2279,7 +2193,7 @@ function settingsSupplier(s){
     </div>`;
 }
 function settingsCustomer(s){
-  return `<div class="settings-panel-head"><h2>👥 Customer Defaults</h2></div>
+  return `<div class="settings-panel-head"><h2>Customer Defaults</h2></div>
     <div class="settings-section"><div class="settings-section-title">New Customer</div>
       <div class="form-grid">
         <label class="field">Credit Days<input type="number" min="0" name="st_defaultCustomerCreditDays" value="${num(s.defaultCustomerCreditDays)}"></label>
@@ -2289,7 +2203,7 @@ function settingsCustomer(s){
     </div>`;
 }
 function settingsReminders(s){
-  return `<div class="settings-panel-head"><h2>⏰ Reminders & Aging</h2></div>
+  return `<div class="settings-panel-head"><h2>Reminders & Aging</h2></div>
     <div class="settings-section"><div class="settings-section-title">Windows</div>
       <div class="form-grid">
         <label class="field">Cheque Reminder (days)<input type="number" min="1" name="st_chequeReminderDays" value="${num(s.chequeReminderDays)}"></label>
@@ -2300,7 +2214,7 @@ function settingsReminders(s){
 }
 function settingsNotifications(s){
   const row = (l, k) => `<div class="settings-toggle-row"><div class="settings-toggle-info"><div class="settings-toggle-label">${l}</div></div><div class="toggle-switch ${s[k] ? 'on' : ''}" onclick="toggleSettingSwitch(this,'st_${k}')"><input type="checkbox" name="st_${k}" ${s[k] ? 'checked' : ''} hidden></div></div>`;
-  return `<div class="settings-panel-head"><h2>🔔 Notifications</h2></div>
+  return `<div class="settings-panel-head"><h2>Notifications</h2></div>
     <div class="settings-section"><div class="settings-section-title">Master Switch</div>${row('Enable Notifications','notifEnabled')}</div>
     <div class="settings-section"><div class="settings-section-title">Types</div>
       ${row('Overdue Cheques','notifOverdueCheques')}
@@ -2317,8 +2231,8 @@ function settingsNotifications(s){
 function settingsUsers(s){
   const allowed = Array.isArray(db.allowedEmails) ? db.allowedEmails : [ADMIN_EMAIL];
   const isAdmin = currentUserRole === 'admin';
-  return `<div class="settings-panel-head"><h2>🔐 Users & Access Control</h2><div class="desc">Manage who can sign in. Only listed emails will be allowed.</div></div>
-    <div class="alert info"><span class="ico">💡</span><div><strong>Admin:</strong> ${esc(ADMIN_EMAIL)} (always authorized)<br>${isAdmin ? 'As admin, you can add/remove users below.' : 'Only an admin can modify the access list.'}</div></div>
+  return `<div class="settings-panel-head"><h2>Users & Access Control</h2><div class="desc">Manage who can sign in. Only listed emails will be allowed.</div></div>
+    <div class="alert info"><span class="ico">i</span><div><strong>Admin:</strong> ${esc(ADMIN_EMAIL)} (always authorized)<br>${isAdmin ? 'As admin, you can add/remove users below.' : 'Only an admin can modify the access list.'}</div></div>
     <div class="settings-section"><div class="settings-section-title">Authorized Users (${allowed.length})</div>
       ${allowed.map(email => {
         const isDefAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -2326,9 +2240,9 @@ function settingsUsers(s){
       }).join('')}
     </div>
     ${isAdmin ? `<div class="settings-section"><div class="settings-section-title">Add Authorized User</div>
-      <div class="alert warn"><span class="ico">⚠</span><div>Only add emails you trust. Once added, that person can sign in with Google and access all data.</div></div>
+      <div class="alert warn"><span class="ico">!</span><div>Only add emails you trust. Once added, that person can sign in with Google and access all data.</div></div>
       <div class="form-grid"><label class="field">Email<input id="newAllowedEmail" type="email" placeholder="user@example.com"></label></div>
-      <div class="row-flex" style="margin-top:12px"><button type="button" class="btn primary" onclick="addAllowedEmail()">＋ Add User</button><button type="button" class="btn" onclick="showLoginHistory()">📜 Login History</button></div>
+      <div class="row-flex" style="margin-top:12px"><button type="button" class="btn primary" onclick="addAllowedEmail()">Add User</button><button type="button" class="btn" onclick="showLoginHistory()">Login History</button></div>
     </div>` : ''}
     <div class="settings-section"><div class="settings-section-title">Recent Sign-ins</div>
       ${(() => { const logins = (db.activityLog || []).filter(a => a.action === 'Sign In').slice(-10).reverse(); if(!logins.length) return '<div class="muted small">No sign-in records yet.</div>'; return `<div class="table-wrap"><table style="min-width:0"><thead><tr><th>When</th><th>User</th></tr></thead><tbody>${logins.map(l => `<tr><td class="small">${dateTimeFmt(l.timestamp)}</td><td class="small"><strong>${esc(l.userEmail)}</strong></td></tr>`).join('')}</tbody></table></div>`; })()}
@@ -2361,16 +2275,16 @@ function showLoginHistory(){
 }
 window.showLoginHistory = showLoginHistory;
 function settingsBackup(s){
-  return `<div class="settings-panel-head"><h2>💾 Backup & Data</h2></div>
+  return `<div class="settings-panel-head"><h2>Backup & Data</h2></div>
     <div class="settings-section"><div class="settings-section-title">Status</div>
-      <div class="alert ${firebaseReady && currentUser ? 'success' : 'warn'}"><span class="ico">${firebaseReady && currentUser ? '☁️' : '⚠'}</span><div>${firebaseReady ? `Firebase connected • ${esc(currentUser?.email || '')}` : 'Firebase offline'}</div></div>
+      <div class="alert ${firebaseReady && currentUser ? 'success' : 'warn'}"><span class="ico">${firebaseReady && currentUser ? 'OK' : '!'}</span><div>${firebaseReady ? `Firebase connected • ${esc(currentUser?.email || '')}` : 'Firebase offline'}</div></div>
     </div>
     <div class="settings-section"><div class="settings-section-title">Behavior</div>
       <div class="settings-toggle-row"><div class="settings-toggle-info"><div class="settings-toggle-label">Auto-Save</div><div class="settings-toggle-desc">Persist to local + Firebase on every change.</div></div><div class="toggle-switch ${s.autoSave ? 'on' : ''}" onclick="toggleSettingSwitch(this,'st_autoSave')"><input type="checkbox" name="st_autoSave" ${s.autoSave ? 'checked' : ''} hidden></div></div>
     </div>`;
 }
 function settingsAdvanced(s){
-  return `<div class="settings-panel-head"><h2>⚙️ Advanced</h2></div>
+  return `<div class="settings-panel-head"><h2>Advanced</h2></div>
     <div class="settings-section"><div class="settings-section-title">Safety</div>
       <div class="settings-toggle-row"><div class="settings-toggle-info"><div class="settings-toggle-label">Confirm Before Delete</div></div><div class="toggle-switch ${s.confirmBeforeDelete ? 'on' : ''}" onclick="toggleSettingSwitch(this,'st_confirmBeforeDelete')"><input type="checkbox" name="st_confirmBeforeDelete" ${s.confirmBeforeDelete ? 'checked' : ''} hidden></div></div>
     </div>
@@ -2379,20 +2293,20 @@ function settingsAdvanced(s){
       <div class="form-grid" style="margin-top:12px"><label class="field">Max Log Entries<input type="number" min="100" max="10000" step="100" name="st_maxLogEntries" value="${num(s.maxLogEntries)}"></label></div>
     </div>
     <div class="settings-section"><div class="settings-section-title">Danger Zone</div>
-      <div class="alert danger"><span class="ico">⚠</span><div>Reset all settings to defaults. Business data NOT affected.</div></div>
-      <button type="button" class="btn danger" onclick="resetAllSettings()">↺ Reset All Settings</button>
+      <div class="alert danger"><span class="ico">!</span><div>Reset all settings to defaults. Business data NOT affected.</div></div>
+      <button type="button" class="btn danger" onclick="resetAllSettings()">Reset All Settings</button>
     </div>`;
 }
 function settingsAbout(){
   const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })();
   const counts = { customers:db.customers.length, suppliers:db.suppliers.length, purchases:db.purchases.length, receipts:db.receipts.length, payments:db.payments.length, ownCheques:db.ownCheques.length, activityLog:db.activityLog.length };
-  return `<div class="settings-panel-head"><h2>ℹ️ About</h2></div>
+  return `<div class="settings-panel-head"><h2>About</h2></div>
     <div class="settings-section"><div class="settings-section-title">Application</div>
       <div class="grid grid-3">
         <div><div class="muted small">Application</div><strong>${APP_NAME}</strong></div>
         <div><div class="muted small">Version</div><strong>${APP_VER}</strong></div>
         <div><div class="muted small">DB Size</div><strong>${size}</strong></div>
-        <div><div class="muted small">Firebase</div><strong>${firebaseReady ? '✓ Ready' : '✗ Not ready'}</strong></div>
+        <div><div class="muted small">Firebase</div><strong>${firebaseReady ? 'Ready' : 'Not ready'}</strong></div>
         <div><div class="muted small">Project</div><strong class="mono" style="font-size:11px">${firebaseConfig.projectId}</strong></div>
         <div><div class="muted small">Signed in</div><strong>${esc(currentUser?.email || '—')}</strong></div>
       </div>
@@ -2402,7 +2316,7 @@ function settingsAbout(){
     </div>
     <div class="settings-section"><div class="settings-section-title">Firebase Diagnostics</div>
       <table style="width:100%;font-size:12px;border-collapse:collapse">
-        <tr><td style="padding:6px 0;border-bottom:1px dashed var(--line-2)">Firebase Initialized</td><td style="text-align:right;font-weight:700;padding:6px 0;border-bottom:1px dashed var(--line-2)">${firebaseReady ? '✓ Yes' : '✗ No'}</td></tr>
+        <tr><td style="padding:6px 0;border-bottom:1px dashed var(--line-2)">Firebase Initialized</td><td style="text-align:right;font-weight:700;padding:6px 0;border-bottom:1px dashed var(--line-2)">${firebaseReady ? 'Yes' : 'No'}</td></tr>
         <tr><td style="padding:6px 0;border-bottom:1px dashed var(--line-2)">API Key Length</td><td style="text-align:right;font-weight:700;padding:6px 0;border-bottom:1px dashed var(--line-2)">${(firebaseConfig.apiKey || '').length} chars</td></tr>
         <tr><td style="padding:6px 0;border-bottom:1px dashed var(--line-2)">Auth Domain</td><td style="text-align:right;font-weight:700;padding:6px 0;border-bottom:1px dashed var(--line-2);font-size:10px">${esc(firebaseConfig.authDomain)}</td></tr>
         <tr><td style="padding:6px 0;border-bottom:1px dashed var(--line-2)">Current Domain</td><td style="text-align:right;font-weight:700;padding:6px 0;border-bottom:1px dashed var(--line-2);font-size:10px">${esc(location.hostname)}</td></tr>
@@ -2483,9 +2397,6 @@ function resetAllSettings(){
 }
 window.resetAllSettings = resetAllSettings;
 
-/* ============================================================
-   EVENT DELEGATION
-   ============================================================ */
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');
   if(!el) return;
@@ -2547,22 +2458,19 @@ document.addEventListener('keydown', e => {
   if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); document.getElementById('globalSearch')?.focus(); }
 });
 
-/* ============================================================
-   BOOT
-   ============================================================ */
 (async function boot(){
   await initFirebase();
   if(!firebaseReady){
-    showLoginError('⚠️ Firebase could not initialize.\n\nError: ' + (firebaseInitError || 'Unknown') + '\n\nYou can still continue in Offline Mode (local storage only).');
+    showLoginError('Firebase could not initialize.\n\nError: ' + (firebaseInitError || 'Unknown') + '\n\nYou can still continue in Offline Mode (local storage only).');
     const btn = document.getElementById('googleSignInBtn');
-    if(btn){ btn.disabled = true; btn.innerHTML = '<span style="font-weight:800">⚠ Firebase Unavailable</span>'; }
+    if(btn){ btn.disabled = true; btn.innerHTML = '<span style="font-weight:800">Firebase Unavailable</span>'; }
     const note = document.querySelector('.login-note');
     if(note && !document.getElementById('offlineBtn')){
       const ob = document.createElement('button');
       ob.id = 'offlineBtn';
       ob.className = 'google-btn';
       ob.style.marginTop = '14px';
-      ob.innerHTML = '🖥️ Continue in Offline Mode';
+      ob.innerHTML = 'Continue in Offline Mode';
       ob.onclick = enterOfflineMode;
       note.parentNode.insertBefore(ob, note);
     }

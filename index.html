@@ -360,10 +360,10 @@ tfoot td{padding:11px 14px;font-weight:800;background:var(--surface-3);border-to
 <script>
 'use strict';
 /* ============================================================
-   FIREBASE CONFIG
+   FIREBASE CONFIG — YOUR VERIFIED 39-CHARACTER KEY
    ============================================================ */
 const firebaseConfig = {
-  apiKey: "AIzaSyD8Rq3fBzmUM9OACpKc8HMEZSXB7tQUEw",
+  apiKey: "AIzaSyD8Rq3fBzmUM9oACPkKc8HMEZSXB7tQUEw",
   authDomain: "lk-payments-handling.firebaseapp.com",
   projectId: "lk-payments-handling",
   storageBucket: "lk-payments-handling.firebasestorage.app",
@@ -1097,7 +1097,6 @@ function deleteCat(id){
 
 function viewReceipts(){
   const totals = { pending: sum(db.receipts.filter(r => r.status === 'Pending'), 'amount'), cleared: sum(db.receipts.filter(r => r.status === 'Cleared'), 'amount'), issued: sum(db.receipts.filter(r => r.status === 'Issued'), 'amount'), bounced: sum(db.receipts.filter(r => r.status === 'Bounced'), 'amount') };
-  const banks = uniq(db.receipts.map(r => r.bank).filter(Boolean));
   return `
   <div class="kpi-strip">
     ${kpiCard('Pending', moneyPlain(totals.pending), db.receipts.filter(r => r.status==='Pending').length+' receipt(s)', { color:'a', small:true })}
@@ -2461,7 +2460,7 @@ document.addEventListener('keydown', e => {
 (async function boot(){
   await initFirebase();
   if(!firebaseReady){
-    showLoginError('Firebase could not initialize.\n\nError: ' + (firebaseInitError || 'Unknown') + '\n\nYou can still continue in Offline Mode (local storage only).');
+    showLoginError('Firebase could not initialize.\n\nError: ' + (firebaseInitError || 'Unknown'));
     const btn = document.getElementById('googleSignInBtn');
     if(btn){ btn.disabled = true; btn.innerHTML = '<span style="font-weight:800">Firebase Unavailable</span>'; }
     const note = document.querySelector('.login-note');

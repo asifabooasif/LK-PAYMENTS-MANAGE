@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lanka Shoe — Enterprise Suite v7</title>
+<title>Lanka Shoe — Enterprise Suite v8</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👟</text></svg>">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -24,7 +24,6 @@ h1,h2,h3,h4{margin:0;font-weight:600;}
 button,input,select,textarea{font-family:inherit;font-size:inherit;outline:none;}
 button{cursor:pointer;border:none;background:none;}
 .num{font-variant-numeric:tabular-nums;}.mono{font-family:var(--mono);font-size:12px;}.muted{color:var(--text-3);}.small{font-size:11.5px;}
-/* LOGIN — UNCHANGED */
 .login-overlay{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px;}
 .login-overlay.hidden{display:none;}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:48px 40px 40px;max-width:420px;width:100%;box-shadow:var(--shadow-lg);text-align:center;}
@@ -175,7 +174,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .alert.danger{background:var(--red-soft);color:var(--red);border-color:var(--red-bd);}
 .alert.success{background:var(--green-soft);color:var(--green);border-color:var(--green-bd);}
 .alert .ico{font-size:14px;flex:0 0 18px;}
-/* PAYMENT PANEL — the star of the show */
 .pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;}
 @media (max-width:1080px){.pay-grid{grid-template-columns:1fr;}}
 .pay-panel{background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r-md);padding:16px;display:flex;flex-direction:column;}
@@ -207,7 +205,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .leaf-row input{padding:6px 9px;font-size:11.5px;}
 .leaf-picker-modal{max-height:400px;overflow:auto;}
 .book-card{border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);margin-bottom:10px;overflow:hidden;}
-.book-card-head{padding:14px 16px;background:var(--surface-2);display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .15s;}
+.book-card-head{padding:14px 16px;background:var(--surface-2);display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
 .book-card-head:hover{background:var(--surface-3);}
 .book-card-head .bk-info{flex:1;min-width:0;}
 .book-card-head .bk-bank{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;}
@@ -323,6 +321,26 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 #dtGuard .btn{margin-top:24px;background:var(--red);color:#fff;padding:12px 24px;font-size:14px;}
 .tb-swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
 .tb-swatch.on{border-color:var(--text);}
+/* UPCOMING CHEQUE TRACKER */
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;}
+.cal-day{background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--r-sm);padding:8px 6px;text-align:center;font-size:11px;}
+.cal-day .d{font-weight:600;font-size:11px;color:var(--text-3);}
+.cal-day .amt{font-size:12px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;}
+.cal-day.has-amt{background:var(--amber-soft);border-color:var(--amber-bd);}
+.cal-day.has-amt .amt{color:var(--amber);}
+.cal-day.today{border-color:var(--accent);border-width:2px;}
+.cal-day.past{opacity:.5;}
+.upcoming-day{padding:14px 16px;border:1px solid var(--border-2);border-radius:var(--r-md);background:var(--surface-2);margin-bottom:10px;}
+.upcoming-day-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border-2);}
+.upcoming-day-head .d{font-weight:600;font-size:13px;}
+.upcoming-day-head .c{font-size:11.5px;color:var(--text-4);}
+.upcoming-day-head .total{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;color:var(--amber);}
+.upcoming-chq-row{display:grid;grid-template-columns:110px 1fr 150px 120px 1fr;gap:10px;padding:8px 0;font-size:12px;align-items:center;border-bottom:1px solid var(--border-2);}
+.upcoming-chq-row:last-child{border-bottom:none;}
+.cash-req-card{background:linear-gradient(135deg,var(--amber-soft),var(--surface-2));border:1px solid var(--amber-bd);border-radius:var(--r-lg);padding:20px;margin-bottom:16px;}
+.cash-req-card .h{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);margin-bottom:8px;}
+.cash-req-card .v{font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);}
+.cash-req-card .sub{font-size:12px;color:var(--text-3);margin-top:6px;}
 @media print{.sidebar,.topbar-actions,.btn,.icon-btn,.seg,.tabs,.fab,.fab-menu,#notifPanel,.gsearch{display:none!important;}.content{padding:0;}.card{box-shadow:none;border:none;}.app{display:block;}}
 @media (max-width:840px){
   .app{flex-direction:column;}
@@ -343,12 +361,15 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
   .settings-nav{position:relative;top:0;}
   .leaf-row{grid-template-columns:1fr 1fr;}
   .picker-toolbar{grid-template-columns:1fr 1fr;}
+  .pay-grid{grid-template-columns:1fr;}
+  .cal-week{grid-template-columns:repeat(4,1fr);}
+  .upcoming-chq-row{grid-template-columns:1fr 1fr;}
 }
 </style>
 </head>
 <body>
 
-<!-- LOGIN — UNCHANGED -->
+<!-- LOGIN -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <div class="login-logo" id="loginLogo">LS</div>
@@ -384,7 +405,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
           <button class="seg-btn active" data-density="comfortable" onclick="setDensity('comfortable')">▫</button>
           <button class="seg-btn" data-density="spacious" onclick="setDensity('spacious')">◻</button>
         </div>
-        <button class="btn icon" data-action="nav" data-view="reports" title="Reports">📊</button>
         <button class="btn icon bell" data-action="toggle-notif">🔔<span class="dot-badge" id="notifCount" style="display:none">0</span></button>
         <button class="btn icon" data-action="nav" data-view="backup">💾</button>
         <button class="btn icon" data-action="nav" data-view="settings">⚙️</button>
@@ -407,7 +427,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 'use strict';
 
 /* ============================================================
-   DEVTOOLS GUARD — passive, non-interfering
+   DEVTOOLS GUARD
    ============================================================ */
 (function(){
   function init(){
@@ -441,7 +461,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 })();
 
 /* ============================================================
-   FIREBASE CONFIG — UNCHANGED
+   FIREBASE CONFIG
    ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyD8Rq3fBzmUM9oACPkKc8HMEZSXB7tQUEw",
@@ -457,7 +477,7 @@ const ROOT = 'lanka_shoe';
 const ACCESS_DOC_PATH = ROOT + '/access';
 const DATA_DOC_PATH = ROOT + '/data';
 const USERS_COL_PATH = ROOT + '/users';
-const APP_NAME = 'Lanka Shoe Enterprise', APP_VER = '7.0.0';
+const APP_NAME = 'Lanka Shoe Enterprise', APP_VER = '8.0.0';
 
 let firebaseApp = null, auth = null, firestore = null;
 let currentUser = null, currentUserRole = 'user', currentUserPerms = null, firebaseReady = false;
@@ -497,22 +517,20 @@ const sortRows = (rows, key, dir) => arr(rows).slice().sort((a,b) => { let x = a
 const csvEscape = v => { const s = (v === undefined || v === null) ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
 const toCSV = (headers, rows) => '\uFEFF' + [headers.map(csvEscape).join(',')].concat(rows.map(r => r.map(csvEscape).join(','))).join('\n');
 const download = (filename, content, type) => { const blob = new Blob([content], { type: type || 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1500); };
+const monthName = k => { if(!k) return ''; const [y,m] = k.split('-'); return new Date(Number(y), Number(m)-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
 
 function sparkline(values, opts){ opts = opts || {}; const w = opts.w || 200, h = opts.h || 30, color = opts.color || 'var(--accent)'; if(!values.length) return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:' + h + 'px"></svg>'; const max = Math.max(1, Math.max.apply(null, values)), min = Math.min(0, Math.min.apply(null, values)), range = max - min || 1; const step = values.length > 1 ? w/(values.length-1) : w; const pts = values.map((v,i) => [i*step, h-((v-min)/range)*(h-4)-2]); const line = pts.map(p => p.join(',')).join(' '); return '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:' + h + 'px"><path d="M0,' + h + ' L' + line.replace(/ /g,' L') + ' L' + w + ',' + h + ' Z" fill="' + color + '" opacity=".08"/><path d="M' + line.replace(/ /g,' L') + '" stroke="' + color + '" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>'; }
 function progressRing(value, total, color, size){ size = size || 90; const pct = total > 0 ? Math.min(1, value/total) : 0; const r = (size - 8)/2, c = size/2, circ = 2 * Math.PI * r; return '<svg class="ring" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + c + '" cy="' + c + '" r="' + r + '" stroke="var(--surface-3)" stroke-dasharray="' + circ + '"/><circle cx="' + c + '" cy="' + c + '" r="' + r + '" stroke="' + color + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + (circ * (1 - pct)) + '"/></svg>'; }
-function lineChartSVG(series, opts){ opts = opts || {}; const w = opts.w || 400, h = opts.h || 140, pad = {l:44,r:12,t:12,b:26}; const pW = w-pad.l-pad.r, pH = h-pad.t-pad.b; const max = Math.max(1, Math.max.apply(null, series.flatMap(s => s.values))); const n = series[0] ? series[0].values.length : 0; const sX = n > 1 ? pW/(n-1) : pW; let grid = ''; for(let i = 0; i <= 4; i++){ const y = pad.t + (pH*i/4); grid += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (pad.l+pW) + '" y2="' + y + '" stroke="var(--border-2)"/>'; grid += '<text x="' + (pad.l-6) + '" y="' + (y+3) + '" font-size="9.5" fill="var(--text-4)" text-anchor="end">' + fmtCompact(max*(4-i)/4) + '</text>'; } let lines = ''; series.forEach(s => { if(!s.values.length) return; const pts = s.values.map((v,i) => [pad.l+i*sX, pad.t+pH-(v/max)*pH]); lines += '<path d="M' + pts.map(p => p.join(',')).join(' L') + '" fill="none" stroke="' + s.color + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'; pts.forEach((p,i) => { lines += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="2.5" fill="var(--surface)" stroke="' + s.color + '" stroke-width="1.6"><title>' + ((opts.labels||[])[i] || '') + ': ' + moneyPlain(s.values[i]) + '</title></circle>'; }); }); const labels = (opts.labels || []).map((l,i) => '<text x="' + (pad.l+i*sX) + '" y="' + (h-8) + '" font-size="9.5" fill="var(--text-4)" text-anchor="middle">' + esc(l) + '</text>').join(''); return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' + grid + lines + labels + '</svg>'; }
+function lineChartSVG(series, opts){ opts = opts || {}; const w = opts.w || 400, h = opts.h || 140, pad = {l:44,r:12,t:12,b:26}; const pW = w-pad.l-pad.r, pH = h-pad.t-pad.b; const max = Math.max(1, Math.max.apply(null, series.flatMap(s => s.values))); const n = series[0] ? series[0].values.length : 0; const sX = n > 1 ? pW/(n-1) : pW; let grid = ''; for(let i = 0; i <= 4; i++){ const y = pad.t + (pH*i/4); grid += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (pad.l+pW) + '" y2="' + y + '" stroke="var(--border-2)"/>'; grid += '<text x="' + (pad.l-6) + '" y="' + (y+3) + '" font-size="9.5" fill="var(--text-4)" text-anchor="end">' + fmtCompact(max*(4-i)/4) + '</text>'; } let lines = ''; series.forEach(s => { if(!s.values.length) return; const pts = s.values.map((v,i) => [pad.l+i*sX, pad.t+pH-(v/max)*pH]); lines += '<path d="M' + pts.map(p => p.join(',')).join(' L') + '" fill="none" stroke="' + s.color + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'; }); const labels = (opts.labels || []).map((l,i) => '<text x="' + (pad.l+i*sX) + '" y="' + (h-8) + '" font-size="9.5" fill="var(--text-4)" text-anchor="middle">' + esc(l) + '</text>').join(''); return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' + grid + lines + labels + '</svg>'; }
 
 /* ============================================================
    DEFAULTS / SEED
    ============================================================ */
 function defaultSettings(){
-  return { shopName:'Lanka Shoe', shopTagline:'Enterprise Suite', businessAddress:'', businessPhone:'', businessEmail:'', taxId:'', logoText:'', uiTheme:'professional', density:'comfortable', fontSize:13.5, sidebarCollapsed:false, customAccent:'#2563eb', currency:'Rs.', currencyPosition:'before', decimalPlaces:2, thousandsSeparator:',', decimalSeparator:'.', autoNumbering:true, nextPaymentNo:1, nextJournalNo:1, defaultBank:'', defaultChequeDays:30, defaultSupplierCreditDays:30, defaultSupplierCreditLimit:0, supplierAgingBuckets:[30,60,90], flagOverLimit:true, defaultCustomerCreditDays:0, defaultCustomerCreditLimit:0, chequeReminderDays:7, agingCriticalDays:90, notifEnabled:true, notifOverdueCheques:true, notifDueSoon:true, notifAging90:true, notifCreditLimit:true, notifBounced:true, notifOwnCheques:true, notifSmartAlerts:true, notifLowStock:false, notifThresholdAmount:0, autoSave:true, confirmBeforeDelete:true, enableActivityLog:true, maxLogEntries:3000, undoWindowSeconds:30, readOnlyMode:false, watermarkExports:true, dashboardKpisOrder:['payable','receivable','purchases','receipts','expenses','aging90','bounced','ownCheques'], onboardingDone:false, // PAYMENT DEFAULTS
-    paymentRequireParty:false, paymentRequireOwn:false, paymentAllowMix:true, paymentConfirmLarge:100000, paymentLargeThreshold:500000, // CHEQUE BOOK defaults
-    chequeLeafPad:4, autoMarkIssued:true, // SECURITY
-    sessionTimeoutMinutes:0, pinLockEnabled:false };
+  return { shopName:'Lanka Shoe', shopTagline:'Enterprise Suite', businessAddress:'', businessPhone:'', businessEmail:'', taxId:'', logoText:'', uiTheme:'professional', density:'comfortable', fontSize:13.5, sidebarCollapsed:false, customAccent:'#2563eb', currency:'Rs.', currencyPosition:'before', decimalPlaces:2, thousandsSeparator:',', decimalSeparator:'.', autoNumbering:true, nextPaymentNo:1, nextJournalNo:1, defaultBank:'', defaultChequeDays:30, defaultSupplierCreditDays:30, defaultSupplierCreditLimit:0, supplierAgingBuckets:[30,60,90], flagOverLimit:true, defaultCustomerCreditDays:0, defaultCustomerCreditLimit:0, chequeReminderDays:7, agingCriticalDays:90, notifEnabled:true, notifOverdueCheques:true, notifDueSoon:true, notifAging90:true, notifCreditLimit:true, notifBounced:true, notifOwnCheques:true, notifSmartAlerts:true, notifThresholdAmount:0, autoSave:true, confirmBeforeDelete:true, enableActivityLog:true, maxLogEntries:3000, undoWindowSeconds:30, readOnlyMode:false, watermarkExports:true, dashboardKpisOrder:['payable','receivable','purchases','receipts','expenses','aging90','bounced','ownCheques'], onboardingDone:false, paymentRequireParty:false, paymentRequireOwn:false, paymentAllowMix:true, paymentConfirmLarge:100000, paymentLargeThreshold:500000, chequeLeafPad:4, autoMarkIssued:true, upcomingDaysAhead:60 };
 }
 function seed(){
-  return { settings: defaultSettings(), categories:[{id:uid(),name:'Shoes',color:'#2563eb'},{id:uid(),name:'Slippers',color:'#7c3aed'}], customers:[], suppliers:[], purchases:[], receipts:[], customerCheques:[], chequeBooks:[], chequeLeaves:[], ownCheques:[], payments:[], bankAccounts:[], expenses:[], journals:[], activityLog:[], auditTrail:[], loginHistory:[], fiscalYears:[], notifRead:{}, allowedEmails:[ADMIN_EMAIL], userPerms:{} };
+  return { settings: defaultSettings(), categories:[{id:uid(),name:'Shoes',color:'#2563eb'},{id:uid(),name:'Slippers',color:'#7c3aed'}], customers:[], suppliers:[], purchases:[], receipts:[], customerCheques:[], chequeBooks:[], chequeLeaves:[], payments:[], bankAccounts:[], expenses:[], journals:[], activityLog:[], auditTrail:[], loginHistory:[], fiscalYears:[], notifRead:{}, allowedEmails:[ADMIN_EMAIL], userPerms:{} };
 }
 let db = seed();
 
@@ -525,7 +543,6 @@ function normalizeDb(){
   });
   migrateChequeLeaves();
 }
-/* Auto-generate leaves for cheque books that don't have them yet */
 function migrateChequeLeaves(){
   arr(db.chequeBooks).forEach(b => {
     if(b.leafGenerated === true) return;
@@ -534,24 +551,11 @@ function migrateChequeLeaves(){
     for(let i = start; i <= end; i++){
       const leafNo = String(i).padStart(num(db.settings.chequeLeafPad)||4, '0');
       const exists = arr(db.chequeLeaves).find(l => l.chequeBookId === b.id && l.leafNo === leafNo);
-      if(!exists){
-        db.chequeLeaves.push({ id: uid(), chequeBookId: b.id, bankAccountId: b.bankAccountId || null, bankName: b.bankName, bookNo: b.bookNo, leafNo, status: 'Available', paymentId: null, date: null, dueDate: null, amount: 0, payee: '', supplierId: null, createdAt: nowISO() });
-      }
+      if(!exists){ db.chequeLeaves.push({ id: uid(), chequeBookId: b.id, bankAccountId: b.bankAccountId || null, bankName: b.bankName, bookNo: b.bookNo, leafNo, status: 'Available', paymentId: null, date: null, dueDate: null, amount: 0, payee: '', supplierId: null, createdAt: nowISO() }); }
     }
     b.leafGenerated = true;
   });
-  // Update remaining counts
   arr(db.chequeBooks).forEach(b => { b.remaining = arr(db.chequeLeaves).filter(l => l.chequeBookId === b.id && l.status === 'Available').length; });
-  // Migrate old ownCheques into leaves if any exist and no matching leaf
-  arr(db.ownCheques).forEach(oc => {
-    if(!oc.chequeBookId) return;
-    const leaf = arr(db.chequeLeaves).find(l => l.chequeBookId === oc.chequeBookId && l.leafNo === String(oc.chequeNo||'').padStart(num(db.settings.chequeLeafPad)||4,'0'));
-    if(leaf){
-      leaf.status = oc.status || 'Issued';
-      leaf.paymentId = oc.paymentId || null;
-      leaf.date = oc.date; leaf.dueDate = oc.dueDate; leaf.amount = oc.amount; leaf.payee = oc.payee; leaf.supplierId = oc.supplierId;
-    }
-  });
 }
 
 /* ============================================================
@@ -586,27 +590,16 @@ async function loadAccessList(){
 async function saveAccessList(list, perms, note){
   const clean = uniq(arr(list).map(e => String(e).trim().toLowerCase()).filter(Boolean));
   if(!clean.some(e => e === ADMIN_EMAIL.toLowerCase())) clean.push(ADMIN_EMAIL);
-  try{
-    await firestore.doc(ACCESS_DOC_PATH).set({ allowedEmails: clean, userPerms: perms || db.userPerms || {}, updatedAt: nowISO(), updatedBy: (currentUser && currentUser.email) || 'system', note: note || '' });
-    db.allowedEmails = clean; if(perms) db.userPerms = perms;
-    try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); }catch(e){}
-    return true;
-  }catch(e){ const msg = e.code === 'permission-denied' ? 'Firestore rules block writes to /lanka_shoe/access.' : (e.code || e.message); toast('Failed: ' + msg, 'error'); return false; }
+  try{ await firestore.doc(ACCESS_DOC_PATH).set({ allowedEmails: clean, userPerms: perms || db.userPerms || {}, updatedAt: nowISO(), updatedBy: (currentUser && currentUser.email) || 'system', note: note || '' }); db.allowedEmails = clean; if(perms) db.userPerms = perms; try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); }catch(e){} return true; }
+  catch(e){ const msg = e.code === 'permission-denied' ? 'Firestore rules block writes to /lanka_shoe/access.' : (e.code || e.message); toast('Failed: ' + msg, 'error'); return false; }
 }
 async function loadFromFirestore(){
   if(offlineMode || !firebaseReady) return;
   await loadAccessList();
   try{
     const doc = await firestore.doc(DATA_DOC_PATH).get();
-    if(doc.exists){
-      const remote = doc.data() || {};
-      delete remote.allowedEmails; delete remote.userPerms;
-      const merged = Object.assign(seed(), remote);
-      Object.keys(seed()).forEach(k => { if(k === 'settings') return; const base = seed()[k]; if(Array.isArray(base) && !Array.isArray(merged[k])) merged[k] = base; else if(!Array.isArray(base) && (merged[k] === undefined || merged[k] === null)) merged[k] = base; });
-      merged.settings = Object.assign(defaultSettings(), remote.settings || {});
-      db = merged; normalizeDb();
-      try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); }catch(e){}
-    } else { const initial = seed(); delete initial.allowedEmails; delete initial.userPerms; await firestore.doc(DATA_DOC_PATH).set(initial); }
+    if(doc.exists){ const remote = doc.data() || {}; delete remote.allowedEmails; delete remote.userPerms; const merged = Object.assign(seed(), remote); Object.keys(seed()).forEach(k => { if(k === 'settings') return; const base = seed()[k]; if(Array.isArray(base) && !Array.isArray(merged[k])) merged[k] = base; else if(!Array.isArray(base) && (merged[k] === undefined || merged[k] === null)) merged[k] = base; }); merged.settings = Object.assign(defaultSettings(), remote.settings || {}); db = merged; normalizeDb(); try{ localStorage.setItem('lankashoe_cache', JSON.stringify(db)); }catch(e){} }
+    else { const initial = seed(); delete initial.allowedEmails; delete initial.userPerms; await firestore.doc(DATA_DOC_PATH).set(initial); }
   }catch(e){ await loadLocalCache(); if(e.code === 'permission-denied') toast('Cloud blocked — using local cache', 'warn'); }
 }
 async function pushToFirestore(){
@@ -683,6 +676,7 @@ function confetti(){
    DOMAIN HELPERS
    ============================================================ */
 const catName = id => { const c = arr(db.categories).find(x => x.id === id); return c ? c.name : '—'; };
+const catObj = id => arr(db.categories).find(x => x.id === id);
 const supName = id => { const s = arr(db.suppliers).find(x => x.id === id); return s ? s.name : '—'; };
 const supObj = id => arr(db.suppliers).find(x => x.id === id);
 const custObj = id => arr(db.customers).find(x => x.id === id);
@@ -690,7 +684,7 @@ const bankObj = id => arr(db.bankAccounts).find(x => x.id === id);
 const bookObj = id => arr(db.chequeBooks).find(x => x.id === id);
 const payDesc = p => { const parts = []; if(num(p.partyAmount) > 0) parts.push('Party:' + (p.partyChequeIds||[]).length); if(num(p.ownAmount) > 0) parts.push('Own:' + (p.ownChequeIds||[]).length); return parts.join(' + ') || '—'; };
 const availableLeaves = () => arr(db.chequeLeaves).filter(l => l.status === 'Available');
-const availableLeavesByBook = () => groupBy(availableLeaves(), l => l.chequeBookId);
+const upcomingIssuedLeaves = (fromDate, toDate) => arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && (!fromDate || l.dueDate >= fromDate) && (!toDate || l.dueDate <= toDate));
 
 function supplierLedger(id, from, to){
   const s = supObj(id); if(!s) return { rows:[], balance:0 };
@@ -757,6 +751,99 @@ function supplierAging(sid){
 function globalAging(){ const o = { current:0, d30:0, d60:0, d90:0 }; arr(db.suppliers).forEach(s => { const a = supplierAging(s.id); o.current += a.current; o.d30 += a.d30; o.d60 += a.d60; o.d90 += a.d90; }); return o; }
 
 /* ============================================================
+   ★ CATEGORY ANALYTICS — full breakdown
+   ============================================================ */
+function categoryAnalytics(cid){
+  const c = catObj(cid); if(!c) return null;
+  const receipts = arr(db.receipts).filter(r => r.categoryId === cid);
+  const purchases = arr(db.purchases).filter(p => p.categoryId === cid);
+  const partyCheques = arr(db.customerCheques).filter(cq => cq.categoryId === cid);
+  // Party cheques by status
+  const pcByStatus = {
+    InHand: partyCheques.filter(x => x.status === 'In Hand'),
+    Issued: partyCheques.filter(x => x.status === 'Issued'),
+    Cleared: partyCheques.filter(x => x.status === 'Cleared'),
+    Bounced: partyCheques.filter(x => x.status === 'Bounced')
+  };
+  // Find payments that used these cheques
+  const paymentIds = new Set(partyCheques.map(cq => cq.paymentId).filter(Boolean));
+  const relatedPayments = arr(db.payments).filter(p => paymentIds.has(p.id));
+  // Group payments by supplier
+  const bySupplier = {};
+  relatedPayments.forEach(p => {
+    const sid = p.supplierId;
+    if(!bySupplier[sid]) bySupplier[sid] = { name: supName(sid), count: 0, amount: 0, cheques: 0 };
+    bySupplier[sid].count++;
+    bySupplier[sid].amount += num(p.partyAmount);
+    bySupplier[sid].cheques += (p.partyChequeIds || []).length;
+  });
+  // Monthly totals for the category (last 12 months)
+  const months = lastMonths(12);
+  const monthlyReceipts = months.map(m => sum(receipts.filter(r => inMonth(r.date, m)), 'amount'));
+  const monthlyPurchases = months.map(m => sum(purchases.filter(p => inMonth(p.date, m)), 'amount'));
+  return {
+    category: c,
+    receipts,
+    purchases,
+    partyCheques,
+    pcByStatus,
+    relatedPayments,
+    bySupplier,
+    monthlyReceipts,
+    monthlyPurchases,
+    months,
+    totals: {
+      received: sum(receipts, 'amount'),
+      purchaseValue: sum(purchases, 'amount'),
+      inHandValue: sum(pcByStatus.InHand, 'amount'),
+      issuedValue: sum(pcByStatus.Issued, 'amount'),
+      clearedValue: sum(pcByStatus.Cleared, 'amount'),
+      bouncedValue: sum(pcByStatus.Bounced, 'amount'),
+      paidToSuppliersViaCategory: sum(relatedPayments, 'partyAmount')
+    }
+  };
+}
+function showCategoryAnalytics(cid){
+  const a = categoryAnalytics(cid); if(!a) return;
+  const c = a.category;
+  const t = a.totals;
+  const maxMonth = Math.max(1, Math.max.apply(null, a.monthlyReceipts.concat(a.monthlyPurchases)));
+  const supplierRows = Object.keys(a.bySupplier).map(sid => a.bySupplier[sid]).sort((x,y) => y.amount - x.amount);
+  openModal('📊 Category Analytics — ' + c.name,
+    '<div class="alert info"><span class="ico">ℹ</span><div>Full breakdown of <strong>' + esc(c.name) + '</strong> category: how much received, purchased, issued to suppliers, and pending.</div></div>' +
+    '<div class="kpi-strip" style="margin-bottom:20px">' +
+      kpiCard('Total Received', moneyPlain(t.received), a.receipts.length + ' receipt(s)', { small:true }) +
+      kpiCard('Purchases', moneyPlain(t.purchaseValue), a.purchases.length + ' purchase(s)', { small:true }) +
+      kpiCard('In Hand', moneyPlain(t.inHandValue), a.pcByStatus.InHand.length + ' cheque(s)', { small:true }) +
+      kpiCard('Issued to Suppliers', moneyPlain(t.issuedValue), a.pcByStatus.Issued.length + ' cheque(s)', { small:true }) +
+      kpiCard('Cleared', moneyPlain(t.clearedValue), a.pcByStatus.Cleared.length + ' cheque(s)', { small:true }) +
+      kpiCard('Bounced', moneyPlain(t.bouncedValue), a.pcByStatus.Bounced.length + ' cheque(s)', { small:true }) +
+    '</div>' +
+    '<div class="section-title">Monthly Trend (12 months)</div>' +
+    '<div class="card" style="padding:16px;background:var(--surface-2)">' + lineChartSVG([{values: a.monthlyReceipts, color:'var(--green)'},{values: a.monthlyPurchases, color:'var(--accent)'}], { w:900, h:180, labels: a.months.map(monthLabel) }) +
+      '<div class="row-flex" style="margin-top:8px;gap:20px;font-size:11.5px"><span><span class="dot" style="background:var(--green)"></span> Received</span><span><span class="dot" style="background:var(--accent)"></span> Purchases</span></div>' +
+    '</div>' +
+    (supplierRows.length ? '<div class="section-title">Payments from this Category (by Supplier)</div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th class="num">Payments</th><th class="num">Cheques Used</th><th class="num">Amount Paid</th></tr></thead><tbody>' + supplierRows.map(s => '<tr><td><strong>' + esc(s.name) + '</strong></td><td class="num">' + s.count + '</td><td class="num">' + s.cheques + '</td><td class="num">' + moneyPlain(s.amount) + '</td></tr>').join('') + '</tbody></table></div>' : '') +
+    '<div class="section-title">Recent Receipts (this category)</div>' +
+    (a.receipts.length ? '<div class="table-wrap" style="max-height:240px"><table><thead><tr><th>Date</th><th>Customer</th><th>Method</th><th class="num">Amount</th><th class="num">Cheques</th></tr></thead><tbody>' + a.receipts.slice().sort((x,y) => (x.date < y.date ? 1 : -1)).slice(0,20).map(r => '<tr><td>' + dateFmt(r.date) + '</td><td>' + esc(r.customerName) + '</td><td>' + esc(r.method) + '</td><td class="num">' + moneyPlain(r.amount) + '</td><td class="num">' + (r.chequeCount || 0) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty" style="padding:20px">No receipts in this category</div>') +
+    '<div class="form-actions"><button class="btn" onclick="exportCategoryCSV(\'' + cid + '\')">📥 Export CSV</button><button class="btn" data-action="close-modal">Close</button></div>', 'xl');
+}
+window.showCategoryAnalytics = showCategoryAnalytics;
+function exportCategoryCSV(cid){
+  const a = categoryAnalytics(cid); if(!a) return;
+  const headers = ['Type','Date','Entity','Method','Amount','Cheques','Status'];
+  const rows = [];
+  a.receipts.forEach(r => rows.push(['Receipt', r.date, r.customerName, r.method, num(r.amount), r.chequeCount || 0, '']));
+  a.purchases.forEach(p => rows.push(['Purchase', p.date, supName(p.supplierId), '', num(p.amount), 0, '']));
+  a.partyCheques.forEach(cq => rows.push(['Party Cheque', cq.date, cq.customerName, cq.bank || '', num(cq.amount), 1, cq.status]));
+  a.relatedPayments.forEach(p => rows.push(['Supplier Payment', p.date, supName(p.supplierId), p.reference || '', num(p.partyAmount), (p.partyChequeIds||[]).length, '']));
+  rows.sort((x,y) => x[1] < y[1] ? 1 : -1);
+  download('category_' + a.category.name.replace(/\s+/g,'_') + '_' + today() + '.csv', toCSV(headers, rows), 'text/csv');
+  toast('Exported category analytics');
+}
+window.exportCategoryCSV = exportCategoryCSV;
+
+/* ============================================================
    BOUNCE REVERSAL
    ============================================================ */
 function bounceCheque(chequeId, isOwn){
@@ -792,6 +879,9 @@ function detectSmartAlerts(){
   const out = [];
   const bouncedByCust = groupBy(arr(db.customerCheques).filter(c => c.status === 'Bounced'), c => c.customerId);
   Object.keys(bouncedByCust).forEach(cid => { const list = bouncedByCust[cid]; if(list.length >= 3) out.push({ severity:'high', icon:'🚨', title:'Repeat bounced cheques', desc:(custObj(cid)?custObj(cid).name:'Customer') + ' has ' + list.length, link:{view:'ccheques'} }); });
+  // Upcoming own cheques this week
+  const thisWeek = arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && daysBetween(today(), l.dueDate) >= 0 && daysBetween(today(), l.dueDate) <= 7);
+  if(thisWeek.length > 0){ const total = sum(thisWeek, 'amount'); out.push({ severity:'med', icon:'💰', title:'Own cheques due this week', desc:thisWeek.length + ' cheque(s) • ' + money(total), link:{view:'own'} }); }
   return out;
 }
 
@@ -804,7 +894,7 @@ const ui = {
   pur:{ q:'', sort:'date', dir:-1 }, cat:{ q:'', sort:'name', dir:1 },
   rcp:{ q:'', sort:'date', dir:-1 },
   cc:{ q:'', from:'', to:'', sort:'date', dir:-1, tab:'In Hand', category:'' },
-  own:{ q:'', sort:'date', dir:-1, tab:'Issued' },
+  own:{ q:'', sort:'date', dir:-1, tab:'Overview', month: thisMonth(), from:'', to:'', filterMode:'month' },
   pay:{ q:'', sort:'date', dir:-1 },
   bank:{ q:'' }, cbook:{ q:'' }, exp:{ q:'', sort:'date', dir:-1 }, jrn:{ q:'', sort:'date', dir:-1 },
   ledger:{ type:'supplier', from:'', to:'', entityId:'', q:'' },
@@ -812,7 +902,6 @@ const ui = {
   reports:{ tab:'exec', compareY:thisYear() },
   builder:{ type:'all', q:'' },
   audit:{ q:'' },
-  // Payment form state
   paySelectedParty: new Set(),
   payOwnRows: [],
   selectedRows: new Set()
@@ -853,9 +942,9 @@ function renderNav(){
   n.innerHTML = '<div class="nav-group">' + it('dashboard','▦','Dashboard') + '</div>' +
     '<div class="nav-group"><div class="nav-label">Master</div>' + it('customers','👥','Customers', c.customers) + it('suppliers','🏭','Suppliers', c.suppliers) + it('purchases','🛒','Purchases', c.purchases) + it('categories','🏷️','Categories', c.categories) + '</div>' +
     '<div class="nav-group"><div class="nav-label">Receivables</div>' + it('receipts','📥','Receipts', c.receipts) + it('ccheques','🧾','Customer Cheques', c.ccheques) + '</div>' +
-    '<div class="nav-group"><div class="nav-label">Payables</div>' + it('payments','💸','Payments', c.payments) + it('banks','🏛️','Bank Accounts', c.banks) + it('chequeBooks','📚','Cheque Books', c.cbooks) + it('own','🎯','Cheque Leaves', c.leaves) + '</div>' +
+    '<div class="nav-group"><div class="nav-label">Payables</div>' + it('payments','💸','Payments', c.payments) + it('banks','🏛️','Bank Accounts', c.banks) + it('chequeBooks','📚','Cheque Books', c.cbooks) + it('own','🎯','Own Cheques', c.leaves) + '</div>' +
     '<div class="nav-group"><div class="nav-label">Accounting</div>' + it('expenses','📉','Expenses', c.expenses) + it('journals','📓','Journals', c.journals) + it('ledger','📒','Ledger') + '</div>' +
-    '<div class="nav-group"><div class="nav-label">Reports</div>' + it('aging','⏳','Aging') + it('reports','📊','Reports') + it('analytics','📈','Analytics') + it('timeline','⏱️','Timeline') + '</div>' +
+    '<div class="nav-group"><div class="nav-label">Reports</div>' + it('aging','⏳','Aging') + it('analytics','📈','Analytics') + it('timeline','⏱️','Timeline') + '</div>' +
     '<div class="nav-group"><div class="nav-label">System</div>' + it('audit','🔍','Audit Trail') + it('logins','🔐','Login History') + it('log','📋','Activity Log') + it('backup','💾','Backup') + it('settings','⚙️','Settings') + '</div>';
   const b = document.getElementById('notifCount');
   if(b){ const u = getUnreadCount(); b.textContent = u; b.style.display = u > 0 ? '' : 'none'; }
@@ -892,9 +981,9 @@ const COMMANDS = [
   { g:'Navigate', ico:'💸', label:'Payments', act:() => { ui.view='payments'; render(); } },
   { g:'Navigate', ico:'🏛️', label:'Bank Accounts', act:() => { ui.view='banks'; render(); } },
   { g:'Navigate', ico:'📚', label:'Cheque Books', act:() => { ui.view='chequeBooks'; render(); } },
-  { g:'Navigate', ico:'🎯', label:'Cheque Leaves', act:() => { ui.view='own'; render(); } },
+  { g:'Navigate', ico:'🎯', label:'Own Cheques', act:() => { ui.view='own'; render(); } },
+  { g:'Navigate', ico:'🏷️', label:'Categories', act:() => { ui.view='categories'; render(); } },
   { g:'Navigate', ico:'⚙️', label:'Settings', act:() => { ui.view='settings'; render(); } },
-  { g:'Action', ico:'💾', label:'Backup', act:() => { ui.view='backup'; render(); } },
   { g:'Action', ico:'🔒', label:'Toggle Read-Only', act:() => toggleReadOnly() },
   { g:'Action', ico:'↔️', label:'Toggle Sidebar', act:() => toggleSidebar() }
 ];
@@ -920,8 +1009,8 @@ function getNotifications(){
   const s = db.settings || {};
   if(!s.notifEnabled) return [];
   const out = [], t = today(), thr = num(s.notifThresholdAmount) || 0, rd = num(s.chequeReminderDays) || 7;
-  if(s.notifOverdueCheques) arr(db.customerCheques).filter(r => r.status === 'In Hand' && r.dueDate && r.dueDate < t).forEach(r => { const d = Math.abs(daysBetween(r.dueDate, t)); out.push({ id:'od-'+r.id, severity:d>30?'high':'med', icon:'⏰', title:'Overdue cheque — '+d+'d', desc:r.customerName + ' • ' + money(r.amount), time: dateFmt(r.dueDate), link:{ view:'ccheques' } }); });
-  if(s.notifDueSoon) arr(db.customerCheques).filter(r => r.status === 'In Hand' && r.dueDate && r.dueDate >= t && daysBetween(t, r.dueDate) <= rd).forEach(r => out.push({ id:'due-'+r.id, severity:'low', icon:'📅', title:'Due in '+daysBetween(t,r.dueDate)+'d', desc:r.customerName + ' • ' + r.chequeNo, time: dateFmt(r.dueDate), link:{ view:'ccheques' } }));
+  if(s.notifOverdueCheques) arr(db.customerCheques).filter(r => r.status === 'In Hand' && r.dueDate && r.dueDate < t).forEach(r => { const d = Math.abs(daysBetween(r.dueDate, t)); out.push({ id:'od-'+r.id, severity:d>30?'high':'med', icon:'⏰', title:'Overdue party cheque — '+d+'d', desc:r.customerName + ' • ' + money(r.amount), time: dateFmt(r.dueDate), link:{ view:'ccheques' } }); });
+  if(s.notifOwnCheques) arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && daysBetween(t, l.dueDate) >= 0 && daysBetween(t, l.dueDate) <= rd).forEach(l => out.push({ id:'own-'+l.id, severity:'med', icon:'🎯', title:'Own cheque due in '+daysBetween(t,l.dueDate)+'d', desc:'Leaf ' + l.leafNo + ' • ' + l.bankName + ' • ' + money(l.amount), time: dateFmt(l.dueDate), link:{ view:'own' } }));
   if(s.notifBounced) arr(db.customerCheques).filter(r => r.status === 'Bounced').forEach(r => out.push({ id:'bn-'+r.id, severity:'high', icon:'⛔', title:'Bounced cheque', desc:r.customerName, time: dateFmt(r.bouncedDate||r.date), link:{ view:'ccheques' } }));
   if(s.notifSmartAlerts) detectSmartAlerts().forEach((a, i) => out.push(Object.assign({ id:'smart-'+i, time:'Smart' }, a)));
   return out;
@@ -949,8 +1038,8 @@ window.toggleFab = toggleFab;
 /* ============================================================
    RENDER
    ============================================================ */
-const views = { dashboard:viewDashboard, customers:viewCustomers, suppliers:viewSuppliers, purchases:viewPurchases, categories:viewCategories, receipts:viewReceipts, ccheques:viewCCheques, payments:viewPayments, own:viewOwnLeaves, chequeBooks:viewChequeBooks, banks:viewBanks, expenses:viewExpenses, journals:viewJournals, ledger:viewLedger, aging:viewAging, reports:viewReports, analytics:viewAnalytics, timeline:viewTimeline, audit:viewAudit, logins:viewLogins, log:viewLog, backup:viewBackup, settings:viewSettings };
-const titles = { dashboard:'Dashboard', customers:'Customers', suppliers:'Suppliers', purchases:'Purchases', categories:'Categories', receipts:'Receipts', ccheques:'Customer Cheques', payments:'Supplier Payments', own:'Cheque Leaves', chequeBooks:'Cheque Books', banks:'Bank Accounts', expenses:'Expenses', journals:'Journals', ledger:'Ledger', aging:'Aging', reports:'Reports', analytics:'Analytics', timeline:'Timeline', audit:'Audit Trail', logins:'Login History', log:'Activity Log', backup:'Backup', settings:'Settings' };
+const views = { dashboard:viewDashboard, customers:viewCustomers, suppliers:viewSuppliers, purchases:viewPurchases, categories:viewCategories, receipts:viewReceipts, ccheques:viewCCheques, payments:viewPayments, own:viewOwnCheques, chequeBooks:viewChequeBooks, banks:viewBanks, expenses:viewExpenses, journals:viewJournals, ledger:viewLedger, aging:viewAging, analytics:viewAnalytics, timeline:viewTimeline, audit:viewAudit, logins:viewLogins, log:viewLog, backup:viewBackup, settings:viewSettings };
+const titles = { dashboard:'Dashboard', customers:'Customers', suppliers:'Suppliers', purchases:'Purchases', categories:'Categories', receipts:'Receipts', ccheques:'Customer Cheques', payments:'Supplier Payments', own:'Own Cheques', chequeBooks:'Cheque Books', banks:'Bank Accounts', expenses:'Expenses', journals:'Journals', ledger:'Ledger', aging:'Aging', analytics:'Analytics', timeline:'Timeline', audit:'Audit Trail', logins:'Login History', log:'Activity Log', backup:'Backup', settings:'Settings' };
 function render(){
   normalizeDb();
   applySettings(); renderNav();
@@ -963,13 +1052,12 @@ function render(){
   const fm = document.getElementById('fabMenu'); if(fm) fm.classList.remove('open');
   const fb = document.getElementById('fabBtn'); if(fb) fb.classList.remove('open');
   updateSidebarUser();
-  // Rebuild payment form state if on payments view
   if(ui.view === 'payments'){ setTimeout(() => { try{ renderPartyChequeList(); renderOwnLeafRows(); updatePayTotals(); }catch(e){ console.error(e); } }, 0); }
 }
 window.render = render;
 function refreshTable(n){ const e = document.getElementById('tbl-' + n); if(e && tables[n]){ try{ e.innerHTML = tables[n](); }catch(err){ console.error('refreshTable:', err); } } }
 window.refreshTable = refreshTable;
-const tables = { sup:tableSuppliers, cust:tableCustomers, pur:tablePurchases, cat:tableCategories, rcp:tableReceipts, cc:tableCCheques, pay:tablePay, own:tableOwn, bank:tableBanks, cbook:tableChequeBooks, exp:tableExpenses, jrn:tableJournals };
+const tables = { sup:tableSuppliers, cust:tableCustomers, pur:tablePurchases, cat:tableCategories, rcp:tableReceipts, cc:tableCCheques, pay:tablePay, own:tableOwnLeaves, bank:tableBanks, cbook:tableChequeBooks, exp:tableExpenses, jrn:tableJournals };
 function setSort(t, k){ const s = ui[t]; if(!s) return; if(s.sort === k) s.dir *= -1; else { s.sort = k; s.dir = 1; } refreshTable(t); }
 window.setSort = setSort;
 function th(t, k, l, cls){ const s = ui[t] || {}; const a = s.sort === k ? (s.dir === 1 ? ' ↑' : ' ↓') : ''; return '<th class="sortable ' + (cls||'') + '" data-action="sort" data-tbl="' + t + '" data-key="' + k + '">' + l + a + '</th>'; }
@@ -998,6 +1086,8 @@ function viewDashboard(){
   const issuedCQ = arr(db.customerCheques).filter(r => r.status === 'Issued');
   const bouncedCQ = arr(db.customerCheques).filter(r => r.status === 'Bounced');
   const availLeaves = availableLeaves();
+  const upcoming = arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && daysBetween(t, l.dueDate) >= 0 && daysBetween(t, l.dueDate) <= 7);
+  const upcomingTotal = sum(upcoming, 'amount');
   const ms = lastMonths(6);
   const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount'));
   const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m)), 'amount'));
@@ -1010,9 +1100,10 @@ function viewDashboard(){
     kpiCard('Purchases · MTD', moneyPlain(purTM), 'vs ' + moneyPlain(purPM), { small:true, delta:pctDelta(purTM, purPM) }) +
     kpiCard('Receipts · MTD', moneyPlain(recTM), '', { small:true, spark: sparkline(recS, { color:'var(--teal)' }) }) +
     kpiCard('Available Leaves', availLeaves.length, arr(db.chequeBooks).length + ' book(s)', { small:true }) +
-    kpiCard(db.settings.agingCriticalDays + '+ days', moneyPlain(ga.d90), ga.d90 > 0 ? 'Action needed' : 'All clear', { small:true }) +
+    kpiCard('Own Cheques Due (7d)', moneyPlain(upcomingTotal), upcoming.length + ' cheque(s)', { small:true }) +
   '</div>' +
-  '<div class="card"><div class="card-head"><h3>Cheque Pipeline</h3><span class="hint">Customer cheques + own cheque leaves</span></div>' +
+  (upcoming.length ? '<div class="cash-req-card" style="background:linear-gradient(135deg,var(--red-soft),var(--surface-2));border-color:var(--red-bd)"><div class="h" style="color:var(--red)">⚠ Cash Needed This Week (Own Cheques)</div><div class="v">' + money(upcomingTotal) + '</div><div class="sub">' + upcoming.length + ' own cheque(s) due within 7 days. Ensure your bank balance is sufficient.</div></div>' : '') +
+  '<div class="card"><div class="card-head"><h3>Cheque Pipeline</h3><span class="hint">Party cheques + own cheque leaves</span></div>' +
     '<div class="grid grid-4" style="align-items:center">' +
       '<div style="text-align:center"><div style="position:relative;display:inline-block">' + progressRing(sum(inHandCQ,'amount'), totalCQ, 'var(--amber)', 90) + '<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:600">' + inHandCQ.length + '</div></div><div class="k-label" style="margin-top:8px">In Hand (Party)</div><div class="k-sub">' + moneyPlain(sum(inHandCQ,'amount')) + '</div></div>' +
       '<div style="text-align:center"><div style="position:relative;display:inline-block">' + progressRing(sum(issuedCQ,'amount'), totalCQ, 'var(--accent)', 90) + '<div style="position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:600">' + issuedCQ.length + '</div></div><div class="k-label" style="margin-top:8px">Issued to Suppliers</div><div class="k-sub">' + moneyPlain(sum(issuedCQ,'amount')) + '</div></div>' +
@@ -1034,8 +1125,174 @@ function viewDashboard(){
 }
 
 /* ============================================================
-   ★★★ PAYMENTS — THE STAR ★★★
-   Both party + own side by side, no hidden tabs
+   ★★★ OWN CHEQUES — Advanced tracker ★★★
+   ============================================================ */
+function viewOwnCheques(){
+  const tabs = ['Overview','Upcoming','All Leaves'];
+  const activeTab = tabs.includes(ui.own.tab) ? ui.own.tab : 'Overview';
+  if(!tabs.includes(ui.own.tab)) ui.own.tab = 'Overview';
+  let body = '';
+  if(activeTab === 'Overview') body = ownOverviewTab();
+  else if(activeTab === 'Upcoming') body = ownUpcomingTab();
+  else body = ownAllLeavesTab();
+  return '<div class="card" style="padding:0;overflow:hidden"><div class="tabs" style="margin:0;padding:0 20px;border-bottom:1px solid var(--border)">' + tabs.map(t => '<div class="tab ' + (ui.own.tab === t ? 'active' : '') + '" onclick="switchOwnTab(\'' + t + '\')" style="padding:16px 20px">' + t + '</div>').join('') + '</div><div style="padding:20px">' + body + '</div></div>';
+}
+function switchOwnTab(t){ ui.own.tab = t; render(); }
+window.switchOwnTab = switchOwnTab;
+
+function ownOverviewTab(){
+  const all = arr(db.chequeLeaves);
+  const byStatus = { Available: all.filter(l => l.status === 'Available'), Issued: all.filter(l => l.status === 'Issued'), Cleared: all.filter(l => l.status === 'Cleared'), Bounced: all.filter(l => l.status === 'Bounced') };
+  const upcoming30 = arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && daysBetween(today(), l.dueDate) >= 0 && daysBetween(today(), l.dueDate) <= 30);
+  const overdue = arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && l.dueDate < today());
+  const week1 = upcoming30.filter(l => daysBetween(today(), l.dueDate) <= 7);
+  const week2 = upcoming30.filter(l => { const d = daysBetween(today(), l.dueDate); return d > 7 && d <= 14; });
+  const week3 = upcoming30.filter(l => { const d = daysBetween(today(), l.dueDate); return d > 14 && d <= 21; });
+  const week4 = upcoming30.filter(l => { const d = daysBetween(today(), l.dueDate); return d > 21 && d <= 30; });
+  return '<div class="kpi-strip">' +
+    kpiCard('Available', byStatus.Available.length, 'Ready to issue', { small:true }) +
+    kpiCard('Issued (Pending)', byStatus.Issued.length, moneyPlain(sum(byStatus.Issued, 'amount')), { small:true }) +
+    kpiCard('Cleared', byStatus.Cleared.length, moneyPlain(sum(byStatus.Cleared, 'amount')), { small:true }) +
+    kpiCard('Bounced', byStatus.Bounced.length, moneyPlain(sum(byStatus.Bounced, 'amount')), { small:true }) +
+  '</div>' +
+  (overdue.length ? '<div class="cash-req-card" style="background:linear-gradient(135deg,var(--red-soft),var(--surface-2));border-color:var(--red-bd)"><div class="h" style="color:var(--red)">⚠ OVERDUE OWN CHEQUES</div><div class="v">' + money(sum(overdue, 'amount')) + '</div><div class="sub">' + overdue.length + ' cheque(s) already overdue</div></div>' : '') +
+  '<div class="cash-req-card"><div class="h">Cash Requirement — Next 30 Days</div><div class="v">' + money(sum(upcoming30, 'amount')) + '</div><div class="sub">' + upcoming30.length + ' own cheque(s) to be paid by your bank</div></div>' +
+  '<div class="section-title">Cash Needed by Week</div>' +
+  '<div class="grid grid-4">' +
+    '<div class="card" style="padding:16px;background:var(--surface-2)"><div class="k-label">Week 1 (0-7d)</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(sum(week1, 'amount')) + '</div><div class="k-sub">' + week1.length + ' cheque(s)</div></div>' +
+    '<div class="card" style="padding:16px;background:var(--surface-2)"><div class="k-label">Week 2 (8-14d)</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(sum(week2, 'amount')) + '</div><div class="k-sub">' + week2.length + ' cheque(s)</div></div>' +
+    '<div class="card" style="padding:16px;background:var(--surface-2)"><div class="k-label">Week 3 (15-21d)</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(sum(week3, 'amount')) + '</div><div class="k-sub">' + week3.length + ' cheque(s)</div></div>' +
+    '<div class="card" style="padding:16px;background:var(--surface-2)"><div class="k-label">Week 4 (22-30d)</div><div class="k-value sm" style="margin-top:6px">' + moneyPlain(sum(week4, 'amount')) + '</div><div class="k-sub">' + week4.length + ' cheque(s)</div></div>' +
+  '</div>' +
+  '<div class="section-title">By Bank</div>' +
+  (() => {
+    const byBank = groupBy(byStatus.Issued, l => l.bankName || 'Unknown');
+    if(!Object.keys(byBank).length) return '<div class="empty">No issued cheques</div>';
+    const max = Math.max(1, Math.max.apply(null, Object.keys(byBank).map(k => sum(byBank[k], 'amount'))));
+    return Object.keys(byBank).map(bank => '<div class="bar-row"><span class="bar-label">' + esc(bank) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (sum(byBank[bank], 'amount')/max*100).toFixed(1) + '%"></div></div><span class="bar-val">' + moneyPlain(sum(byBank[bank], 'amount')) + ' <span class="muted small">(' + byBank[bank].length + ')</span></span></div>').join('');
+  })();
+}
+
+function ownUpcomingTab(){
+  const isCustom = ui.own.filterMode === 'custom';
+  const rangeFrom = isCustom ? (ui.own.from || today()) : (ui.own.month || thisMonth()) + '-01';
+  const rangeTo = isCustom ? (ui.own.to || shiftDate(today(), 60)) : (() => { const [y,m] = (ui.own.month || thisMonth()).split('-'); const lastDay = new Date(Number(y), Number(m), 0).getDate(); return (ui.own.month || thisMonth()) + '-' + String(lastDay).padStart(2,'0'); })();
+  const list = arr(db.chequeLeaves).filter(l => l.status === 'Issued' && l.dueDate && l.dueDate >= rangeFrom && l.dueDate <= rangeTo).sort((a,b) => a.dueDate < b.dueDate ? -1 : 1);
+  // Calendar for current month
+  const [calY, calM] = (ui.own.filterMode === 'month' && ui.own.month ? ui.own.month : thisMonth()).split('-').map(Number);
+  const firstDay = new Date(calY, calM - 1, 1);
+  const startOffset = firstDay.getDay();
+  const daysInM = new Date(calY, calM, 0).getDate();
+  const dailyAmounts = {};
+  list.forEach(l => { if(!dailyAmounts[l.dueDate]) dailyAmounts[l.dueDate] = 0; dailyAmounts[l.dueDate] += num(l.amount); });
+  const todayStr = today();
+  const calCells = [];
+  for(let i = 0; i < startOffset; i++) calCells.push('<div></div>');
+  for(let d = 1; d <= daysInM; d++){
+    const ds = calY + '-' + String(calM).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const amt = dailyAmounts[ds] || 0;
+    const cls = 'cal-day' + (amt > 0 ? ' has-amt' : '') + (ds === todayStr ? ' today' : '') + (ds < todayStr ? ' past' : '');
+    calCells.push('<div class="' + cls + '" title="' + (amt > 0 ? money(amt) : '') + '"><div class="d">' + d + '</div>' + (amt > 0 ? '<div class="amt">' + fmtCompact(amt) + '</div>' : '') + '</div>');
+  }
+  // Group by due date
+  const grouped = groupBy(list, l => l.dueDate);
+  const dayKeys = Object.keys(grouped).sort();
+  const cashTotal = sum(list, 'amount');
+  return '<div class="row-flex" style="justify-content:space-between;margin-bottom:16px;align-items:end">' +
+    '<div class="row-flex">' +
+      '<button class="btn ' + (!isCustom ? 'primary' : '') + '" onclick="setOwnFilterMode(\'month\')">By Month</button>' +
+      '<button class="btn ' + (isCustom ? 'primary' : '') + '" onclick="setOwnFilterMode(\'custom\')">Custom Range</button>' +
+    '</div>' +
+    (isCustom ? '<div class="row-flex"><label class="field" style="min-width:140px">From<input type="date" value="' + (ui.own.from||today()) + '" onchange="ui.own.from=this.value; render()"></label><label class="field" style="min-width:140px">To<input type="date" value="' + (ui.own.to||shiftDate(today(),30)) + '" onchange="ui.own.to=this.value; render()"></label></div>' : '<label class="field" style="min-width:220px">Month<input type="month" value="' + (ui.own.month || thisMonth()) + '" onchange="ui.own.month=this.value; render()"></label>') +
+  '</div>' +
+  '<div class="cash-req-card"><div class="h">Cash Required · ' + (isCustom ? dateFmt(rangeFrom) + ' → ' + dateFmt(rangeTo) : monthName(ui.own.month || thisMonth())) + '</div><div class="v">' + money(cashTotal) + '</div><div class="sub">' + list.length + ' cheque(s) due in this period</div></div>' +
+  '<div class="section-title">Calendar View</div>' +
+  '<div style="font-weight:600;font-size:13px;margin-bottom:8px">' + monthName(ui.own.month || thisMonth()) + '</div>' +
+  '<div class="cal-week" style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-4)"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>' +
+  '<div class="cal-week">' + calCells.join('') + '</div>' +
+  '<div class="section-title">Cheques by Due Date (' + dayKeys.length + ' date' + (dayKeys.length !== 1 ? 's' : '') + ')</div>' +
+  (dayKeys.length ? dayKeys.map(d => {
+    const items = grouped[d];
+    const total = sum(items, 'amount');
+    const daysAway = daysBetween(today(), d);
+    const label = d === today() ? 'Today' : d === shiftDate(today(), 1) ? 'Tomorrow' : dateFmt(d);
+    const sub = daysAway < 0 ? Math.abs(daysAway) + 'd overdue' : daysAway === 0 ? 'Due today' : 'In ' + daysAway + 'd';
+    return '<div class="upcoming-day">' +
+      '<div class="upcoming-day-head">' +
+        '<div><div class="d">' + label + '</div><div class="c">' + sub + ' • ' + items.length + ' cheque(s)</div></div>' +
+        '<div class="total">' + money(total) + '</div>' +
+      '</div>' +
+      items.map(l => '<div class="upcoming-chq-row">' +
+        '<div class="mono"><strong>' + esc(l.leafNo) + '</strong></div>' +
+        '<div>' + esc(l.bankName) + (l.bookNo ? ' <span class="muted small">#' + esc(l.bookNo) + '</span>' : '') + '</div>' +
+        '<div>' + esc(l.payee || supName(l.supplierId) || '—') + '</div>' +
+        '<div class="num">' + moneyPlain(l.amount) + '</div>' +
+        '<div><button class="btn xs green" onclick="markOwnLeafCleared(\'' + l.id + '\')">Mark Cleared</button> <button class="btn xs danger" onclick="bounceOwnLeaf(\'' + l.id + '\')">Bounce</button></div>' +
+      '</div>').join('') +
+    '</div>';
+  }).join('') : '<div class="empty">No upcoming own cheques in this period</div>');
+}
+function setOwnFilterMode(m){ ui.own.filterMode = m; render(); }
+window.setOwnFilterMode = setOwnFilterMode;
+function markOwnLeafCleared(id){
+  if(!canWrite()) return;
+  const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return;
+  l.status = 'Cleared'; l.clearedDate = today();
+  logAct('Leaf Cleared','Leaf',id, l.leafNo);
+  save(); render(); toast('Marked Cleared');
+}
+window.markOwnLeafCleared = markOwnLeafCleared;
+
+function ownAllLeavesTab(){
+  const leaves = arr(db.chequeLeaves);
+  const tabs = ['Available','Issued','Cleared','Bounced'];
+  const counts = tabs.reduce((a,t) => { a[t] = leaves.filter(l => l.status === t).length; return a; }, {});
+  const subTab = ui.own.subTab || 'Available';
+  const filtered = leaves.filter(l => l.status === subTab);
+  const byBook = groupBy(filtered, l => l.chequeBookId);
+  return '<div class="tabs" style="margin-bottom:16px">' + tabs.map(t => '<div class="tab ' + (subTab === t ? 'active' : '') + '" onclick="setOwnSubTab(\'' + t + '\')">' + t + ' (' + counts[t] + ')</div>').join('') + '</div>' +
+    (filtered.length ? Object.keys(byBook).map(bid => {
+      const book = bookObj(bid);
+      const bLeaves = byBook[bid];
+      return '<div style="margin-bottom:16px"><div style="font-weight:600;font-size:13px;margin-bottom:8px">' + (book ? esc(book.bankName) + (book.bookNo ? ' • #' + esc(book.bookNo) : '') : 'Unknown book') + ' <span class="muted small">(' + bLeaves.length + ')</span></div>' +
+        '<div class="table-wrap"><table><thead><tr><th>Leaf No</th><th>Bank</th>' + (subTab === 'Issued' || subTab === 'Cleared' || subTab === 'Bounced' ? '<th>Supplier</th>' : '') + '<th>Payee</th><th class="num">Amount</th><th>Issued</th><th class="num">Due</th><th style="width:180px">Actions</th></tr></thead><tbody>' +
+        bLeaves.map(l => '<tr><td class="mono"><strong>' + esc(l.leafNo) + '</strong></td><td>' + esc(l.bankName) + '</td>' + ((subTab === 'Issued' || subTab === 'Cleared' || subTab === 'Bounced') ? '<td>' + esc(supName(l.supplierId)) + '</td>' : '') + '<td>' + esc(l.payee || '—') + '</td><td class="num">' + (l.amount ? moneyPlain(l.amount) : '—') + '</td><td>' + (l.date ? dateFmt(l.date) : '—') + '</td><td class="num">' + (l.dueDate ? dateFmt(l.dueDate) : '—') + '</td><td><div class="row-flex">' +
+          (subTab === 'Issued' ? '<button class="btn xs green" onclick="markOwnLeafCleared(\'' + l.id + '\')">Clear</button><button class="btn xs danger" onclick="bounceOwnLeaf(\'' + l.id + '\')">Bounce</button>' : '') +
+          (subTab === 'Bounced' ? '<button class="btn xs" onclick="unbounceOwnLeaf(\'' + l.id + '\')">Restore</button>' : '') +
+        '</div></td></tr>').join('') + '</tbody></table></div></div>';
+    }).join('') : '<div class="empty">No ' + subTab.toLowerCase() + ' leaves</div>');
+}
+function setOwnSubTab(t){ ui.own.subTab = t; render(); }
+window.setOwnSubTab = setOwnSubTab;
+function bounceOwnLeaf(id){
+  if(!canWrite()) return;
+  const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return;
+  if(!confirm('Mark this leaf as Bounced? The supplier payment will be reversed.')) return;
+  const payment = l.paymentId ? arr(db.payments).find(p => p.id === l.paymentId) : null;
+  if(payment){
+    payment.ownChequeIds = (payment.ownChequeIds || []).filter(x => x !== l.id);
+    payment.ownAmount = Math.max(0, num(payment.ownAmount) - num(l.amount));
+    payment.amount = num(payment.partyAmount) + num(payment.ownAmount);
+    if(payment.amount <= 0 && (payment.partyChequeIds||[]).length === 0 && (payment.ownChequeIds||[]).length === 0) db.payments = arr(db.payments).filter(p => p.id !== payment.id);
+  }
+  l.status = 'Bounced'; l.bouncedDate = today();
+  logAct('Leaf Bounced','Leaf',id, l.leafNo);
+  save(); render(); toast('Leaf bounced — payment reversed', 'warn');
+}
+window.bounceOwnLeaf = bounceOwnLeaf;
+function unbounceOwnLeaf(id){
+  if(!canWrite()) return;
+  const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return;
+  if(!confirm('Restore this leaf to Available?')) return;
+  l.status = 'Available'; l.paymentId = null; l.date = null; l.dueDate = null; l.amount = 0; l.payee = ''; l.supplierId = null; delete l.bouncedDate;
+  logAct('Restore Leaf','Leaf',id, l.leafNo);
+  save(); render(); toast('Leaf restored');
+}
+window.unbounceOwnLeaf = unbounceOwnLeaf;
+function tableOwnLeaves(){ return ''; }
+
+/* ============================================================
+   ★★★ PAYMENTS — unified form ★★★
    ============================================================ */
 function viewPayments(){
   return '<div class="card">' +
@@ -1048,46 +1305,22 @@ function viewPayments(){
       '</div>' +
       '<div class="divider"></div>' +
       '<div class="pay-grid">' +
-        // PARTY CHEQUES PANEL
         '<div class="pay-panel">' +
-          '<div class="pay-panel-head">' +
-            '<div><h4>🧾 Party Cheques</h4><div class="small muted">Received from customers (In Hand only)</div></div>' +
-            '<span class="count" id="partyCount">0 selected</span>' +
-          '</div>' +
+          '<div class="pay-panel-head"><div><h4>🧾 Party Cheques</h4><div class="small muted">Received from customers (In Hand only)</div></div><span class="count" id="partyCount">0 selected</span></div>' +
           '<div class="pay-panel-body">' +
-            '<div class="picker-toolbar">' +
-              '<input type="search" placeholder="Search customer/cheque" oninput="window._pkQ=this.value; renderPartyChequeList()">' +
-              '<select onchange="window._pkBank=this.value; renderPartyChequeList()"><option value="">All banks</option>' + uniq(arr(db.customerCheques).filter(r => r.status === 'In Hand').map(r => r.bank).filter(Boolean)).map(b => '<option value="' + esc(b) + '">' + esc(b) + '</option>').join('') + '</select>' +
-              '<select onchange="window._pkCat=this.value; renderPartyChequeList()"><option value="">All categories</option>' + arr(db.categories).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select>' +
-            '</div>' +
-            '<div class="row-flex" style="margin-bottom:6px">' +
-              '<button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">Select all</button>' +
-              '<button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button>' +
-            '</div>' +
+            '<div class="picker-toolbar"><input type="search" placeholder="Search customer/cheque" oninput="window._pkQ=this.value; renderPartyChequeList()"><select onchange="window._pkBank=this.value; renderPartyChequeList()"><option value="">All banks</option>' + uniq(arr(db.customerCheques).filter(r => r.status === 'In Hand').map(r => r.bank).filter(Boolean)).map(b => '<option value="' + esc(b) + '">' + esc(b) + '</option>').join('') + '</select><select onchange="window._pkCat=this.value; renderPartyChequeList()"><option value="">All categories</option>' + arr(db.categories).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></div>' +
+            '<div class="row-flex" style="margin-bottom:6px"><button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">Select all</button><button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button></div>' +
             '<div class="picker-list" id="partyList"></div>' +
           '</div>' +
-          '<div class="pay-panel-foot">' +
-            '<span class="lbl">Party Total</span>' +
-            '<span class="amt" id="partyTotal">' + money(0) + '</span>' +
-          '</div>' +
+          '<div class="pay-panel-foot"><span class="lbl">Party Total</span><span class="amt" id="partyTotal">' + money(0) + '</span></div>' +
         '</div>' +
-        // OWN CHEQUES PANEL
         '<div class="pay-panel">' +
-          '<div class="pay-panel-head">' +
-            '<div><h4>🎯 Own Cheques</h4><div class="small muted">From your cheque books (available leaves only)</div></div>' +
-            '<span class="count" id="ownCount">0 rows</span>' +
-          '</div>' +
+          '<div class="pay-panel-head"><div><h4>🎯 Own Cheques</h4><div class="small muted">From your cheque books (available leaves)</div></div><span class="count" id="ownCount">0 rows</span></div>' +
           '<div class="pay-panel-body">' +
-            '<div class="row-flex" style="margin-bottom:8px">' +
-              '<button type="button" class="btn sm primary" onclick="addOwnLeafRow()">＋ Add Leaf</button>' +
-              '<button type="button" class="btn sm" onclick="openLeafPickerModal()">📋 Browse Leaves</button>' +
-            '</div>' +
+            '<div class="row-flex" style="margin-bottom:8px"><button type="button" class="btn sm primary" onclick="addOwnLeafRow()">＋ Add Leaf</button><button type="button" class="btn sm" onclick="openLeafPickerModal()">📋 Browse</button></div>' +
             '<div id="ownRows" style="max-height:280px;overflow:auto"></div>' +
           '</div>' +
-          '<div class="pay-panel-foot">' +
-            '<span class="lbl">Own Total</span>' +
-            '<span class="amt" id="ownTotal">' + money(0) + '</span>' +
-          '</div>' +
+          '<div class="pay-panel-foot"><span class="lbl">Own Total</span><span class="amt" id="ownTotal">' + money(0) + '</span></div>' +
         '</div>' +
       '</div>' +
       '<div class="pay-totals">' +
@@ -1095,15 +1328,11 @@ function viewPayments(){
         '<div class="cell"><div class="l">Own Cheques</div><div class="v" id="totOwn">' + money(0) + '</div></div>' +
         '<div class="cell grand"><div class="l">Grand Total</div><div class="v" id="totAll">' + money(0) + '</div></div>' +
       '</div>' +
-      '<div class="form-actions" style="margin-top:20px">' +
-        '<button type="button" class="btn" onclick="resetPaymentForm()">Reset</button>' +
-        '<button type="submit" class="btn primary" style="padding:10px 24px;font-size:13.5px">💾 Preview & Save Payment</button>' +
-      '</div>' +
+      '<div class="form-actions" style="margin-top:20px"><button type="button" class="btn" onclick="resetPaymentForm()">Reset</button><button type="submit" class="btn primary" style="padding:10px 24px;font-size:13.5px">💾 Preview & Save Payment</button></div>' +
     '</form>' +
   '</div>' +
   '<div class="card"><div class="card-head"><h3>Payment History</h3></div><div id="tbl-pay">' + tablePay() + '</div></div>';
 }
-
 function renderPartyChequeList(){
   const box = document.getElementById('partyList'); if(!box) return;
   const q = (window._pkQ || '').toLowerCase(), bank = window._pkBank || '', cat = window._pkCat || '';
@@ -1112,20 +1341,15 @@ function renderPartyChequeList(){
   if(bank) list = list.filter(c => c.bank === bank);
   if(cat) list = list.filter(c => c.categoryId === cat);
   list.sort((a,b) => (a.dueDate||a.date||'') < (b.dueDate||b.date||'') ? -1 : 1);
-  if(!list.length){ box.innerHTML = '<div class="empty" style="padding:24px 12px">No in-hand cheques match filters</div>'; updatePayTotals(); return; }
+  if(!list.length){ box.innerHTML = '<div class="empty" style="padding:24px 12px">No in-hand cheques match</div>'; updatePayTotals(); return; }
   box.innerHTML = list.map(c => '<label class="picker-row ' + (ui.paySelectedParty.has(c.id) ? 'selected' : '') + '"><input type="checkbox" class="party-chk" data-id="' + c.id + '" data-amount="' + num(c.amount) + '" ' + (ui.paySelectedParty.has(c.id) ? 'checked' : '') + ' onchange="togglePartyCheque(\'' + c.id + '\', this.checked)"><div class="picker-main"><strong>' + esc(c.customerName) + ' • ' + esc(c.chequeNo||'—') + '</strong><small>' + esc(c.bank||'') + ' • Due ' + dateFmt(c.dueDate) + '</small></div><div class="picker-amt">' + money(c.amount) + '</div></label>').join('');
   updatePayTotals();
 }
 window.renderPartyChequeList = renderPartyChequeList;
 function togglePartyCheque(id, on){ if(on) ui.paySelectedParty.add(id); else ui.paySelectedParty.delete(id); renderPartyChequeList(); }
 window.togglePartyCheque = togglePartyCheque;
-function selectAllPartyCheques(on){
-  const visible = Array.from(document.querySelectorAll('.party-chk'));
-  visible.forEach(chk => { const id = chk.dataset.id; if(on) ui.paySelectedParty.add(id); else ui.paySelectedParty.delete(id); chk.checked = on; });
-  renderPartyChequeList();
-}
+function selectAllPartyCheques(on){ document.querySelectorAll('.party-chk').forEach(chk => { const id = chk.dataset.id; if(on) ui.paySelectedParty.add(id); else ui.paySelectedParty.delete(id); chk.checked = on; }); renderPartyChequeList(); }
 window.selectAllPartyCheques = selectAllPartyCheques;
-
 function addOwnLeafRow(leafId){
   const rowId = uid();
   const avail = availableLeaves();
@@ -1138,11 +1362,10 @@ function removeOwnLeafRow(rowId){ ui.payOwnRows = ui.payOwnRows.filter(r => r.ro
 window.removeOwnLeafRow = removeOwnLeafRow;
 function renderOwnLeafRows(){
   const box = document.getElementById('ownRows'); if(!box) return;
-  if(!ui.payOwnRows.length){ box.innerHTML = '<div class="empty" style="padding:20px 12px;font-size:12px">No own cheques added yet. Click "Add Leaf" or "Browse Leaves".</div>'; updatePayTotals(); return; }
+  if(!ui.payOwnRows.length){ box.innerHTML = '<div class="empty" style="padding:20px 12px;font-size:12px">Click "Add Leaf" or "Browse" to select own cheques.</div>'; updatePayTotals(); return; }
   const leaves = availableLeaves();
   const usedLeafIds = new Set(ui.payOwnRows.map(r => r.leafId).filter(Boolean));
   box.innerHTML = ui.payOwnRows.map((r, idx) => {
-    const leaf = r.leafId ? leaves.find(l => l.id === r.leafId) : null;
     const options = '<option value="">Select leaf…</option>' + leaves.filter(l => !usedLeafIds.has(l.id) || l.id === r.leafId).map(l => '<option value="' + l.id + '" ' + (r.leafId === l.id ? 'selected' : '') + '>Leaf ' + esc(l.leafNo) + ' • ' + esc(l.bankName) + (l.bookNo ? ' (#' + esc(l.bookNo) + ')' : '') + '</option>').join('');
     return '<div class="leaf-row">' +
       '<select onchange="updateOwnLeafRow(' + idx + ', \'leafId\', this.value)">' + options + '</select>' +
@@ -1163,161 +1386,106 @@ function updateOwnLeafRow(idx, field, value){
   updatePayTotals();
 }
 window.updateOwnLeafRow = updateOwnLeafRow;
-
-/* Browse Leaves modal */
 function openLeafPickerModal(){
   const leaves = availableLeaves();
   if(!leaves.length){ toast('No available leaves. Create a cheque book first.', 'error'); return; }
   const byBook = groupBy(leaves, l => l.chequeBookId);
-  let html = '<div class="alert info"><span class="ico">ℹ</span><div>Click a leaf to add it to your payment. Already-added leaves are disabled.</div></div>';
-  html += '<div class="leaf-picker-modal">';
+  let html = '<div class="alert info"><span class="ico">ℹ</span><div>Click a leaf to add. Already-added leaves are disabled.</div></div><div class="leaf-picker-modal">';
   Object.keys(byBook).forEach(bid => {
     const book = bookObj(bid); if(!book) return;
     const bLeaves = byBook[bid];
     html += '<div style="margin-bottom:14px"><div style="font-weight:600;font-size:13px;margin-bottom:6px">' + esc(book.bankName) + (book.bookNo ? ' • #' + esc(book.bookNo) : '') + ' <span class="muted small">(' + bLeaves.length + ' available)</span></div>';
-    html += '<div class="leaf-grid">' + bLeaves.map(l => {
-      const used = ui.payOwnRows.some(r => r.leafId === l.id);
-      return '<div class="leaf-chip Available" style="' + (used ? 'opacity:.35;cursor:not-allowed' : 'cursor:pointer') + '" onclick="' + (used ? '' : 'pickLeafFromModal(\'' + l.id + '\')') + '">' + esc(l.leafNo) + '</div>';
-    }).join('') + '</div></div>';
+    html += '<div class="leaf-grid">' + bLeaves.map(l => { const used = ui.payOwnRows.some(r => r.leafId === l.id); return '<div class="leaf-chip Available" style="' + (used ? 'opacity:.35;cursor:not-allowed' : 'cursor:pointer') + '" onclick="' + (used ? '' : 'pickLeafFromModal(\'' + l.id + '\')') + '">' + esc(l.leafNo) + '</div>'; }).join('') + '</div></div>';
   });
   html += '</div>';
   openModal('Browse Available Leaves', html, 'wide');
 }
 window.openLeafPickerModal = openLeafPickerModal;
-function pickLeafFromModal(leafId){
-  closeModal();
-  addOwnLeafRow(leafId);
-  toast('Leaf added', 'success');
-}
+function pickLeafFromModal(leafId){ closeModal(); addOwnLeafRow(leafId); toast('Leaf added', 'success'); }
 window.pickLeafFromModal = pickLeafFromModal;
-
 function updatePayTotals(){
   let partySum = 0;
   ui.paySelectedParty.forEach(id => { const c = arr(db.customerCheques).find(x => x.id === id); if(c) partySum += num(c.amount); });
   let ownSum = 0;
   ui.payOwnRows.forEach(r => ownSum += num(r.amount));
   const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = money(v); };
-  set('totParty', partySum); set('totOwn', ownSum); set('totAll', partySum + ownSum);
-  set('partyTotal', partySum); set('ownTotal', ownSum);
+  set('totParty', partySum); set('totOwn', ownSum); set('totAll', partySum + ownSum); set('partyTotal', partySum); set('ownTotal', ownSum);
   const pc = document.getElementById('partyCount'); if(pc) pc.textContent = ui.paySelectedParty.size + ' selected';
   const oc = document.getElementById('ownCount'); if(oc) oc.textContent = ui.payOwnRows.length + ' row(s)';
 }
 window.updatePayTotals = updatePayTotals;
-
 function resetPaymentForm(){
-  ui.paySelectedParty.clear();
-  ui.payOwnRows = [];
+  ui.paySelectedParty.clear(); ui.payOwnRows = [];
   const f = document.querySelector('#view form'); if(f && f.reset) f.reset();
   renderPartyChequeList(); renderOwnLeafRows(); updatePayTotals();
 }
 window.resetPaymentForm = resetPaymentForm;
-
 function previewPayment(e){
-  e.preventDefault();
-  if(!canWrite()) return;
+  e.preventDefault(); if(!canWrite()) return;
   const sid = val('paySupplier'), date = val('payDate'), ref = val('payRef').trim();
   if(!sid){ toast('Select supplier','error'); return; }
   const supplier = supObj(sid); if(!supplier){ toast('Supplier not found','error'); return; }
-  // Build party list
   const partyCheques = Array.from(ui.paySelectedParty).map(id => arr(db.customerCheques).find(r => r.id === id)).filter(Boolean);
-  // Build own list
-  const ownRows = ui.payOwnRows.filter(r => r.leafId && num(r.amount) > 0).map(r => {
-    const leaf = arr(db.chequeLeaves).find(l => l.id === r.leafId);
-    return { rowId: r.rowId, leafId: r.leafId, leaf: leaf, amount: num(r.amount), dueDate: r.dueDate || date, payee: r.payee || supplier.name };
-  });
+  const ownRows = ui.payOwnRows.filter(r => r.leafId && num(r.amount) > 0).map(r => { const leaf = arr(db.chequeLeaves).find(l => l.id === r.leafId); return { rowId: r.rowId, leafId: r.leafId, leaf: leaf, amount: num(r.amount), dueDate: r.dueDate || date, payee: r.payee || supplier.name }; });
   const partyTotal = sum(partyCheques, 'amount');
   const ownTotal = sum(ownRows, 'amount');
   const total = partyTotal + ownTotal;
-  if(total <= 0){ toast('Add at least one party cheque or own cheque leaf','error'); return; }
-  // Check for validation
-  if(ui.payOwnRows.some(r => r.leafId && (!r.amount || r.amount <= 0))){ toast('Enter amount for each own cheque leaf','error'); return; }
-  if(ui.payOwnRows.some(r => !r.leafId && r.amount > 0)){ toast('Select a leaf for each own cheque row','error'); return; }
-  const previewBody = '<div class="alert info"><span class="ico">ℹ</span><div>Review the payment before saving. On confirm, party cheques move to <strong>Issued</strong>, own leaves get consumed, and the supplier ledger is updated.</div></div>' +
-    '<div class="grid grid-4" style="margin-bottom:16px">' +
-      '<div><div class="k-label">Supplier</div><strong>' + esc(supplier.name) + '</strong></div>' +
-      '<div><div class="k-label">Current Payable</div><strong>' + money(supplierBalance(sid)) + '</strong></div>' +
-      '<div><div class="k-label">Payment Date</div><strong>' + dateFmt(date) + '</strong></div>' +
-      '<div><div class="k-label">Reference</div><strong>' + esc(ref||'—') + '</strong></div>' +
-    '</div>' +
+  if(total <= 0){ toast('Add at least one party cheque or own leaf','error'); return; }
+  if(ui.payOwnRows.some(r => r.leafId && (!r.amount || r.amount <= 0))){ toast('Enter amount for each own leaf','error'); return; }
+  if(ui.payOwnRows.some(r => !r.leafId && r.amount > 0)){ toast('Select a leaf for each row','error'); return; }
+  openModal('Payment Preview', '<div class="alert info"><span class="ico">ℹ</span><div>Review before saving.</div></div>' +
+    '<div class="grid grid-4" style="margin-bottom:16px"><div><div class="k-label">Supplier</div><strong>' + esc(supplier.name) + '</strong></div><div><div class="k-label">Payable</div><strong>' + money(supplierBalance(sid)) + '</strong></div><div><div class="k-label">Date</div><strong>' + dateFmt(date) + '</strong></div><div><div class="k-label">Ref</div><strong>' + esc(ref||'—') + '</strong></div></div>' +
     (partyCheques.length ? '<div class="section-title">🧾 Party Cheques (' + partyCheques.length + ')</div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Cheque</th><th>Bank</th><th>Due</th><th class="num">Amount</th></tr></thead><tbody>' + partyCheques.map(c => '<tr><td>' + esc(c.customerName) + '</td><td class="mono">' + esc(c.chequeNo||'—') + '</td><td>' + esc(c.bank||'') + '</td><td>' + dateFmt(c.dueDate) + '</td><td class="num">' + moneyPlain(c.amount) + '</td></tr>').join('') + '</tbody><tfoot><tr><td colspan="4">Party Total</td><td class="num">' + moneyPlain(partyTotal) + '</td></tr></tfoot></table></div>' : '') +
-    (ownRows.length ? '<div class="section-title">🎯 Own Cheques (' + ownRows.length + ')</div><div class="table-wrap"><table><thead><tr><th>Bank</th><th>Leaf No</th><th>Book</th><th>Due</th><th>Payee</th><th class="num">Amount</th></tr></thead><tbody>' + ownRows.map(o => '<tr><td>' + esc(o.leaf ? o.leaf.bankName : '—') + '</td><td class="mono">' + esc(o.leaf ? o.leaf.leafNo : '—') + '</td><td class="mono">' + esc(o.leaf && o.leaf.bookNo ? '#' + o.leaf.bookNo : '—') + '</td><td>' + dateFmt(o.dueDate) + '</td><td>' + esc(o.payee) + '</td><td class="num">' + moneyPlain(o.amount) + '</td></tr>').join('') + '</tbody><tfoot><tr><td colspan="5">Own Total</td><td class="num">' + moneyPlain(ownTotal) + '</td></tr></tfoot></table></div>' : '') +
-    '<div class="pay-totals" style="margin-top:20px">' +
-      '<div class="cell"><div class="l">Party</div><div class="v">' + moneyPlain(partyTotal) + '</div></div>' +
-      '<div class="cell"><div class="l">Own</div><div class="v">' + moneyPlain(ownTotal) + '</div></div>' +
-      '<div class="cell grand"><div class="l">Total</div><div class="v">' + moneyPlain(total) + '</div></div>' +
-    '</div>' +
-    '<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="button" class="btn primary" onclick="confirmSavePayment(\'' + sid + '\',\'' + date + '\',\'' + esc(ref) + '\')">✅ Confirm & Save</button></div>';
-  openModal('Payment Preview', previewBody, 'wide');
+    (ownRows.length ? '<div class="section-title">🎯 Own Cheques (' + ownRows.length + ')</div><div class="table-wrap"><table><thead><tr><th>Bank</th><th>Leaf</th><th>Due</th><th>Payee</th><th class="num">Amount</th></tr></thead><tbody>' + ownRows.map(o => '<tr><td>' + esc(o.leaf ? o.leaf.bankName : '—') + '</td><td class="mono">' + esc(o.leaf ? o.leaf.leafNo : '—') + '</td><td>' + dateFmt(o.dueDate) + '</td><td>' + esc(o.payee) + '</td><td class="num">' + moneyPlain(o.amount) + '</td></tr>').join('') + '</tbody><tfoot><tr><td colspan="4">Own Total</td><td class="num">' + moneyPlain(ownTotal) + '</td></tr></tfoot></table></div>' : '') +
+    '<div class="pay-totals" style="margin-top:20px"><div class="cell"><div class="l">Party</div><div class="v">' + moneyPlain(partyTotal) + '</div></div><div class="cell"><div class="l">Own</div><div class="v">' + moneyPlain(ownTotal) + '</div></div><div class="cell grand"><div class="l">Total</div><div class="v">' + moneyPlain(total) + '</div></div></div>' +
+    '<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="button" class="btn primary" onclick="confirmSavePayment(\'' + sid + '\',\'' + date + '\',\'' + esc(ref) + '\')">✅ Confirm & Save</button></div>', 'wide');
   window._payPreview = { sid, date, ref, partyCheques, ownRows, partyTotal, ownTotal, total };
 }
 window.previewPayment = previewPayment;
-
 function confirmSavePayment(sid, date, ref){
   const p = window._payPreview; if(!p){ toast('Preview expired','error'); return; }
   const payment = { id:uid(), supplierId:sid, date, reference:ref, partyChequeIds:[], partyAmount:0, ownChequeIds:[], ownAmount:0, amount:0, createdAt:nowISO() };
-  // Party cheques
   p.partyCheques.forEach(c => { payment.partyChequeIds.push(c.id); payment.partyAmount += num(c.amount); c.status = 'Issued'; c.paymentId = payment.id; c.issuedTo = sid; c.issuedDate = date; });
-  // Own leaves
-  p.ownRows.forEach(o => {
-    const leaf = arr(db.chequeLeaves).find(l => l.id === o.leafId); if(!leaf) return;
-    leaf.status = 'Issued'; leaf.paymentId = payment.id; leaf.date = date; leaf.dueDate = o.dueDate; leaf.amount = o.amount; leaf.payee = o.payee; leaf.supplierId = sid; leaf.issuedTo = sid;
-    payment.ownChequeIds.push(leaf.id); payment.ownAmount += o.amount;
-  });
+  p.ownRows.forEach(o => { const leaf = arr(db.chequeLeaves).find(l => l.id === o.leafId); if(!leaf) return; leaf.status = 'Issued'; leaf.paymentId = payment.id; leaf.date = date; leaf.dueDate = o.dueDate; leaf.amount = o.amount; leaf.payee = o.payee; leaf.supplierId = sid; leaf.issuedTo = sid; payment.ownChequeIds.push(leaf.id); payment.ownAmount += o.amount; });
   payment.amount = payment.partyAmount + payment.ownAmount;
   if(!Array.isArray(db.payments)) db.payments = [];
   db.payments.push(payment);
   db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo)||1) + 1;
-  logAct('Add Payment','Payment',payment.id, supName(sid) + ' • ' + money(payment.amount) + ' (' + p.partyCheques.length + ' party + ' + p.ownRows.length + ' own)');
+  logAct('Add Payment','Payment',payment.id, supName(sid) + ' • ' + money(payment.amount) + ' (' + p.partyCheques.length + 'P + ' + p.ownRows.length + 'O)');
   window._payPreview = null;
-  ui.paySelectedParty.clear();
-  ui.payOwnRows = [];
-  save(); closeModal(); render();
-  toast('✅ Payment saved • ' + money(payment.amount), 'success');
+  ui.paySelectedParty.clear(); ui.payOwnRows = [];
+  save(); closeModal(); render(); toast('✅ Payment saved • ' + money(payment.amount), 'success');
   if(payment.amount >= 100000) confetti();
 }
 window.confirmSavePayment = confirmSavePayment;
-
-function tablePay(){ const rows = sortRows(arr(db.payments).map(p => ({ id:p.id, date:p.date, supplier:supName(p.supplierId), reference:p.reference, partyAmount:num(p.partyAmount), ownAmount:num(p.ownAmount), amount:num(p.amount), partyCount:(p.partyChequeIds||[]).length, ownCount:(p.ownChequeIds||[]).length })), ui.pay.sort, ui.pay.dir); const total = sum(rows, 'amount'); return '<div class="table-wrap"><table><thead><tr>' + th('pay','date','Date') + th('pay','supplier','Supplier') + '<th>Reference</th><th class="num">Party</th><th class="num">Own</th>' + th('pay','amount','Total','num') + '<th style="width:180px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td><strong>' + esc(r.supplier) + '</strong></td><td class="mono">' + esc(r.reference||'—') + '</td><td class="num">' + moneyPlain(r.partyAmount) + ' <span class="muted small">(' + r.partyCount + ')</span></td><td class="num">' + moneyPlain(r.ownAmount) + ' <span class="muted small">(' + r.ownCount + ')</span></td><td class="num"><strong>' + moneyPlain(r.amount) + '</strong></td><td><div class="row-flex"><button class="btn xs" data-action="view-payment" data-id="' + r.id + '">View</button>' + (can('delete') ? '<button class="btn xs danger" data-action="del-payment" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(7, 'No payments yet')) + '</tbody>' + (rows.length ? '<tfoot><tr><td colspan="5">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '') + '</table></div>'; }
+function tablePay(){ const rows = sortRows(arr(db.payments).map(p => ({ id:p.id, date:p.date, supplier:supName(p.supplierId), reference:p.reference, partyAmount:num(p.partyAmount), ownAmount:num(p.ownAmount), amount:num(p.amount), partyCount:(p.partyChequeIds||[]).length, ownCount:(p.ownChequeIds||[]).length })), ui.pay.sort, ui.pay.dir); const total = sum(rows, 'amount'); return '<div class="table-wrap"><table><thead><tr>' + th('pay','date','Date') + th('pay','supplier','Supplier') + '<th>Ref</th><th class="num">Party</th><th class="num">Own</th>' + th('pay','amount','Total','num') + '<th style="width:180px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td><strong>' + esc(r.supplier) + '</strong></td><td class="mono">' + esc(r.reference||'—') + '</td><td class="num">' + moneyPlain(r.partyAmount) + ' <span class="muted small">(' + r.partyCount + ')</span></td><td class="num">' + moneyPlain(r.ownAmount) + ' <span class="muted small">(' + r.ownCount + ')</span></td><td class="num"><strong>' + moneyPlain(r.amount) + '</strong></td><td><div class="row-flex"><button class="btn xs" data-action="view-payment" data-id="' + r.id + '">View</button>' + (can('delete') ? '<button class="btn xs danger" data-action="del-payment" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(7, 'No payments yet')) + '</tbody>' + (rows.length ? '<tfoot><tr><td colspan="5">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '') + '</table></div>'; }
 function deletePayment(id){
   if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; }
-  if(!confirm('Delete this payment?\n\nParty cheques → In Hand\nOwn leaves → Available again')) return;
+  if(!confirm('Delete this payment? Party cheques → In Hand. Own leaves → Available.')) return;
   const p = arr(db.payments).find(x => x.id === id); if(!p) return;
   const backup = JSON.parse(JSON.stringify(p));
   (p.partyChequeIds || []).forEach(cid => { const c = arr(db.customerCheques).find(x => x.id === cid); if(c){ c.status = 'In Hand'; delete c.paymentId; delete c.issuedTo; } });
   (p.ownChequeIds || []).forEach(lid => { const l = arr(db.chequeLeaves).find(x => x.id === lid); if(l){ l.status = 'Available'; l.paymentId = null; l.date = null; l.dueDate = null; l.amount = 0; l.payee = ''; l.supplierId = null; } });
   db.payments = arr(db.payments).filter(x => x.id !== id);
   logAct('Delete Payment','Payment',id, supName(p.supplierId));
-  save(); render(); toast('Payment deleted', null, 'Undo');
-  stageUndo('Delete Payment', () => {
-    backup.partyChequeIds.forEach(cid => { const c = arr(db.customerCheques).find(x => x.id === cid); if(c){ c.status = 'Issued'; c.paymentId = backup.id; c.issuedTo = backup.supplierId; } });
-    backup.ownChequeIds.forEach(lid => { const l = arr(db.chequeLeaves).find(x => x.id === lid); if(l){ l.status = 'Issued'; l.paymentId = backup.id; } });
-    db.payments.push(backup); save(); render();
-  });
+  save(); render(); toast('Payment deleted');
 }
 function viewPayment(id){
   const p = arr(db.payments).find(x => x.id === id); if(!p) return;
   const party = (p.partyChequeIds || []).map(cid => arr(db.customerCheques).find(c => c.id === cid)).filter(Boolean);
   const own = (p.ownChequeIds || []).map(lid => arr(db.chequeLeaves).find(l => l.id === lid)).filter(Boolean);
-  openModal('Payment — ' + supName(p.supplierId),
-    '<div class="grid grid-4" style="margin-bottom:16px"><div><div class="k-label">Date</div><strong>' + dateFmt(p.date) + '</strong></div><div><div class="k-label">Reference</div><strong>' + esc(p.reference||'—') + '</strong></div><div><div class="k-label">Supplier</div><strong>' + esc(supName(p.supplierId)) + '</strong></div><div><div class="k-label">Total</div><strong>' + money(p.amount) + '</strong></div></div>' +
-    (party.length ? '<div class="section-title">🧾 Party Cheques (' + party.length + ')</div><div class="table-wrap"><table><thead><tr><th>Cheque</th><th>Customer</th><th>Bank</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + party.map(c => '<tr><td class="mono">' + esc(c.chequeNo||'—') + '</td><td>' + esc(c.customerName) + '</td><td>' + esc(c.bank||'') + '</td><td class="num">' + moneyPlain(c.amount) + '</td><td>' + statusBadge(c.status) + '</td></tr>').join('') + '</tbody></table></div>' : '') +
-    (own.length ? '<div class="section-title">🎯 Own Cheques (' + own.length + ')</div><div class="table-wrap"><table><thead><tr><th>Leaf</th><th>Bank</th><th>Book</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + own.map(l => '<tr><td class="mono">' + esc(l.leafNo) + '</td><td>' + esc(l.bankName) + '</td><td class="mono">' + esc(l.bookNo ? '#' + l.bookNo : '—') + '</td><td class="num">' + moneyPlain(l.amount) + '</td><td>' + statusBadge(l.status) + '</td></tr>').join('') + '</tbody></table></div>' : '') +
-    '<div class="form-actions"><button class="btn" data-action="close-modal">Close</button></div>', 'wide');
+  openModal('Payment — ' + supName(p.supplierId), '<div class="grid grid-4" style="margin-bottom:16px"><div><div class="k-label">Date</div><strong>' + dateFmt(p.date) + '</strong></div><div><div class="k-label">Ref</div><strong>' + esc(p.reference||'—') + '</strong></div><div><div class="k-label">Supplier</div><strong>' + esc(supName(p.supplierId)) + '</strong></div><div><div class="k-label">Total</div><strong>' + money(p.amount) + '</strong></div></div>' + (party.length ? '<div class="section-title">🧾 Party (' + party.length + ')</div><div class="table-wrap"><table><thead><tr><th>Cheque</th><th>Customer</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + party.map(c => '<tr><td class="mono">' + esc(c.chequeNo||'—') + '</td><td>' + esc(c.customerName) + '</td><td class="num">' + moneyPlain(c.amount) + '</td><td>' + statusBadge(c.status) + '</td></tr>').join('') + '</tbody></table></div>' : '') + (own.length ? '<div class="section-title">🎯 Own (' + own.length + ')</div><div class="table-wrap"><table><thead><tr><th>Leaf</th><th>Bank</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + own.map(l => '<tr><td class="mono">' + esc(l.leafNo) + '</td><td>' + esc(l.bankName) + '</td><td class="num">' + moneyPlain(l.amount) + '</td><td>' + statusBadge(l.status) + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="form-actions"><button class="btn" data-action="close-modal">Close</button></div>', 'wide');
 }
 window.viewPayment = viewPayment;
 
 /* ============================================================
-   BANK ACCOUNTS
+   BANKS
    ============================================================ */
 function viewBanks(){
   const rows = arr(db.bankAccounts);
-  return '<div class="kpi-strip">' +
-    kpiCard('Bank Accounts', rows.length, 'Active accounts', { small:true }) +
-    kpiCard('Linked Cheque Books', arr(db.chequeBooks).filter(b => b.bankAccountId).length, 'Cheque books linked to banks', { small:true }) +
-    kpiCard('Total Leaves', arr(db.chequeLeaves).length, 'Across all books', { small:true }) +
-  '</div>' +
+  return '<div class="kpi-strip">' + kpiCard('Bank Accounts', rows.length, 'Active accounts', { small:true }) + kpiCard('Linked Cheque Books', arr(db.chequeBooks).filter(b => b.bankAccountId).length, '', { small:true }) + kpiCard('Total Leaves', arr(db.chequeLeaves).length, '', { small:true }) + '</div>' +
   '<div class="card"><div class="card-head"><h3>🏛️ Bank Accounts</h3>' + (can('create') ? '<button class="btn primary" data-action="add-bank">Add Bank Account</button>' : '') + '</div>' +
-  '<div class="table-wrap"><table><thead><tr><th>Bank</th><th>Account No</th><th>Branch</th><th>Account Type</th><th class="num">Opening</th><th class="num">Cheque Books</th><th style="width:200px">Actions</th></tr></thead><tbody>' +
+  '<div class="table-wrap"><table><thead><tr><th>Bank</th><th>Account No</th><th>Branch</th><th>Type</th><th class="num">Opening</th><th class="num">Cheque Books</th><th style="width:200px">Actions</th></tr></thead><tbody>' +
   (rows.length ? rows.map(b => { const bookCount = arr(db.chequeBooks).filter(x => x.bankAccountId === b.id).length; return '<tr><td><strong>' + esc(b.bankName) + '</strong></td><td class="mono">' + esc(b.accountNo||'—') + '</td><td>' + esc(b.branch||'—') + '</td><td>' + (b.accountType ? '<span class="badge blue">' + esc(b.accountType) + '</span>' : '—') + '</td><td class="num">' + moneyPlain(num(b.openingBalance)) + '</td><td class="num">' + bookCount + '</td><td><div class="row-flex">' + (can('edit') ? '<button class="btn xs" data-action="edit-bank" data-id="' + b.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-bank" data-id="' + b.id + '">Del</button>' : '') + '</div></td></tr>'; }).join('') : emptyRow(7, 'No bank accounts yet')) +
   '</tbody></table></div></div>';
 }
@@ -1326,7 +1494,7 @@ function openBankForm(id){
   const b = id ? bankObj(id) : null;
   openModal(b ? 'Edit Bank Account' : 'Add Bank Account',
     '<form onsubmit="saveBank(event)" data-id="' + (b ? b.id : '') + '">' +
-    '<div class="alert info"><span class="ico">ℹ</span><div>Bank accounts are the parent of cheque books. You can create cheque books and link them to these accounts.</div></div>' +
+    '<div class="alert info"><span class="ico">ℹ</span><div>Bank accounts are the parent of cheque books. Create cheque books linked to these accounts.</div></div>' +
     '<div class="form-grid">' +
       '<label class="field">Bank Name <span class="req">*</span><input name="bName" required value="' + esc(b ? b.bankName : '') + '" placeholder="e.g. Commercial Bank"></label>' +
       '<label class="field">Account Number<input name="bAcc" value="' + esc(b ? b.accountNo : '') + '"></label>' +
@@ -1350,7 +1518,7 @@ function saveBank(e){
 function deleteBank(id){
   if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; }
   const linked = arr(db.chequeBooks).filter(b => b.bankAccountId === id);
-  if(linked.length){ toast('Bank has linked cheque books (' + linked.length + '). Remove them first.', 'error'); return; }
+  if(linked.length){ toast('Bank has ' + linked.length + ' linked cheque book(s). Remove them first.', 'error'); return; }
   if(!confirm('Delete this bank account?')) return;
   const b = bankObj(id); if(!b) return;
   const backup = Object.assign({}, b);
@@ -1361,15 +1529,11 @@ function deleteBank(id){
 }
 
 /* ============================================================
-   CHEQUE BOOKS — with bank link + auto leaf generation
+   CHEQUE BOOKS
    ============================================================ */
 function viewChequeBooks(){
   const books = arr(db.chequeBooks);
-  return '<div class="kpi-strip">' +
-    kpiCard('Cheque Books', books.length, 'Total books', { small:true }) +
-    kpiCard('Total Leaves', arr(db.chequeLeaves).length, 'Across all books', { small:true }) +
-    kpiCard('Available', availableLeaves().length, 'Ready to issue', { small:true }) +
-  '</div>' +
+  return '<div class="kpi-strip">' + kpiCard('Cheque Books', books.length, '', { small:true }) + kpiCard('Total Leaves', arr(db.chequeLeaves).length, '', { small:true }) + kpiCard('Available', availableLeaves().length, 'Ready to issue', { small:true }) + '</div>' +
   '<div class="card"><div class="card-head"><h3>📚 Cheque Books</h3>' + (can('create') ? '<button class="btn primary" data-action="add-cbook">Add Cheque Book</button>' : '') + '</div>' +
   (books.length ? books.map(b => {
     const leaves = arr(db.chequeLeaves).filter(l => l.chequeBookId === b.id);
@@ -1380,19 +1544,14 @@ function viewChequeBooks(){
     const bank = b.bankAccountId ? bankObj(b.bankAccountId) : null;
     return '<div class="book-card">' +
       '<div class="book-card-head" onclick="toggleBookExpand(\'' + b.id + '\')">' +
-        '<div class="bk-info">' +
-          '<div class="bk-bank">' + esc(b.bankName) + (b.bookNo ? ' • Book #' + esc(b.bookNo) : '') + ' ' + (bank && bank.accountType ? '<span class="badge blue">' + esc(bank.accountType) + '</span>' : '') + '</div>' +
-          '<div class="bk-meta">Range ' + esc(b.startNo) + ' – ' + esc(b.endNo) + ' (' + leaves.length + ' leaves) • Issued: ' + issued + ' • Cleared: ' + cleared + ' • Bounced: ' + bounced + '</div>' +
-        '</div>' +
+        '<div class="bk-info"><div class="bk-bank">' + esc(b.bankName) + (b.bookNo ? ' • Book #' + esc(b.bookNo) : '') + ' ' + (bank && bank.accountType ? '<span class="badge blue">' + esc(bank.accountType) + '</span>' : '') + '</div>' +
+          '<div class="bk-meta">Range ' + esc(b.startNo) + ' – ' + esc(b.endNo) + ' (' + leaves.length + ' leaves) • Issued: ' + issued + ' • Cleared: ' + cleared + ' • Bounced: ' + bounced + '</div></div>' +
         '<div style="text-align:right"><div class="bk-count ' + (avail === 0 ? 'zero' : '') + '">' + avail + '</div><div class="small muted">available</div></div>' +
         '<div style="margin-left:12px"><button class="icon-btn" onclick="event.stopPropagation(); deleteChequeBook(\'' + b.id + '\')">🗑</button></div>' +
       '</div>' +
-      '<div id="book-expand-' + b.id + '" style="display:none">' +
-        '<div class="leaf-grid">' + leaves.map(l => '<div class="leaf-chip ' + l.status + '" title="' + esc(l.status) + (l.amount ? ' • ' + moneyPlain(l.amount) : '') + (l.payee ? ' • ' + esc(l.payee) : '') + '">' + esc(l.leafNo) + '</div>').join('') + '</div>' +
-        '<div style="padding:12px 16px;background:var(--surface-2);font-size:11.5px;color:var(--text-3)">Click a leaf to see details. Green = Available, Blue = Issued, Purple = Cleared, Red = Bounced.</div>' +
-      '</div>' +
+      '<div id="book-expand-' + b.id + '" style="display:none"><div class="leaf-grid">' + leaves.map(l => '<div class="leaf-chip ' + l.status + '" title="' + esc(l.status) + (l.amount ? ' • ' + moneyPlain(l.amount) : '') + '">' + esc(l.leafNo) + '</div>').join('') + '</div><div style="padding:12px 16px;background:var(--surface-2);font-size:11.5px;color:var(--text-3)">Green = Available, Blue = Issued, Purple = Cleared, Red = Bounced.</div></div>' +
     '</div>';
-  }).join('') : '<div class="empty">No cheque books yet. Create a bank account first, then add a cheque book.</div>') +
+  }).join('') : '<div class="empty">No cheque books yet.</div>') +
   '</div>';
 }
 function toggleBookExpand(id){ const el = document.getElementById('book-expand-' + id); if(el) el.style.display = el.style.display === 'none' ? '' : 'none'; }
@@ -1403,13 +1562,13 @@ function openChequeBookForm(id){
   if(!banks.length){ toast('Add a bank account first', 'error'); return; }
   openModal(b ? 'Edit Cheque Book' : 'Add Cheque Book',
     '<form onsubmit="saveChequeBook(event)" data-id="' + (b ? b.id : '') + '">' +
-    '<div class="alert info"><span class="ico">ℹ</span><div>Select the bank account this cheque book belongs to. Individual leaves will be auto-generated from start to end number.</div></div>' +
+    '<div class="alert info"><span class="ico">ℹ</span><div>Select the bank account this cheque book belongs to. Leaves auto-generated from start to end number.</div></div>' +
     '<div class="form-grid">' +
-      '<label class="field">Bank Account <span class="req">*</span><select name="cbBankAccount" required><option value="">Select bank</option>' + banks.map(x => '<option value="' + x.id + '" ' + (b && b.bankAccountId === x.id ? 'selected' : '') + '>' + esc(x.bankName) + ' — ' + esc(x.accountNo||'no account#') + ' (' + esc(x.accountType||'Current') + ')</option>').join('') + '</select></label>' +
+      '<label class="field">Bank Account <span class="req">*</span><select name="cbBankAccount" required><option value="">Select bank</option>' + banks.map(x => '<option value="' + x.id + '" ' + (b && b.bankAccountId === x.id ? 'selected' : '') + '>' + esc(x.bankName) + ' — ' + esc(x.accountNo||'no #') + ' (' + esc(x.accountType||'Current') + ')</option>').join('') + '</select></label>' +
       '<label class="field">Book Number<input name="cbBookNo" value="' + esc(b ? b.bookNo : '') + '" placeholder="e.g. A0123"></label>' +
       '<label class="field">Start Leaf No <span class="req">*</span><input name="cbStart" type="number" required value="' + (b ? b.startNo : 1000) + '" placeholder="1000"></label>' +
       '<label class="field">End Leaf No <span class="req">*</span><input name="cbEnd" type="number" required value="' + (b ? b.endNo : 1050) + '" placeholder="1050"></label>' +
-      '<label class="field">Total Leaves <span class="hint">Auto-calculated</span><input id="cbTotal" type="text" readonly value="—" style="background:var(--surface-3)"></label>' +
+      '<label class="field">Total Leaves<input id="cbTotal" type="text" readonly value="—" style="background:var(--surface-3)"></label>' +
     '</div>' +
     '<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">' + (b ? 'Update' : 'Generate Book & Leaves') + '</button></div></form>');
   setTimeout(() => { const f = document.querySelector('#modalWrap form'); if(f){ const upd = () => { const s = num(f.cbStart.value), e = num(f.cbEnd.value); document.getElementById('cbTotal').value = (s && e && e >= s) ? (e - s + 1) + ' leaves' : '—'; }; f.cbStart.addEventListener('input', upd); f.cbEnd.addEventListener('input', upd); upd(); } }, 0);
@@ -1426,7 +1585,6 @@ function saveChequeBook(e){
     const b = bookObj(id);
     const oldStart = num(b.startNo), oldEnd = num(b.endNo);
     Object.assign(b, data);
-    // If range changed, regenerate leaves
     if(oldStart !== start || oldEnd !== end){
       const existingUsed = arr(db.chequeLeaves).filter(l => l.chequeBookId === id && l.status !== 'Available');
       if(existingUsed.length){ toast('Cannot change range — ' + existingUsed.length + ' leaves already used', 'error'); return; }
@@ -1447,93 +1605,18 @@ function deleteChequeBook(id){
   if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; }
   const used = arr(db.chequeLeaves).filter(l => l.chequeBookId === id && l.status !== 'Available');
   if(used.length){ toast('Cannot delete — ' + used.length + ' leaves already used', 'error'); return; }
-  if(!confirm('Delete this cheque book and all its unused leaves?')) return;
-  const backup = { book: Object.assign({}, bookObj(id)), leaves: arr(db.chequeLeaves).filter(l => l.chequeBookId === id).map(l => Object.assign({}, l)) };
+  if(!confirm('Delete this cheque book and its unused leaves?')) return;
   db.chequeBooks = arr(db.chequeBooks).filter(x => x.id !== id);
   db.chequeLeaves = arr(db.chequeLeaves).filter(l => l.chequeBookId !== id);
-  logAct('Delete Cheque Book','ChequeBook',id, backup.book.bankName);
-  save(); render(); toast('Deleted', null, 'Undo');
-  stageUndo('Delete Cheque Book', () => { db.chequeBooks.push(backup.book); backup.leaves.forEach(l => db.chequeLeaves.push(l)); save(); render(); });
+  save(); render(); toast('Deleted');
 }
 function tableChequeBooks(){ return ''; }
-
-/* ============================================================
-   CHEQUE LEAVES VIEW (replaces old "Own Cheques")
-   ============================================================ */
-function viewOwnLeaves(){
-  const leaves = arr(db.chequeLeaves);
-  const tabs = ['Available','Issued','Cleared','Bounced'];
-  const counts = tabs.reduce((a,t) => { a[t] = leaves.filter(l => l.status === t).length; return a; }, {});
-  const activeTab = ui.own.tab === 'Issued' ? 'Issued' : (tabs.includes(ui.own.tab) ? ui.own.tab : 'Available');
-  if(!tabs.includes(ui.own.tab)) ui.own.tab = 'Available';
-  const filtered = leaves.filter(l => l.status === ui.own.tab);
-  const byBook = groupBy(filtered, l => l.chequeBookId);
-  return '<div class="kpi-strip">' +
-    tabs.map(t => kpiCard(t + ' Leaves', counts[t], t === 'Available' ? 'Ready to issue' : '', { small:true })).join('') +
-  '</div>' +
-  '<div class="card">' +
-    '<div class="card-head"><h3>🎯 Cheque Leaves</h3><span class="hint">Individual leaf tracking across all cheque books</span></div>' +
-    '<div class="tabs">' + tabs.map(t => '<div class="tab ' + (ui.own.tab === t ? 'active' : '') + '" onclick="switchOwnTab(\'' + t + '\')">' + t + ' (' + counts[t] + ')</div>').join('') + '</div>' +
-    (filtered.length ? Object.keys(byBook).map(bid => {
-      const book = bookObj(bid);
-      const bLeaves = byBook[bid];
-      return '<div style="margin-bottom:16px"><div style="font-weight:600;font-size:13px;margin-bottom:8px">' + (book ? esc(book.bankName) + (book.bookNo ? ' • #' + esc(book.bookNo) : '') : 'Unknown book') + ' <span class="muted small">(' + bLeaves.length + ' leaves)</span></div>' +
-        '<div class="table-wrap"><table><thead><tr><th>Leaf No</th><th>Bank</th><th>Book</th>' + (ui.own.tab === 'Issued' ? '<th>Issued To</th>' : '') + (ui.own.tab === 'Bounced' ? '<th>Returned From</th>' : '') + '<th>Payee</th><th class="num">Amount</th><th>Date</th><th class="num">Due</th><th style="width:180px">Actions</th></tr></thead><tbody>' +
-        bLeaves.map(l => '<tr><td class="mono"><strong>' + esc(l.leafNo) + '</strong></td><td>' + esc(l.bankName) + '</td><td class="mono">' + esc(l.bookNo ? '#' + l.bookNo : '—') + '</td>' + (ui.own.tab === 'Issued' ? '<td>' + esc(supName(l.supplierId)) + '</td>' : '') + (ui.own.tab === 'Bounced' ? '<td>' + (l.supplierId ? esc(supName(l.supplierId)) : '—') + '</td>' : '') + '<td>' + esc(l.payee || '—') + '</td><td class="num">' + (l.amount ? moneyPlain(l.amount) : '—') + '</td><td>' + (l.date ? dateFmt(l.date) : '—') + '</td><td class="num">' + (l.dueDate ? dateFmt(l.dueDate) : '—') + '</td><td><div class="row-flex">' +
-        (ui.own.tab === 'Issued' ? '<button class="btn xs green" data-action="clear-own" data-id="' + l.id + '">Clear</button><button class="btn xs danger" data-action="bounce-own" data-id="' + l.id + '">Bounce</button>' : '') +
-        (ui.own.tab === 'Bounced' ? '<button class="btn xs" data-action="unbounce-own" data-id="' + l.id + '">Restore</button>' : '') +
-        '</div></td></tr>').join('') + '</tbody></table></div></div>';
-    }).join('') : '<div class="empty">No ' + ui.own.tab.toLowerCase() + ' leaves</div>') +
-  '</div>';
-}
-function switchOwnTab(t){ ui.own.tab = t; render(); }
-window.switchOwnTab = switchOwnTab;
-function tableOwn(){ return ''; }
-function clearCheque(id){ clearChequeByLeaf(id); }
-function clearChequeByLeaf(id){
-  if(!canWrite()) return;
-  const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return;
-  l.status = 'Cleared'; l.clearedDate = today();
-  logAct('Leaf Cleared','Leaf',id, l.leafNo + ' • ' + l.bankName);
-  save(); render(); toast('Leaf cleared');
-}
-window.clearChequeByLeaf = clearChequeByLeaf;
-function unbounceOwn(id){
-  if(!canWrite()) return;
-  const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return;
-  if(!confirm('Restore this leaf to Available?')) return;
-  l.status = 'Available'; l.paymentId = null; l.date = null; l.dueDate = null; l.amount = 0; l.payee = ''; l.supplierId = null; delete l.bouncedDate;
-  logAct('Restore Leaf','Leaf',id, l.leafNo);
-  save(); render(); toast('Leaf restored');
-}
-window.unbounceOwn = unbounceOwn;
-function bounceOwnLeaf(id){
-  if(!canWrite()) return;
-  const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return;
-  if(!confirm('Mark this leaf as Bounced? The supplier payment will be reversed.')) return;
-  // Reverse payment
-  const payment = l.paymentId ? arr(db.payments).find(p => p.id === l.paymentId) : null;
-  if(payment){
-    payment.ownChequeIds = (payment.ownChequeIds || []).filter(x => x !== l.id);
-    payment.ownAmount = Math.max(0, num(payment.ownAmount) - num(l.amount));
-    payment.amount = num(payment.partyAmount) + num(payment.ownAmount);
-    if(payment.amount <= 0 && (payment.partyChequeIds||[]).length === 0 && (payment.ownChequeIds||[]).length === 0) db.payments = arr(db.payments).filter(p => p.id !== payment.id);
-  }
-  l.status = 'Bounced'; l.bouncedDate = today();
-  logAct('Leaf Bounced','Leaf',id, l.leafNo + ' • ' + l.bankName);
-  save(); render(); toast('Leaf bounced — payment reversed', 'warn');
-}
-window.bounceOwnLeaf = bounceOwnLeaf;
 
 /* ============================================================
    RECEIPTS
    ============================================================ */
 function viewReceipts(){
-  return '<div class="kpi-strip">' +
-    kpiCard('Receipts · MTD', moneyPlain(sum(arr(db.receipts).filter(r => inMonth(r.date, thisMonth())), 'amount')), arr(db.receipts).filter(r => inMonth(r.date, thisMonth())).length + ' receipt(s)', { small:true }) +
-    kpiCard('All Time', moneyPlain(sum(arr(db.receipts), 'amount')), arr(db.receipts).length + ' receipt(s)', { small:true }) +
-    kpiCard('Cheques Generated', arr(db.customerCheques).length, 'From all receipts', { small:true }) +
-  '</div>' +
+  return '<div class="kpi-strip">' + kpiCard('Receipts · MTD', moneyPlain(sum(arr(db.receipts).filter(r => inMonth(r.date, thisMonth())), 'amount')), arr(db.receipts).filter(r => inMonth(r.date, thisMonth())).length + ' receipt(s)', { small:true }) + kpiCard('All Time', moneyPlain(sum(arr(db.receipts), 'amount')), arr(db.receipts).length + ' receipt(s)', { small:true }) + kpiCard('Party Cheques', arr(db.customerCheques).length, 'From all receipts', { small:true }) + '</div>' +
   '<div class="card"><div class="card-head"><h3>Receipts</h3>' + (can('create') ? '<button class="btn primary" data-action="add-receipt">Add Receipt</button>' : '') + '</div>' +
     '<div class="form-grid" style="margin-bottom:16px"><label class="field">Search<input type="search" value="' + esc(ui.rcp.q) + '" oninput="ui.rcp.q=this.value; refreshTable(\'rcp\')"></label></div>' +
     '<div id="tbl-rcp">' + tableReceipts() + '</div></div>';
@@ -1548,20 +1631,7 @@ function tableReceipts(){
 }
 function openReceiptForm(){
   if(!arr(db.customers).length){ toast('Add a customer first','error'); return; }
-  openModal('Add Receipt',
-    '<form onsubmit="saveReceipt(event)">' +
-      '<div class="alert info"><span class="ico">ℹ</span><div>Add multiple cheques. Each becomes a Customer Cheque (In Hand).</div></div>' +
-      '<div class="form-grid">' +
-        '<label class="field">Customer <span class="req">*</span><select name="rcCustomer" required><option value="">Select</option>' + arr(db.customers).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label>' +
-        '<label class="field">Date <span class="req">*</span><input name="rcDate" type="date" required value="' + today() + '"></label>' +
-        '<label class="field">Category<select name="rcCat"><option value="">— None —</option>' + arr(db.categories).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label>' +
-        '<label class="field">Method <span class="req">*</span><select name="rcMethod" id="rcMethod" required onchange="toggleReceiptCheques()"><option value="Cheque">Cheque</option><option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="Other">Other</option></select></label>' +
-      '</div>' +
-      '<div id="chequeSection" style="margin-top:20px"><div class="section-title">Cheque Rows</div><div id="chequeRows"></div><button type="button" class="btn" onclick="addChequeRow()">＋ Add Cheque</button></div>' +
-      '<div id="singleAmountSection" style="display:none;margin-top:20px"><label class="field">Amount <span class="req">*</span><input name="rcAmount" type="number" step="0.01" min="0" placeholder="0.00"></label></div>' +
-      '<label class="field" style="margin-top:14px">Notes<textarea name="rcNotes"></textarea></label>' +
-      '<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">Save Receipt</button></div>' +
-    '</form>', 'wide');
+  openModal('Add Receipt', '<form onsubmit="saveReceipt(event)"><div class="alert info"><span class="ico">ℹ</span><div>Add multiple cheques. Each becomes a Customer Cheque.</div></div><div class="form-grid"><label class="field">Customer <span class="req">*</span><select name="rcCustomer" required><option value="">Select</option>' + arr(db.customers).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label><label class="field">Date <span class="req">*</span><input name="rcDate" type="date" required value="' + today() + '"></label><label class="field">Category<select name="rcCat"><option value="">— None —</option>' + arr(db.categories).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('') + '</select></label><label class="field">Method <span class="req">*</span><select name="rcMethod" id="rcMethod" required onchange="toggleReceiptCheques()"><option value="Cheque">Cheque</option><option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="Other">Other</option></select></label></div><div id="chequeSection" style="margin-top:20px"><div class="section-title">Cheque Rows</div><div id="chequeRows"></div><button type="button" class="btn" onclick="addChequeRow()">＋ Add Cheque</button></div><div id="singleAmountSection" style="display:none;margin-top:20px"><label class="field">Amount <span class="req">*</span><input name="rcAmount" type="number" step="0.01" min="0" placeholder="0.00"></label></div><label class="field" style="margin-top:14px">Notes<textarea name="rcNotes"></textarea></label><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">Save Receipt</button></div></form>', 'wide');
   addChequeRow(); toggleReceiptCheques();
 }
 window.openReceiptForm = openReceiptForm;
@@ -1592,7 +1662,7 @@ function saveReceipt(e){
   save(); closeModal(); render(); toast('Receipt saved', 'success');
 }
 window.saveReceipt = saveReceipt;
-function deleteReceipt(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } const linked = arr(db.customerCheques).filter(cq => cq.receiptId === id); const issued = linked.filter(cq => cq.status === 'Issued' || cq.status === 'Cleared'); if(issued.length){ toast('Has issued/cleared cheques','error'); return; } if(!confirm('Delete receipt?')) return; const r = arr(db.receipts).find(x => x.id === id); if(!r) return; db.receipts = arr(db.receipts).filter(x => x.id !== id); db.customerCheques = arr(db.customerCheques).filter(cq => cq.receiptId !== id); save(); render(); toast('Deleted'); }
+function deleteReceipt(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } const linked = arr(db.customerCheques).filter(cq => cq.receiptId === id); const issued = linked.filter(cq => cq.status === 'Issued' || cq.status === 'Cleared'); if(issued.length){ toast('Has issued/cleared cheques','error'); return; } if(!confirm('Delete?')) return; db.receipts = arr(db.receipts).filter(x => x.id !== id); db.customerCheques = arr(db.customerCheques).filter(cq => cq.receiptId !== id); save(); render(); toast('Deleted'); }
 function showReceiptDetail(id){ const r = arr(db.receipts).find(x => x.id === id); if(!r) return; const cheques = arr(db.customerCheques).filter(cq => cq.receiptId === id); openModal('Receipt — ' + r.customerName, '<div class="grid grid-4" style="margin-bottom:16px"><div><div class="k-label">Date</div><strong>' + dateFmt(r.date) + '</strong></div><div><div class="k-label">Method</div><strong>' + esc(r.method) + '</strong></div><div><div class="k-label">Category</div><strong>' + esc(catName(r.categoryId)) + '</strong></div><div><div class="k-label">Total</div><strong>' + money(r.amount) + '</strong></div></div>' + (cheques.length ? '<div class="section-title">Cheques (' + cheques.length + ')</div><div class="table-wrap"><table><thead><tr><th>Cheque</th><th>Bank</th><th>Due</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + cheques.map(c => '<tr><td class="mono">' + esc(c.chequeNo) + '</td><td>' + esc(c.bank||'—') + '</td><td>' + dateFmt(c.dueDate) + '</td><td class="num">' + moneyPlain(c.amount) + '</td><td>' + statusBadge(c.status) + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="form-actions"><button class="btn" data-action="close-modal">Close</button></div>', 'wide'); }
 window.showReceiptDetail = showReceiptDetail;
 
@@ -1646,11 +1716,11 @@ function showCustomerDetail(id){
 window.showCustomerDetail = showCustomerDetail;
 function viewSuppliers(){ return '<div class="card"><div class="card-head"><h3>Suppliers</h3>' + (can('create') ? '<button class="btn primary" data-action="add-supplier">Add Supplier</button>' : '') + '</div><div class="form-grid" style="margin-bottom:16px"><label class="field">Search<input type="search" value="' + esc(ui.sup.q) + '" oninput="ui.sup.q=this.value; refreshTable(\'sup\')"></label></div><div id="tbl-sup">' + tableSuppliers() + '</div></div>'; }
 function tableSuppliers(){
-  let rows = arr(db.suppliers).map(s => ({ id:s.id, name:s.name, phone:s.phone, opening:num(s.openingBalance), purchases: sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount'), paid: sum(arr(db.payments).filter(p => p.supplierId === s.id), 'amount'), balance: supplierBalance(s.id), aging: supplierAging(s.id) }));
+  let rows = arr(db.suppliers).map(s => ({ id:s.id, name:s.name, phone:s.phone, opening:num(s.openingBalance), purchases: sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount'), paid: sum(arr(db.payments).filter(p => p.supplierId === s.id), 'amount'), balance: supplierBalance(s.id) }));
   const q = ui.sup.q.trim().toLowerCase();
   if(q) rows = rows.filter(r => (r.name||'').toLowerCase().includes(q));
   rows = sortRows(rows, ui.sup.sort, ui.sup.dir);
-  return '<div class="table-wrap"><table><thead><tr>' + th('sup','name','Supplier') + '<th>Phone</th><th class="num">Opening</th><th class="num">Purchases</th><th class="num">Paid</th>' + th('sup','balance','Payable','num') + '<th style="width:180px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td>' + esc(r.phone||'—') + '</td><td class="num">' + moneyPlain(r.opening) + '</td><td class="num">' + moneyPlain(r.purchases) + '</td><td class="num">' + moneyPlain(r.paid) + '</td><td class="num"><strong style="color:' + (r.balance>0?'var(--red)':'var(--green)') + '">' + moneyPlain(r.balance) + '</strong></td><td><div class="row-flex">' + (can('edit') ? '<button class="btn xs" data-action="edit-supplier" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-supplier" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(7, 'No suppliers')) + '</tbody></table></div>';
+  return '<div class="table-wrap"><table><thead><tr>' + th('sup','name','Supplier') + '<th>Phone</th><th class="num">Opening</th><th class="num">Purchases</th><th class="num">Paid</th>' + th('sup','balance','Payable','num') + '<th style="width:180px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td>' + esc(r.phone||'—') + '</td><td class="num">' + moneyPlain(r.opening) + '</td><td class="num">' + moneyPlain(r.purchases) + '</td><td class="num">' + moneyPlain(r.paid) + '</td><td class="num"><strong style="color:' + (r.balance>0?'var(--red)':'var(--green)') + '">' + moneyPlain(r.balance) + '</strong></td><td><div class="row-flex"><button class="btn xs" data-action="supplier-ledger" data-id="' + r.id + '">Ledger</button>' + (can('edit') ? '<button class="btn xs" data-action="edit-supplier" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-supplier" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(7, 'No suppliers')) + '</tbody></table></div>';
 }
 function openSupplierForm(id){ const s = id ? supObj(id) : null; openModal(s ? 'Edit Supplier' : 'Add Supplier', '<form onsubmit="saveSupplier(event)" data-id="' + (s ? s.id : '') + '"><div class="form-grid"><label class="field">Name <span class="req">*</span><input name="sName" required value="' + esc(s ? s.name : '') + '"></label><label class="field">Phone<input name="sPhone" value="' + esc(s ? s.phone : '') + '"></label><label class="field">Opening Balance<input name="sOpen" type="number" step="0.01" value="' + (s ? num(s.openingBalance) : 0) + '"></label><label class="field">Opening Date<input name="sOpenDate" type="date" value="' + (s ? (s.openingDate||today()) : today()) + '"></label><label class="field">Credit Limit<input name="sLimit" type="number" step="0.01" value="' + (s ? num(s.creditLimit) : 0) + '"></label><label class="field">Credit Days<input name="sDays" type="number" value="' + (s ? num(s.creditDays) : num(db.settings.defaultSupplierCreditDays)) + '"></label></div><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">' + (s ? 'Update' : 'Save') + '</button></div></form>'); }
 function saveSupplier(e){ e.preventDefault(); if(!canWrite()) return; const f = e.target, id = f.dataset.id; const data = { name:f.sName.value.trim(), phone:f.sPhone.value.trim(), openingBalance:num(f.sOpen.value), openingDate:f.sOpenDate.value||today(), creditLimit:num(f.sLimit.value), creditDays:num(f.sDays.value)||30 }; if(!data.name){ toast('Name required','error'); return; } if(id){ Object.assign(supObj(id), data); logAct('Update Supplier','Supplier',id,data.name); } else { const sid = uid(); if(!Array.isArray(db.suppliers)) db.suppliers = []; db.suppliers.push(Object.assign({ id:sid, createdAt:nowISO() }, data)); logAct('Add Supplier','Supplier',sid,data.name); } save(); closeModal(); render(); toast('Saved', 'success'); }
@@ -1661,14 +1731,31 @@ function deleteSupplier(id){ if(!canWrite()) return; if(arr(db.purchases).some(p
    ============================================================ */
 function viewPurchases(){ return '<div class="card"><div class="card-head"><h3>Purchases</h3>' + (can('create') ? '<button class="btn primary" data-action="add-purchase">Record Purchase</button>' : '') + '</div><div id="tbl-pur">' + tablePurchases() + '</div></div>'; }
 function tablePurchases(){ const rows = sortRows(arr(db.purchases).map(p => ({ id:p.id, date:p.date, supplier:supName(p.supplierId), invoiceNo:p.invoiceNo, amount:num(p.amount) })), ui.pur.sort, ui.pur.dir); const total = sum(rows, 'amount'); return '<div class="table-wrap"><table><thead><tr>' + th('pur','date','Date') + th('pur','supplier','Supplier') + th('pur','invoiceNo','Invoice') + th('pur','amount','Amount','num') + '<th style="width:120px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td>' + esc(r.supplier) + '</td><td class="mono">' + esc(r.invoiceNo||'—') + '</td><td class="num">' + moneyPlain(r.amount) + '</td><td><div class="row-flex">' + (can('edit') ? '<button class="btn xs" data-action="edit-purchase" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-purchase" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(5, 'None')) + '</tbody>' + (rows.length ? '<tfoot><tr><td colspan="3">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '') + '</table></div>'; }
-function openPurchaseForm(id){ if(!arr(db.suppliers).length){ toast('Add supplier first','error'); return; } const p = id ? arr(db.purchases).find(x => x.id === id) : null; openModal(p ? 'Edit Purchase' : 'Record Purchase', '<form onsubmit="savePurchase(event)" data-id="' + (p ? p.id : '') + '"><div class="form-grid"><label class="field">Supplier <span class="req">*</span><select name="pSupplier" required><option value="">Select</option>' + arr(db.suppliers).map(s => '<option value="' + s.id + '" ' + (p && p.supplierId===s.id?'selected':'') + '>' + esc(s.name) + '</option>').join('') + '</select></label><label class="field">Date <span class="req">*</span><input name="pDate" type="date" required value="' + (p ? p.date : today()) + '"></label><label class="field">Invoice<input name="pInvoice" value="' + esc(p ? p.invoiceNo : '') + '"></label><label class="field">Amount <span class="req">*</span><input name="pAmount" type="number" step="0.01" required value="' + (p ? num(p.amount) : '') + '"></label></div><label class="field" style="margin-top:14px">Description<textarea name="pDesc">' + esc(p ? p.description : '') + '</textarea></label><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">' + (p ? 'Update' : 'Save') + '</button></div></form>'); }
-function savePurchase(e){ e.preventDefault(); if(!canWrite()) return; const f = e.target, id = f.dataset.id; const data = { supplierId:f.pSupplier.value, date:f.pDate.value||today(), invoiceNo:f.pInvoice.value.trim(), amount:num(f.pAmount.value), description:f.pDesc.value.trim() }; if(!data.supplierId){ toast('Select supplier','error'); return; } if(data.amount <= 0){ toast('Amount required','error'); return; } if(id){ Object.assign(arr(db.purchases).find(x => x.id === id), data); } else { const pid = uid(); if(!Array.isArray(db.purchases)) db.purchases = []; db.purchases.push(Object.assign({ id:pid, createdAt:nowISO() }, data)); } save(); closeModal(); render(); toast('Saved', 'success'); }
+function openPurchaseForm(id){ if(!arr(db.suppliers).length){ toast('Add supplier first','error'); return; } const p = id ? arr(db.purchases).find(x => x.id === id) : null; openModal(p ? 'Edit Purchase' : 'Record Purchase', '<form onsubmit="savePurchase(event)" data-id="' + (p ? p.id : '') + '"><div class="form-grid"><label class="field">Supplier <span class="req">*</span><select name="pSupplier" required><option value="">Select</option>' + arr(db.suppliers).map(s => '<option value="' + s.id + '" ' + (p && p.supplierId===s.id?'selected':'') + '>' + esc(s.name) + '</option>').join('') + '</select></label><label class="field">Date <span class="req">*</span><input name="pDate" type="date" required value="' + (p ? p.date : today()) + '"></label><label class="field">Invoice<input name="pInvoice" value="' + esc(p ? p.invoiceNo : '') + '"></label><label class="field">Amount <span class="req">*</span><input name="pAmount" type="number" step="0.01" required value="' + (p ? num(p.amount) : '') + '"></label><label class="field">Category<select name="pCat"><option value="">— None —</option>' + arr(db.categories).map(c => '<option value="' + c.id + '" ' + (p && p.categoryId === c.id ? 'selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label></div><label class="field" style="margin-top:14px">Description<textarea name="pDesc">' + esc(p ? p.description : '') + '</textarea></label><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">' + (p ? 'Update' : 'Save') + '</button></div></form>'); }
+function savePurchase(e){ e.preventDefault(); if(!canWrite()) return; const f = e.target, id = f.dataset.id; const data = { supplierId:f.pSupplier.value, date:f.pDate.value||today(), invoiceNo:f.pInvoice.value.trim(), amount:num(f.pAmount.value), categoryId:f.pCat.value, description:f.pDesc.value.trim() }; if(!data.supplierId){ toast('Select supplier','error'); return; } if(data.amount <= 0){ toast('Amount required','error'); return; } if(id){ Object.assign(arr(db.purchases).find(x => x.id === id), data); } else { const pid = uid(); if(!Array.isArray(db.purchases)) db.purchases = []; db.purchases.push(Object.assign({ id:pid, createdAt:nowISO() }, data)); } save(); closeModal(); render(); toast('Saved', 'success'); }
 function deletePurchase(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } if(!confirm('Delete?')) return; db.purchases = arr(db.purchases).filter(x => x.id !== id); save(); render(); toast('Deleted'); }
-function viewCategories(){ return '<div class="card"><div class="card-head"><h3>Categories</h3>' + (can('create') ? '<button class="btn primary" data-action="add-cat">Add Category</button>' : '') + '</div><div id="tbl-cat">' + tableCategories() + '</div></div>'; }
-function tableCategories(){ const rows = arr(db.categories).map(c => { const receipts = arr(db.receipts).filter(r => r.categoryId === c.id); return { id:c.id, name:c.name, color:c.color, receipts:receipts.length, received: sum(receipts, 'amount') }; }); return '<div class="table-wrap"><table><thead><tr><th>Category</th><th class="num">Receipts</th><th class="num">Received</th><th style="width:120px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><span class="dot" style="background:' + r.color + ';margin-right:8px"></span><strong>' + esc(r.name) + '</strong></td><td class="num">' + r.receipts + '</td><td class="num">' + moneyPlain(r.received) + '</td><td><div class="row-flex">' + (can('edit') ? '<button class="btn xs" data-action="edit-cat" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-cat" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(4, 'No categories')) + '</tbody></table></div>'; }
+
+function viewCategories(){
+  const cats = arr(db.categories);
+  return '<div class="card"><div class="card-head"><h3>🏷️ Categories</h3>' + (can('create') ? '<button class="btn primary" data-action="add-cat">Add Category</button>' : '') + '</div>' +
+    '<div class="alert info"><span class="ico">ℹ</span><div>Click on any category to see full analytics: received amounts, purchases, party cheques issued to suppliers, and pending.</div></div>' +
+    '<div id="tbl-cat">' + tableCategories() + '</div></div>';
+}
+function tableCategories(){
+  const rows = arr(db.categories).map(c => {
+    const receipts = arr(db.receipts).filter(r => r.categoryId === c.id);
+    const purchases = arr(db.purchases).filter(p => p.categoryId === c.id);
+    const cheques = arr(db.customerCheques).filter(cq => cq.categoryId === c.id);
+    const inHand = cheques.filter(cq => cq.status === 'In Hand');
+    const issued = cheques.filter(cq => cq.status === 'Issued');
+    const cleared = cheques.filter(cq => cq.status === 'Cleared');
+    return { id:c.id, name:c.name, color:c.color, receiptCount: receipts.length, received: sum(receipts, 'amount'), purchaseCount: purchases.length, purchaseValue: sum(purchases, 'amount'), inHandValue: sum(inHand, 'amount'), inHandCount: inHand.length, issuedValue: sum(issued, 'amount'), issuedCount: issued.length, clearedValue: sum(cleared, 'amount'), clearedCount: cleared.length };
+  });
+  return '<div class="table-wrap"><table><thead><tr><th>Category</th><th class="num">Receipts</th><th class="num">Received</th><th class="num">Purchases</th><th class="num">In Hand</th><th class="num">Issued</th><th class="num">Cleared</th><th style="width:180px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr style="cursor:pointer" onclick="showCategoryAnalytics(\'' + r.id + '\')"><td><span class="dot" style="background:' + r.color + ';margin-right:8px"></span><strong>' + esc(r.name) + '</strong></td><td class="num">' + r.receiptCount + '</td><td class="num">' + moneyPlain(r.received) + '</td><td class="num">' + moneyPlain(r.purchaseValue) + ' <span class="muted small">(' + r.purchaseCount + ')</span></td><td class="num"><span class="badge amber">' + moneyPlain(r.inHandValue) + '</span></td><td class="num"><span class="badge blue">' + moneyPlain(r.issuedValue) + '</span></td><td class="num"><span class="badge green">' + moneyPlain(r.clearedValue) + '</span></td><td onclick="event.stopPropagation()"><div class="row-flex"><button class="btn xs" onclick="showCategoryAnalytics(\'' + r.id + '\')">📊 Analytics</button>' + (can('edit') ? '<button class="btn xs" data-action="edit-cat" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-cat" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(8, 'No categories — click Add Category')) + '</tbody></table></div>';
+}
 function openCatForm(id){ const c = id ? arr(db.categories).find(x => x.id === id) : null; openModal(c ? 'Edit Category' : 'Add Category', '<form onsubmit="saveCat(event)" data-id="' + (c ? c.id : '') + '"><div class="form-grid"><label class="field">Name <span class="req">*</span><input name="cName" required value="' + esc(c ? c.name : '') + '"></label><label class="field">Color<input name="cColor" type="color" value="' + (c ? c.color : '#2563eb') + '"></label></div><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">' + (c ? 'Update' : 'Save') + '</button></div></form>'); }
 function saveCat(e){ e.preventDefault(); if(!canWrite()) return; const f = e.target, id = f.dataset.id; const name = f.cName.value.trim(), color = f.cColor.value; if(!name){ toast('Name required','error'); return; } if(id){ Object.assign(arr(db.categories).find(x => x.id === id), { name, color }); } else { const cid = uid(); if(!Array.isArray(db.categories)) db.categories = []; db.categories.push({ id:cid, name, color }); } save(); closeModal(); render(); toast('Saved', 'success'); }
-function deleteCat(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } if(arr(db.receipts).some(r => r.categoryId === id)){ toast('In use','error'); return; } if(!confirm('Delete?')) return; db.categories = arr(db.categories).filter(x => x.id !== id); save(); render(); toast('Deleted'); }
+function deleteCat(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } if(arr(db.receipts).some(r => r.categoryId === id) || arr(db.purchases).some(p => p.categoryId === id)){ toast('In use','error'); return; } if(!confirm('Delete?')) return; db.categories = arr(db.categories).filter(x => x.id !== id); save(); render(); toast('Deleted'); }
 function viewExpenses(){ return '<div class="card"><div class="card-head"><h3>Expenses</h3>' + (can('create') ? '<button class="btn primary" data-action="add-expense">Add Expense</button>' : '') + '</div><div id="tbl-exp">' + tableExpenses() + '</div></div>'; }
 function tableExpenses(){ const rows = sortRows(arr(db.expenses).map(e => ({ id:e.id, date:e.date, category:e.category, description:e.description, amount:num(e.amount) })), ui.exp.sort, ui.exp.dir); const total = sum(rows, 'amount'); return '<div class="table-wrap"><table><thead><tr>' + th('exp','date','Date') + th('exp','category','Category') + '<th>Description</th>' + th('exp','amount','Amount','num') + '<th style="width:120px">Actions</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td><span class="badge gray">' + esc(r.category||'—') + '</span></td><td>' + esc(r.description||'') + '</td><td class="num">' + moneyPlain(r.amount) + '</td><td><div class="row-flex">' + (can('edit') ? '<button class="btn xs" data-action="edit-expense" data-id="' + r.id + '">Edit</button>' : '') + (can('delete') ? '<button class="btn xs danger" data-action="del-expense" data-id="' + r.id + '">Del</button>' : '') + '</div></td></tr>').join('') : emptyRow(5, 'None')) + '</tbody>' + (rows.length ? '<tfoot><tr><td colspan="3">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '') + '</table></div>'; }
 function openExpenseForm(id){ const e = id ? arr(db.expenses).find(x => x.id === id) : null; openModal(e ? 'Edit Expense' : 'Add Expense', '<form onsubmit="saveExpense(event)" data-id="' + (e ? e.id : '') + '"><div class="form-grid"><label class="field">Date <span class="req">*</span><input name="eDate" type="date" required value="' + (e ? e.date : today()) + '"></label><label class="field">Category<input name="eCat" value="' + esc(e ? e.category : '') + '"></label><label class="field">Amount <span class="req">*</span><input name="eAmount" type="number" step="0.01" required value="' + (e ? num(e.amount) : '') + '"></label></div><label class="field" style="margin-top:14px">Description<textarea name="eDesc">' + esc(e ? e.description : '') + '</textarea></label><div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">' + (e ? 'Update' : 'Save') + '</button></div></form>'); }
@@ -1681,7 +1768,7 @@ function saveJournal(e){ e.preventDefault(); if(!canWrite()) return; const f = e
 function deleteJournal(id){ if(!canWrite()) return; if(!can('delete')){ toast('No permission','error'); return; } if(!confirm('Delete?')) return; db.journals = arr(db.journals).filter(x => x.id !== id); save(); render(); toast('Deleted'); }
 
 /* ============================================================
-   LEDGER / AGING / REPORTS / ANALYTICS
+   LEDGER / AGING / ANALYTICS / TIMELINE / LOGS / BACKUP
    ============================================================ */
 const LEDGER_TYPES = [
   { key:'supplier', label:'Supplier Ledger', icon:'S' },
@@ -1715,8 +1802,7 @@ function renderLedgerBody(){
 function exportLedgerCSV(){ const table = document.querySelector('#ledgerBody table'); if(!table){ toast('No data','error'); return; } const headers = Array.from(table.querySelectorAll('thead th')).map(t => t.textContent.trim()); const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())); download('ledger_' + ui.ledger.type + '_' + today() + '.csv', toCSV(headers, rows), 'text/csv'); toast('Exported'); }
 window.exportLedgerCSV = exportLedgerCSV;
 function viewAging(){ const ga = globalAging(); const buckets = db.settings.supplierAgingBuckets || [30,60,90]; const b1 = num(buckets[0]), b2 = num(buckets[1]), b3 = num(buckets[2]); const total = ga.current + ga.d30 + ga.d60 + ga.d90 || 1; const rows = arr(db.suppliers).map(s => Object.assign({ id:s.id, name:s.name }, supplierAging(s.id))).filter(r => r.total > 0).sort((a,b) => b.total - a.total); return '<div class="kpi-strip">' + kpiCard('Current', moneyPlain(ga.current), '', { small:true }) + kpiCard(b1 + '-' + b2, moneyPlain(ga.d30), '', { small:true }) + kpiCard(b2 + '-' + b3, moneyPlain(ga.d60), '', { small:true }) + kpiCard(b3 + '+', moneyPlain(ga.d90), '', { small:true }) + '</div><div class="card"><div class="card-head"><h3>Aging Report</h3></div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th class="num">Current</th><th class="num">' + b1 + '-' + b2 + '</th><th class="num">' + b2 + '-' + b3 + '</th><th class="num">' + b3 + '+</th><th class="num">Total</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + (r.current?moneyPlain(r.current):'—') + '</td><td class="num">' + (r.d30?moneyPlain(r.d30):'—') + '</td><td class="num">' + (r.d60?moneyPlain(r.d60):'—') + '</td><td class="num" style="color:var(--red)">' + (r.d90?moneyPlain(r.d90):'—') + '</td><td class="num"><strong>' + moneyPlain(r.total) + '</strong></td></tr>').join('') : emptyRow(6, 'No aging')) + '</tbody></table></div></div>'; }
-function viewReports(){ return '<div class="card"><div class="card-head"><h3>Reports</h3></div><div class="grid grid-3">' + kpiCard('Total Payable', moneyPlain(totalPayable()), '', { small:true }) + kpiCard('Receivable', moneyPlain(arr(db.customers).reduce((a,c) => a + Math.max(0, customerAging(c.id).total), 0)), '', { small:true }) + kpiCard('Payments', arr(db.payments).length, '', { small:true }) + kpiCard('Receipts', arr(db.receipts).length, '', { small:true }) + kpiCard('Cheque Leaves', arr(db.chequeLeaves).length, availableLeaves().length + ' available', { small:true }) + kpiCard('Customers', arr(db.customers).length, '', { small:true }) + '</div></div>'; }
-function viewAnalytics(){ const ms = lastMonths(12); const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount')); const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m)), 'amount')); const recS = ms.map(m => sum(arr(db.receipts).filter(r => inMonth(r.date, m)), 'amount')); return '<div class="card"><div class="card-head"><h3>12-Month Cash Flow</h3></div>' + lineChartSVG([{values:purS,color:'var(--accent)'},{values:payS,color:'var(--green)'},{values:recS,color:'var(--teal)'}], { w:900, h:240, labels: ms.map(monthLabel) }) + '</div>'; }
+function viewAnalytics(){ const ms = lastMonths(12); const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount')); const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m)), 'amount')); const recS = ms.map(m => sum(arr(db.receipts).filter(r => inMonth(r.date, m)), 'amount')); const catData = arr(db.categories).map(c => ({ name:c.name, color:c.color, received: sum(arr(db.receipts).filter(r => r.categoryId === c.id), 'amount') })).filter(x => x.received > 0).sort((a,b) => b.received - a.received); const maxCat = Math.max(1, Math.max.apply(null, catData.map(x => x.received))); return '<div class="card"><div class="card-head"><h3>12-Month Cash Flow</h3></div>' + lineChartSVG([{values:purS,color:'var(--accent)'},{values:payS,color:'var(--green)'},{values:recS,color:'var(--teal)'}], { w:900, h:240, labels: ms.map(monthLabel) }) + '</div>' + (catData.length ? '<div class="card"><div class="card-head"><h3>Category Revenue</h3></div>' + catData.map(c => '<div class="bar-row"><span class="bar-label"><span class="dot" style="background:' + c.color + ';margin-right:6px"></span>' + esc(c.name) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (c.received/maxCat*100).toFixed(1) + '%"></div></div><span class="bar-val">' + moneyPlain(c.received) + '</span></div>').join('') + '</div>' : ''); }
 function viewTimeline(){ const entries = arr(db.activityLog).slice().reverse().slice(0, 200); return '<div class="card"><div class="card-head"><h3>Timeline</h3></div>' + (entries.length ? entries.map(e => '<div class="tl-event"><div class="tl-icon">✎</div><div class="tl-body"><div class="tl-title">' + esc(e.action) + ' <span class="badge gray">' + esc(e.entity) + '</span></div>' + (e.details ? '<div class="tl-desc">' + esc(e.details) + '</div>' : '') + '<div class="tl-meta"><span>' + esc(e.userEmail || 'system') + '</span><span>' + dateTimeFmt(e.timestamp) + '</span></div></div></div>').join('') : '<div class="empty">No timeline</div>') + '</div>'; }
 function viewAudit(){ const rows = arr(db.auditTrail).slice().reverse().slice(0, 500); return '<div class="card"><div class="card-head"><h3>Audit Trail</h3></div><div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Entity</th><th>User</th><th>Role</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.timestamp) + '</td><td><strong>' + esc(r.action) + '</strong></td><td><span class="badge gray">' + esc(r.entity) + '</span></td><td class="small">' + esc(r.userEmail||'—') + '</td><td><span class="badge ' + (r.userRole === 'admin' ? 'blue' : 'gray') + '">' + esc(r.userRole || '—') + '</span></td></tr>').join('') : emptyRow(5, 'No audit')) + '</tbody></table></div></div>'; }
 function viewLogins(){ const rows = arr(db.loginHistory).slice().reverse(); return '<div class="card"><div class="card-head"><h3>Login History</h3></div><div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Platform</th><th>Screen</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr><td class="small">' + dateTimeFmt(r.at) + '</td><td><strong>' + esc(r.email) + '</strong></td><td>' + esc(r.platform||'—') + '</td><td>' + esc(r.screen||'—') + '</td></tr>').join('') : emptyRow(4, 'No logins')) + '</tbody></table></div></div>'; }
@@ -1730,25 +1816,23 @@ function importBackup(){ const input = document.getElementById('importFile'); if
 function clearAll(){ if(!confirm('Erase ALL data?')) return; if(!confirm('Final?')) return; db = seed(); applySettings(); save(); render(); toast('Erased'); }
 function loadSample(){
   if(!confirm('Load sample data?')) return;
-  const cat1 = uid(), cu1 = uid(), s1 = uid(), ba1 = uid(), cb1 = uid();
+  const cat1 = uid(), cat2 = uid(), cu1 = uid(), cu2 = uid(), s1 = uid(), s2 = uid(), ba1 = uid(), cb1 = uid();
   db = Object.assign(seed(), {
-    categories:[{id:cat1, name:'Shoes', color:'#2563eb'}],
-    customers:[{id:cu1, name:'Perera Stores', phone:'0771112233', openingBalance:15000, createdAt:nowISO()}],
-    suppliers:[{id:s1, name:'Colombo Footwear', phone:'0112345678', creditDays:30, openingBalance:50000, createdAt:nowISO()}],
+    categories:[{id:cat1, name:'Shoes', color:'#2563eb'},{id:cat2, name:'Slippers', color:'#7c3aed'}],
+    customers:[{id:cu1, name:'Perera Stores', phone:'0771112233', openingBalance:15000, createdAt:nowISO()},{id:cu2, name:'Silva Traders', phone:'0772223344', createdAt:nowISO()}],
+    suppliers:[{id:s1, name:'Colombo Footwear', phone:'0112345678', creditDays:30, openingBalance:50000, createdAt:nowISO()},{id:s2, name:'Kandy Slipper Works', phone:'0771234567', createdAt:nowISO()}],
     bankAccounts:[{id:ba1, bankName:'Commercial Bank', accountNo:'1234567890', branch:'Colombo', accountType:'Current', openingBalance:100000, openingDate: today(), createdAt:nowISO()}],
     chequeBooks:[{id:cb1, bankAccountId:ba1, bankName:'Commercial Bank', bookNo:'A0001', startNo:1000, endNo:1050, leafGenerated:false, createdAt:nowISO()}],
-    receipts:[{id:uid(), customerId:cu1, customerName:'Perera Stores', date:today(), categoryId:cat1, method:'Cheque', amount:65000, chequeCount:2, createdAt:nowISO()}],
-    customerCheques:[
-      {id:uid(), customerId:cu1, customerName:'Perera Stores', categoryId:cat1, chequeNo:'000451', bank:'Commercial Bank', date:today(), dueDate:shiftDate(today(),15), amount:35000, status:'In Hand', createdAt:nowISO()},
-      {id:uid(), customerId:cu1, customerName:'Perera Stores', categoryId:cat1, chequeNo:'000452', bank:'Commercial Bank', date:today(), dueDate:shiftDate(today(),25), amount:30000, status:'In Hand', createdAt:nowISO()}
-    ]
+    purchases:[{id:uid(), supplierId:s1, date:shiftDate(today(),-15), invoiceNo:'INV-1001', categoryId:cat1, amount:185000, description:'Leather shoes', createdAt:nowISO()},{id:uid(), supplierId:s2, date:shiftDate(today(),-5), invoiceNo:'INV-1002', categoryId:cat2, amount:75000, description:'Rubber slippers', createdAt:nowISO()}],
+    receipts:[{id:uid(), customerId:cu1, customerName:'Perera Stores', date:shiftDate(today(),-10), categoryId:cat1, method:'Cheque', amount:65000, chequeCount:2, createdAt:nowISO()},{id:uid(), customerId:cu2, customerName:'Silva Traders', date:shiftDate(today(),-3), categoryId:cat2, method:'Cash', amount:30000, chequeCount:0, createdAt:nowISO()}],
+    customerCheques:[{id:uid(), customerId:cu1, customerName:'Perera Stores', categoryId:cat1, chequeNo:'000451', bank:'Commercial Bank', date:shiftDate(today(),-10), dueDate:shiftDate(today(),5), amount:35000, status:'In Hand', createdAt:nowISO()},{id:uid(), customerId:cu1, customerName:'Perera Stores', categoryId:cat1, chequeNo:'000452', bank:'Commercial Bank', date:shiftDate(today(),-10), dueDate:shiftDate(today(),15), amount:30000, status:'In Hand', createdAt:nowISO()}]
   });
   normalizeDb();
-  save(); render(); toast('Sample loaded — 1 bank + 51 leaves created', 'success');
+  save(); render(); toast('Sample loaded — 1 bank + 51 leaves + sample data', 'success');
 }
 
 /* ============================================================
-   SETTINGS — expanded
+   SETTINGS
    ============================================================ */
 const SETTINGS_SECTIONS = [
   { key:'profile', ico:'P', label:'Business Profile', group:'General' },
@@ -1794,27 +1878,27 @@ function settingsThemeBuilder(s){
 function setCustomAccent(c){ db.settings.customAccent = c; save(); applySettings(); render(); }
 window.setCustomAccent = setCustomAccent;
 function settingsFinancial(s){ return '<div class="settings-panel-head"><h2>Currency & Format</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Currency</div><div class="form-grid"><label class="field">Symbol<input name="st_currency" value="' + esc(s.currency) + '"></label><label class="field">Position<select name="st_currencyPosition"><option value="before" ' + (s.currencyPosition === 'before' ? 'selected' : '') + '>Before</option><option value="after" ' + (s.currencyPosition === 'after' ? 'selected' : '') + '>After</option></select></label><label class="field">Decimals<select name="st_decimalPlaces">' + [0,1,2,3].map(n => '<option value="' + n + '" ' + (num(s.decimalPlaces) === n ? 'selected' : '') + '>' + n + '</option>').join('') + '</select></label><label class="field">Thousands Sep<input name="st_thousandsSeparator" maxlength="1" value="' + esc(s.thousandsSeparator) + '"></label></div><div class="alert info" style="margin-top:14px"><span class="ico">i</span><div>Preview: <strong>' + money(1234567.89) + '</strong></div></div></div></div>'; }
-function settingsBanks(s){ return '<div class="settings-panel-head"><h2>Bank Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Default Bank<input name="st_defaultBank" value="' + esc(s.defaultBank || '') + '"></label><label class="field">Default Account Type<select name="st_defaultAccountType"><option value="Current" ' + (s.defaultAccountType === 'Current' ? 'selected' : '') + '>Current</option><option value="Savings" ' + (s.defaultAccountType === 'Savings' ? 'selected' : '') + '>Savings</option></select></label></div></div><div class="settings-section"><div class="settings-section-title">Bank Account Info</div><div class="form-grid"><label class="field">Accounts Count<input type="text" readonly value="' + arr(db.bankAccounts).length + '" style="background:var(--surface-3)"></label><label class="field">Cheque Books Linked<input type="text" readonly value="' + arr(db.chequeBooks).filter(b => b.bankAccountId).length + '" style="background:var(--surface-3)"></label></div></div></div>'; }
-function settingsCheque(s){ return '<div class="settings-panel-head"><h2>Cheque Defaults</h2><div class="desc">Applies to cheque leaf generation and payment form</div></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Cheque Book</div><div class="form-grid"><label class="field">Leaf Number Pad (digits)<input type="number" min="2" max="8" name="st_chequeLeafPad" value="' + (num(s.chequeLeafPad) || 4) + '"><span class="hint">e.g. 4 → 1000 becomes "1000"</span></label><label class="field">Default Due Days<input type="number" name="st_defaultChequeDays" value="' + num(s.defaultChequeDays) + '"></label></div></div><div class="settings-section"><div class="settings-section-title">Behaviour</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Auto-mark Issued on Payment</div><div class="settings-toggle-desc">When you save a payment, mark own cheque leaves as Issued automatically</div></div><div class="switch ' + (s.autoMarkIssued ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_autoMarkIssued\')"><input type="checkbox" name="st_autoMarkIssued" ' + (s.autoMarkIssued ? 'checked' : '') + ' hidden></div></div></div></div>'; }
-function settingsPayment(s){ return '<div class="settings-panel-head"><h2>Payment Defaults</h2><div class="desc">Controls how supplier payments behave</div></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Auto-Numbering</div><div class="form-grid"><label class="field">Next Payment No<input type="number" name="st_nextPaymentNo" value="' + num(s.nextPaymentNo) + '"></label><label class="field">Reference Prefix<input name="st_paymentPrefix" value="' + esc(s.paymentPrefix || 'PAY-') + '"></label></div></div><div class="settings-section"><div class="settings-section-title">Validation</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Require at least one Party Cheque</div></div><div class="switch ' + (s.paymentRequireParty ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_paymentRequireParty\')"><input type="checkbox" name="st_paymentRequireParty" ' + (s.paymentRequireParty ? 'checked' : '') + ' hidden></div></div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Require at least one Own Cheque</div></div><div class="switch ' + (s.paymentRequireOwn ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_paymentRequireOwn\')"><input type="checkbox" name="st_paymentRequireOwn" ' + (s.paymentRequireOwn ? 'checked' : '') + ' hidden></div></div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Allow Mixing Party + Own</div><div class="settings-toggle-desc">If off, payment must be one type only</div></div><div class="switch ' + (s.paymentAllowMix ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_paymentAllowMix\')"><input type="checkbox" name="st_paymentAllowMix" ' + (s.paymentAllowMix ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Confirmations</div><div class="form-grid"><label class="field">Confirm Large Payments Over<input type="number" step="0.01" name="st_paymentConfirmLarge" value="' + num(s.paymentConfirmLarge) + '"></label><label class="field">Alert Threshold<input type="number" step="0.01" name="st_paymentLargeThreshold" value="' + num(s.paymentLargeThreshold) + '"></label></div></div></div>'; }
+function settingsBanks(s){ return '<div class="settings-panel-head"><h2>Bank Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Default Bank<input name="st_defaultBank" value="' + esc(s.defaultBank || '') + '"></label><label class="field">Default Account Type<select name="st_defaultAccountType"><option value="Current" ' + (s.defaultAccountType === 'Current' ? 'selected' : '') + '>Current</option><option value="Savings" ' + (s.defaultAccountType === 'Savings' ? 'selected' : '') + '>Savings</option></select></label></div></div><div class="settings-section"><div class="settings-section-title">Bank Stats</div><div class="grid grid-3"><div><div class="muted small">Accounts</div><strong>' + arr(db.bankAccounts).length + '</strong></div><div><div class="muted small">Cheque Books</div><strong>' + arr(db.chequeBooks).filter(b => b.bankAccountId).length + '</strong></div><div><div class="muted small">Total Leaves</div><strong>' + arr(db.chequeLeaves).length + '</strong></div></div></div></div>'; }
+function settingsCheque(s){ return '<div class="settings-panel-head"><h2>Cheque Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Cheque Book</div><div class="form-grid"><label class="field">Leaf Number Pad (digits)<input type="number" min="2" max="8" name="st_chequeLeafPad" value="' + (num(s.chequeLeafPad) || 4) + '"></label><label class="field">Default Due Days<input type="number" name="st_defaultChequeDays" value="' + num(s.defaultChequeDays) + '"></label><label class="field">Upcoming Days Ahead<input type="number" name="st_upcomingDaysAhead" value="' + (num(s.upcomingDaysAhead) || 60) + '"></label></div></div><div class="settings-section"><div class="settings-toggle-row"><div><div class="settings-toggle-label">Auto-mark Issued on Payment</div><div class="settings-toggle-desc">Mark own cheque leaves as Issued when payment saved</div></div><div class="switch ' + (s.autoMarkIssued ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_autoMarkIssued\')"><input type="checkbox" name="st_autoMarkIssued" ' + (s.autoMarkIssued ? 'checked' : '') + ' hidden></div></div></div></div>'; }
+function settingsPayment(s){ return '<div class="settings-panel-head"><h2>Payment Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Auto-Numbering</div><div class="form-grid"><label class="field">Next Payment No<input type="number" name="st_nextPaymentNo" value="' + num(s.nextPaymentNo) + '"></label></div></div><div class="settings-section"><div class="settings-section-title">Validation</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Require at least one Party Cheque</div></div><div class="switch ' + (s.paymentRequireParty ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_paymentRequireParty\')"><input type="checkbox" name="st_paymentRequireParty" ' + (s.paymentRequireParty ? 'checked' : '') + ' hidden></div></div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Require at least one Own Cheque</div></div><div class="switch ' + (s.paymentRequireOwn ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_paymentRequireOwn\')"><input type="checkbox" name="st_paymentRequireOwn" ' + (s.paymentRequireOwn ? 'checked' : '') + ' hidden></div></div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Allow Mixing Party + Own</div></div><div class="switch ' + (s.paymentAllowMix ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_paymentAllowMix\')"><input type="checkbox" name="st_paymentAllowMix" ' + (s.paymentAllowMix ? 'checked' : '') + ' hidden></div></div></div></div>'; }
 function settingsSupplier(s){ return '<div class="settings-panel-head"><h2>Supplier Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Credit Days<input type="number" name="st_defaultSupplierCreditDays" value="' + num(s.defaultSupplierCreditDays) + '"></label><label class="field">Credit Limit<input type="number" step="0.01" name="st_defaultSupplierCreditLimit" value="' + num(s.defaultSupplierCreditLimit) + '"></label></div></div><div class="settings-section"><div class="settings-section-title">Aging Buckets</div><div class="form-grid"><label class="field">Bucket 1<input type="number" name="st_ageB1" value="' + num((s.supplierAgingBuckets||[30,60,90])[0]) + '"></label><label class="field">Bucket 2<input type="number" name="st_ageB2" value="' + num((s.supplierAgingBuckets||[30,60,90])[1]) + '"></label><label class="field">Bucket 3<input type="number" name="st_ageB3" value="' + num((s.supplierAgingBuckets||[30,60,90])[2]) + '"></label></div></div></div>'; }
 function settingsCustomer(s){ return '<div class="settings-panel-head"><h2>Customer Defaults</h2></div><div class="settings-body"><div class="settings-section"><div class="form-grid"><label class="field">Credit Days<input type="number" name="st_defaultCustomerCreditDays" value="' + num(s.defaultCustomerCreditDays) + '"></label><label class="field">Credit Limit<input type="number" step="0.01" name="st_defaultCustomerCreditLimit" value="' + num(s.defaultCustomerCreditLimit) + '"></label></div></div></div>'; }
-function settingsNotifications(s){ const row = (l, k) => '<div class="settings-toggle-row"><div class="settings-toggle-label">' + l + '</div><div class="switch ' + (s[k] ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_' + k + '\')"><input type="checkbox" name="st_' + k + '" ' + (s[k] ? 'checked' : '') + ' hidden></div></div>'; return '<div class="settings-panel-head"><h2>Notifications</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Master</div>' + row('Enable Notifications','notifEnabled') + '</div><div class="settings-section"><div class="settings-section-title">Alert Types</div>' + row('Overdue Cheques','notifOverdueCheques') + row('Cheques Due Soon','notifDueSoon') + row('Aging Critical','notifAging90') + row('Bounced Cheques','notifBounced') + row('Own Cheques Due','notifOwnCheques') + row('Smart Alerts','notifSmartAlerts') + '</div><div class="settings-section"><div class="settings-section-title">Thresholds</div><div class="form-grid"><label class="field">Reminder Days<input type="number" name="st_chequeReminderDays" value="' + num(s.chequeReminderDays) + '"></label><label class="field">Aging Critical (days)<input type="number" name="st_agingCriticalDays" value="' + num(s.agingCriticalDays) + '"></label><label class="field">Min Amount<input type="number" step="0.01" name="st_notifThresholdAmount" value="' + num(s.notifThresholdAmount) + '"></label></div></div></div>'; }
-function settingsSecurity(s){ return '<div class="settings-panel-head"><h2>Security</h2><div class="desc">Read-only mode, watermark, emergency actions</div></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Read-Only Mode</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Read-Only Mode</div><div class="settings-toggle-desc">Freeze all writes</div></div><div class="switch ' + (s.readOnlyMode ? 'on' : '') + '" onclick="toggleReadOnly()"><input type="checkbox" ' + (s.readOnlyMode ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Exports</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Watermark Exports</div></div><div class="switch ' + (s.watermarkExports ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_watermarkExports\')"><input type="checkbox" name="st_watermarkExports" ' + (s.watermarkExports ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">DevTools Protection</div><div class="alert success"><span class="ico">✓</span><div><strong>Active</strong> — devtools key combos and right-click are blocked.</div></div></div><div class="settings-section"><div class="settings-section-title">Emergency</div><button type="button" class="btn danger" onclick="emergencyWipe()">🚨 Emergency Wipe</button></div></div>'; }
+function settingsNotifications(s){ const row = (l, k) => '<div class="settings-toggle-row"><div class="settings-toggle-label">' + l + '</div><div class="switch ' + (s[k] ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_' + k + '\')"><input type="checkbox" name="st_' + k + '" ' + (s[k] ? 'checked' : '') + ' hidden></div></div>'; return '<div class="settings-panel-head"><h2>Notifications</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Master</div>' + row('Enable Notifications','notifEnabled') + '</div><div class="settings-section"><div class="settings-section-title">Alert Types</div>' + row('Overdue Party Cheques','notifOverdueCheques') + row('Cheques Due Soon','notifDueSoon') + row('Aging Critical','notifAging90') + row('Bounced Cheques','notifBounced') + row('Own Cheques Due','notifOwnCheques') + row('Smart Alerts','notifSmartAlerts') + '</div><div class="settings-section"><div class="settings-section-title">Thresholds</div><div class="form-grid"><label class="field">Reminder Days<input type="number" name="st_chequeReminderDays" value="' + num(s.chequeReminderDays) + '"></label><label class="field">Aging Critical (days)<input type="number" name="st_agingCriticalDays" value="' + num(s.agingCriticalDays) + '"></label><label class="field">Min Amount<input type="number" step="0.01" name="st_notifThresholdAmount" value="' + num(s.notifThresholdAmount) + '"></label></div></div></div>'; }
+function settingsSecurity(s){ return '<div class="settings-panel-head"><h2>Security</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-section-title">Read-Only Mode</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Read-Only Mode</div><div class="settings-toggle-desc">Freeze all writes</div></div><div class="switch ' + (s.readOnlyMode ? 'on' : '') + '" onclick="toggleReadOnly()"><input type="checkbox" ' + (s.readOnlyMode ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Exports</div><div class="settings-toggle-row"><div><div class="settings-toggle-label">Watermark Exports</div></div><div class="switch ' + (s.watermarkExports ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_watermarkExports\')"><input type="checkbox" name="st_watermarkExports" ' + (s.watermarkExports ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">DevTools Protection</div><div class="alert success"><span class="ico">✓</span><div><strong>Active</strong></div></div></div><div class="settings-section"><div class="settings-section-title">Emergency</div><button type="button" class="btn danger" onclick="emergencyWipe()">🚨 Emergency Wipe</button></div></div>'; }
 function toggleReadOnly(){ db.settings.readOnlyMode = !db.settings.readOnlyMode; save(); applySettings(); render(); toast(db.settings.readOnlyMode ? 'READ-ONLY ON' : 'Read-only OFF', 'warn'); }
 window.toggleReadOnly = toggleReadOnly;
 function settingsUsers(s){
   const allowed = Array.isArray(db.allowedEmails) && db.allowedEmails.length ? db.allowedEmails : [ADMIN_EMAIL];
   const isAdmin = currentUserRole === 'admin';
   const adminLower = ADMIN_EMAIL.toLowerCase();
-  const addSection = isAdmin ? '<div class="settings-section"><div class="settings-section-title">➕ Add New User</div><div class="form-grid"><label class="field">Email Address<input id="newAllowedEmail" type="email" placeholder="user@example.com"></label><label class="field">Role<select id="newUserRole"><option value="viewer">Viewer</option><option value="editor" selected>Editor</option><option value="manager">Manager</option></select></label></div><div class="row-flex" style="margin-top:14px"><button type="button" class="btn primary" onclick="addAllowedEmail()">➕ Add User</button><button type="button" class="btn" onclick="refreshAccessList()">🔄 Refresh</button></div></div>' : '';
-  return '<div class="settings-panel-head"><h2>Users & Permissions</h2></div><div class="settings-body"><div class="alert info"><span class="ico">i</span><div><strong>Admin:</strong> ' + esc(ADMIN_EMAIL) + '<br>You are: <strong>' + ((currentUser && currentUser.email) || '—') + '</strong> (' + currentUserRole + ')</div></div>' + addSection + '<div class="settings-section"><div class="settings-section-title">Authorized Users (' + allowed.length + ')</div>' + allowed.map(email => { const isDefAdmin = String(email).toLowerCase() === adminLower; const perm = (db.userPerms && db.userPerms[email.toLowerCase()]) || {}; const role = isDefAdmin ? 'admin' : (perm.role || 'editor'); return '<div class="user-row"><div class="u-avatar">' + String(email).slice(0,1).toUpperCase() + '</div><div class="u-info"><div class="u-email">' + esc(email) + ' ' + (isDefAdmin ? '<span class="badge blue">Admin</span>' : '') + '</div><div class="u-meta">Role: <strong>' + role + '</strong></div></div>' + ((!isDefAdmin && isAdmin) ? '<select onchange="changeUserRole(\'' + esc(email) + '\', this.value)" style="width:130px"><option value="viewer" ' + (role==='viewer'?'selected':'') + '>Viewer</option><option value="editor" ' + (role==='editor'?'selected':'') + '>Editor</option><option value="manager" ' + (role==='manager'?'selected':'') + '>Manager</option></select><button class="btn xs danger" onclick="removeAllowedEmail(\'' + esc(email) + '\')">Remove</button>' : '') + '</div>'; }).join('') + '</div></div>';
+  const addSection = isAdmin ? '<div class="settings-section"><div class="settings-section-title">➕ Add New User</div><div class="form-grid"><label class="field">Email Address<input id="newAllowedEmail" type="email" placeholder="user@example.com"></label><label class="field">Role<select id="newUserRole"><option value="viewer">Viewer</option><option value="editor" selected>Editor</option><option value="manager">Manager</option></select></label></div><div class="row-flex" style="margin-top:14px"><button type="button" class="btn primary" onclick="addAllowedEmail()">➕ Add User</button><button type="button" class="btn" onclick="refreshAccessList()">🔄 Refresh</button></div><div class="alert info" style="margin-top:14px"><span class="ico">i</span><div>Firestore rules must allow admin writes to <code class="mono">lanka_shoe/access</code>.</div></div></div>' : '';
+  return '<div class="settings-panel-head"><h2>Users & Permissions</h2></div><div class="settings-body"><div class="alert info"><span class="ico">i</span><div><strong>Admin:</strong> ' + esc(ADMIN_EMAIL) + '<br>You: <strong>' + ((currentUser && currentUser.email) || '—') + '</strong> (' + currentUserRole + ')</div></div>' + addSection + '<div class="settings-section"><div class="settings-section-title">Authorized Users (' + allowed.length + ')</div>' + allowed.map(email => { const isDefAdmin = String(email).toLowerCase() === adminLower; const perm = (db.userPerms && db.userPerms[email.toLowerCase()]) || {}; const role = isDefAdmin ? 'admin' : (perm.role || 'editor'); return '<div class="user-row"><div class="u-avatar">' + String(email).slice(0,1).toUpperCase() + '</div><div class="u-info"><div class="u-email">' + esc(email) + ' ' + (isDefAdmin ? '<span class="badge blue">Admin</span>' : '') + '</div><div class="u-meta">Role: <strong>' + role + '</strong></div></div>' + ((!isDefAdmin && isAdmin) ? '<select onchange="changeUserRole(\'' + esc(email) + '\', this.value)" style="width:130px"><option value="viewer" ' + (role==='viewer'?'selected':'') + '>Viewer</option><option value="editor" ' + (role==='editor'?'selected':'') + '>Editor</option><option value="manager" ' + (role==='manager'?'selected':'') + '>Manager</option></select><button class="btn xs danger" onclick="removeAllowedEmail(\'' + esc(email) + '\')">Remove</button>' : '') + '</div>'; }).join('') + '</div></div>';
 }
 function changeUserRole(email, role){ if(!db.userPerms) db.userPerms = {}; db.userPerms[email.toLowerCase()] = { role }; saveAccessList(db.allowedEmails, db.userPerms, 'Role changed').then(ok => { if(ok){ save(); render(); toast('Role: ' + email + ' → ' + role, 'success'); } }); }
 window.changeUserRole = changeUserRole;
-function settingsAudit(s){ return '<div class="settings-panel-head"><h2>Audit & Logging</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-toggle-row"><div><div class="settings-toggle-label">Enable Activity Log</div></div><div class="switch ' + (s.enableActivityLog ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_enableActivityLog\')"><input type="checkbox" name="st_enableActivityLog" ' + (s.enableActivityLog ? 'checked' : '') + ' hidden></div></div><label class="field" style="margin-top:12px">Max Log Entries<input type="number" name="st_maxLogEntries" value="' + num(s.maxLogEntries) + '"></label></div><div class="settings-section"><div class="settings-section-title">Current Stats</div><div class="grid grid-3"><div><div class="muted small">Activity Log</div><strong>' + arr(db.activityLog).length + ' entries</strong></div><div><div class="muted small">Audit Trail</div><strong>' + arr(db.auditTrail).length + ' entries</strong></div><div><div class="muted small">Login History</div><strong>' + arr(db.loginHistory).length + ' logins</strong></div></div></div></div>'; }
+function settingsAudit(s){ return '<div class="settings-panel-head"><h2>Audit & Logging</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-toggle-row"><div><div class="settings-toggle-label">Enable Activity Log</div></div><div class="switch ' + (s.enableActivityLog ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_enableActivityLog\')"><input type="checkbox" name="st_enableActivityLog" ' + (s.enableActivityLog ? 'checked' : '') + ' hidden></div></div><label class="field" style="margin-top:12px">Max Log Entries<input type="number" name="st_maxLogEntries" value="' + num(s.maxLogEntries) + '"></label></div><div class="settings-section"><div class="settings-section-title">Current Stats</div><div class="grid grid-3"><div><div class="muted small">Activity Log</div><strong>' + arr(db.activityLog).length + '</strong></div><div><div class="muted small">Audit Trail</div><strong>' + arr(db.auditTrail).length + '</strong></div><div><div class="muted small">Login History</div><strong>' + arr(db.loginHistory).length + '</strong></div></div></div></div>'; }
 function settingsAdvanced(s){ return '<div class="settings-panel-head"><h2>Advanced</h2></div><div class="settings-body"><div class="settings-section"><div class="settings-toggle-row"><div><div class="settings-toggle-label">Confirm Before Delete</div></div><div class="switch ' + (s.confirmBeforeDelete ? 'on' : '') + '" onclick="toggleSwitch(this,\'st_confirmBeforeDelete\')"><input type="checkbox" name="st_confirmBeforeDelete" ' + (s.confirmBeforeDelete ? 'checked' : '') + ' hidden></div></div></div><div class="settings-section"><div class="settings-section-title">Undo Window</div><label class="field">Seconds<input type="number" name="st_undoWindow" value="' + (num(s.undoWindowSeconds) || 30) + '"></label></div></div>'; }
-function settingsAbout(){ const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })(); return '<div class="settings-panel-head"><h2>About</h2></div><div class="settings-body"><div class="settings-section"><div class="grid grid-3"><div><div class="muted small">App</div><strong>' + APP_NAME + '</strong></div><div><div class="muted small">Version</div><strong>' + APP_VER + '</strong></div><div><div class="muted small">DB Size</div><strong>' + size + '</strong></div><div><div class="muted small">Firebase</div><strong>' + (firebaseReady ? 'Ready' : 'Off') + '</strong></div><div><div class="muted small">Bank Accounts</div><strong>' + arr(db.bankAccounts).length + '</strong></div><div><div class="muted small">Cheque Books</div><strong>' + arr(db.chequeBooks).length + '</strong></div><div><div class="muted small">Cheque Leaves</div><strong>' + arr(db.chequeLeaves).length + '</strong></div></div></div></div>'; }
+function settingsAbout(){ const size = (() => { try { return (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){ return '—'; } })(); return '<div class="settings-panel-head"><h2>About</h2></div><div class="settings-body"><div class="settings-section"><div class="grid grid-3"><div><div class="muted small">App</div><strong>' + APP_NAME + '</strong></div><div><div class="muted small">Version</div><strong>' + APP_VER + '</strong></div><div><div class="muted small">DB Size</div><strong>' + size + '</strong></div><div><div class="muted small">Firebase</div><strong>' + (firebaseReady ? 'Ready' : 'Off') + '</strong></div><div><div class="muted small">Bank Accounts</div><strong>' + arr(db.bankAccounts).length + '</strong></div><div><div class="muted small">Cheque Leaves</div><strong>' + arr(db.chequeLeaves).length + '</strong></div></div></div></div>'; }
 function toggleSwitch(el, name){ const on = !el.classList.contains('on'); el.classList.toggle('on', on); const cb = el.querySelector('input[type=checkbox]'); if(cb) cb.checked = on; }
 window.toggleSwitch = toggleSwitch;
 function saveSettings(e){
@@ -1832,14 +1916,12 @@ function saveSettings(e){
   set('defaultBank','st_defaultBank'); set('defaultAccountType','st_defaultAccountType');
   if($('st_chequeLeafPad') !== undefined) s.chequeLeafPad = Math.max(2, num($('st_chequeLeafPad')));
   if($('st_defaultChequeDays') !== undefined) s.defaultChequeDays = num($('st_defaultChequeDays'));
+  if($('st_upcomingDaysAhead') !== undefined) s.upcomingDaysAhead = num($('st_upcomingDaysAhead'));
   if($cb('st_autoMarkIssued') !== undefined) s.autoMarkIssued = $cb('st_autoMarkIssued');
   if($('st_nextPaymentNo') !== undefined) s.nextPaymentNo = num($('st_nextPaymentNo'));
-  set('paymentPrefix','st_paymentPrefix');
   if($cb('st_paymentRequireParty') !== undefined) s.paymentRequireParty = $cb('st_paymentRequireParty');
   if($cb('st_paymentRequireOwn') !== undefined) s.paymentRequireOwn = $cb('st_paymentRequireOwn');
   if($cb('st_paymentAllowMix') !== undefined) s.paymentAllowMix = $cb('st_paymentAllowMix');
-  if($('st_paymentConfirmLarge') !== undefined) s.paymentConfirmLarge = num($('st_paymentConfirmLarge'));
-  if($('st_paymentLargeThreshold') !== undefined) s.paymentLargeThreshold = num($('st_paymentLargeThreshold'));
   if($('st_defaultSupplierCreditDays') !== undefined) s.defaultSupplierCreditDays = num($('st_defaultSupplierCreditDays'));
   if($('st_defaultSupplierCreditLimit') !== undefined) s.defaultSupplierCreditLimit = num($('st_defaultSupplierCreditLimit'));
   const b1 = num($('st_ageB1')), b2 = num($('st_ageB2')), b3 = num($('st_ageB3'));
@@ -1971,12 +2053,12 @@ document.addEventListener('click', function(e){
     'force-sync': () => { pushToFirestore().then(() => toast('Synced')); },
     'notif-click': () => { db.notifRead[el.dataset.id] = true; const v = el.dataset.view; const np = document.getElementById('notifPanel'); if(np) np.classList.remove('open'); if(v){ ui.view = v; render(); } },
     'add-customer': () => openCustomerForm(), 'edit-customer': () => openCustomerForm(id), 'del-customer': () => deleteCustomer(id), 'customer-detail': () => showCustomerDetail(id),
-    'add-supplier': () => openSupplierForm(), 'edit-supplier': () => openSupplierForm(id), 'del-supplier': () => deleteSupplier(id),
+    'add-supplier': () => openSupplierForm(), 'edit-supplier': () => openSupplierForm(id), 'del-supplier': () => deleteSupplier(id), 'supplier-ledger': () => { ui.ledger.type = 'supplier'; ui.ledger.entityId = id; ui.view = 'ledger'; render(); },
     'add-purchase': () => openPurchaseForm(), 'edit-purchase': () => openPurchaseForm(id), 'del-purchase': () => deletePurchase(id),
-    'add-cat': () => openCatForm(), 'edit-cat': () => openCatForm(id), 'del-cat': () => deleteCat(id),
+    'add-cat': () => openCatForm(), 'edit-cat': () => openCatForm(id), 'del-cat': () => deleteCat(id), 'cat-analytics': () => showCategoryAnalytics(id),
     'add-receipt': () => openReceiptForm(), 'receipt-detail': () => showReceiptDetail(id), 'del-receipt': () => deleteReceipt(id),
     'del-cc': () => deleteCC(id), 'clear-cc': () => clearCheque(id, false), 'bounce-cc': () => bounceCheque(id, false), 'unbounce-cc': () => unbounceCC(id),
-    'clear-own': () => clearChequeByLeaf(id), 'bounce-own': () => bounceOwnLeaf(id), 'unbounce-own': () => unbounceOwn(id),
+    'clear-own': () => clearChequeByLeaf(id), 'bounce-own': () => bounceOwnLeaf(id), 'unbounce-own': () => unbounceOwnLeaf(id),
     'add-bank': () => openBankForm(), 'edit-bank': () => openBankForm(id), 'del-bank': () => deleteBank(id),
     'add-cbook': () => openChequeBookForm(), 'edit-cbook': () => openChequeBookForm(id), 'del-cbook': () => deleteChequeBook(id),
     'view-payment': () => viewPayment(id), 'del-payment': () => deletePayment(id),
@@ -1990,6 +2072,8 @@ document.addEventListener('click', function(e){
   };
   if(map[a]){ e.preventDefault(); map[a](); }
 });
+function clearChequeByLeaf(id){ if(!canWrite()) return; const l = arr(db.chequeLeaves).find(x => x.id === id); if(!l) return; l.status = 'Cleared'; l.clearedDate = today(); logAct('Leaf Cleared','Leaf',id, l.leafNo); save(); render(); toast('Cleared'); }
+window.clearChequeByLeaf = clearChequeByLeaf;
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){ closeModal(); const np = document.getElementById('notifPanel'); if(np) np.classList.remove('open'); const fm = document.getElementById('fabMenu'); if(fm) fm.classList.remove('open'); const fb = document.getElementById('fabBtn'); if(fb) fb.classList.remove('open'); closeCmdPalette(); }
   if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); openCmdPalette(); }

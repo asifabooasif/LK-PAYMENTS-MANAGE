@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Lanka Shoe — Enterprise v10.1</title>
+<title>Lanka Shoe — Enterprise v11.2</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👟</text></svg>">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -53,7 +53,7 @@ body.sidebar-collapsed .nav-item .badge-count{position:absolute;top:5px;right:5p
 .sidebar-toggle{position:absolute;top:50%;right:-14px;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;font-size:12px;color:var(--text-3);z-index:5;}
 .nav-group{margin-bottom:22px;}
 .nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--sidebar-text-2);padding:8px 12px;}
-.nav-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);color:var(--sidebar-text);font-weight:450;font-size:13px;margin-bottom:2px;cursor:pointer;user-select:none;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);color:var(--sidebar-text);font-weight:450;font-size:13px;margin-bottom:2px;cursor:pointer;user-select:none;position:relative;}
 .nav-item:hover{background:var(--sidebar-hover);color:#fff;}
 .nav-item.active{background:var(--sidebar-active);color:#fff;font-weight:500;}
 .nav-item .ico{width:18px;flex:0 0 18px;text-align:center;font-size:14px;opacity:.65;pointer-events:none;}
@@ -94,6 +94,7 @@ body.sidebar-collapsed .nav-item .badge-count{position:absolute;top:5px;right:5p
 .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:22px;}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;position:relative;overflow:hidden;}
 .kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--pink));opacity:.85;}
+.kpi.kpi-highlight::before{background:linear-gradient(90deg,#f59e0b,#ef4444);}
 .k-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;}
 .k-label{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;}
 .k-value{font-size:24px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
@@ -117,7 +118,7 @@ body.sidebar-collapsed .nav-item .badge-count{position:absolute;top:5px;right:5p
 .icon-btn.danger:hover{background:var(--red-soft);color:var(--red);}
 label.field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:500;color:var(--text-2);}
 label.field .req{color:var(--red);}
-input[type=text],input[type=search],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=month],input[type=password],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-weight:450;font-size:13px;}
+input[type=text],input[type=search],input[type=email],input[type=tel],input[type=number],input[type=date],input[type=month],input[type=password],input[type=time],select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-weight:450;font-size:13px;}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
 input::placeholder,textarea::placeholder{color:var(--text-4);}
 textarea{resize:vertical;min-height:70px;}
@@ -136,6 +137,7 @@ tbody td{padding:var(--row-pad);border-bottom:1px solid var(--border-2);vertical
 tbody tr{cursor:pointer;}
 tbody tr:hover{background:var(--surface-2);}
 tbody tr:last-child td{border-bottom:none;}
+tbody tr.row-selected{background:var(--accent-soft)!important;}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
 tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);border-top:1px solid var(--border);color:var(--text);}
 .empty{padding:56px 20px;text-align:center;color:var(--text-4);font-size:12.5px;}
@@ -176,12 +178,12 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 #modalWrap.open{display:block;}
 .modal-backdrop{position:absolute;inset:0;background:rgba(26,21,51,.5);backdrop-filter:blur(4px);}
 .modal{position:relative;background:var(--surface);border-radius:var(--r-xl);max-width:700px;width:calc(100% - 32px);margin:6vh auto;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);overflow:hidden;}
-.modal.wide{max-width:1000px;}.modal.xl{max-width:1200px;}
+.modal.wide{max-width:1000px;}.modal.xl{max-width:1200px;}.modal.xxl{max-width:1400px;}
 .modal-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--border);}
 .modal-head h3{font-size:15px;font-weight:600;}
 .modal-body{padding:24px;overflow:auto;}
 #toast{position:fixed;right:24px;bottom:24px;z-index:900;display:flex;flex-direction:column;gap:10px;pointer-events:none;}
-.toast{pointer-events:auto;background:var(--text);color:var(--surface);padding:13px 18px;border-radius:var(--r-md);font-size:12.5px;font-weight:500;box-shadow:var(--shadow-lg);max-width:400px;}
+.toast{pointer-events:auto;background:var(--text);color:var(--surface);padding:13px 18px;border-radius:var(--r-md);font-size:12.5px;font-weight:500;box-shadow:var(--shadow-lg);max-width:400px;cursor:pointer;}
 .toast.error{background:var(--red);color:#fff;}
 .toast.info{background:var(--accent);color:#fff;}
 .toast.warn{background:var(--amber);color:#fff;}
@@ -334,6 +336,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .bank-card{padding:20px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);cursor:pointer;position:relative;overflow:hidden;transition:all .15s;}
 .bank-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--accent);}
 .bank-card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--pink));}
+.bank-card .bk-logo{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-weight:700;color:#fff;font-size:14px;margin-bottom:8px;}
 .bank-card .bk-name{font-weight:600;font-size:14px;margin-bottom:4px;}
 .bank-card .bk-meta{font-size:11.5px;color:var(--text-4);margin-bottom:14px;}
 .bank-card .bk-bal{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
@@ -387,7 +390,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-logo" id="brandLogo">LS</div>
-      <div class="brand-text"><div class="brand-name" id="brandName">Lanka Shoe</div><div class="brand-sub" id="brandSub">Enterprise v10.1</div></div>
+      <div class="brand-text"><div class="brand-name" id="brandName">Lanka Shoe</div><div class="brand-sub" id="brandSub">Enterprise v11.2</div></div>
       <div class="sidebar-toggle" data-action="toggle-sidebar">◂</div>
     </div>
     <nav id="nav"></nav>
@@ -425,33 +428,70 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 <script>
 'use strict';
 
-/* Devtools guard */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENHANCED DEVTOOLS GUARD
+   ═══════════════════════════════════════════════════════════════════════════ */
 (function(){
   function init(){
     const ov=document.getElementById('dtGuard');if(!ov)return;let shown=false;
-    function show(){if(shown)return;shown=true;ov.classList.add('on');setTimeout(()=>location.reload(),8000);}
+    function triggerGuard(){
+      if(shown)return;shown=true;
+      try{ov.classList.add('on');}catch(e){}
+      setTimeout(function(){
+        try{
+          try{localStorage.removeItem('lankashoe_cache');}catch(e){}
+          try{localStorage.removeItem('lankashoe_access');}catch(e){}
+          try{sessionStorage.clear();}catch(e){}
+          const d=document.documentElement;
+          d.innerHTML='<head><title>Access Revoked</title></head><body style="background:#000;color:#fff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center"><div><div style="font-size:72px">🔒</div><h1 style="font-size:28px;margin:8px 0;font-weight:700">Access Revoked</h1><p style="opacity:.6;font-size:14px;max-width:400px">Developer tools were detected.</p></div></body>';
+        }catch(e){}
+        setTimeout(function(){try{location.replace('about:blank');}catch(e){try{location.reload();}catch(x){}}},400);
+      },250);
+    }
+    function showOverlay(){if(shown)return;ov.classList.add('on');triggerGuard();}
     document.addEventListener('keydown',function(e){
       const k=String(e.key||''),up=k.toUpperCase();
-      if(k==='F12'){e.preventDefault();show();return false;}
-      if((e.ctrlKey||e.metaKey)&&e.shiftKey&&['I','J','C','K','E'].indexOf(up)!==-1){e.preventDefault();show();return false;}
-      if(e.metaKey&&e.altKey&&['I','J','C','U'].indexOf(up)!==-1){e.preventDefault();show();return false;}
-      if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&k.toLowerCase()==='u'){e.preventDefault();show();return false;}
+      if(k==='F12'){e.preventDefault();showOverlay();return false;}
+      if((e.ctrlKey||e.metaKey)&&e.shiftKey&&['I','J','C','K','E'].indexOf(up)!==-1){e.preventDefault();showOverlay();return false;}
+      if(e.metaKey&&e.altKey&&['I','J','C','U'].indexOf(up)!==-1){e.preventDefault();showOverlay();return false;}
+      if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&k.toLowerCase()==='u'){e.preventDefault();showOverlay();return false;}
+      if(k==='F11'&&e.shiftKey){e.preventDefault();return false;}
     },true);
-    document.addEventListener('contextmenu',function(e){const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;e.preventDefault();return false;});
+    document.addEventListener('contextmenu',function(e){
+      const t=e.target;
+      if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+      e.preventDefault();return false;
+    });
     let sizeAlerted=false;
-    setInterval(function(){if(sizeAlerted||shown)return;const wDiff=window.outerWidth-window.innerWidth,hDiff=window.outerHeight-window.innerHeight;if(wDiff>500||hDiff>500){sizeAlerted=true;show();}},2000);
+    setInterval(function(){
+      if(sizeAlerted||shown)return;
+      const wDiff=Math.abs(window.outerWidth-window.innerWidth);
+      const hDiff=Math.abs(window.outerHeight-window.innerHeight);
+      if(wDiff>320||hDiff>320){sizeAlerted=true;showOverlay();}
+    },1500);
+    setInterval(function(){
+      if(shown)return;
+      const start=performance.now();
+      (function(){debugger;})();
+      const end=performance.now();
+      if(end-start>150){showOverlay();}
+    },1200);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 
-/* Firebase config — UNCHANGED */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ✅ FIXED — FIREBASE CONFIG & PATHS
+   Key change: root collections are TOP-LEVEL (single-segment) so the SDK
+   treats them as collections. `lanka_shoe/access` and `lanka_shoe/settings`
+   remain doc-paths (2 segments) which is correct for `.doc()`.
+   ═══════════════════════════════════════════════════════════════════════════ */
 const firebaseConfig={apiKey:"AIzaSyD8Rq3fBzmUM9oACPkKc8HMEZSXB7tQUEw",authDomain:"lk-payments-handling.firebaseapp.com",projectId:"lk-payments-handling",storageBucket:"lk-payments-handling.firebasestorage.app",messagingSenderId:"886236241067",appId:"1:886236241067:web:a528787ed04255ef0b2bee",measurementId:"G-DD93GJFCC5"};
 const ADMIN_EMAIL='asifabooasif@gmail.com';
-const ROOT='lanka_shoe';
-const ACCESS_DOC_PATH=ROOT+'/access';
-const SETTINGS_DOC_PATH=ROOT+'/settings';
-const USERS_COL_PATH=ROOT+'/users';
-const APP_NAME='Lanka Shoe Enterprise',APP_VER='10.1.0';
+const ACCESS_DOC_PATH='lanka_shoe/access';       // 2 segments → valid DOC path
+const SETTINGS_DOC_PATH='lanka_shoe/settings';   // 2 segments → valid DOC path
+const COL_PREFIX='lanka_shoe_';                   // collections are top-level: lanka_shoe_customers, etc.
+const APP_NAME='Lanka Shoe Enterprise',APP_VER='11.2.0';
 const COLLECTIONS=['customers','suppliers','purchases','receipts','customerCheques','chequeBooks','chequeLeaves','payments','bankAccounts','bankTransactions','expenses','journals','categories','activityLog','auditTrail','loginHistory','savedReports'];
 
 let firebaseApp=null,auth=null,firestore=null;
@@ -550,7 +590,7 @@ function migrateBankBalances(){arr(db.bankAccounts).forEach(b=>{if(b.openingBala
 function canWrite(){if(db.settings&&db.settings.readOnlyMode){toast('Read-only mode active.','error');return false;}return true;}
 window.canWrite=canWrite;
 
-/* Firebase */
+/* Firebase init */
 async function initFirebase(){
   try{firebaseApp=firebase.initializeApp(firebaseConfig);auth=firebase.auth();firestore=firebase.firestore();try{firestore.settings({merge:true});}catch(e){}firebaseReady=true;return true;}
   catch(e){firebaseReady=false;firebaseInitError=e.message||String(e);return false;}
@@ -569,21 +609,32 @@ async function loadAccessList(){
     await firestore.doc(ACCESS_DOC_PATH).set({allowedEmails:[ADMIN_EMAIL],userPerms:{},updatedAt:nowISO(),updatedBy:'system'});
     db.allowedEmails=[ADMIN_EMAIL];db.userPerms={};return[ADMIN_EMAIL];
   }catch(e){
+    console.warn('[loadAccessList]',e.code||e.message);
     try{const cached=localStorage.getItem('lankashoe_access');if(cached){const c=JSON.parse(cached);if(c.allowedEmails&&c.allowedEmails.length){db.allowedEmails=c.allowedEmails;db.userPerms=c.userPerms||{};return c.allowedEmails;}}}catch(x){}
     if(!Array.isArray(db.allowedEmails)||!db.allowedEmails.length)db.allowedEmails=[ADMIN_EMAIL];
     return db.allowedEmails;
   }
 }
+/* ✅ FIXED: local-first save */
 async function saveAccessList(list,perms){
   const clean=uniq(arr(list).map(e=>String(e).trim().toLowerCase()).filter(Boolean));
   if(!clean.some(e=>e===ADMIN_EMAIL.toLowerCase()))clean.push(ADMIN_EMAIL);
+  const cleanPerms=Object.assign({},perms||db.userPerms||{});
+  db.allowedEmails=clean;db.userPerms=cleanPerms;
+  try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:clean,userPerms:cleanPerms}));}catch(e){}
+  try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
+  if(offlineMode||!firebaseReady){console.warn('[saveAccessList] offline — saved locally');return true;}
   try{
-    await firestore.doc(ACCESS_DOC_PATH).set({allowedEmails:clean,userPerms:perms||db.userPerms||{},updatedAt:nowISO(),updatedBy:(currentUser&&currentUser.email)||'system'});
-    db.allowedEmails=clean;if(perms)db.userPerms=perms;
-    try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:clean,userPerms:db.userPerms}));}catch(e){}
+    await firestore.doc(ACCESS_DOC_PATH).set({allowedEmails:clean,userPerms:cleanPerms,updatedAt:nowISO(),updatedBy:(currentUser&&currentUser.email)||'system'});
+    console.log('[saveAccessList] cloud OK —',clean.length,'users');
     return true;
-  }catch(e){toast('Failed: '+(e.code||e.message),'error');return false;}
+  }catch(e){
+    console.error('[saveAccessList] cloud FAILED:',e);
+    toast('Saved locally. Cloud sync failed: '+(e.code||e.message||e),'warn');
+    return true;
+  }
 }
+/* ✅ FIXED: loadFromFirestore — uses COL_PREFIX top-level collections */
 async function loadFromFirestore(){
   if(offlineMode||!firebaseReady)return;
   await loadAccessList();
@@ -592,15 +643,21 @@ async function loadFromFirestore(){
     if(settingsDoc.exists){db.settings=Object.assign(defaultSettings(),settingsDoc.data()||{});}
     for(const col of COLLECTIONS){
       try{
-        const snap=await firestore.collection(ROOT+'/'+col).get();
-        if(!snap.empty){db[col]=[];snap.forEach(doc=>{const d=doc.data()||{};d.id=d.id||doc.id;db[col].push(d);});}
-        else if(!Array.isArray(db[col]))db[col]=[];
-      }catch(e){if(!Array.isArray(db[col]))db[col]=[];}
+        const snap=await firestore.collection(COL_PREFIX+col).get();
+        if(!snap.empty){
+          db[col]=[];
+          snap.forEach(doc=>{const d=doc.data()||{};d.id=d.id||doc.id;db[col].push(d);});
+        }else if(!Array.isArray(db[col]))db[col]=[];
+      }catch(e){
+        console.warn('[loadFromFirestore] read fail',col,e.code||e.message);
+        if(!Array.isArray(db[col]))db[col]=[];
+      }
     }
     normalizeDb();
     try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
-  }catch(e){await loadLocalCache();}
+  }catch(e){console.error('[loadFromFirestore]',e);await loadLocalCache();}
 }
+/* ✅ FIXED: pushToFirestore — uses COL_PREFIX + surfaces errors */
 async function pushToFirestore(){
   try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
   const st=document.getElementById('syncStatus');
@@ -611,8 +668,15 @@ async function pushToFirestore(){
     const allOps=[];
     for(const col of COLLECTIONS){
       const items=arr(db[col]);
-      try{const existing=await firestore.collection(ROOT+'/'+col).get();existing.forEach(doc=>{allOps.push({op:'delete',ref:doc.ref});});}catch(e){}
-      items.forEach(item=>{const id=item.id||uid();allOps.push({op:'set',ref:firestore.collection(ROOT+'/'+col).doc(id),data:item});});
+      const colRef=firestore.collection(COL_PREFIX+col);
+      try{
+        const existing=await colRef.get();
+        existing.forEach(doc=>{allOps.push({op:'delete',ref:doc.ref});});
+      }catch(e){console.warn('[pushToFirestore] read fail',col,e.code||e.message);}
+      items.forEach(item=>{
+        const id=item.id||uid();
+        allOps.push({op:'set',ref:colRef.doc(id),data:item});
+      });
     }
     for(let i=0;i<allOps.length;i+=450){
       const b=firestore.batch();
@@ -620,7 +684,12 @@ async function pushToFirestore(){
       await b.commit();
     }
     if(st)st.textContent='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){if(st)st.textContent='Local • Queued';}
+    console.log('[pushToFirestore] OK —',allOps.length,'ops');
+  }catch(e){
+    console.error('[pushToFirestore] FAILED:',e);
+    if(st)st.textContent='⚠ Sync error — '+(e.code||e.message||'unknown');
+    toast('Cloud sync error: '+(e.code||e.message||'unknown'),'error');
+  }
 }
 async function loadLocalCache(){
   try{
@@ -713,7 +782,6 @@ function totalPayable(){return arr(db.suppliers).reduce((a,s)=>a+supplierBalance
 function customerLedger(id){
   const c=custObj(id);if(!c)return{rows:[],balance:0};
   const rows=[];
-  if(num(c.openingBalance)!==0)rows.push({date:c.openingDate||today(),type:'Opening',ref:'—',desc:'Opening balance',debit:0,credit:num(c.openingBalance),ts:0});
   arr(db.receipts).filter(r=>r.customerId===id).forEach(r=>rows.push({date:r.date,type:'Receipt',ref:catName(r.categoryId)||'—',desc:r.method+' • '+(r.chequeCount||0)+' cheque(s)',debit:num(r.amount),credit:0,ts:1}));
   arr(db.customerCheques).filter(cq=>cq.customerId===id&&cq.status==='Bounced').forEach(cq=>rows.push({date:cq.bouncedDate||cq.date,type:'Reversal',ref:cq.chequeNo||'—',desc:'🚫 Bounce reversal',debit:0,credit:num(cq.amount),ts:4,isReversal:true}));
   arr(db.journals).filter(j=>j.entityType==='customer'&&j.entityId===id).forEach(j=>rows.push({date:j.date,type:'Journal',ref:j.reference||'—',desc:j.description||'',debit:num(j.debit),credit:num(j.credit),ts:3}));
@@ -721,20 +789,27 @@ function customerLedger(id){
   let bal=0;rows.forEach(r=>{bal+=r.credit-r.debit;r.balance=bal;});
   return{rows,balance:bal};
 }
+function customerChequeSummary(cid){
+  const all=arr(db.customerCheques).filter(cq=>cq.customerId===cid);
+  const inHand=all.filter(c=>c.status==='In Hand');
+  const issued=all.filter(c=>c.status==='Issued');
+  const cleared=all.filter(c=>c.status==='Cleared');
+  const bounced=all.filter(c=>c.status==='Bounced');
+  return{total:{count:all.length,value:sum(all,'amount')},inHand:{count:inHand.length,value:sum(inHand,'amount')},issued:{count:issued.length,value:sum(issued,'amount')},cleared:{count:cleared.length,value:sum(cleared,'amount')},bounced:{count:bounced.length,value:sum(bounced,'amount')},all,byStatus:{inHand,issued,cleared,bounced}};
+}
+window.customerChequeSummary=customerChequeSummary;
 function customerAging(cid){
-  const c=custObj(cid);if(!c)return{current:0,d30:0,d60:0,d90:0,total:0};
-  const received=sum(arr(db.receipts).filter(r=>r.customerId===cid),'amount');
-  const bounced=sum(arr(db.customerCheques).filter(cq=>cq.customerId===cid&&cq.status==='Bounced'),'amount');
-  const pending=num(c.openingBalance)-received+bounced;
+  const bounced=arr(db.customerCheques).filter(cq=>cq.customerId===cid&&cq.status==='Bounced');
   const b={current:0,d30:0,d60:0,d90:0};
-  if(pending>0){
-    const bk=db.settings.supplierAgingBuckets||[30,60,90];
-    const b1=num(bk[0]),b2=num(bk[1]),b3=num(bk[2]);
-    const oldest=arr(db.receipts).filter(r=>r.customerId===cid).sort((a,b)=>a.date<b.date?-1:1)[0];
-    const age=oldest?daysBetween(oldest.date,today()):0;
-    if(age<=b1)b.current=pending;else if(age<=b2)b.d30=pending;else if(age<=b3)b.d60=pending;else b.d90=pending;
-  }
-  return{current:b.current,d30:b.d30,d60:b.d60,d90:b.d90,total:pending};
+  const bk=db.settings.supplierAgingBuckets||[30,60,90];
+  const b1=num(bk[0]),b2=num(bk[1]),b3=num(bk[2]);
+  const t=today();
+  bounced.forEach(c=>{
+    const daysAgo=Math.abs(daysBetween(c.bouncedDate||c.date,t));
+    const amt=num(c.amount);
+    if(daysAgo<=b1)b.current+=amt;else if(daysAgo<=b2)b.d30+=amt;else if(daysAgo<=b3)b.d60+=amt;else b.d90+=amt;
+  });
+  return{current:b.current,d30:b.d30,d60:b.d60,d90:b.d90,total:b.current+b.d30+b.d60+b.d90};
 }
 function supplierAging(sid){
   const s=supObj(sid);if(!s)return{current:0,d30:0,d60:0,d90:0,total:0};
@@ -839,13 +914,16 @@ function detectSmartAlerts(){
   if(thisWeek.length>0){const total=sum(thisWeek,'amount');out.push({severity:'med',icon:'💰',title:'Own cheques due this week',desc:thisWeek.length+' cheque(s) • '+money(total),link:{view:'own'}});}
   return out;
 }
+function buildBackup(){const data=JSON.parse(JSON.stringify(db));delete data.allowedEmails;delete data.userPerms;return{meta:{app:APP_NAME,version:APP_VER,exportedAt:nowISO()},data};}
+function toast(msg,type){const box=document.getElementById('toast');if(!box)return;const el=document.createElement('div');el.className='toast '+(type||'ok');el.innerHTML='<span>'+esc(msg)+'</span>';box.appendChild(el);setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),320);},3800);}
+window.toast=toast;
 
-/* ═══ END OF PART 1 ═══ */
-/* ═══ START OF PART 2 ═══ */
+/* ═══ END OF PART 1 of 4 ═══ */
+/* ═══ START OF PART 2 of 4 ═══ */
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    REPORT SCHEMA
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const REPORT_SOURCES={
   purchases:{name:'Purchases',icon:'🛒',columns:[{key:'date',label:'Date',type:'date',default:true},{key:'invoiceNo',label:'Invoice',type:'text',default:true},{key:'supplier',label:'Supplier',type:'text',default:true},{key:'category',label:'Category',type:'text',default:true},{key:'amount',label:'Amount',type:'money',default:true}],defaultSort:'date',defaultGroup:'month'},
   payments:{name:'Payments',icon:'💸',columns:[{key:'date',label:'Date',type:'date',default:true},{key:'supplier',label:'Supplier',type:'text',default:true},{key:'reference',label:'Reference',type:'text',default:true},{key:'amount',label:'Total',type:'money',default:true}],defaultSort:'date',defaultGroup:'month'},
@@ -919,71 +997,9 @@ function executeReport(cfg){
   return{source,raw:rows,result:agg,valueKey};
 }
 
-/* ============================================================================
-   CUSTOMER CHEQUE HELPERS  ← NEW
-   ============================================================================ */
-function customerChequeSummary(cid){
-  const all=arr(db.customerCheques).filter(cq=>cq.customerId===cid);
-  const inHand=all.filter(c=>c.status==='In Hand');
-  const issued=all.filter(c=>c.status==='Issued');
-  const cleared=all.filter(c=>c.status==='Cleared');
-  const bounced=all.filter(c=>c.status==='Bounced');
-  return{
-    total:{count:all.length,value:sum(all,'amount')},
-    inHand:{count:inHand.length,value:sum(inHand,'amount')},
-    issued:{count:issued.length,value:sum(issued,'amount')},
-    cleared:{count:cleared.length,value:sum(cleared,'amount')},
-    bounced:{count:bounced.length,value:sum(bounced,'amount')},
-    all,byStatus:{inHand,issued,cleared,bounced}
-  };
-}
-window.customerChequeSummary=customerChequeSummary;
-
-/* Aging for BOUNCED cheques only — money the customer owes us back */
-function customerAging(cid){
-  const bounced=arr(db.customerCheques).filter(cq=>cq.customerId===cid&&cq.status==='Bounced');
-  const b={current:0,d30:0,d60:0,d90:0};
-  const bk=db.settings.supplierAgingBuckets||[30,60,90];
-  const b1=num(bk[0]),b2=num(bk[1]),b3=num(bk[2]);
-  const t=today();
-  bounced.forEach(c=>{
-    const daysAgo=Math.abs(daysBetween(c.bouncedDate||c.date,t));
-    const amt=num(c.amount);
-    if(daysAgo<=b1)b.current+=amt;
-    else if(daysAgo<=b2)b.d30+=amt;
-    else if(daysAgo<=b3)b.d60+=amt;
-    else b.d90+=amt;
-  });
-  return{current:b.current,d30:b.d30,d60:b.d60,d90:b.d90,total:b.current+b.d30+b.d60+b.d90};
-}
-
-/* Cheque-activity ledger — no opening balance, no sales */
-function customerLedger(cid){
-  const c=custObj(cid);
-  if(!c)return{rows:[],balance:0};
-  const cheques=arr(db.customerCheques).filter(cq=>cq.customerId===cid);
-  const rows=cheques.map(cq=>{
-    const status=cq.status;
-    let type='Cheque Received',debit=0,credit=num(cq.amount),ts=1;
-    if(status==='Issued'){type='Issued to Supplier';debit=num(cq.amount);credit=0;ts=2;}
-    else if(status==='Cleared'){type='Cleared';ts=3;}
-    else if(status==='Bounced'){type='Bounced';debit=0;credit=num(cq.amount);ts=4;}
-    return{
-      date:cq.date,type,ref:cq.chequeNo||'—',
-      desc:(cq.bank||'')+(cq.issuedTo?' • To '+supName(cq.issuedTo):''),
-      debit,credit,ts,status,chequeId:cq.id,
-      isReversal:status==='Bounced',
-      dueDate:cq.dueDate
-    };
-  });
-  rows.sort((a,b)=>a.date===b.date?a.ts-b.ts:(a.date<b.date?-1:1));
-  const holding=sum(cheques.filter(c=>c.status==='In Hand'||c.status==='Issued'),'amount');
-  return{rows,balance:holding};
-}
-
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    UI STATE
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const ui={
   view:'dashboard',
   sup:{q:'',catFilter:''},cust:{q:''},pur:{q:''},rcp:{q:''},
@@ -1005,18 +1021,9 @@ function defaultReportCfg(){
 }
 let reportCfg=defaultReportCfg();
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    TOAST / MODAL
-   ============================================================================ */
-function toast(msg,type){
-  const box=document.getElementById('toast');if(!box)return;
-  const el=document.createElement('div');
-  el.className='toast '+(type||'ok');
-  el.innerHTML='<span>'+esc(msg)+'</span>';
-  box.appendChild(el);
-  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),320);},3800);
-}
-window.toast=toast;
+   ═══════════════════════════════════════════════════════════════════════════ */
 function openModal(title,body,size){
   const w=document.getElementById('modalWrap');
   w.innerHTML='<div class="modal-backdrop" data-action="close-modal"></div><div class="modal '+(size||'')+'"><div class="modal-head"><h3>'+esc(title)+'</h3><button class="icon-btn" data-action="close-modal">✕</button></div><div class="modal-body">'+body+'</div></div>';
@@ -1028,9 +1035,9 @@ function closeModal(){
 }
 window.openModal=openModal;window.closeModal=closeModal;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    NAV
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderNav(){
   const n=document.getElementById('nav');if(!n)return;
   const c={customers:arr(db.customers).length,suppliers:arr(db.suppliers).length,purchases:arr(db.purchases).length,categories:arr(db.categories).length,receipts:arr(db.receipts).length,ccheques:arr(db.customerCheques).filter(x=>x.status==='In Hand').length,leaves:availableLeaves().length,banks:arr(db.bankAccounts).length,payments:arr(db.payments).length,expenses:arr(db.expenses).length,journals:arr(db.journals).length,cbooks:arr(db.chequeBooks).length};
@@ -1046,9 +1053,9 @@ function renderNav(){
   if(b){const u=getUnreadCount();b.textContent=u;b.style.display=u>0?'':'none';}
 }
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    SEARCH
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function onGlobalSearch(){
   const q=(val('globalSearch')||'').trim().toLowerCase();
   const box=document.getElementById('gsResults');
@@ -1063,9 +1070,9 @@ function onGlobalSearch(){
 }
 window.onGlobalSearch=onGlobalSearch;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    NOTIFICATIONS
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function getNotifications(){
   const s=db.settings||{};if(!s.notifEnabled)return[];
   const out=[],t=today(),rd=num(s.chequeReminderDays)||7;
@@ -1094,9 +1101,9 @@ function toggleFab(){
 }
 window.toggleFab=toggleFab;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    RENDER ROUTER
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const views={dashboard:viewDashboard,customers:viewCustomers,suppliers:viewSuppliers,purchases:viewPurchases,categories:viewCategories,receipts:viewReceipts,ccheques:viewCCheques,payments:viewPayments,own:viewOwnCheques,chequeBooks:viewChequeBooks,banks:viewBanks,expenses:viewExpenses,journals:viewJournals,ledger:viewLedger,aging:viewAging,reports:viewReports,history:viewHistory,logins:viewLogins,backup:viewBackup,settings:viewSettings};
 const titles={dashboard:'Dashboard',customers:'Customers',suppliers:'Suppliers',purchases:'Purchases',categories:'Categories',receipts:'Receipts',ccheques:'Customer Cheques',payments:'Supplier Payments',own:'Own Cheques',chequeBooks:'Cheque Books',banks:'Bank Accounts',expenses:'Expenses',journals:'Journals',ledger:'Ledger',aging:'Aging',reports:'Report Builder',history:'History',logins:'Login History',backup:'Backup',settings:'Settings'};
 function render(){
@@ -1123,9 +1130,9 @@ function updateSidebarUser(){
   el.onclick=()=>{ui.view='settings';ui.settings.tab='users';render();};
 }
 
-/* ============================================================================
-   DASHBOARD — Receivable KPI now = Customer Bounced (Owed)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewDashboard(){
   const t=today(),tm=thisMonth(),pm=(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
   const purTM=sum(arr(db.purchases).filter(p=>inMonth(p.date,tm)),'amount');
@@ -1146,8 +1153,8 @@ function viewDashboard(){
   const expS=ms.map(m=>sum(arr(db.expenses).filter(e=>inMonth(e.date,m)),'amount'));
   const catBreakdown=arr(db.categories).map(c=>({name:c.name,color:c.color,value:sum(arr(db.receipts).filter(r=>r.categoryId===c.id),'amount')})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
   const maxCat=Math.max(1,...catBreakdown.map(x=>x.value));
-  const topSuppliers=arr(db.suppliers).map(s=>({name:s.name,payable:supplierBalance(s.id)})).filter(x=>x.payable>0).sort((a,b)=>b.payable-a.payable).slice(0,5);
-  const topCustomers=arr(db.customers).map(c=>({name:c.name,pending:customerAging(c.id).total})).filter(x=>x.pending>0).sort((a,b)=>b.pending-a.pending).slice(0,5);
+  const topSuppliers=arr(db.suppliers).map(s=>({name:s.name,payable:supplierBalance(s.id),id:s.id})).filter(x=>x.payable>0).sort((a,b)=>b.payable-a.payable).slice(0,5);
+  const topCustomers=arr(db.customers).map(c=>({name:c.name,pending:customerAging(c.id).total,id:c.id})).filter(x=>x.pending>0).sort((a,b)=>b.pending-a.pending).slice(0,5);
   return '<div class="kpi-strip">'+
     kpiCard('Total Cash in Banks',moneyPlain(totalCash),arr(db.bankAccounts).length+' bank(s)',{small:true})+
     kpiCard('Total Payable',moneyPlain(totalPayable()),arr(db.suppliers).length+' suppliers',{small:true})+
@@ -1176,10 +1183,10 @@ function viewDashboard(){
   '</div>'+
   '<div class="grid grid-2">'+
     '<div class="card"><div class="card-head"><h3>Top 5 Suppliers by Payable</h3></div>'+
-      (topSuppliers.length?topSuppliers.map(s=>'<div class="bar-row"><span class="bar-label">'+esc(s.name)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+(s.payable/topSuppliers[0].payable*100).toFixed(1)+'%"></div></div><span class="bar-val">'+moneyPlain(s.payable)+'</span></div>').join(''):'<div class="empty">All clear 🎉</div>')+
+      (topSuppliers.length?topSuppliers.map(s=>'<div class="bar-row" onclick="showSupplierDetail(\''+s.id+'\')" style="cursor:pointer"><span class="bar-label">'+esc(s.name)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+(s.payable/topSuppliers[0].payable*100).toFixed(1)+'%"></div></div><span class="bar-val">'+moneyPlain(s.payable)+'</span></div>').join(''):'<div class="empty">All clear 🎉</div>')+
     '</div>'+
-    '<div class="card"><div class="card-head"><h3>Top 5 Customers by Bounced Amount</h3></div>'+
-      (topCustomers.length?topCustomers.map(s=>'<div class="bar-row"><span class="bar-label">'+esc(s.name)+'</span><div class="bar-track"><div class="bar-fill" style="background:var(--red);width:'+(s.pending/topCustomers[0].pending*100).toFixed(1)+'%"></div></div><span class="bar-val">'+moneyPlain(s.pending)+'</span></div>').join(''):'<div class="empty">All clear 🎉</div>')+
+    '<div class="card"><div class="card-head"><h3>Top 5 Customers by Bounced</h3></div>'+
+      (topCustomers.length?topCustomers.map(s=>'<div class="bar-row" onclick="showCustomerDetail(\''+s.id+'\')" style="cursor:pointer"><span class="bar-label">'+esc(s.name)+'</span><div class="bar-track"><div class="bar-fill" style="background:var(--red);width:'+(s.pending/topCustomers[0].pending*100).toFixed(1)+'%"></div></div><span class="bar-val">'+moneyPlain(s.pending)+'</span></div>').join(''):'<div class="empty">All clear 🎉</div>')+
     '</div>'+
   '</div>'+
   '<div class="card"><div class="card-head"><h3>Supplier Aging Summary</h3></div><div class="grid grid-4" style="align-items:center">'+
@@ -1190,9 +1197,9 @@ function viewDashboard(){
   '</div></div>';
 }
 
-/* ============================================================================
-   CUSTOMERS — CHEQUE-FOCUSED (REWRITTEN)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOMERS — CHEQUE-FOCUSED
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewCustomers(){
   let rows=arr(db.customers);
   if(ui.cust.q){const q=ui.cust.q.toLowerCase();rows=rows.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').toLowerCase().includes(q));}
@@ -1331,9 +1338,12 @@ function showCustomerDetail(id){
 }
 window.showCustomerDetail=showCustomerDetail;
 
-/* ============================================================================
-   SUPPLIERS  (unchanged)
-   ============================================================================ */
+/* ═══ END OF PART 2 of 4 ═══ */
+/* ═══ START OF PART 3 of 4 ═══ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUPPLIERS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewSuppliers(){
   let rows=arr(db.suppliers);
   if(ui.sup.q){const q=ui.sup.q.toLowerCase();rows=rows.filter(s=>(s.name||'').toLowerCase().includes(q));}
@@ -1421,9 +1431,9 @@ function showSupplierDetail(id){
 }
 window.showSupplierDetail=showSupplierDetail;
 
-/* ============================================================================
-   PURCHASES (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PURCHASES
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewPurchases(){
   let rows=arr(db.purchases).sort((a,b)=>a.date<b.date?1:-1);
   if(ui.pur.q){const q=ui.pur.q.toLowerCase();rows=rows.filter(p=>(p.invoiceNo||'').toLowerCase().includes(q)||supName(p.supplierId).toLowerCase().includes(q));}
@@ -1485,9 +1495,9 @@ function showPurchaseDetail(id){
 }
 window.showPurchaseDetail=showPurchaseDetail;
 
-/* ============================================================================
-   CATEGORIES (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CATEGORIES
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewCategories(){
   return '<div class="card"><div class="card-head"><h3>🏷️ Categories ('+arr(db.categories).length+')</h3><button class="btn primary" data-action="add-cat">＋ Add Category</button></div>'+
   '<div class="alert info"><span class="ico">ℹ</span><div>Click any row for full analytics.</div></div>'+
@@ -1529,9 +1539,9 @@ function deleteCat(id){
 }
 window.deleteCat=deleteCat;
 
-/* ============================================================================
-   RECEIPTS (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   RECEIPTS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewReceipts(){
   let rows=arr(db.receipts).sort((a,b)=>a.date<b.date?1:-1);
   if(ui.rcp.q){const q=ui.rcp.q.toLowerCase();rows=rows.filter(r=>(r.customerName||'').toLowerCase().includes(q));}
@@ -1623,9 +1633,9 @@ function showReceiptDetail(id){
 }
 window.showReceiptDetail=showReceiptDetail;
 
-/* ============================================================================
-   CUSTOMER CHEQUES (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOMER CHEQUES
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewCCheques(){
   const tabs=['In Hand','Issued','Cleared','Bounced'];
   const counts=tabs.reduce((a,t)=>{a[t]=arr(db.customerCheques).filter(r=>r.status===t).length;return a;},{});
@@ -1669,9 +1679,9 @@ function showChequeDetail(id){
 }
 window.showChequeDetail=showChequeDetail;
 
-/* ============================================================================
-   PAYMENTS (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAYMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewPayments(){
   return '<div class="card"><div class="card-head"><div><h3>💸 Issue Payment to Supplier</h3><div class="hint">Mix party cheques + own cheque leaves freely</div></div></div>'+
   '<form onsubmit="previewPayment(event)">'+
@@ -1830,9 +1840,9 @@ function showPaymentDetail(id){
 }
 window.showPaymentDetail=showPaymentDetail;
 
-/* ============================================================================
-   BANKS (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   BANKS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewBanks(){
   const banks=arr(db.bankAccounts);
   return '<div class="card"><div class="card-head"><h3>🏛️ Bank Accounts ('+banks.length+')</h3><button class="btn primary" data-action="add-bank">＋ Add Bank</button></div>'+
@@ -1916,9 +1926,9 @@ function addBankTransaction(id){
 }
 window.addBankTransaction=addBankTransaction;
 
-/* ============================================================================
-   CHEQUE BOOKS (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHEQUE BOOKS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewChequeBooks(){
   const books=arr(db.chequeBooks);
   return '<div class="card"><div class="card-head"><h3>📚 Cheque Books ('+books.length+')</h3><button class="btn primary" data-action="add-cbook">＋ Add Cheque Book</button></div>'+
@@ -1971,9 +1981,9 @@ function deleteChequeBook(id){
 }
 window.deleteChequeBook=deleteChequeBook;
 
-/* ============================================================================
-   OWN CHEQUES (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   OWN CHEQUES — 5 tabs
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewOwnCheques(){
   const tabs=['Overview','Calendar','Funding Plan','Timeline','All Leaves'];
   if(!tabs.includes(ui.own.tab))ui.own.tab='Overview';
@@ -2132,9 +2142,12 @@ function ownAllLeaves(){
   (filtered.length?Object.keys(byBook).map(bid=>{const book=bookObj(bid);const bLeaves=byBook[bid];return '<div style="margin-bottom:16px"><div style="font-weight:600;font-size:13px;margin-bottom:8px">'+(book?esc(book.bankName):'Unknown')+'</div><div class="table-wrap"><table><thead><tr><th>Leaf No</th><th>Bank</th>'+(subTab!=='Available'?'<th>Supplier</th>':'')+'<th>Payee</th><th class="num">Amount</th><th class="num">Due</th>'+(subTab==='Bounced'?'<th>Actions</th>':'')+'</tr></thead><tbody>'+bLeaves.map(l=>'<tr><td class="mono"><strong>'+esc(l.leafNo)+'</strong></td><td>'+esc(l.bankName)+'</td>'+(subTab!=='Available'?'<td>'+esc(supName(l.supplierId))+'</td>':'')+'<td>'+esc(l.payee||'—')+'</td><td class="num">'+(l.amount?moneyPlain(l.amount):'—')+'</td><td class="num">'+(l.dueDate?dateFmt(l.dueDate):'—')+'</td>'+(subTab==='Bounced'?'<td><button class="btn xs" onclick="unbounceOwnLeaf(\''+l.id+'\')">↺ Restore</button></td>':'')+'</tr>').join('')+'</tbody></table></div></div>';}).join(''):'<div class="empty">No '+subTab.toLowerCase()+' leaves</div>');
 }
 
-/* ============================================================================
-   EXPENSES (unchanged)
-   ============================================================================ */
+/* ═══ END OF PART 3 of 4 ═══ */
+/* ═══ START OF PART 4 of 4 ═══ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPENSES
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewExpenses(){
   let rows=arr(db.expenses).sort((a,b)=>a.date<b.date?1:-1);
   if(ui.exp.q){const q=ui.exp.q.toLowerCase();rows=rows.filter(e=>(e.category||'').toLowerCase().includes(q)||(e.description||'').toLowerCase().includes(q));}
@@ -2158,6 +2171,7 @@ function saveExpense(e){
   if(!Array.isArray(db.expenses))db.expenses=[];
   db.expenses.push(Object.assign({id:eid,createdAt:nowISO()},data));
   if(data.bankAccountId){if(!Array.isArray(db.bankTransactions))db.bankTransactions=[];db.bankTransactions.push({id:uid(),bankAccountId:data.bankAccountId,date:data.date,type:'withdrawal',amount:data.amount,reference:'EXP-'+eid.slice(-4),expenseId:eid,description:data.category||data.description,createdAt:nowISO()});}
+  logAct('Add Expense','Expense',eid,data.category+' • '+money(data.amount));
   save();closeModal();render();toast('Saved','success');
 }
 window.saveExpense=saveExpense;
@@ -2180,9 +2194,9 @@ function showExpenseDetail(id){
 }
 window.showExpenseDetail=showExpenseDetail;
 
-/* ============================================================================
-   JOURNALS (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   JOURNALS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewJournals(){
   const rows=arr(db.journals).sort((a,b)=>a.date<b.date?1:-1);
   return '<div class="card"><div class="card-head"><h3>📓 Journals ('+rows.length+')</h3><button class="btn primary" data-action="add-journal">＋ New Journal</button></div>'+
@@ -2210,15 +2224,15 @@ window.saveJournal=saveJournal;
 function deleteJournal(id){if(!canWrite())return;if(!confirm('Delete?'))return;db.journals=arr(db.journals).filter(x=>x.id!==id);save();render();toast('Deleted');}
 window.deleteJournal=deleteJournal;
 
-/* ============================================================================
-   LEDGER (unchanged — but uses new customerLedger for cheque activity)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEDGER
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewLedger(){
   const t=ui.ledger.type||'supplier';
   const types=[{key:'supplier',label:'Supplier Ledger'},{key:'customer',label:'Customer Cheque Activity'},{key:'cheque',label:'Party Cheques'},{key:'leaves',label:'Own Leaves'},{key:'payment',label:'Payments'},{key:'receipt',label:'Receipts'}];
   let columns=[],rows=[];
   if(t==='supplier'){columns=[{k:'date',l:'Date'},{k:'type',l:'Type'},{k:'ref',l:'Ref'},{k:'d',l:'Debit',n:1},{k:'c',l:'Credit',n:1},{k:'b',l:'Balance',n:1}];arr(db.suppliers).forEach(s=>{const L=supplierLedger(s.id);L.rows.forEach(r=>rows.push({date:dateFmt(r.date),type:r.isReversal?'<span class="rev-badge">REVERSAL</span>':esc(r.type),ref:r.ref,d:r.debit?moneyPlain(r.debit):'—',c:r.credit?moneyPlain(r.credit):'—',b:moneyPlain(r.balance),rev:r.isReversal}));});}
-  else if(t==='customer'){columns=[{k:'date',l:'Date'},{k:'cust',l:'Customer'},{k:'type',l:'Type'},{k:'cheque',l:'Cheque'},{k:'amt',l:'Amount',n:1},{k:'st',l:'Status'}];arr(db.customers).forEach(c=>{const L=customerLedger(c.id);L.rows.forEach(r=>rows.push({date:dateFmt(r.date),cust:c.name,type:r.isReversal?'<span class="rev-badge">BOUNCED</span>':esc(r.type),cheque:r.ref,amt:moneyPlain(customerChequeAmount(r.chequeId)),st:statusBadge(r.status)}));});}
+  else if(t==='customer'){columns=[{k:'date',l:'Date'},{k:'cust',l:'Customer'},{k:'type',l:'Type'},{k:'cheque',l:'Cheque'},{k:'amt',l:'Amount',n:1},{k:'st',l:'Status'}];arr(db.customers).forEach(c=>{const L=customerLedger(c.id);L.rows.forEach(r=>{const cq=arr(db.customerCheques).find(x=>x.id===r.chequeId);rows.push({date:dateFmt(r.date),cust:c.name,type:r.isReversal?'<span class="rev-badge">BOUNCED</span>':esc(r.type),cheque:r.ref,amt:cq?moneyPlain(cq.amount):'—',st:cq?statusBadge(cq.status):'—'});});});}
   else if(t==='cheque'){columns=[{k:'date',l:'Date'},{k:'cust',l:'Customer'},{k:'no',l:'Cheque'},{k:'amt',l:'Amount',n:1},{k:'st',l:'Status'}];arr(db.customerCheques).forEach(c=>rows.push({date:dateFmt(c.date),cust:c.customerName,no:c.chequeNo,amt:moneyPlain(c.amount),st:statusBadge(c.status)}));}
   else if(t==='leaves'){columns=[{k:'no',l:'Leaf'},{k:'bank',l:'Bank'},{k:'st',l:'Status'},{k:'amt',l:'Amount',n:1}];arr(db.chequeLeaves).forEach(l=>rows.push({no:l.leafNo,bank:l.bankName,st:statusBadge(l.status),amt:l.amount?moneyPlain(l.amount):'—'}));}
   else if(t==='payment'){columns=[{k:'date',l:'Date'},{k:'sup',l:'Supplier'},{k:'ref',l:'Ref'},{k:'amt',l:'Amount',n:1},{k:'st',l:'Status'}];arr(db.payments).forEach(p=>rows.push({date:dateFmt(p.date),sup:supName(p.supplierId),ref:p.reference||'—',amt:moneyPlain(p.amount),st:p.fullyReversed?'⚠ Reversed':'Active'}));}
@@ -2229,11 +2243,10 @@ function viewLedger(){
   (rows.length?rows.slice(0,500).map(r=>'<tr class="'+(r.rev?'rev-row':'')+'">'+columns.map(c=>'<td class="'+(c.n?'num':'')+'">'+(r[c.k]!==undefined?r[c.k]:'—')+'</td>').join('')+'</tr>').join(''):emptyRow(columns.length,'No entries'))+
   '</tbody></table></div></div>';
 }
-function customerChequeAmount(chequeId){const c=arr(db.customerCheques).find(x=>x.id===chequeId);return c?num(c.amount):0;}
 
-/* ============================================================================
-   AGING (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGING
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewAging(){
   const ga=globalAging();
   const bk=db.settings.supplierAgingBuckets||[30,60,90];
@@ -2251,9 +2264,9 @@ function viewAging(){
   '</tbody></table></div></div>';
 }
 
-/* ============================================================================
-   REPORTS (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   REPORTS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewReports(){
   const tabs=[['builder','📊 Builder'],['saved','💾 Saved'],['quick','⚡ Quick']];
   const active=(ui.reports&&ui.reports.tab)||'builder';
@@ -2385,9 +2398,9 @@ function exportReportCSV(){
 }
 window.exportReportCSV=exportReportCSV;
 
-/* ============================================================================
-   HISTORY / LOGINS / BACKUP (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   HISTORY
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewHistory(){
   const h=ui.history;
   let entries=arr(db.activityLog).slice().reverse();
@@ -2421,6 +2434,10 @@ function viewLogins(){
   (rows.length?rows.map(r=>'<tr><td>'+dateTimeFmt(r.at)+'</td><td><strong>'+esc(r.email)+'</strong></td><td>'+esc(r.platform||'—')+'</td><td>'+esc(r.screen||'—')+'</td></tr>').join(''):emptyRow(4,'No logins'))+
   '</tbody></table></div></div>';
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BACKUP
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewBackup(){
   const size=(()=>{try{return(new Blob([JSON.stringify(db)]).size/1024).toFixed(1)+' KB';}catch(e){return'—';}})();
   const exportOptions=['customers','suppliers','purchases','receipts','customerCheques','chequeLeaves','payments','bankAccounts','bankTransactions','expenses','journals','categories','activityLog'];
@@ -2436,36 +2453,17 @@ function viewBackup(){
     '<div class="row-flex"><button class="btn" data-action="load-sample">Load Sample Data</button><button class="btn danger" data-action="clear-all">🗑 Erase All</button></div>'+
   '</div>';
 }
-function buildBackup(){const data=JSON.parse(JSON.stringify(db));delete data.allowedEmails;delete data.userPerms;return{meta:{app:APP_NAME,version:APP_VER,exportedAt:nowISO()},data};}
 function exportCSV(set){
   const items=arr(db[set]);if(!items.length){toast('No data in '+set,'warn');return;}
   const keys=uniq(items.flatMap(o=>Object.keys(o)));
   const rows=items.map(o=>keys.map(k=>o[k]!==undefined&&o[k]!==null?String(o[k]):''));
   download(set+'_'+today()+'.csv',toCSV(keys,rows),'text/csv');toast('Exported '+items.length+' rows');
 }
-function importBackup(){
-  const input=document.getElementById('importFile');
-  if(!input||!input.files.length){toast('Choose file','error');return;}
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const parsed=JSON.parse(e.target.result);
-      const data=parsed.data||parsed;
-      if(!confirm('Import replaces current data. Continue?'))return;
-      const merged=Object.assign(seed(),data);
-      merged.settings=Object.assign(defaultSettings(),data.settings||{});
-      db=merged;normalizeDb();save();render();toast('✅ Imported','success');
-    }catch(err){toast('Invalid file','error');}
-  };
-  reader.readAsText(input.files[0]);
-}
-function clearAll(){
-  if(!confirm('Erase ALL data?'))return;
-  if(!confirm('This cannot be undone. Final?'))return;
-  db=seed();applySettings();save();render();toast('Erased');
-}
+/* ✅ FIXED loadSample — KEEPS current access list */
 function loadSample(){
-  if(!confirm('Load sample data?'))return;
+  if(!confirm('Load sample data? Your Users list will be kept.'))return;
+  const keepAllowed=Array.isArray(db.allowedEmails)&&db.allowedEmails.length?db.allowedEmails.slice():[ADMIN_EMAIL];
+  const keepPerms=Object.assign({},db.userPerms||{});
   const cat1='cat-shoes',cu1=uid(),s1=uid(),ba1=uid(),cb1=uid();
   db=Object.assign(seed(),{
     customers:[{id:cu1,name:'Perera Stores',phone:'0771112233',createdAt:nowISO()}],
@@ -2478,12 +2476,50 @@ function loadSample(){
       {id:uid(),customerId:cu1,customerName:'Perera Stores',categoryId:cat1,chequeNo:'000452',bank:'Commercial Bank',date:today(),dueDate:shiftDate(today(),25),amount:30000,status:'In Hand',createdAt:nowISO()}
     ]
   });
-  normalizeDb();save();render();toast('✅ Sample loaded','success');
+  db.allowedEmails=keepAllowed;
+  db.userPerms=keepPerms;
+  normalizeDb();save();render();toast('✅ Sample loaded (users kept)','success');
 }
+window.loadSample=loadSample;
+/* ✅ FIXED clearAll — KEEPS current access list */
+function clearAll(){
+  if(!canWrite())return;
+  if(!confirm('Erase ALL business data?\n\n• Customers, cheques, payments, banks, expenses, journals\n• Your Users list will be KEPT'))return;
+  if(!confirm('This cannot be undone.\n\nFinal confirm?'))return;
+  const keepAllowed=Array.isArray(db.allowedEmails)&&db.allowedEmails.length?db.allowedEmails.slice():[ADMIN_EMAIL];
+  const keepPerms=Object.assign({},db.userPerms||{});
+  db=seed();
+  db.allowedEmails=keepAllowed;
+  db.userPerms=keepPerms;
+  applySettings();save();render();toast('Erased — users kept','success');
+}
+window.clearAll=clearAll;
+/* ✅ FIXED importBackup — KEEPS current access list */
+function importBackup(){
+  const input=document.getElementById('importFile');
+  if(!input||!input.files.length){toast('Choose file','error');return;}
+  const keepAllowed=Array.isArray(db.allowedEmails)&&db.allowedEmails.length?db.allowedEmails.slice():[ADMIN_EMAIL];
+  const keepPerms=Object.assign({},db.userPerms||{});
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      const data=parsed.data||parsed;
+      if(!confirm('Import will replace business data (Users kept). Continue?'))return;
+      const merged=Object.assign(seed(),data);
+      merged.settings=Object.assign(defaultSettings(),data.settings||{});
+      merged.allowedEmails=keepAllowed;
+      merged.userPerms=keepPerms;
+      db=merged;normalizeDb();save();render();toast('✅ Imported (users kept)','success');
+    }catch(err){toast('Invalid file: '+(err.message||err),'error');}
+  };
+  reader.readAsText(input.files[0]);
+}
+window.importBackup=importBackup;
 
-/* ============================================================================
-   SETTINGS (unchanged — same as previous version)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SETTINGS
+   ═══════════════════════════════════════════════════════════════════════════ */
 const SETTINGS_SECTIONS=[
   {key:'profile',ico:'P',label:'Business Profile',group:'General'},
   {key:'appearance',ico:'A',label:'Appearance',group:'General'},
@@ -2499,16 +2535,26 @@ const SETTINGS_SECTIONS=[
   {key:'advanced',ico:'X',label:'Advanced',group:'System'},
   {key:'about',ico:'i',label:'About',group:'System'}
 ];
+/* ✅ FIXED viewSettings — re-renders after async access refresh */
 function viewSettings(){
   const active=ui.settings.tab||'profile';
-  if(active==='users'&&firebaseReady&&!offlineMode){try{loadAccessList();}catch(e){}}
   const groups=groupBy(SETTINGS_SECTIONS,x=>x.group);
   const order=['General','Financial','Defaults','Automation','Security','System'];
+  if(active==='users'&&firebaseReady&&!offlineMode){
+    loadAccessList().then(()=>{
+      if(ui.view==='settings'&&ui.settings.tab==='users'){
+        const a=document.activeElement;
+        const isTyping=a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT');
+        if(!isTyping)render();
+      }
+    }).catch(err=>console.error('access refresh failed:',err));
+  }
   return '<div class="settings-layout"><aside class="settings-nav">'+
   order.map(g=>groups[g]?'<div class="settings-nav-group">'+g+'</div>'+groups[g].map(sec=>'<div class="settings-nav-item '+(active===sec.key?'active':'')+'" onclick="ui.settings.tab=\''+sec.key+'\';render()"><span class="ico">'+sec.ico+'</span>'+esc(sec.label)+'</div>').join(''):'').join('')+
   '</aside><form class="settings-panel" onsubmit="saveSettings(event)">'+settingsSection(active)+
   '<div class="settings-actions"><button type="button" class="btn" onclick="if(confirm(\'Reset all settings?\')){db.settings=defaultSettings();save();applySettings();render();}">Reset</button><button type="submit" class="btn primary">Save Settings</button></div></form></div>';
 }
+window.viewSettings=viewSettings;
 function settingsSection(key){
   const s=db.settings;
   const map={profile:setProfile,appearance:setAppearance,'theme-builder':setThemeBuilder,financial:setFinancial,cheque:setCheque,supplier:setSupplier,customer:setCustomer,notifications:setNotifications,security:setSecurity,users:setUsers,audit:setAudit,advanced:setAdvanced,about:setAbout};
@@ -2583,10 +2629,9 @@ function setSupplier(s){
   '</div></div></div>';
 }
 function setCustomer(s){
-  return '<div class="settings-panel-head"><h2>Customer Defaults</h2><div class="desc">Customer module is cheque-based — no sales or opening balances</div></div>'+
-  '<div class="settings-body">'+
-  '<div class="settings-section"><div class="settings-section-title">Info</div>'+
-  '<div class="alert info"><span class="ico">ℹ</span><div>Customer tracking is limited to <strong>cheque collection and bounce recovery</strong>. Sales and opening balances are not recorded in this system.</div></div>'+
+  return '<div class="settings-panel-head"><h2>Customer Defaults</h2><div class="desc">Customer module is cheque-based</div></div>'+
+  '<div class="settings-body"><div class="settings-section"><div class="settings-section-title">Info</div>'+
+  '<div class="alert info"><span class="ico">ℹ</span><div>No sales or opening balances recorded. Customer tracking is limited to <strong>cheque collection and bounce recovery</strong>.</div></div>'+
   '</div></div>';
 }
 function setNotifications(s){
@@ -2617,49 +2662,115 @@ function setSecurity(s){
 }
 function toggleReadOnly(){db.settings.readOnlyMode=!db.settings.readOnlyMode;save();applySettings();render();toast(db.settings.readOnlyMode?'READ-ONLY ON':'OFF','warn');}
 window.toggleReadOnly=toggleReadOnly;
+/* ✅ FIXED setUsers — clean UI with Pull/Push/Danger Zone */
 function setUsers(){
   if(!Array.isArray(db.allowedEmails)||!db.allowedEmails.length){db.allowedEmails=[ADMIN_EMAIL];}
   if(!db.allowedEmails.some(e=>String(e).toLowerCase()===ADMIN_EMAIL.toLowerCase())){db.allowedEmails=[ADMIN_EMAIL].concat(db.allowedEmails);}
   const allowed=db.allowedEmails;
   const perms=db.userPerms||{};
-  return '<div class="settings-panel-head"><h2>Users</h2><div class="desc">Manage who can access this system ('+allowed.length+' authorized)</div></div>'+
+  const roleOptions=['accountant','editor','viewer'];
+  return '<div class="settings-panel-head"><h2>Users</h2><div class="desc">'+allowed.length+' authorized user(s)</div></div>'+
   '<div class="settings-body">'+
-  '<div class="alert info"><span class="ico">ℹ</span><div><strong>Admin:</strong> '+esc(ADMIN_EMAIL)+'<br><strong>You:</strong> '+esc((currentUser&&currentUser.email)||'—')+'<br><strong>Status:</strong> '+(offlineMode?'Offline Mode':(firebaseReady?'Cloud Connected':'Disconnected'))+'</div></div>'+
-  '<div class="settings-section"><div class="settings-section-title">Authorized Emails ('+allowed.length+')</div>'+
-  '<div class="row-flex" style="margin-bottom:12px;justify-content:flex-end"><button type="button" class="btn sm" onclick="refreshUsers()">🔄 Refresh from Cloud</button></div>'+
+  '<div class="alert info"><span class="ico">ℹ</span><div><strong>Admin:</strong> '+esc(ADMIN_EMAIL)+'<br><strong>You:</strong> '+esc((currentUser&&currentUser.email)||'—')+'<br><strong>Role:</strong> '+esc(currentRole())+'<br><strong>Status:</strong> '+(offlineMode?'Offline Mode':(firebaseReady?'Cloud Connected':'Disconnected'))+'</div></div>'+
+  '<div class="settings-section"><div class="settings-section-title">Authorized Users ('+allowed.length+')</div>'+
+  '<div class="row-flex" style="margin-bottom:12px;justify-content:flex-end;flex-wrap:wrap">'+
+    '<button type="button" class="btn sm" onclick="refreshUsers()">🔄 Pull from Cloud</button>'+
+    '<button type="button" class="btn sm" onclick="forceFullSync()">⬆ Push All to Cloud</button>'+
+  '</div>'+
   allowed.map(email=>{
     const e=String(email).toLowerCase();
     const isAdmin=e===ADMIN_EMAIL.toLowerCase();
     const role=(perms[e]&&perms[e].role)||(isAdmin?'admin':'editor');
-    return '<div class="settings-user-row"><div class="u-avatar">'+String(email).slice(0,1).toUpperCase()+'</div><div class="u-info"><div class="u-email">'+esc(email)+'</div><div class="u-role">'+(isAdmin?'👑 Admin':role)+'</div></div><div>'+(isAdmin?'<span class="badge purple">Admin</span>':'<span class="badge blue">'+role+'</span>')+'</div></div>';
+    return '<div class="settings-user-row"><div class="u-avatar">'+String(email).slice(0,1).toUpperCase()+'</div><div class="u-info"><div class="u-email">'+esc(email)+'</div><div class="u-role">'+(isAdmin?'👑 Admin':role)+'</div></div><div>'+(isAdmin?'<span class="badge purple">Admin</span>':'<select onchange="changeUserRole(\''+esc(email)+'\',this.value)" style="padding:4px 8px;font-size:11.5px">'+roleOptions.map(r=>'<option value="'+r+'" '+(role===r?'selected':'')+'>'+r+'</option>').join('')+'</select>')+'</div>'+(isAdmin?'':'<button type="button" class="icon-btn danger" onclick="removeUser(\''+esc(email)+'\')" title="Remove">✕</button>')+'</div>';
   }).join('')+
   '</div>'+
   '<div class="settings-section"><div class="settings-section-title">Add User</div>'+
-  '<div class="row-flex"><input type="email" id="newUserEmail" placeholder="user@example.com" style="flex:1;min-width:220px"><button type="button" class="btn primary" onclick="addNewUser()">＋ Add User</button></div>'+
-  '<div class="settings-toggle-desc" style="margin-top:8px">The new user must sign in with Google using this exact email.</div>'+
-  '</div></div>';
+  '<div class="row-flex">'+
+    '<input type="email" id="newUserEmail" placeholder="user@example.com" style="flex:1;min-width:220px" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNewUser();}">'+
+    '<select id="newUserRole" style="max-width:160px"><option value="editor">Editor</option><option value="accountant">Accountant</option><option value="viewer">Viewer</option></select>'+
+    '<button type="button" class="btn primary" onclick="addNewUser()">＋ Add</button>'+
+  '</div>'+
+  '<div class="settings-toggle-desc" style="margin-top:8px">User must sign in with Google using this exact email.</div>'+
+  '</div>'+
+  '<div class="settings-section"><div class="settings-section-title" style="color:var(--red)">⚠ Danger Zone</div>'+
+  '<div class="alert warn"><span class="ico">⚠</span><div><strong>Reset Cloud Access List.</strong> Removes every user except the admin (asifabooasif@gmail.com). All other users lose access immediately.</div></div>'+
+  '<button type="button" class="btn danger" onclick="clearCloudAccessDoc()">🗑 Reset Cloud Access List (Admin Only)</button>'+
+  '</div>'+
+  '</div>';
 }
+window.setUsers=setUsers;
 async function refreshUsers(){
   if(offlineMode){toast('Offline — cannot refresh','warn');return;}
-  toast('Refreshing…','info');
+  toast('Pulling from cloud…','info');
   await loadAccessList();
   render();
-  toast('Users refreshed','success');
+  toast('Refreshed','success');
 }
 window.refreshUsers=refreshUsers;
+/* ✅ FIXED addNewUser — instant local + background cloud */
 async function addNewUser(){
   const inp=document.getElementById('newUserEmail');
+  const roleSel=document.getElementById('newUserRole');
   if(!inp)return;
   const email=inp.value.trim().toLowerCase();
   if(!email||email.indexOf('@')===-1){toast('Valid email required','error');return;}
   if(arr(db.allowedEmails).some(e=>String(e).toLowerCase()===email)){toast('Already authorized','warn');return;}
   const newList=uniq(arr(db.allowedEmails).concat([email]));
   const perms=Object.assign({},db.userPerms||{});
-  if(!perms[email])perms[email]={role:'editor'};
-  const ok=await saveAccessList(newList,perms);
-  if(ok){inp.value='';render();toast('✅ User added: '+email,'success');}
+  perms[email]={role:(roleSel&&roleSel.value)||'editor'};
+  db.allowedEmails=newList;
+  db.userPerms=perms;
+  try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:newList,userPerms:perms}));}catch(e){}
+  render();
+  toast('✅ User added: '+email,'success');
+  saveAccessList(newList,perms).then(ok=>{if(!ok)console.warn('[addNewUser] cloud sync issue');});
 }
 window.addNewUser=addNewUser;
+/* ✅ FIXED removeUser — instant local + background cloud */
+async function removeUser(email){
+  if(String(email).toLowerCase()===ADMIN_EMAIL.toLowerCase()){toast('Cannot remove admin','error');return;}
+  if(!confirm('Remove access for '+email+'?'))return;
+  const newList=arr(db.allowedEmails).filter(e=>String(e).toLowerCase()!==String(email).toLowerCase());
+  const perms=Object.assign({},db.userPerms||{});
+  delete perms[String(email).toLowerCase()];
+  db.allowedEmails=newList;
+  db.userPerms=perms;
+  try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:newList,userPerms:perms}));}catch(e){}
+  render();
+  toast('Removed '+email,'success');
+  saveAccessList(newList,perms);
+}
+window.removeUser=removeUser;
+/* ✅ FIXED changeUserRole — local + cloud */
+async function changeUserRole(email,role){
+  const perms=Object.assign({},db.userPerms||{});
+  perms[email.toLowerCase()]={role};
+  db.userPerms=perms;
+  try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:db.allowedEmails,userPerms:perms}));}catch(e){}
+  saveAccessList(db.allowedEmails,perms);
+  toast('Role updated to '+role,'success');
+}
+window.changeUserRole=changeUserRole;
+/* ✅ NEW: Danger Zone actions */
+async function clearCloudAccessDoc(){
+  if(!confirm('⚠ Reset cloud access list to ADMIN ONLY?\n\nAll other users will lose access until re-added.\n\nContinue?'))return;
+  if(offlineMode||!firebaseReady){toast('Offline — cannot reset cloud','warn');return;}
+  try{
+    await firestore.doc(ACCESS_DOC_PATH).set({allowedEmails:[ADMIN_EMAIL],userPerms:{},updatedAt:nowISO(),updatedBy:'manual-reset'});
+    db.allowedEmails=[ADMIN_EMAIL];
+    db.userPerms={};
+    try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:[ADMIN_EMAIL],userPerms:{}}));}catch(e){}
+    render();toast('Cloud access list reset to admin only','success');
+  }catch(e){console.error(e);toast('Failed: '+(e.code||e.message),'error');}
+}
+window.clearCloudAccessDoc=clearCloudAccessDoc;
+async function forceFullSync(){
+  if(offlineMode||!firebaseReady){toast('Not connected','warn');return;}
+  toast('Pushing all local data to cloud…','info');
+  try{await pushToFirestore();toast('✅ Pushed to cloud','success');}
+  catch(e){console.error(e);toast('Sync failed: '+(e.message||e),'error');}
+}
+window.forceFullSync=forceFullSync;
 function setAudit(s){
   return '<div class="settings-panel-head"><h2>Audit & Logging</h2><div class="desc">Activity log configuration</div></div>'+
   '<div class="settings-body">'+
@@ -2717,9 +2828,9 @@ function saveSettings(e){
 }
 window.saveSettings=saveSettings;
 
-/* ============================================================================
-   AUTH (unchanged — Google sign-in preserved)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTH — Google Sign-In (UNCHANGED)
+   ═══════════════════════════════════════════════════════════════════════════ */
 async function checkAccess(email){
   if(!email)return false;
   if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase())return'admin';
@@ -2731,7 +2842,7 @@ async function checkAccess(email){
     if(!list.includes(email.toLowerCase().trim()))return false;
     currentUserPerms=(data.userPerms||{})[email.toLowerCase().trim()]||{role:'editor'};
     return'user';
-  }catch(e){return false;}
+  }catch(e){console.error('checkAccess:',e);return false;}
 }
 function showLoginError(msg){const el=document.getElementById('loginError');if(!el)return;el.textContent=msg;el.classList.add('show');}
 function hideLoginError(){const el=document.getElementById('loginError');if(el)el.classList.remove('show');}
@@ -2790,20 +2901,21 @@ async function onAuthStateChanged(user){
   updateSidebarUser();showApp();render();
   toast('Welcome, '+(user.displayName||user.email),'success');
 }
+/* ✅ FIXED registerUserLogin — uses COL_PREFIX for top-level users collection */
 async function registerUserLogin(user,role){
   if(offlineMode||!firebaseReady)return;
   try{
-    const ref=firestore.collection(USERS_COL_PATH).doc(user.uid);
+    const ref=firestore.collection(COL_PREFIX+'users').doc(user.uid);
     const doc=await ref.get();
     const now=nowISO();
     if(doc.exists)await ref.set({lastLogin:now,name:user.displayName,photo:user.photoURL,role,email:user.email},{merge:true});
     else await ref.set({email:user.email,name:user.displayName,photo:user.photoURL,role,firstLogin:now,lastLogin:now});
-  }catch(e){}
+  }catch(e){console.warn('registerUserLogin:',e.code||e.message);}
 }
 
-/* ============================================================================
-   EVENT DELEGATION (unchanged)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   EVENT DELEGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('click',function(e){
   const el=e.target.closest('[data-action]');
   if(!el)return;
@@ -2853,9 +2965,9 @@ document.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='b'&&!e.shiftKey){e.preventDefault();toggleSidebar();}
 });
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    BOOT
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 (async function boot(){
   try{await initFirebase();}catch(e){console.error('initFirebase threw:',e);}
   if(!firebaseReady){

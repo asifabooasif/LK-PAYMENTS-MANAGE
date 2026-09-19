@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Lanka Shoe — Enterprise v11.1</title>
+<title>Lanka Shoe — Enterprise v11.2</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👟</text></svg>">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -401,7 +401,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .chain-node .cn-body{flex:1;}
 .chain-node .cn-title{font-weight:600;font-size:13px;}
 .chain-node .cn-sub{font-size:11.5px;color:var(--text-4);margin-top:2px;}
-.chain-arrow{margin-left:32px;color:var(--text-4);font-size:20px;line-height:1;}
 .kpi-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;max-height:520px;overflow-y:auto;padding:4px;}
 .kpi-picker-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);cursor:pointer;font-size:12.5px;}
 .kpi-picker-item.on{border-color:var(--accent);background:var(--accent-soft);}
@@ -413,7 +412,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 [data-lang="si"] .i18n-en,[data-lang="ta"] .i18n-en{display:none;}
 [data-lang="en"] .i18n-si,[data-lang="en"] .i18n-ta{display:none;}
 [data-lang="si"] .i18n-ta,[data-lang="ta"] .i18n-si{display:none;}
-.draft-badge{background:var(--purple-soft);color:var(--purple);font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--r-full);text-transform:uppercase;letter-spacing:.05em;}
 .todo-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--border-2);border-radius:var(--r-md);background:var(--surface);margin-bottom:8px;}
 .todo-item.done{opacity:.55;}
 .todo-item.done .todo-title{text-decoration:line-through;}
@@ -421,8 +419,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 .todo-item .todo-body{flex:1;min-width:0;}
 .todo-item .todo-title{font-size:13px;font-weight:500;}
 .todo-item .todo-meta{font-size:11px;color:var(--text-4);margin-top:3px;}
-.recent-dd{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);max-height:340px;overflow:auto;z-index:50;display:none;padding:6px;}
-.recent-dd.open{display:block;}
 @media print{.sidebar,.topbar-actions,.btn,.icon-btn,.seg,.tabs,.fab,.fab-menu,#notifPanel,.gsearch,.rpt-config,.bulk-bar{display:none!important;}.content{padding:0;}.card{box-shadow:none;border:none;}.app{display:block;}}
 @media(max-width:840px){.app{flex-direction:column;}.sidebar,body.sidebar-collapsed .sidebar{width:100%;flex:none;height:auto;position:relative;padding:16px 14px;}body.sidebar-collapsed .brand-text,body.sidebar-collapsed .sidebar-foot{display:initial;}.sidebar nav{display:flex;overflow-x:auto;gap:5px;padding-bottom:6px;}.nav-group{display:flex;gap:5px;margin-bottom:0;}.nav-label{display:none;}.nav-item{white-space:nowrap;font-size:12px;padding:8px 11px;}.nav-item .badge-count{display:none;}.sidebar-foot{display:none;}.sidebar-toggle{display:none;}.content{padding:18px 14px 90px;}.topbar{padding:14px 18px;flex-wrap:wrap;}.gsearch{width:100%;order:3;}#notifPanel{width:100%;}.oc-cal-grid{grid-template-columns:repeat(3,1fr);}}
 </style>
@@ -447,7 +443,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-logo" id="brandLogo">LS</div>
-      <div class="brand-text"><div class="brand-name" id="brandName">Lanka Shoe</div><div class="brand-sub" id="brandSub">Enterprise v11.1</div></div>
+      <div class="brand-text"><div class="brand-name" id="brandName">Lanka Shoe</div><div class="brand-sub" id="brandSub">Enterprise v11.2</div></div>
       <div class="sidebar-toggle" data-action="toggle-sidebar">◂</div>
     </div>
     <nav id="nav"></nav>
@@ -492,13 +488,54 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SAFE DEVTOOLS DETECTION — non-destructive (blocks shortcuts + overlay only)
+   DEBUG PANEL (visible on-page — no DevTools needed)
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  function build(){
+    if(document.getElementById('dbgBox'))return;
+    const box=document.createElement('div');
+    box.id='dbgBox';
+    box.style.cssText='position:fixed;bottom:90px;left:16px;right:16px;max-height:35vh;background:#0a0a0f;color:#e4ddf4;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;padding:8px 12px;overflow-y:auto;z-index:999999;border-radius:10px;border:1px solid #7c3aed;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);line-height:1.5';
+    box.innerHTML='<div style="display:flex;justify-content:space-between;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid #333"><strong style="color:#a78bfa">🐛 Debug Panel</strong><span><button id="dbgClr" style="background:#2a1a55;color:#fff;border:0;padding:3px 8px;border-radius:4px;margin-right:6px;cursor:pointer">Clear</button><button id="dbgX" style="background:#5a1d1d;color:#fff;border:0;padding:3px 8px;border-radius:4px;cursor:pointer">✕</button></span></div><div id="dbgBody"></div>';
+    document.body.appendChild(box);
+
+    const btn=document.createElement('button');
+    btn.id='dbgBtn';
+    btn.textContent='🐛';
+    btn.style.cssText='position:fixed;bottom:150px;left:16px;z-index:999998;width:44px;height:44px;border-radius:50%;background:#7c3aed;color:#fff;border:0;font-size:18px;cursor:pointer;box-shadow:0 6px 16px rgba(124,58,237,.6)';
+    btn.onclick=()=>{box.style.display=box.style.display==='none'?'block':'none';};
+    document.body.appendChild(btn);
+
+    document.getElementById('dbgClr').onclick=()=>{document.getElementById('dbgBody').innerHTML='';};
+    document.getElementById('dbgX').onclick=()=>{box.style.display='none';};
+  }
+  if(document.body)build();else document.addEventListener('DOMContentLoaded',build);
+
+  function addLine(color,tag,msg){
+    try{
+      if(!document.getElementById('dbgBody'))build();
+      const body=document.getElementById('dbgBody');
+      const l=document.createElement('div');
+      l.style.cssText='padding:2px 0;border-bottom:1px solid #1a1a24;word-break:break-all;color:'+color;
+      l.textContent='['+new Date().toLocaleTimeString('en-GB')+'] ['+tag+'] '+String(msg);
+      body.appendChild(l);
+      const box=document.getElementById('dbgBox');if(box)box.scrollTop=box.scrollHeight;
+    }catch(e){}
+  }
+  window.__dbgLog=(m,t)=>addLine('#e4ddf4',t||'LOG',m);
+  window.__dbgWarn=(m,t)=>addLine('#fbbf24',t||'WARN',m);
+  window.__dbgError=(m,t)=>addLine('#f87171',t||'ERR',m);
+  window.__dbgOk=(m,t)=>addLine('#34d399',t||'OK',m);
+  window.__dbgClear=()=>{const b=document.getElementById('dbgBody');if(b)b.innerHTML='';};
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SAFE DEVTOOLS DETECTION (non-destructive)
    ═══════════════════════════════════════════════════════════════════════════ */
 (function(){
   let overlayShown=false;
   function showOverlay(){if(overlayShown)return;overlayShown=true;const g=document.getElementById('dtGuard');if(g)g.classList.add('on');}
   function hideOverlay(){overlayShown=false;const g=document.getElementById('dtGuard');if(g)g.classList.remove('on');}
-  window.__shieldShow=showOverlay;window.__shieldHide=hideOverlay;
 
   document.addEventListener('keydown',function(e){
     const k=String(e.key||''),up=k.toUpperCase();
@@ -508,12 +545,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
     if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&k.toLowerCase()==='u'){e.preventDefault();showOverlay();return false;}
   },true);
 
-  document.addEventListener('contextmenu',function(e){
-    const t=e.target;
-    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
-    e.preventDefault();return false;
-  },true);
-
   let devtoolsOpen=false;
   if(!/mobile|android|iphone|ipad/i.test(navigator.userAgent)){
     setInterval(function(){
@@ -521,7 +552,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
       // eslint-disable-next-line no-debugger
       debugger;
       const t2=performance.now();
-      if(t2-t1>120){if(!devtoolsOpen){devtoolsOpen=true;showOverlay();}}
+      if(t2-t1>150){if(!devtoolsOpen){devtoolsOpen=true;showOverlay();}}
       else{if(devtoolsOpen){devtoolsOpen=false;hideOverlay();}}
     },2000);
   }
@@ -542,13 +573,12 @@ const firebaseConfig={
 
 const ADMIN_EMAIL='asifabooasif@gmail.com';
 const ROOT='lk';
-const DATA_PREFIX=ROOT+'_';              // ← FIX: data collections get prefixed (lk_customers, lk_suppliers…)
-const ACCESS_DOC_PATH=ROOT+'/access';    // lk/access (document)
-const SETTINGS_DOC_PATH=ROOT+'/settings'; // lk/settings (document)
-const USERS_COL_PATH=DATA_PREFIX+'users'; // lk_users (collection)
-const APP_NAME='Lanka Shoe Enterprise',APP_VER='11.1.0';
+const DATA_PREFIX=ROOT+'_';                    // ← FIXED: 'lk_' prefix for all data collections
+const ACCESS_DOC_PATH=ROOT+'/access';          // lk/access (document)
+const SETTINGS_DOC_PATH=ROOT+'/settings';      // lk/settings (document)
+const USERS_COL_PATH=DATA_PREFIX+'users';      // lk_users (collection)
+const APP_NAME='Lanka Shoe Enterprise',APP_VER='11.2.0';
 
-/* Data collections — each becomes a TOP-LEVEL collection named `lk_<name>` */
 const COLLECTIONS=[
   'customers','customerNotes','customerContactLog',
   'suppliers','supplierReturns',
@@ -568,7 +598,7 @@ let currentUser=null,currentUserRole='admin',currentUserPerms=null,firebaseReady
 let firebaseInitError=null,offlineMode=false;
 let _syncDebounce=null;
 
-/* ───────── CORE UTILITIES ───────── */
+/* ═══ CORE UTILITIES ═══ */
 const uid=()=>'x'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);};
@@ -596,7 +626,7 @@ const csvEscape=v=>{const s=(v===undefined||v===null)?'':String(v);return/[",\n]
 const toCSV=(headers,rows)=>'\uFEFF'+[headers.map(csvEscape).join(',')].concat(rows.map(r=>r.map(csvEscape).join(','))).join('\n');
 const download=(filename,content,type)=>{const blob=new Blob([content],{type:type||'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1500);};
 
-/* ───────── AMOUNT IN WORDS ───────── */
+/* ═══ AMOUNT IN WORDS ═══ */
 const ONES=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
 const TENS=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
 function threeDigit(n){n=Math.floor(n);if(n<20)return ONES[n];if(n<100)return TENS[Math.floor(n/10)]+(n%10?' '+ONES[n%10]:'');return ONES[Math.floor(n/100)]+' hundred'+(n%100?' '+threeDigit(n%100):'');}
@@ -610,33 +640,25 @@ function amountInWords(amount){
 }
 window.amountInWords=amountInWords;
 
-/* ───────── TRANSLATIONS ───────── */
+/* ═══ TRANSLATIONS ═══ */
 const I18N={
-  en:{dashboard:'Dashboard',customers:'Customers',suppliers:'Suppliers',purchases:'Purchases',receipts:'Receipts',payments:'Payments',banks:'Bank Accounts',chequeBooks:'Cheque Books',ownCheques:'Own Cheques',expenses:'Expenses',journals:'Journals',ledger:'Ledger',aging:'Aging',reports:'Reports',history:'History',settings:'Settings',newCustomer:'New Customer',newReceipt:'New Receipt',newPayment:'New Payment',amount:'Amount',date:'Date',save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',search:'Search',total:'Total',status:'Status',actions:'Actions',noData:'No data'},
-  si:{dashboard:'පුවරුව',customers:'පාරිභෝගිකයන්',suppliers:'සැපයුම්කරුවන්',purchases:'මිලදී ගැනීම්',receipts:'ලදුපත්',payments:'ගෙවීම්',banks:'බැංකු ගිණුම්',chequeBooks:'චෙක් පොත්',ownCheques:'තමන්ගේ චෙක්පත්',expenses:'වියදම්',journals:'ජර්නල',ledger:'ලෙජර්',aging:'වයස්ගත',reports:'වාර්තා',history:'ඉතිහාසය',settings:'සැකසුම්',newCustomer:'නව පාරිභෝගික',newReceipt:'නව ලදුපත',newPayment:'නව ගෙවීම',amount:'මුදල',date:'දිනය',save:'සුරකින්න',cancel:'අවලංගු',delete:'මකන්න',edit:'සංස්කරණය',search:'සොයන්න',total:'එකතුව',status:'තත්ත්වය',actions:'ක්‍රියා',noData:'දත්ත නැත'},
-  ta:{dashboard:'டாஷ்போர்டு',customers:'வாடிக்கையாளர்கள்',suppliers:'சப்ளையர்கள்',purchases:'கொள்முதல்',receipts:'ரசீதுகள்',payments:'பணம் செலுத்துதல்',banks:'வங்கி கணக்குகள்',chequeBooks:'காசோலை புத்தகங்கள்',ownCheques:'சொந்த காசோலைகள்',expenses:'செலவுகள்',journals:'இதழ்கள்',ledger:'லெட்ஜர்',aging:'வயது',reports:'அறிக்கைகள்',history:'வரலாறு',settings:'அமைப்புகள்',newCustomer:'புதிய வாடிக்கையாளர்',newReceipt:'புதிய ரசீது',newPayment:'புதிய கட்டணம்',amount:'தொகை',date:'தேதி',save:'சேமி',cancel:'ரத்து',delete:'நீக்கு',edit:'திருத்து',search:'தேடு',total:'மொத்தம்',status:'நிலை',actions:'செயல்கள்',noData:'தரவு இல்லை'}
+  en:{dashboard:'Dashboard',customers:'Customers',suppliers:'Suppliers',purchases:'Purchases',receipts:'Receipts',payments:'Payments',banks:'Bank Accounts',chequeBooks:'Cheque Books',ownCheques:'Own Cheques',expenses:'Expenses',journals:'Journals',ledger:'Ledger',aging:'Aging',reports:'Reports',history:'History',settings:'Settings',save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',search:'Search',total:'Total',status:'Status',actions:'Actions',noData:'No data'},
+  si:{dashboard:'පුවරුව',customers:'පාරිභෝගිකයන්',suppliers:'සැපයුම්කරුවන්',save:'සුරකින්න',cancel:'අවලංගු',delete:'මකන්න',edit:'සංස්කරණය',search:'සොයන්න',total:'එකතුව',status:'තත්ත්වය',actions:'ක්‍රියා',noData:'දත්ත නැත'},
+  ta:{dashboard:'டாஷ்போர்டு',customers:'வாடிக்கையாளர்கள்',suppliers:'சப்ளையர்கள்',save:'சேமி',cancel:'ரத்து',delete:'நீக்கு',edit:'திருத்து',search:'தேடு',total:'மொத்தம்',status:'நிலை',actions:'செயல்கள்',noData:'தரவு இல்லை'}
 };
 function t(key){const lang=(db&&db.settings&&db.settings.language)||'en';return (I18N[lang]&&I18N[lang][key])||I18N.en[key]||key;}
 window.t=t;
 
-/* ───────── SRI LANKAN BANKS ───────── */
+/* ═══ SRI LANKAN BANKS ═══ */
 const SL_BANKS=[
-  {name:'Commercial Bank',color:'#0d4d9c',short:'CB'},
-  {name:'Sampath Bank',color:'#e62329',short:'SB'},
-  {name:'Hatton National Bank',color:'#003366',short:'HNB'},
-  {name:'Bank of Ceylon',color:'#f5b800',short:'BOC'},
-  {name:'Seylan Bank',color:'#0066b3',short:'SEY'},
-  {name:"People's Bank",color:'#c8102e',short:'PB'},
-  {name:'NDB Bank',color:'#00a651',short:'NDB'},
-  {name:'DFCC Bank',color:'#00539b',short:'DFCC'},
-  {name:'Nations Trust Bank',color:'#003399',short:'NTB'},
-  {name:'Union Bank',color:'#ff6b00',short:'UB'},
-  {name:'Pan Asia Bank',color:'#6b2d91',short:'PAB'},
-  {name:'Cargills Bank',color:'#e30613',short:'CGB'},
-  {name:'Amana Bank',color:'#1a7d47',short:'AB'},
-  {name:'Standard Chartered',color:'#0473ea',short:'SC'},
-  {name:'HSBC',color:'#db0011',short:'HSBC'},
-  {name:'Other',color:'#6b7280',short:'OT'}
+  {name:'Commercial Bank',color:'#0d4d9c',short:'CB'},{name:'Sampath Bank',color:'#e62329',short:'SB'},
+  {name:'Hatton National Bank',color:'#003366',short:'HNB'},{name:'Bank of Ceylon',color:'#f5b800',short:'BOC'},
+  {name:'Seylan Bank',color:'#0066b3',short:'SEY'},{name:"People's Bank",color:'#c8102e',short:'PB'},
+  {name:'NDB Bank',color:'#00a651',short:'NDB'},{name:'DFCC Bank',color:'#00539b',short:'DFCC'},
+  {name:'Nations Trust Bank',color:'#003399',short:'NTB'},{name:'Union Bank',color:'#ff6b00',short:'UB'},
+  {name:'Pan Asia Bank',color:'#6b2d91',short:'PAB'},{name:'Cargills Bank',color:'#e30613',short:'CGB'},
+  {name:'Amana Bank',color:'#1a7d47',short:'AB'},{name:'Standard Chartered',color:'#0473ea',short:'SC'},
+  {name:'HSBC',color:'#db0011',short:'HSBC'},{name:'Other',color:'#6b7280',short:'OT'}
 ];
 function bankLogo(name){
   if(!name)return'<span class="bank-logo-sm" style="background:#6b7280">?</span>';
@@ -647,7 +669,7 @@ window.bankLogo=bankLogo;
 function bankPresetOptions(selected){return SL_BANKS.map(b=>'<option value="'+esc(b.name)+'" '+(selected===b.name?'selected':'')+'>'+esc(b.name)+'</option>').join('');}
 window.bankPresetOptions=bankPresetOptions;
 
-/* ───────── RBAC ───────── */
+/* ═══ RBAC ═══ */
 const ROLE_PRESETS={
   admin:{read:true,write:true,delete:true,users:true,settings:true,backup:true,reports:true},
   accountant:{read:true,write:true,delete:false,users:false,settings:false,backup:false,reports:true},
@@ -660,11 +682,7 @@ function userPerms(){
   const base=ROLE_PRESETS[role]||ROLE_PRESETS.viewer;
   return Object.assign({},base,p);
 }
-function can(perm){
-  const perms=userPerms();
-  if(perm==='write'||perm==='delete'||perm==='users'||perm==='settings'||perm==='backup')return !!perms[perm];
-  return true;
-}
+function can(perm){const perms=userPerms();if(perm==='write'||perm==='delete'||perm==='users'||perm==='settings'||perm==='backup')return !!perms[perm];return true;}
 function canWrite(){
   if(db.settings&&db.settings.readOnlyMode){toast('Read-only mode active.','error');return false;}
   const p=userPerms();
@@ -673,7 +691,7 @@ function canWrite(){
 }
 window.can=can;window.canWrite=canWrite;window.userPerms=userPerms;
 
-/* ───────── DEFAULT SETTINGS & SEED ───────── */
+/* ═══ DEFAULT SETTINGS & SEED ═══ */
 function defaultSettings(){
   return{
     shopName:'Lanka Shoe',shopTagline:'Enterprise Suite',
@@ -745,7 +763,7 @@ function migrateSupplierCategories(){arr(db.suppliers).forEach(s=>{if(s.category
 function migrateBankBalances(){arr(db.bankAccounts).forEach(b=>{if(b.openingBalance===undefined)b.openingBalance=0;});}
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   FIREBASE INIT + ACCESS + PERSISTENCE (with corrected paths)
+   FIREBASE INIT + PERSISTENCE (FIXED PATHS)
    ═══════════════════════════════════════════════════════════════════════════ */
 async function initFirebase(){
   try{
@@ -754,8 +772,10 @@ async function initFirebase(){
     firestore=firebase.firestore();
     try{storage=firebase.storage();}catch(e){}
     try{firestore.settings({merge:true});}catch(e){}
-    firebaseReady=true;return true;
-  }catch(e){firebaseReady=false;firebaseInitError=e.message||String(e);return false;}
+    firebaseReady=true;
+    window.__dbgOk&&window.__dbgOk('Firebase ready • project='+firebaseConfig.projectId,'FB');
+    return true;
+  }catch(e){firebaseReady=false;firebaseInitError=e.message||String(e);window.__dbgError&&window.__dbgError('Firebase init: '+firebaseInitError,'FB');return false;}
 }
 async function loadAccessList(){
   try{
@@ -787,59 +807,65 @@ async function saveAccessList(list,perms){
   }catch(e){toast('Failed: '+(e.code||e.message),'error');return false;}
 }
 
-/* ───── LOAD: uses top-level collections `lk_<name>` ───── */
+/* ═══ LOAD FROM FIRESTORE — FIXED to use DATA_PREFIX ═══ */
 async function loadFromFirestore(){
   if(offlineMode||!firebaseReady)return;
+  window.__dbgLog&&window.__dbgLog('Loading from Firestore…','FB');
   await loadAccessList();
   try{
     const settingsDoc=await firestore.doc(SETTINGS_DOC_PATH).get();
-    if(settingsDoc.exists){db.settings=Object.assign(defaultSettings(),settingsDoc.data()||{});}
+    if(settingsDoc.exists){db.settings=Object.assign(defaultSettings(),settingsDoc.data()||{});window.__dbgOk&&window.__dbgOk('Loaded lk/settings','FB');}
     for(const col of COLLECTIONS){
       try{
         const snap=await firestore.collection(DATA_PREFIX+col).get();
-        if(!snap.empty){db[col]=[];snap.forEach(doc=>{const d=doc.data()||{};d.id=d.id||doc.id;db[col].push(d);});}
+        if(!snap.empty){db[col]=[];snap.forEach(doc=>{const d=doc.data()||{};d.id=d.id||doc.id;db[col].push(d);});window.__dbgOk&&window.__dbgOk('Loaded '+DATA_PREFIX+col+' ('+snap.size+' docs)','FB');}
         else if(!Array.isArray(db[col]))db[col]=[];
-      }catch(e){console.warn('[load] failed for',DATA_PREFIX+col,e.code||e.message);if(!Array.isArray(db[col]))db[col]=[];}
+      }catch(e){window.__dbgWarn&&window.__dbgWarn('['+DATA_PREFIX+col+'] '+(e.code||e.message),'LOAD');if(!Array.isArray(db[col]))db[col]=[];}
     }
     normalizeDb();
     try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
-  }catch(e){console.error('loadFromFirestore error:',e);await loadLocalCache();}
+    window.__dbgOk&&window.__dbgOk('Load complete','FB');
+  }catch(e){console.error('loadFromFirestore error:',e);window.__dbgError&&window.__dbgError('Load failed: '+(e.code||e.message),'FB');await loadLocalCache();}
 }
 
-/* ───── SAVE: writes to top-level collections `lk_<name>` via batch ───── */
+/* ═══ PUSH TO FIRESTORE — FIXED to use DATA_PREFIX ═══ */
 async function pushToFirestore(){
   try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
   const st=document.getElementById('syncStatus');
   if(offlineMode){if(st)st.textContent='Offline • Local only';return;}
-  if(!firebaseReady||!currentUser)return;
+  if(!firebaseReady){if(st)st.textContent='Local • Firebase not ready';return;}
+  if(!currentUser){if(st)st.textContent='Local • Not signed in';return;}
   try{
-    // Only admins write to lk/settings (per rules)
     if(currentUserRole==='admin'){
       try{await firestore.doc(SETTINGS_DOC_PATH).set(JSON.parse(JSON.stringify(db.settings)));}
-      catch(e){console.warn('[save] settings write blocked:',e.code||e.message);}
+      catch(e){window.__dbgWarn&&window.__dbgWarn('[settings] '+(e.code||e.message),'SAVE');}
     }
     const allOps=[];
     for(const col of COLLECTIONS){
       const items=arr(db[col]);
-      const colRef=firestore.collection(DATA_PREFIX+col);   // ← FIX
+      const colRef=firestore.collection(DATA_PREFIX+col);       // ← FIXED
       try{
         const existing=await colRef.get();
         existing.forEach(doc=>{allOps.push({op:'delete',ref:doc.ref});});
-      }catch(e){console.warn('[save] read existing failed for',DATA_PREFIX+col,e.code||e.message);}
+      }catch(e){window.__dbgWarn&&window.__dbgWarn('['+DATA_PREFIX+col+'] '+(e.code||e.message),'SAVE');}
       items.forEach(item=>{
         const id=item.id||uid();
         allOps.push({op:'set',ref:colRef.doc(id),data:item});
       });
     }
+    let written=0;
     for(let i=0;i<allOps.length;i+=450){
       const b=firestore.batch();
       allOps.slice(i,i+450).forEach(o=>{if(o.op==='delete')b.delete(o.ref);else b.set(o.ref,JSON.parse(JSON.stringify(o.data)));});
       await b.commit();
+      written+=Math.min(450,allOps.length-i);
     }
     if(st)st.textContent='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    window.__dbgOk&&window.__dbgOk('Synced '+written+' ops across '+COLLECTIONS.length+' collections','SAVE');
   }catch(e){
     console.error('pushToFirestore failed:',e);
-    if(st)st.textContent='Local • Queued';
+    if(st)st.textContent='Local • Queued ('+(e.code||'error')+')';
+    window.__dbgError&&window.__dbgError('SAVE FAILED → '+(e.code||'')+' '+e.message,'SAVE');
   }
 }
 
@@ -865,7 +891,7 @@ function save(){
 }
 window.save=save;
 
-/* ───────── ACTIVITY LOG ───────── */
+/* ═══ ACTIVITY LOG ═══ */
 function logAct(action,entity,entityId,details,before,after){
   if(!(db.settings||{}).enableActivityLog)return;
   const entry={id:uid(),timestamp:nowISO(),action,entity,entityId:entityId||null,details:details||'',userEmail:(currentUser&&currentUser.email)||'system',userRole:currentUserRole};
@@ -877,7 +903,7 @@ function logAct(action,entity,entityId,details,before,after){
 }
 function logLogin(user){if(!Array.isArray(db.loginHistory))db.loginHistory=[];db.loginHistory.push({id:uid(),at:nowISO(),email:user.email,name:user.displayName,uid:user.uid,ua:navigator.userAgent,platform:navigator.platform,screen:(screen.width||0)+'x'+(screen.height||0)});if(db.loginHistory.length>200)db.loginHistory=db.loginHistory.slice(-200);}
 
-/* ───────── APPLY SETTINGS ───────── */
+/* ═══ APPLY SETTINGS ═══ */
 function applySettings(){
   const s=db.settings||defaultSettings();
   document.documentElement.setAttribute('data-theme',s.uiTheme||'professional');
@@ -900,7 +926,7 @@ window.setDensity=setDensity;
 function toggleSidebar(){db.settings.sidebarCollapsed=!db.settings.sidebarCollapsed;save();applySettings();}
 window.toggleSidebar=toggleSidebar;
 
-/* ───────── MATURITY WIDGET ───────── */
+/* ═══ MATURITY WIDGET ═══ */
 function renderMaturityWidget(){
   const el=document.getElementById('maturityWidget');if(!el)return;
   const s=db.settings||{};
@@ -915,7 +941,7 @@ function renderMaturityWidget(){
 }
 window.renderMaturityWidget=renderMaturityWidget;
 
-/* ───────── CONFETTI ───────── */
+/* ═══ CONFETTI ═══ */
 function confetti(){
   const c=document.getElementById('confettiCanvas');if(!c)return;
   c.width=window.innerWidth;c.height=window.innerHeight;
@@ -927,7 +953,7 @@ function confetti(){
 }
 window.confetti=confetti;
 
-/* ───────── ENTITY LOOKUPS ───────── */
+/* ═══ ENTITY LOOKUPS ═══ */
 const catName=id=>{const c=arr(db.categories).find(x=>x.id===id);return c?c.name:'—';};
 const catObj=id=>arr(db.categories).find(x=>x.id===id);
 const supName=id=>{const s=arr(db.suppliers).find(x=>x.id===id);return s?s.name:'—';};
@@ -937,10 +963,9 @@ const custName=id=>{const c=arr(db.customers).find(x=>x.id===id);return c?c.name
 const bankObj=id=>arr(db.bankAccounts).find(x=>x.id===id);
 const bookObj=id=>arr(db.chequeBooks).find(x=>x.id===id);
 const availableLeaves=()=>arr(db.chequeLeaves).filter(l=>l.status==='Available');
-const stoppedLeaves=()=>arr(db.chequeLeaves).filter(l=>l.status==='Stopped');
 window.catName=catName;window.supName=supName;window.custName=custName;window.custObj=custObj;window.supObj=supObj;window.bankObj=bankObj;
 
-/* ───────── BANK BALANCES & LEDGERS ───────── */
+/* ═══ BANK BALANCES ═══ */
 function bankTransactions(bankId){return arr(db.bankTransactions).filter(t=>t.bankAccountId===bankId).sort((a,b)=>a.date<b.date?-1:1);}
 function bankBalance(bankId,upToDate){
   const b=bankObj(bankId);if(!b)return 0;
@@ -957,14 +982,10 @@ function bankBalance(bankId,upToDate){
   return num(b.openingBalance)+net;
 }
 function bankPendingBalance(bankId){const future=arr(db.bankTransactions).filter(t=>t.bankAccountId===bankId&&t.date>today()&&t.type==='cheque_issued'&&t.status!=='reversed');return sum(future,'amount');}
-function bankFeesTotal(bankId,fromMonth,toMonth){
-  let fees=arr(db.bankFees).filter(f=>f.bankAccountId===bankId);
-  if(fromMonth)fees=fees.filter(f=>(f.date||'').slice(0,7)>=fromMonth);
-  if(toMonth)fees=fees.filter(f=>(f.date||'').slice(0,7)<=toMonth);
-  return sum(fees,'amount');
-}
+function bankFeesTotal(bankId,fromMonth,toMonth){let fees=arr(db.bankFees).filter(f=>f.bankAccountId===bankId);if(fromMonth)fees=fees.filter(f=>(f.date||'').slice(0,7)>=fromMonth);if(toMonth)fees=fees.filter(f=>(f.date||'').slice(0,7)<=toMonth);return sum(fees,'amount');}
 window.bankBalance=bankBalance;window.bankPendingBalance=bankPendingBalance;
 
+/* ═══ SUPPLIER LEDGER ═══ */
 function supplierLedger(id){
   const s=supObj(id);if(!s)return{rows:[],balance:0};
   const rows=[];
@@ -981,29 +1002,18 @@ function supplierBalance(id){return supplierLedger(id).balance;}
 function totalPayable(){return arr(db.suppliers).reduce((a,s)=>a+supplierBalance(s.id),0);}
 window.supplierLedger=supplierLedger;window.supplierBalance=supplierBalance;
 
+/* ═══ CUSTOMER HELPERS ═══ */
 function customerChequeSummary(cid){
   const all=arr(db.customerCheques).filter(cq=>cq.customerId===cid);
-  const inHand=all.filter(c=>c.status==='In Hand');
-  const issued=all.filter(c=>c.status==='Issued');
-  const cleared=all.filter(c=>c.status==='Cleared');
-  const bounced=all.filter(c=>c.status==='Bounced');
-  const stopped=all.filter(c=>c.status==='Stopped');
-  return{
-    total:{count:all.length,value:sum(all,'amount')},
-    inHand:{count:inHand.length,value:sum(inHand,'amount')},
-    issued:{count:issued.length,value:sum(issued,'amount')},
-    cleared:{count:cleared.length,value:sum(cleared,'amount')},
-    bounced:{count:bounced.length,value:sum(bounced,'amount')},
-    stopped:{count:stopped.length,value:sum(stopped,'amount')},
-    all,byStatus:{inHand,issued,cleared,bounced,stopped}
-  };
+  const inHand=all.filter(c=>c.status==='In Hand');const issued=all.filter(c=>c.status==='Issued');
+  const cleared=all.filter(c=>c.status==='Cleared');const bounced=all.filter(c=>c.status==='Bounced');const stopped=all.filter(c=>c.status==='Stopped');
+  return{total:{count:all.length,value:sum(all,'amount')},inHand:{count:inHand.length,value:sum(inHand,'amount')},issued:{count:issued.length,value:sum(issued,'amount')},cleared:{count:cleared.length,value:sum(cleared,'amount')},bounced:{count:bounced.length,value:sum(bounced,'amount')},stopped:{count:stopped.length,value:sum(stopped,'amount')},all,byStatus:{inHand,issued,cleared,bounced,stopped}};
 }
 function customerAging(cid){
   const bounced=arr(db.customerCheques).filter(cq=>cq.customerId===cid&&cq.status==='Bounced');
   const b={current:0,d30:0,d60:0,d90:0};
   const bk=db.settings.supplierAgingBuckets||[30,60,90];
-  const b1=num(bk[0]),b2=num(bk[1]),b3=num(bk[2]);
-  const t=today();
+  const b1=num(bk[0]),b2=num(bk[1]),b3=num(bk[2]);const t=today();
   bounced.forEach(c=>{
     const remaining=num(c.amount)-sum(arr(db.chequeSettlements).filter(s=>s.chequeId===c.id),'amount');
     if(remaining<=0)return;
@@ -1016,8 +1026,7 @@ function customerLedger(cid){
   const c=custObj(cid);if(!c)return{rows:[],balance:0};
   const cheques=arr(db.customerCheques).filter(cq=>cq.customerId===cid);
   const rows=cheques.map(cq=>{
-    const status=cq.status;
-    let type='Cheque Received',debit=0,credit=num(cq.amount),ts=1;
+    const status=cq.status;let type='Cheque Received',debit=0,credit=num(cq.amount),ts=1;
     if(status==='Issued'){type='Issued to Supplier';debit=num(cq.amount);credit=0;ts=2;}
     else if(status==='Cleared'){type='Cleared';ts=3;}
     else if(status==='Bounced'){type='Bounced';debit=0;credit=num(cq.amount);ts=4;}
@@ -1058,10 +1067,7 @@ window.chequeChain=chequeChain;
 
 function chequeSplits(chequeId){return arr(db.chequeSplits).filter(s=>s.chequeId===chequeId);}
 function chequeAllocated(chequeId){return sum(chequeSplits(chequeId),'amount');}
-function chequeUnallocated(chequeId){
-  const c=arr(db.customerCheques).find(x=>x.id===chequeId);if(!c)return 0;
-  return Math.max(0,num(c.amount)-chequeAllocated(chequeId));
-}
+function chequeUnallocated(chequeId){const c=arr(db.customerCheques).find(x=>x.id===chequeId);if(!c)return 0;return Math.max(0,num(c.amount)-chequeAllocated(chequeId));}
 window.chequeSplits=chequeSplits;window.chequeAllocated=chequeAllocated;window.chequeUnallocated=chequeUnallocated;
 
 function supplierAging(sid){
@@ -1095,7 +1101,7 @@ function nextInvoiceNo(categoryId){
 }
 window.nextInvoiceNo=nextInvoiceNo;
 
-/* ───────── UNDO ───────── */
+/* ═══ UNDO ═══ */
 const undoStack=[];
 function pushUndo(entry){undoStack.push(Object.assign({ts:Date.now()},entry));if(undoStack.length>25)undoStack.shift();}
 function performUndo(){
@@ -1108,10 +1114,9 @@ function performUndo(){
 }
 window.performUndo=performUndo;window.pushUndo=pushUndo;
 
-/* ───────── SOFT DELETE ───────── */
+/* ═══ SOFT DELETE ═══ */
 function softDelete(collection,id,label){
-  const list=arr(db[collection]);
-  const idx=list.findIndex(x=>x.id===id);
+  const list=arr(db[collection]);const idx=list.findIndex(x=>x.id===id);
   if(idx===-1)return false;
   const item=list[idx];
   if(!Array.isArray(db.trash))db.trash=[];
@@ -1129,27 +1134,12 @@ function restoreFromTrash(trashId){
   logAct('Restore from Trash',t.originalCollection,t.item.id,t.label||'');
   save();render();toast('Restored','success');
 }
-function permanentDeleteFromTrash(trashId){
-  if(!canWrite())return;
-  if(!confirm('Permanently delete? This cannot be undone.'))return;
-  db.trash=arr(db.trash).filter(x=>x.id!==trashId);
-  save();render();toast('Permanently deleted','warn');
-}
-function emptyTrash(){
-  if(!canWrite())return;
-  if(!arr(db.trash).length){toast('Trash is empty','warn');return;}
-  if(!confirm('Empty trash permanently? All items will be lost forever.'))return;
-  db.trash=[];save();render();toast('Trash emptied','warn');
-}
-function purgeOldTrash(){
-  const cutoff=new Date(Date.now()-30*86400000).toISOString();
-  const before=arr(db.trash).length;
-  db.trash=arr(db.trash).filter(t=>t.deletedAt>cutoff);
-  if(arr(db.trash).length<before)save();
-}
+function permanentDeleteFromTrash(trashId){if(!canWrite())return;if(!confirm('Permanently delete? This cannot be undone.'))return;db.trash=arr(db.trash).filter(x=>x.id!==trashId);save();render();toast('Permanently deleted','warn');}
+function emptyTrash(){if(!canWrite())return;if(!arr(db.trash).length){toast('Trash is empty','warn');return;}if(!confirm('Empty trash permanently?'))return;db.trash=[];save();render();toast('Trash emptied','warn');}
+function purgeOldTrash(){const cutoff=new Date(Date.now()-30*86400000).toISOString();const before=arr(db.trash).length;db.trash=arr(db.trash).filter(t=>t.deletedAt>cutoff);if(arr(db.trash).length<before)save();}
 window.softDelete=softDelete;window.restoreFromTrash=restoreFromTrash;window.permanentDeleteFromTrash=permanentDeleteFromTrash;window.emptyTrash=emptyTrash;
 
-/* ───────── NOTES ───────── */
+/* ═══ NOTES ═══ */
 function addNote(entityType,entityId,text){
   if(!canWrite())return;
   if(!Array.isArray(db.customerNotes))db.customerNotes=[];
@@ -1161,7 +1151,7 @@ function notesFor(entityType,entityId){return arr(db.customerNotes).filter(n=>n.
 function deleteNote(id){if(!canWrite())return;if(!confirm('Delete note?'))return;db.customerNotes=arr(db.customerNotes).filter(n=>n.id!==id);save();}
 window.addNote=addNote;window.notesFor=notesFor;window.deleteNote=deleteNote;
 
-/* ───────── DRAFTS ───────── */
+/* ═══ DRAFTS ═══ */
 function saveDraft(kind,payload){
   if(!Array.isArray(db.drafts))db.drafts=[];
   const existing=arr(db.drafts).find(d=>d.kind===kind&&d.owner===(currentUser&&currentUser.email));
@@ -1173,7 +1163,7 @@ function getDraft(kind){return arr(db.drafts).find(d=>d.kind===kind&&d.owner===(
 function clearDraft(kind){db.drafts=arr(db.drafts).filter(d=>!(d.kind===kind&&d.owner===(currentUser&&currentUser.email)));save();}
 window.saveDraft=saveDraft;window.getDraft=getDraft;window.clearDraft=clearDraft;
 
-/* ───────── RECENTLY VIEWED ───────── */
+/* ═══ RECENTLY VIEWED ═══ */
 function markViewed(kind,id,label){
   if(!Array.isArray(db.recentlyViewed))db.recentlyViewed=[];
   const owner=(currentUser&&currentUser.email)||'system';
@@ -1181,10 +1171,7 @@ function markViewed(kind,id,label){
   if(existing){existing.viewedAt=nowISO();existing.label=label;}
   else db.recentlyViewed.push({id:uid(),kind,entityId:id,label,owner,viewedAt:nowISO()});
   const mine=arr(db.recentlyViewed).filter(r=>r.owner===owner).sort((a,b)=>a.viewedAt<b.viewedAt?-1:1);
-  if(mine.length>20){
-    const remove=mine.slice(0,mine.length-20).map(r=>r.id);
-    db.recentlyViewed=arr(db.recentlyViewed).filter(r=>remove.indexOf(r.id)===-1);
-  }
+  if(mine.length>20){const remove=mine.slice(0,mine.length-20).map(r=>r.id);db.recentlyViewed=arr(db.recentlyViewed).filter(r=>remove.indexOf(r.id)===-1);}
   save();
 }
 function recentItems(kind){
@@ -1195,7 +1182,7 @@ function recentItems(kind){
 }
 window.markViewed=markViewed;window.recentItems=recentItems;
 
-/* ───────── CHARTS ───────── */
+/* ═══ CHARTS ═══ */
 function progressRing(value,total,color,size){size=size||90;const pct=total>0?Math.min(1,value/total):0;const r=(size-8)/2,c=size/2,circ=2*Math.PI*r;return'<svg class="ring" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><circle cx="'+c+'" cy="'+c+'" r="'+r+'" stroke="var(--surface-3)" stroke-dasharray="'+circ+'"/><circle cx="'+c+'" cy="'+c+'" r="'+r+'" stroke="'+color+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-pct))+'"/></svg>';}
 function lineChartSVG(series,opts){
   opts=opts||{};const w=opts.w||400,h=opts.h||140,pad={l:44,r:12,t:12,b:26};
@@ -1229,7 +1216,7 @@ function groupedBarChartSVG(groups,series,opts){
 }
 window.progressRing=progressRing;window.lineChartSVG=lineChartSVG;window.barChartSVG=barChartSVG;window.groupedBarChartSVG=groupedBarChartSVG;
 
-/* ───────── TOAST + MODAL ───────── */
+/* ═══ TOAST + MODAL ═══ */
 function toast(msg,type){
   const box=document.getElementById('toast');if(!box)return;
   const el=document.createElement('div');
@@ -1244,13 +1231,10 @@ function openModal(title,body,size){
   w.innerHTML='<div class="modal-backdrop" data-action="close-modal"></div><div class="modal '+(size||'')+'"><div class="modal-head"><h3>'+esc(title)+'</h3><button class="icon-btn" data-action="close-modal">✕</button></div><div class="modal-body">'+body+'</div></div>';
   w.classList.add('open');document.body.style.overflow='hidden';
 }
-function closeModal(){
-  const w=document.getElementById('modalWrap');
-  w.classList.remove('open');w.innerHTML='';document.body.style.overflow='';
-}
+function closeModal(){const w=document.getElementById('modalWrap');w.classList.remove('open');w.innerHTML='';document.body.style.overflow='';}
 window.openModal=openModal;window.closeModal=closeModal;
 
-/* ───────── EXPORT ───────── */
+/* ═══ EXPORT CSV ═══ */
 function exportCollectionCSV(collection,filename){
   const items=arr(db[collection]);
   if(!items.length){toast('No data','warn');return;}
@@ -1261,7 +1245,7 @@ function exportCollectionCSV(collection,filename){
 }
 window.exportCollectionCSV=exportCollectionCSV;
 
-/* ───────── COMMAND PALETTE ───────── */
+/* ═══ COMMAND PALETTE ═══ */
 let cmdPaletteIndex=0;
 let cmdPaletteResults=[];
 function buildCommandList(){
@@ -1286,13 +1270,7 @@ function buildCommandList(){
   arr(db.chequeLeaves).filter(l=>l.status==='Available').slice(0,50).forEach(l=>out.push({kind:'leaf',label:'Leaf '+l.leafNo+' • '+l.bankName,ico:'🎯',sub:'Available',action:()=>{ui.view='own';render();}}));
   return out;
 }
-function openCmdPalette(){
-  const cp=document.getElementById('cmdPalette');
-  cp.classList.add('open');
-  const inp=document.getElementById('cpInput');
-  inp.value='';inp.focus();
-  renderCmdPalette('');
-}
+function openCmdPalette(){const cp=document.getElementById('cmdPalette');cp.classList.add('open');const inp=document.getElementById('cpInput');inp.value='';inp.focus();renderCmdPalette('');}
 function closeCmdPalette(){document.getElementById('cmdPalette').classList.remove('open');}
 function renderCmdPalette(query){
   const q=(query||'').toLowerCase().trim();
@@ -1310,29 +1288,18 @@ function cmdPaletteKeydown(e){
   if(e.key==='ArrowUp'){e.preventDefault();cmdPaletteIndex=Math.max(0,cmdPaletteIndex-1);highlightCmdItem();return;}
   if(e.key==='Enter'){e.preventDefault();runCmdPaletteItem(cmdPaletteIndex);}
 }
-function highlightCmdItem(){
-  const items=document.querySelectorAll('#cpResults .cp-item');
-  items.forEach((el,i)=>el.classList.toggle('active',i===cmdPaletteIndex));
-  const active=items[cmdPaletteIndex];if(active)active.scrollIntoView({block:'nearest'});
-}
+function highlightCmdItem(){const items=document.querySelectorAll('#cpResults .cp-item');items.forEach((el,i)=>el.classList.toggle('active',i===cmdPaletteIndex));const active=items[cmdPaletteIndex];if(active)active.scrollIntoView({block:'nearest'});}
 window.openCmdPalette=openCmdPalette;window.closeCmdPalette=closeCmdPalette;window.renderCmdPalette=renderCmdPalette;window.runCmdPaletteItem=runCmdPaletteItem;window.cmdPaletteKeydown=cmdPaletteKeydown;
 
 document.addEventListener('keydown',function(e){
-  const cp=document.getElementById('cmdPalette');
-  if(!cp)return;
+  const cp=document.getElementById('cmdPalette');if(!cp)return;
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();cp.classList.contains('open')?closeCmdPalette():openCmdPalette();return;}
   if(cp.classList.contains('open'))return;
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){const tag=(e.target&&e.target.tagName)||'';if(tag==='INPUT'||tag==='TEXTAREA')return;e.preventDefault();performUndo();return;}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='d'){e.preventDefault();toggleThemeQuick();return;}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='b'&&!e.shiftKey){e.preventDefault();toggleSidebar();return;}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='r'&&!e.shiftKey){e.preventDefault();openRecentMenu();return;}
-  if(e.key==='Escape'){
-    closeModal();closeCmdPalette();
-    const np=document.getElementById('notifPanel');if(np)np.classList.remove('open');
-    const fm=document.getElementById('fabMenu');if(fm)fm.classList.remove('open');
-    const fb=document.getElementById('fabBtn');if(fb)fb.classList.remove('open');
-    return;
-  }
+  if(e.key==='Escape'){closeModal();closeCmdPalette();const np=document.getElementById('notifPanel');if(np)np.classList.remove('open');const fm=document.getElementById('fabMenu');if(fm)fm.classList.remove('open');const fb=document.getElementById('fabBtn');if(fb)fb.classList.remove('open');return;}
   const tag=(e.target&&e.target.tagName)||'';
   const isTyping=(tag==='INPUT'||tag==='TEXTAREA'||e.target.isContentEditable);
   if(isTyping)return;
@@ -1362,10 +1329,9 @@ function openRecentMenu(){
 }
 window.openRecentMenu=openRecentMenu;
 
-/* ───────── BULK SELECT ───────── */
+/* ═══ BULK SELECT ═══ */
 let bulkSelection=new Set();
 let bulkContext=null;
-function initBulkContext(collection,callback){bulkContext={collection,callback};bulkSelection=new Set();updateBulkBar();}
 function toggleBulkSelect(id,checked){if(checked)bulkSelection.add(id);else bulkSelection.delete(id);updateBulkBar();}
 function selectAllBulk(ids,on){bulkSelection=new Set(on?ids:[]);updateBulkBar();document.querySelectorAll('tbody input[type=checkbox][data-bulk-id]').forEach(chk=>chk.checked=on);}
 function updateBulkBar(){
@@ -1400,9 +1366,9 @@ function bulkDelete(){
   bulkSelection=new Set();bulkContext=null;updateBulkBar();
   save();render();toast('Moved to Trash','success');
 }
-window.initBulkContext=initBulkContext;window.toggleBulkSelect=toggleBulkSelect;window.selectAllBulk=selectAllBulk;window.bulkClear=bulkClear;window.bulkExport=bulkExport;window.bulkDelete=bulkDelete;
+window.toggleBulkSelect=toggleBulkSelect;window.selectAllBulk=selectAllBulk;window.bulkClear=bulkClear;window.bulkExport=bulkExport;window.bulkDelete=bulkDelete;
 
-/* ───────── TODO FORM ───────── */
+/* ═══ TODO ═══ */
 function openTodoForm(id){
   const t=id?arr(db.todos).find(x=>x.id===id):null;
   openModal(t?'Edit Task':'New Task',
@@ -1426,7 +1392,7 @@ function toggleTodo(id){const t=arr(db.todos).find(x=>x.id===id);if(!t)return;t.
 function deleteTodo(id){if(!confirm('Delete task?'))return;db.todos=arr(db.todos).filter(x=>x.id!==id);save();render();}
 window.openTodoForm=openTodoForm;window.saveTodoItem=saveTodoItem;window.toggleTodo=toggleTodo;window.deleteTodo=deleteTodo;
 
-/* ───────── WHATSAPP ───────── */
+/* ═══ WHATSAPP ═══ */
 function whatsappReminder(customerId,cheque){
   const c=custObj(customerId);if(!c)return'';
   const s=db.settings||{};
@@ -1438,7 +1404,7 @@ function copyToClipboard(text){
 }
 window.whatsappReminder=whatsappReminder;window.copyToClipboard=copyToClipboard;
 
-/* ───────── BACKUP ───────── */
+/* ═══ BACKUP ═══ */
 function buildBackup(){
   const data=JSON.parse(JSON.stringify(db));
   delete data.allowedEmails;delete data.userPerms;
@@ -1448,6 +1414,7 @@ window.buildBackup=buildBackup;
 
 /* ═══ END OF PART 1 ═══ */
 /* ═══ START OF PART 2 ═══ */
+
 /* ═══════════════════════════════════════════════════════════════════════════
    REPORT SCHEMA
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1666,7 +1633,7 @@ function render(){
   normalizeDb();applySettings();renderNav();
   const el=document.getElementById('view');
   try{el.innerHTML=(views[ui.view]?views[ui.view]():'<div class="empty">View not found</div>');}
-  catch(e){console.error('render:',e);el.innerHTML='<div class="alert danger"><span class="ico">!</span><div><strong>Error:</strong> '+esc(e.message||String(e))+'</div></div>';}
+  catch(e){console.error('render:',e);window.__dbgError&&window.__dbgError('Render: '+(e.message||String(e)),'UI');el.innerHTML='<div class="alert danger"><span class="ico">!</span><div><strong>Error:</strong> '+esc(e.message||String(e))+'</div></div>';}
   document.getElementById('pageTitle').textContent=titles[ui.view]||'Dashboard';
   document.getElementById('pageSub').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+(db.settings.readOnlyMode?' • READ-ONLY':'');
   const gs=document.getElementById('gsResults');if(gs)gs.classList.remove('open');
@@ -1697,7 +1664,9 @@ function updateSidebarUser(){
   el.onclick=()=>{ui.view='settings';ui.settings.tab='users';render();};
 }
 
-/* ───────── PROJECTED BALANCE ───────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROJECTED BALANCE
+   ═══════════════════════════════════════════════════════════════════════════ */
 function projectedBalance(bankId,daysAhead){
   const current=bankBalance(bankId);
   const t=today();
@@ -1707,7 +1676,9 @@ function projectedBalance(bankId,daysAhead){
 }
 window.projectedBalance=projectedBalance;
 
-/* ───────── KPI DEFINITIONS + DASHBOARD ───────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI DEFINITIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
 const KPI_DEFS={
   cashBanks:{label:'Total Cash in Banks',ico:'🏛️',compute:()=>moneyPlain(sum(arr(db.bankAccounts).map(b=>bankBalance(b.id)),0)),sub:()=>arr(db.bankAccounts).length+' bank(s)'},
   totalPayable:{label:'Total Payable',ico:'💸',compute:()=>moneyPlain(totalPayable()),sub:()=>arr(db.suppliers).length+' suppliers'},
@@ -1758,6 +1729,9 @@ function saveKpiPicker(){
 }
 window.saveKpiPicker=saveKpiPicker;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewDashboard(){
   const t=today(),tm=thisMonth(),pm=(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
   const purTM=sum(arr(db.purchases).filter(p=>inMonth(p.date,tm)),'amount');
@@ -1926,6 +1900,7 @@ function saveCustomer(e){
     const c=custObj(id);const before=JSON.parse(JSON.stringify(c));
     Object.assign(c,data);delete c.openingBalance;delete c.openingDate;
     logAct('Update Customer','Customer',id,data.name,before,c);
+    window.__dbgOk&&window.__dbgOk('Updated customer: '+data.name,'DATA');
   }else{
     const cid=uid();
     if(!Array.isArray(db.customers))db.customers=[];
@@ -1933,6 +1908,7 @@ function saveCustomer(e){
     db.customers.push(item);
     pushUndo({type:'collection_push',collection:'customers',id:cid,label:'Add customer '+data.name});
     logAct('Add Customer','Customer',cid,data.name);
+    window.__dbgOk&&window.__dbgOk('Added customer: '+data.name+' • id='+cid,'DATA');
   }
   save();closeModal();render();toast('✅ Customer saved','success');
 }
@@ -2195,7 +2171,7 @@ function saveSupplier(e){
   if(!data.name){toast('Name required','error');return;}
   if(!data.categoryId){toast('Category required','error');return;}
   if(id){Object.assign(supObj(id),data);logAct('Update Supplier','Supplier',id,data.name);}
-  else{const sid=uid();if(!Array.isArray(db.suppliers))db.suppliers=[];db.suppliers.push(Object.assign({id:sid,createdAt:nowISO()},data));pushUndo({type:'collection_push',collection:'suppliers',id:sid,label:'Add supplier '+data.name});logAct('Add Supplier','Supplier',sid,data.name);}
+  else{const sid=uid();if(!Array.isArray(db.suppliers))db.suppliers=[];db.suppliers.push(Object.assign({id:sid,createdAt:nowISO()},data));pushUndo({type:'collection_push',collection:'suppliers',id:sid,label:'Add supplier '+data.name});logAct('Add Supplier','Supplier',sid,data.name);window.__dbgOk&&window.__dbgOk('Added supplier: '+data.name,'DATA');}
   save();closeModal();render();toast('✅ Supplier saved','success');
 }
 window.saveSupplier=saveSupplier;
@@ -2341,7 +2317,7 @@ function savePurchase(e){
     }
   }
   if(id){Object.assign(arr(db.purchases).find(x=>x.id===id),data);logAct('Update Purchase','Purchase',id,data.invoiceNo);}
-  else{const pid=uid();if(!Array.isArray(db.purchases))db.purchases=[];db.purchases.push(Object.assign({id:pid,createdAt:nowISO()},data));pushUndo({type:'collection_push',collection:'purchases',id:pid,label:'Add purchase '+data.invoiceNo});logAct('Add Purchase','Purchase',pid,data.invoiceNo);}
+  else{const pid=uid();if(!Array.isArray(db.purchases))db.purchases=[];db.purchases.push(Object.assign({id:pid,createdAt:nowISO()},data));pushUndo({type:'collection_push',collection:'purchases',id:pid,label:'Add purchase '+data.invoiceNo});logAct('Add Purchase','Purchase',pid,data.invoiceNo);window.__dbgOk&&window.__dbgOk('Added purchase: '+data.invoiceNo,'DATA');}
   save();closeModal();render();toast('✅ Purchase saved','success');
 }
 window.savePurchase=savePurchase;
@@ -2469,6 +2445,7 @@ window.showCategoryAnalytics=showCategoryAnalytics;
 
 /* ═══ END OF PART 2 ═══ */
 /* ═══ START OF PART 3 ═══ */
+
 /* ═══════════════════════════════════════════════════════════════════════════
    RECEIPTS
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -2574,6 +2551,7 @@ function saveReceipt(e){
   }
   pushUndo({type:'collection_push',collection:'receipts',id:receiptId,label:'Add receipt '+customer.name});
   logAct('Add Receipt','Receipt',receiptId,customer.name+' • '+money(total));
+  window.__dbgOk&&window.__dbgOk('Receipt added: '+customer.name+' • '+money(total)+' ('+cheques.length+' cheques)','DATA');
   save();closeModal();render();toast('✅ Receipt saved','success');
 }
 window.saveReceipt=saveReceipt;
@@ -2605,6 +2583,7 @@ function showReceiptDetail(id){
 }
 window.showReceiptDetail=showReceiptDetail;
 
+/* BULK CHEQUE ENTRY */
 function openBulkChequeEntry(){
   if(!arr(db.customers).length){toast('Add customers first','error');return;}
   openModal('⚡ Bulk Cheque Entry',
@@ -2670,6 +2649,7 @@ function saveBulkCheques(e){
     total+=it.amount;
   });
   logAct('Bulk Cheque Entry','Receipt',bulkId,items.length+' cheques • '+money(total));
+  window.__dbgOk&&window.__dbgOk('Bulk: '+items.length+' cheques • '+money(total),'DATA');
   save();closeModal();render();toast('✅ '+items.length+' cheques saved • '+money(total),'success');
 }
 window.saveBulkCheques=saveBulkCheques;
@@ -3022,6 +3002,7 @@ function previewPayment(e){
   db.settings.nextPaymentNo=(num(db.settings.nextPaymentNo)||1)+1;
   pushUndo({type:'collection_push',collection:'payments',id:payment.id,label:'Add payment '+supplier.name});
   logAct('Add Payment','Payment',payment.id,supName(sid)+' • '+money(total));
+  window.__dbgOk&&window.__dbgOk('Payment: '+supplier.name+' • '+money(total)+' ('+pc.length+' party + '+ownRows.length+' own)','DATA');
   ui.paySelectedParty.clear();ui.payOwnRows=[];
   save();closeModal();render();toast('✅ Payment saved • '+money(total),'success');
   if(total>=100000)confetti();
@@ -3165,7 +3146,7 @@ function saveBank(e){
   const data={bankName:f.bName.value.trim(),accountNo:f.bAcc.value.trim(),branch:f.bBranch.value.trim(),accountType:f.bType.value,openingBalance:num(f.bOpen.value),openingDate:f.bOpenDate.value||today(),notes:f.bNotes.value.trim()};
   if(!data.bankName){toast('Name required','error');return;}
   if(id){Object.assign(bankObj(id),data);}
-  else{const bid=uid();if(!Array.isArray(db.bankAccounts))db.bankAccounts=[];db.bankAccounts.push(Object.assign({id:bid,createdAt:nowISO()},data));}
+  else{const bid=uid();if(!Array.isArray(db.bankAccounts))db.bankAccounts=[];db.bankAccounts.push(Object.assign({id:bid,createdAt:nowISO()},data));window.__dbgOk&&window.__dbgOk('Bank added: '+data.bankName,'DATA');}
   save();closeModal();render();toast('Saved','success');
 }
 window.saveBank=saveBank;
@@ -3554,6 +3535,7 @@ window.bounceOwnLeaf=bounceOwnLeaf;
 
 /* ═══ END OF PART 3 ═══ */
 /* ═══ START OF PART 4 ═══ */
+
 /* ═══════════════════════════════════════════════════════════════════════════
    EXPENSES
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -3597,6 +3579,7 @@ function saveExpense(ev){
     if(!Array.isArray(db.expenses))db.expenses=[];
     db.expenses.push(Object.assign({id:eid,createdAt:nowISO()},data));
     if(data.bankAccountId){if(!Array.isArray(db.bankTransactions))db.bankTransactions=[];db.bankTransactions.push({id:uid(),bankAccountId:data.bankAccountId,date:data.date,type:'withdrawal',amount:data.amount,reference:'EXP-'+eid.slice(-4),expenseId:eid,description:data.category||data.description,createdAt:nowISO()});}
+    window.__dbgOk&&window.__dbgOk('Expense added: '+(data.category||'')+' • '+money(data.amount),'DATA');
   }
   save();closeModal();render();toast('✅ Expense saved','success');
 }
@@ -3959,7 +3942,9 @@ function renderAnalyticsDashboard(){
 }
 window.renderAnalyticsDashboard=renderAnalyticsDashboard;
 
-/* ───────── HISTORY / LOGINS / BACKUP / TRASH / TODO ───────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   HISTORY / LOGINS / BACKUP / TRASH / TODO
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewHistory(){
   const h=ui.history;
   let entries=arr(db.activityLog).slice().reverse();
@@ -4005,6 +3990,7 @@ function viewBackup(){
     kpiCard('DB Size',size,'',{small:true})+
     kpiCard('Firebase',firebaseReady&&!offlineMode?'Ready':'Offline','',{small:true})+
     kpiCard('Project',firebaseConfig.projectId,'',{small:true})+
+    kpiCard('Data Prefix',DATA_PREFIX,'',{small:true})+
   '</div>'+
   '<div class="card"><div class="card-head"><h3>💾 Backup & Restore</h3></div>'+
     '<div class="section-title">Full Backup</div>'+
@@ -4424,7 +4410,7 @@ async function checkAccess(email){
     const perms=(data.userPerms||{})[email.toLowerCase().trim()]||{};
     currentUserPerms=perms;
     return perms.role||'viewer';
-  }catch(e){console.warn('checkAccess error:',e);return false;}
+  }catch(e){window.__dbgWarn&&window.__dbgWarn('checkAccess: '+(e.code||e.message),'AUTH');return false;}
 }
 function showLoginError(msg){const el=document.getElementById('loginError');if(!el)return;el.textContent=msg;el.classList.add('show');}
 function hideLoginError(){const el=document.getElementById('loginError');if(el)el.classList.remove('show');}
@@ -4482,6 +4468,7 @@ async function onAuthStateChanged(user){
   purgeOldTrash();
   await pushToFirestore();
   updateSidebarUser();showApp();render();
+  window.__dbgOk&&window.__dbgOk('Signed in as '+user.email+' ('+role+')','AUTH');
   toast('Welcome, '+(user.displayName||user.email),'success');
 }
 async function registerUserLogin(user,role){
@@ -4492,7 +4479,7 @@ async function registerUserLogin(user,role){
     const now=nowISO();
     if(doc.exists)await ref.set({lastLogin:now,name:user.displayName,photo:user.photoURL,role,email:user.email},{merge:true});
     else await ref.set({email:user.email,name:user.displayName,photo:user.photoURL,role,firstLogin:now,lastLogin:now});
-  }catch(e){console.warn('registerUserLogin failed:',e.code||e.message);}
+  }catch(e){window.__dbgWarn&&window.__dbgWarn('registerUserLogin: '+(e.code||e.message),'AUTH');}
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -4565,17 +4552,19 @@ document.addEventListener('click',function(e){
    BOOT SEQUENCE (with safety fallback)
    ═══════════════════════════════════════════════════════════════════════════ */
 (async function boot(){
-  // Safety fallback — if boot hangs or fails, reveal the login screen
+  window.__dbgOk&&window.__dbgOk('Boot starting • version '+APP_VER,'BOOT');
+  // Safety fallback — reveal login screen if boot hangs
   setTimeout(function(){
     const lo=document.getElementById('loginOverlay');
     const app=document.getElementById('appRoot');
     const visible=lo && !lo.classList.contains('hidden');
     if(!visible && (!app || app.style.display==='none')){
       if(lo)lo.classList.remove('hidden');
+      window.__dbgWarn&&window.__dbgWarn('Boot timeout — showing login screen','BOOT');
     }
   },2500);
 
-  try{await initFirebase();}catch(e){console.error('initFirebase threw:',e);}
+  try{await initFirebase();}catch(e){console.error('initFirebase threw:',e);window.__dbgError&&window.__dbgError('initFirebase: '+(e.message||e),'BOOT');}
   if(!firebaseReady){
     showLoginError('Firebase init failed: '+(firebaseInitError||'Unknown'));
     const btn=document.getElementById('googleSignInBtn');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Lanka Shoe — Enterprise v11.0</title>
+<title>Lanka Shoe — Enterprise v11.1</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👟</text></svg>">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -447,7 +447,7 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-logo" id="brandLogo">LS</div>
-      <div class="brand-text"><div class="brand-name" id="brandName">Lanka Shoe</div><div class="brand-sub" id="brandSub">Enterprise v11.0</div></div>
+      <div class="brand-text"><div class="brand-name" id="brandName">Lanka Shoe</div><div class="brand-sub" id="brandSub">Enterprise v11.1</div></div>
       <div class="sidebar-toggle" data-action="toggle-sidebar">◂</div>
     </div>
     <nav id="nav"></nav>
@@ -492,27 +492,14 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SAFE DEVTOOLS DETECTION — non-destructive. Blocks shortcuts and shows
-   an overlay when DevTools is detected, but NEVER wipes data or navigates
-   away. This avoids the false-positive blank-page bug.
+   SAFE DEVTOOLS DETECTION — non-destructive (blocks shortcuts + overlay only)
    ═══════════════════════════════════════════════════════════════════════════ */
 (function(){
   let overlayShown=false;
-  function showOverlay(){
-    if(overlayShown)return;
-    overlayShown=true;
-    const g=document.getElementById('dtGuard');
-    if(g)g.classList.add('on');
-  }
-  function hideOverlay(){
-    overlayShown=false;
-    const g=document.getElementById('dtGuard');
-    if(g)g.classList.remove('on');
-  }
-  window.__shieldShow=showOverlay;
-  window.__shieldHide=hideOverlay;
+  function showOverlay(){if(overlayShown)return;overlayShown=true;const g=document.getElementById('dtGuard');if(g)g.classList.add('on');}
+  function hideOverlay(){overlayShown=false;const g=document.getElementById('dtGuard');if(g)g.classList.remove('on');}
+  window.__shieldShow=showOverlay;window.__shieldHide=hideOverlay;
 
-  // METHOD 1 — Block known shortcuts (but do NOT blank page)
   document.addEventListener('keydown',function(e){
     const k=String(e.key||''),up=k.toUpperCase();
     if(k==='F12'){e.preventDefault();showOverlay();return false;}
@@ -521,15 +508,12 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
     if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&!e.altKey&&k.toLowerCase()==='u'){e.preventDefault();showOverlay();return false;}
   },true);
 
-  // METHOD 2 — Right-click blocked (except in inputs)
   document.addEventListener('contextmenu',function(e){
     const t=e.target;
     if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
     e.preventDefault();return false;
   },true);
 
-  // METHOD 3 — Gentle DevTools detector using debugger timing
-  // Note: only marks devtools detected; does NOT wipe or navigate.
   let devtoolsOpen=false;
   if(!/mobile|android|iphone|ipad/i.test(navigator.userAgent)){
     setInterval(function(){
@@ -537,11 +521,8 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
       // eslint-disable-next-line no-debugger
       debugger;
       const t2=performance.now();
-      if(t2-t1>120){
-        if(!devtoolsOpen){devtoolsOpen=true;showOverlay();}
-      }else{
-        if(devtoolsOpen){devtoolsOpen=false;hideOverlay();}
-      }
+      if(t2-t1>120){if(!devtoolsOpen){devtoolsOpen=true;showOverlay();}}
+      else{if(devtoolsOpen){devtoolsOpen=false;hideOverlay();}}
     },2000);
   }
 })();
@@ -561,11 +542,13 @@ const firebaseConfig={
 
 const ADMIN_EMAIL='asifabooasif@gmail.com';
 const ROOT='lk';
-const ACCESS_DOC_PATH=ROOT+'/access';
-const SETTINGS_DOC_PATH=ROOT+'/settings';
-const USERS_COL_PATH=ROOT+'/users';
-const APP_NAME='Lanka Shoe Enterprise',APP_VER='11.0.0';
+const DATA_PREFIX=ROOT+'_';              // ← FIX: data collections get prefixed (lk_customers, lk_suppliers…)
+const ACCESS_DOC_PATH=ROOT+'/access';    // lk/access (document)
+const SETTINGS_DOC_PATH=ROOT+'/settings'; // lk/settings (document)
+const USERS_COL_PATH=DATA_PREFIX+'users'; // lk_users (collection)
+const APP_NAME='Lanka Shoe Enterprise',APP_VER='11.1.0';
 
+/* Data collections — each becomes a TOP-LEVEL collection named `lk_<name>` */
 const COLLECTIONS=[
   'customers','customerNotes','customerContactLog',
   'suppliers','supplierReturns',
@@ -585,6 +568,7 @@ let currentUser=null,currentUserRole='admin',currentUserPerms=null,firebaseReady
 let firebaseInitError=null,offlineMode=false;
 let _syncDebounce=null;
 
+/* ───────── CORE UTILITIES ───────── */
 const uid=()=>'x'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
 const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);};
@@ -612,6 +596,7 @@ const csvEscape=v=>{const s=(v===undefined||v===null)?'':String(v);return/[",\n]
 const toCSV=(headers,rows)=>'\uFEFF'+[headers.map(csvEscape).join(',')].concat(rows.map(r=>r.map(csvEscape).join(','))).join('\n');
 const download=(filename,content,type)=>{const blob=new Blob([content],{type:type||'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1500);};
 
+/* ───────── AMOUNT IN WORDS ───────── */
 const ONES=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
 const TENS=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
 function threeDigit(n){n=Math.floor(n);if(n<20)return ONES[n];if(n<100)return TENS[Math.floor(n/10)]+(n%10?' '+ONES[n%10]:'');return ONES[Math.floor(n/100)]+' hundred'+(n%100?' '+threeDigit(n%100):'');}
@@ -625,6 +610,7 @@ function amountInWords(amount){
 }
 window.amountInWords=amountInWords;
 
+/* ───────── TRANSLATIONS ───────── */
 const I18N={
   en:{dashboard:'Dashboard',customers:'Customers',suppliers:'Suppliers',purchases:'Purchases',receipts:'Receipts',payments:'Payments',banks:'Bank Accounts',chequeBooks:'Cheque Books',ownCheques:'Own Cheques',expenses:'Expenses',journals:'Journals',ledger:'Ledger',aging:'Aging',reports:'Reports',history:'History',settings:'Settings',newCustomer:'New Customer',newReceipt:'New Receipt',newPayment:'New Payment',amount:'Amount',date:'Date',save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',search:'Search',total:'Total',status:'Status',actions:'Actions',noData:'No data'},
   si:{dashboard:'පුවරුව',customers:'පාරිභෝගිකයන්',suppliers:'සැපයුම්කරුවන්',purchases:'මිලදී ගැනීම්',receipts:'ලදුපත්',payments:'ගෙවීම්',banks:'බැංකු ගිණුම්',chequeBooks:'චෙක් පොත්',ownCheques:'තමන්ගේ චෙක්පත්',expenses:'වියදම්',journals:'ජර්නල',ledger:'ලෙජර්',aging:'වයස්ගත',reports:'වාර්තා',history:'ඉතිහාසය',settings:'සැකසුම්',newCustomer:'නව පාරිභෝගික',newReceipt:'නව ලදුපත',newPayment:'නව ගෙවීම',amount:'මුදල',date:'දිනය',save:'සුරකින්න',cancel:'අවලංගු',delete:'මකන්න',edit:'සංස්කරණය',search:'සොයන්න',total:'එකතුව',status:'තත්ත්වය',actions:'ක්‍රියා',noData:'දත්ත නැත'},
@@ -633,6 +619,7 @@ const I18N={
 function t(key){const lang=(db&&db.settings&&db.settings.language)||'en';return (I18N[lang]&&I18N[lang][key])||I18N.en[key]||key;}
 window.t=t;
 
+/* ───────── SRI LANKAN BANKS ───────── */
 const SL_BANKS=[
   {name:'Commercial Bank',color:'#0d4d9c',short:'CB'},
   {name:'Sampath Bank',color:'#e62329',short:'SB'},
@@ -660,6 +647,7 @@ window.bankLogo=bankLogo;
 function bankPresetOptions(selected){return SL_BANKS.map(b=>'<option value="'+esc(b.name)+'" '+(selected===b.name?'selected':'')+'>'+esc(b.name)+'</option>').join('');}
 window.bankPresetOptions=bankPresetOptions;
 
+/* ───────── RBAC ───────── */
 const ROLE_PRESETS={
   admin:{read:true,write:true,delete:true,users:true,settings:true,backup:true,reports:true},
   accountant:{read:true,write:true,delete:false,users:false,settings:false,backup:false,reports:true},
@@ -685,6 +673,7 @@ function canWrite(){
 }
 window.can=can;window.canWrite=canWrite;window.userPerms=userPerms;
 
+/* ───────── DEFAULT SETTINGS & SEED ───────── */
 function defaultSettings(){
   return{
     shopName:'Lanka Shoe',shopTagline:'Enterprise Suite',
@@ -755,6 +744,9 @@ function migrateChequeLeaves(){
 function migrateSupplierCategories(){arr(db.suppliers).forEach(s=>{if(s.categoryId===undefined)s.categoryId='';});}
 function migrateBankBalances(){arr(db.bankAccounts).forEach(b=>{if(b.openingBalance===undefined)b.openingBalance=0;});}
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIREBASE INIT + ACCESS + PERSISTENCE (with corrected paths)
+   ═══════════════════════════════════════════════════════════════════════════ */
 async function initFirebase(){
   try{
     firebaseApp=firebase.initializeApp(firebaseConfig);
@@ -776,7 +768,7 @@ async function loadAccessList(){
       try{localStorage.setItem('lankashoe_access',JSON.stringify({allowedEmails:list,userPerms:db.userPerms}));}catch(e){}
       return list;
     }
-    await firestore.doc(ACCESS_DOC_PATH).set({allowedEmails:[ADMIN_EMAIL],userPerms:{},updatedAt:nowISO(),updatedBy:'system'});
+    try{await firestore.doc(ACCESS_DOC_PATH).set({allowedEmails:[ADMIN_EMAIL],userPerms:{},updatedAt:nowISO(),updatedBy:'system'});}catch(e){}
     db.allowedEmails=[ADMIN_EMAIL];db.userPerms={};return[ADMIN_EMAIL];
   }catch(e){
     try{const cached=localStorage.getItem('lankashoe_access');if(cached){const c=JSON.parse(cached);if(c.allowedEmails&&c.allowedEmails.length){db.allowedEmails=c.allowedEmails;db.userPerms=c.userPerms||{};return c.allowedEmails;}}}catch(x){}
@@ -794,6 +786,8 @@ async function saveAccessList(list,perms){
     return true;
   }catch(e){toast('Failed: '+(e.code||e.message),'error');return false;}
 }
+
+/* ───── LOAD: uses top-level collections `lk_<name>` ───── */
 async function loadFromFirestore(){
   if(offlineMode||!firebaseReady)return;
   await loadAccessList();
@@ -802,27 +796,40 @@ async function loadFromFirestore(){
     if(settingsDoc.exists){db.settings=Object.assign(defaultSettings(),settingsDoc.data()||{});}
     for(const col of COLLECTIONS){
       try{
-        const snap=await firestore.collection(ROOT+'/'+col).get();
+        const snap=await firestore.collection(DATA_PREFIX+col).get();
         if(!snap.empty){db[col]=[];snap.forEach(doc=>{const d=doc.data()||{};d.id=d.id||doc.id;db[col].push(d);});}
         else if(!Array.isArray(db[col]))db[col]=[];
-      }catch(e){if(!Array.isArray(db[col]))db[col]=[];}
+      }catch(e){console.warn('[load] failed for',DATA_PREFIX+col,e.code||e.message);if(!Array.isArray(db[col]))db[col]=[];}
     }
     normalizeDb();
     try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
-  }catch(e){await loadLocalCache();}
+  }catch(e){console.error('loadFromFirestore error:',e);await loadLocalCache();}
 }
+
+/* ───── SAVE: writes to top-level collections `lk_<name>` via batch ───── */
 async function pushToFirestore(){
   try{localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){}
   const st=document.getElementById('syncStatus');
   if(offlineMode){if(st)st.textContent='Offline • Local only';return;}
   if(!firebaseReady||!currentUser)return;
   try{
-    await firestore.doc(SETTINGS_DOC_PATH).set(JSON.parse(JSON.stringify(db.settings)));
+    // Only admins write to lk/settings (per rules)
+    if(currentUserRole==='admin'){
+      try{await firestore.doc(SETTINGS_DOC_PATH).set(JSON.parse(JSON.stringify(db.settings)));}
+      catch(e){console.warn('[save] settings write blocked:',e.code||e.message);}
+    }
     const allOps=[];
     for(const col of COLLECTIONS){
       const items=arr(db[col]);
-      try{const existing=await firestore.collection(ROOT+'/'+col).get();existing.forEach(doc=>{allOps.push({op:'delete',ref:doc.ref});});}catch(e){}
-      items.forEach(item=>{const id=item.id||uid();allOps.push({op:'set',ref:firestore.collection(ROOT+'/'+col).doc(id),data:item});});
+      const colRef=firestore.collection(DATA_PREFIX+col);   // ← FIX
+      try{
+        const existing=await colRef.get();
+        existing.forEach(doc=>{allOps.push({op:'delete',ref:doc.ref});});
+      }catch(e){console.warn('[save] read existing failed for',DATA_PREFIX+col,e.code||e.message);}
+      items.forEach(item=>{
+        const id=item.id||uid();
+        allOps.push({op:'set',ref:colRef.doc(id),data:item});
+      });
     }
     for(let i=0;i<allOps.length;i+=450){
       const b=firestore.batch();
@@ -830,8 +837,12 @@ async function pushToFirestore(){
       await b.commit();
     }
     if(st)st.textContent='Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){if(st)st.textContent='Local • Queued';}
+  }catch(e){
+    console.error('pushToFirestore failed:',e);
+    if(st)st.textContent='Local • Queued';
+  }
 }
+
 async function loadLocalCache(){
   try{
     const l=localStorage.getItem('lankashoe_cache');
@@ -854,6 +865,7 @@ function save(){
 }
 window.save=save;
 
+/* ───────── ACTIVITY LOG ───────── */
 function logAct(action,entity,entityId,details,before,after){
   if(!(db.settings||{}).enableActivityLog)return;
   const entry={id:uid(),timestamp:nowISO(),action,entity,entityId:entityId||null,details:details||'',userEmail:(currentUser&&currentUser.email)||'system',userRole:currentUserRole};
@@ -865,6 +877,7 @@ function logAct(action,entity,entityId,details,before,after){
 }
 function logLogin(user){if(!Array.isArray(db.loginHistory))db.loginHistory=[];db.loginHistory.push({id:uid(),at:nowISO(),email:user.email,name:user.displayName,uid:user.uid,ua:navigator.userAgent,platform:navigator.platform,screen:(screen.width||0)+'x'+(screen.height||0)});if(db.loginHistory.length>200)db.loginHistory=db.loginHistory.slice(-200);}
 
+/* ───────── APPLY SETTINGS ───────── */
 function applySettings(){
   const s=db.settings||defaultSettings();
   document.documentElement.setAttribute('data-theme',s.uiTheme||'professional');
@@ -887,6 +900,7 @@ window.setDensity=setDensity;
 function toggleSidebar(){db.settings.sidebarCollapsed=!db.settings.sidebarCollapsed;save();applySettings();}
 window.toggleSidebar=toggleSidebar;
 
+/* ───────── MATURITY WIDGET ───────── */
 function renderMaturityWidget(){
   const el=document.getElementById('maturityWidget');if(!el)return;
   const s=db.settings||{};
@@ -901,6 +915,7 @@ function renderMaturityWidget(){
 }
 window.renderMaturityWidget=renderMaturityWidget;
 
+/* ───────── CONFETTI ───────── */
 function confetti(){
   const c=document.getElementById('confettiCanvas');if(!c)return;
   c.width=window.innerWidth;c.height=window.innerHeight;
@@ -912,6 +927,7 @@ function confetti(){
 }
 window.confetti=confetti;
 
+/* ───────── ENTITY LOOKUPS ───────── */
 const catName=id=>{const c=arr(db.categories).find(x=>x.id===id);return c?c.name:'—';};
 const catObj=id=>arr(db.categories).find(x=>x.id===id);
 const supName=id=>{const s=arr(db.suppliers).find(x=>x.id===id);return s?s.name:'—';};
@@ -924,6 +940,7 @@ const availableLeaves=()=>arr(db.chequeLeaves).filter(l=>l.status==='Available')
 const stoppedLeaves=()=>arr(db.chequeLeaves).filter(l=>l.status==='Stopped');
 window.catName=catName;window.supName=supName;window.custName=custName;window.custObj=custObj;window.supObj=supObj;window.bankObj=bankObj;
 
+/* ───────── BANK BALANCES & LEDGERS ───────── */
 function bankTransactions(bankId){return arr(db.bankTransactions).filter(t=>t.bankAccountId===bankId).sort((a,b)=>a.date<b.date?-1:1);}
 function bankBalance(bankId,upToDate){
   const b=bankObj(bankId);if(!b)return 0;
@@ -1078,6 +1095,7 @@ function nextInvoiceNo(categoryId){
 }
 window.nextInvoiceNo=nextInvoiceNo;
 
+/* ───────── UNDO ───────── */
 const undoStack=[];
 function pushUndo(entry){undoStack.push(Object.assign({ts:Date.now()},entry));if(undoStack.length>25)undoStack.shift();}
 function performUndo(){
@@ -1090,6 +1108,7 @@ function performUndo(){
 }
 window.performUndo=performUndo;window.pushUndo=pushUndo;
 
+/* ───────── SOFT DELETE ───────── */
 function softDelete(collection,id,label){
   const list=arr(db[collection]);
   const idx=list.findIndex(x=>x.id===id);
@@ -1130,6 +1149,7 @@ function purgeOldTrash(){
 }
 window.softDelete=softDelete;window.restoreFromTrash=restoreFromTrash;window.permanentDeleteFromTrash=permanentDeleteFromTrash;window.emptyTrash=emptyTrash;
 
+/* ───────── NOTES ───────── */
 function addNote(entityType,entityId,text){
   if(!canWrite())return;
   if(!Array.isArray(db.customerNotes))db.customerNotes=[];
@@ -1141,6 +1161,7 @@ function notesFor(entityType,entityId){return arr(db.customerNotes).filter(n=>n.
 function deleteNote(id){if(!canWrite())return;if(!confirm('Delete note?'))return;db.customerNotes=arr(db.customerNotes).filter(n=>n.id!==id);save();}
 window.addNote=addNote;window.notesFor=notesFor;window.deleteNote=deleteNote;
 
+/* ───────── DRAFTS ───────── */
 function saveDraft(kind,payload){
   if(!Array.isArray(db.drafts))db.drafts=[];
   const existing=arr(db.drafts).find(d=>d.kind===kind&&d.owner===(currentUser&&currentUser.email));
@@ -1152,6 +1173,7 @@ function getDraft(kind){return arr(db.drafts).find(d=>d.kind===kind&&d.owner===(
 function clearDraft(kind){db.drafts=arr(db.drafts).filter(d=>!(d.kind===kind&&d.owner===(currentUser&&currentUser.email)));save();}
 window.saveDraft=saveDraft;window.getDraft=getDraft;window.clearDraft=clearDraft;
 
+/* ───────── RECENTLY VIEWED ───────── */
 function markViewed(kind,id,label){
   if(!Array.isArray(db.recentlyViewed))db.recentlyViewed=[];
   const owner=(currentUser&&currentUser.email)||'system';
@@ -1173,6 +1195,7 @@ function recentItems(kind){
 }
 window.markViewed=markViewed;window.recentItems=recentItems;
 
+/* ───────── CHARTS ───────── */
 function progressRing(value,total,color,size){size=size||90;const pct=total>0?Math.min(1,value/total):0;const r=(size-8)/2,c=size/2,circ=2*Math.PI*r;return'<svg class="ring" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><circle cx="'+c+'" cy="'+c+'" r="'+r+'" stroke="var(--surface-3)" stroke-dasharray="'+circ+'"/><circle cx="'+c+'" cy="'+c+'" r="'+r+'" stroke="'+color+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-pct))+'"/></svg>';}
 function lineChartSVG(series,opts){
   opts=opts||{};const w=opts.w||400,h=opts.h||140,pad={l:44,r:12,t:12,b:26};
@@ -1206,6 +1229,7 @@ function groupedBarChartSVG(groups,series,opts){
 }
 window.progressRing=progressRing;window.lineChartSVG=lineChartSVG;window.barChartSVG=barChartSVG;window.groupedBarChartSVG=groupedBarChartSVG;
 
+/* ───────── TOAST + MODAL ───────── */
 function toast(msg,type){
   const box=document.getElementById('toast');if(!box)return;
   const el=document.createElement('div');
@@ -1226,6 +1250,7 @@ function closeModal(){
 }
 window.openModal=openModal;window.closeModal=closeModal;
 
+/* ───────── EXPORT ───────── */
 function exportCollectionCSV(collection,filename){
   const items=arr(db[collection]);
   if(!items.length){toast('No data','warn');return;}
@@ -1236,6 +1261,7 @@ function exportCollectionCSV(collection,filename){
 }
 window.exportCollectionCSV=exportCollectionCSV;
 
+/* ───────── COMMAND PALETTE ───────── */
 let cmdPaletteIndex=0;
 let cmdPaletteResults=[];
 function buildCommandList(){
@@ -1336,6 +1362,7 @@ function openRecentMenu(){
 }
 window.openRecentMenu=openRecentMenu;
 
+/* ───────── BULK SELECT ───────── */
 let bulkSelection=new Set();
 let bulkContext=null;
 function initBulkContext(collection,callback){bulkContext={collection,callback};bulkSelection=new Set();updateBulkBar();}
@@ -1375,6 +1402,7 @@ function bulkDelete(){
 }
 window.initBulkContext=initBulkContext;window.toggleBulkSelect=toggleBulkSelect;window.selectAllBulk=selectAllBulk;window.bulkClear=bulkClear;window.bulkExport=bulkExport;window.bulkDelete=bulkDelete;
 
+/* ───────── TODO FORM ───────── */
 function openTodoForm(id){
   const t=id?arr(db.todos).find(x=>x.id===id):null;
   openModal(t?'Edit Task':'New Task',
@@ -1398,6 +1426,7 @@ function toggleTodo(id){const t=arr(db.todos).find(x=>x.id===id);if(!t)return;t.
 function deleteTodo(id){if(!confirm('Delete task?'))return;db.todos=arr(db.todos).filter(x=>x.id!==id);save();render();}
 window.openTodoForm=openTodoForm;window.saveTodoItem=saveTodoItem;window.toggleTodo=toggleTodo;window.deleteTodo=deleteTodo;
 
+/* ───────── WHATSAPP ───────── */
 function whatsappReminder(customerId,cheque){
   const c=custObj(customerId);if(!c)return'';
   const s=db.settings||{};
@@ -1409,6 +1438,7 @@ function copyToClipboard(text){
 }
 window.whatsappReminder=whatsappReminder;window.copyToClipboard=copyToClipboard;
 
+/* ───────── BACKUP ───────── */
 function buildBackup(){
   const data=JSON.parse(JSON.stringify(db));
   delete data.allowedEmails;delete data.userPerms;
@@ -1416,13 +1446,11 @@ function buildBackup(){
 }
 window.buildBackup=buildBackup;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   END OF PART 1
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ END OF PART 1 ═══ */
 /* ═══ START OF PART 2 ═══ */
-/* ============================================================================
-   REPORT SCHEMA (extended with new sources)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   REPORT SCHEMA
+   ═══════════════════════════════════════════════════════════════════════════ */
 const REPORT_SOURCES={
   purchases:{name:'Purchases',icon:'🛒',columns:[{key:'date',label:'Date',type:'date',default:true},{key:'invoiceNo',label:'Invoice',type:'text',default:true},{key:'supplier',label:'Supplier',type:'text',default:true},{key:'category',label:'Category',type:'text',default:true},{key:'amount',label:'Amount',type:'money',default:true}],defaultSort:'date',defaultGroup:'month'},
   payments:{name:'Payments',icon:'💸',columns:[{key:'date',label:'Date',type:'date',default:true},{key:'supplier',label:'Supplier',type:'text',default:true},{key:'reference',label:'Reference',type:'text',default:true},{key:'amount',label:'Total',type:'money',default:true}],defaultSort:'date',defaultGroup:'month'},
@@ -1500,9 +1528,9 @@ function executeReport(cfg){
   return{source,raw:rows,result:agg,valueKey};
 }
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    UI STATE
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const ui={
   view:'dashboard',
   sup:{q:'',catFilter:''},cust:{q:'',reliability:'all'},pur:{q:''},rcp:{q:''},
@@ -1526,9 +1554,9 @@ function defaultReportCfg(){
 }
 let reportCfg=defaultReportCfg();
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    NAV
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function renderNav(){
   const n=document.getElementById('nav');if(!n)return;
   const c={
@@ -1557,9 +1585,9 @@ function renderNav(){
 }
 window.renderNav=renderNav;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    GLOBAL SEARCH
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function onGlobalSearch(){
   const q=(val('globalSearch')||'').trim().toLowerCase();
   const box=document.getElementById('gsResults');
@@ -1575,9 +1603,9 @@ function onGlobalSearch(){
 }
 window.onGlobalSearch=onGlobalSearch;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    NOTIFICATIONS
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function getNotifications(){
   const s=db.settings||{};if(!s.notifEnabled)return[];
   const out=[],t=today(),rd=num(s.chequeReminderDays)||7;
@@ -1609,9 +1637,9 @@ function detectSmartAlerts(){
 }
 window.detectSmartAlerts=detectSmartAlerts;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    FAB MENU
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function toggleFab(){
   const m=document.getElementById('fabMenu'),b=document.getElementById('fabBtn');
   if(!m.classList.contains('open')){
@@ -1629,9 +1657,9 @@ function toggleFab(){
 }
 window.toggleFab=toggleFab;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    RENDER ROUTER
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const views={dashboard:viewDashboard,customers:viewCustomers,suppliers:viewSuppliers,purchases:viewPurchases,categories:viewCategories,receipts:viewReceipts,ccheques:viewCCheques,payments:viewPayments,own:viewOwnCheques,chequeBooks:viewChequeBooks,banks:viewBanks,expenses:viewExpenses,journals:viewJournals,ledger:viewLedger,aging:viewAging,reports:viewReports,history:viewHistory,logins:viewLogins,backup:viewBackup,settings:viewSettings,todo:viewTodo,trash:viewTrash};
 const titles={dashboard:'Dashboard',customers:'Customers',suppliers:'Suppliers',purchases:'Purchases',categories:'Categories',receipts:'Receipts',ccheques:'Customer Cheques',payments:'Supplier Payments',own:'Own Cheques',chequeBooks:'Cheque Books',banks:'Bank Accounts',expenses:'Expenses',journals:'Journals',ledger:'Ledger',aging:'Aging',reports:'Report Builder',history:'History',logins:'Login History',backup:'Backup',settings:'Settings',todo:'Tasks',trash:'Trash'};
 function render(){
@@ -1669,9 +1697,7 @@ function updateSidebarUser(){
   el.onclick=()=>{ui.view='settings';ui.settings.tab='users';render();};
 }
 
-/* ============================================================================
-   PROJECTED BALANCE (D2 overdraft warning)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ───────── PROJECTED BALANCE ───────── */
 function projectedBalance(bankId,daysAhead){
   const current=bankBalance(bankId);
   const t=today();
@@ -1681,9 +1707,7 @@ function projectedBalance(bankId,daysAhead){
 }
 window.projectedBalance=projectedBalance;
 
-/* ============================================================================
-   DASHBOARD (with custom KPI picker — E9)
-   ============================================================================ */
+/* ───────── KPI DEFINITIONS + DASHBOARD ───────── */
 const KPI_DEFS={
   cashBanks:{label:'Total Cash in Banks',ico:'🏛️',compute:()=>moneyPlain(sum(arr(db.bankAccounts).map(b=>bankBalance(b.id)),0)),sub:()=>arr(db.bankAccounts).length+' bank(s)'},
   totalPayable:{label:'Total Payable',ico:'💸',compute:()=>moneyPlain(totalPayable()),sub:()=>arr(db.suppliers).length+' suppliers'},
@@ -1816,8 +1840,8 @@ function viewDashboard(){
   '</div></div>';
 }
 
-/* ============================================================================
-   CUSTOMERS — CHEQUE-FOCUSED + reliability + notes + WhatsApp + statement
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOMERS
    ═══════════════════════════════════════════════════════════════════════════ */
 function viewCustomers(){
   let rows=arr(db.customers);
@@ -2098,8 +2122,8 @@ function printCustomerStatement(cid){
 }
 window.printCustomerStatement=printCustomerStatement;
 
-/* ============================================================================
-   SUPPLIERS + Priority Queue (C3) + Return Note (C6)
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUPPLIERS
    ═══════════════════════════════════════════════════════════════════════════ */
 function viewSuppliers(){
   let rows=arr(db.suppliers);
@@ -2269,9 +2293,9 @@ function printSupplierStatement(id){
 }
 window.printSupplierStatement=printSupplierStatement;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    PURCHASES
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewPurchases(){
   let rows=arr(db.purchases).sort((a,b)=>a.date<b.date?1:-1);
   if(ui.pur.q){const q=ui.pur.q.toLowerCase();rows=rows.filter(p=>(p.invoiceNo||'').toLowerCase().includes(q)||supName(p.supplierId).toLowerCase().includes(q));}
@@ -2351,9 +2375,9 @@ function showPurchaseDetail(id){
 }
 window.showPurchaseDetail=showPurchaseDetail;
 
-/* ============================================================================
-   CATEGORIES + analytics
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CATEGORIES
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewCategories(){
   return '<div class="card"><div class="card-head"><h3>🏷️ Categories ('+arr(db.categories).length+')</h3>'+
     '<button class="btn primary" data-action="add-cat">＋ Add Category</button></div>'+
@@ -2443,14 +2467,11 @@ function showCategoryAnalytics(cid){
 }
 window.showCategoryAnalytics=showCategoryAnalytics;
 
-/* ============================================================================
-   END OF PART 2
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ END OF PART 2 ═══ */
 /* ═══ START OF PART 3 ═══ */
-
-/* ============================================================================
-   RECEIPTS — with bulk cheque grid (H4)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   RECEIPTS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewReceipts(){
   let rows=arr(db.receipts).sort((a,b)=>a.date<b.date?1:-1);
   if(ui.rcp.q){const q=ui.rcp.q.toLowerCase();rows=rows.filter(r=>(r.customerName||'').toLowerCase().includes(q));}
@@ -2584,11 +2605,10 @@ function showReceiptDetail(id){
 }
 window.showReceiptDetail=showReceiptDetail;
 
-/* BULK CHEQUE ENTRY (H4) */
 function openBulkChequeEntry(){
   if(!arr(db.customers).length){toast('Add customers first','error');return;}
   openModal('⚡ Bulk Cheque Entry',
-    '<div class="alert info"><span class="ico">ℹ</span><div>Enter many cheques at once. Each row creates one receipt + one cheque. Customer is auto-saved if new.</div></div>'+
+    '<div class="alert info"><span class="ico">ℹ</span><div>Enter many cheques at once. Each row creates one receipt + one cheque.</div></div>'+
     '<form onsubmit="saveBulkCheques(event)">'+
     '<div class="form-grid">'+
       '<label class="field">Category<select id="bulkCat"><option value="">— None —</option>'+arr(db.categories).map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select></label>'+
@@ -2654,9 +2674,9 @@ function saveBulkCheques(e){
 }
 window.saveBulkCheques=saveBulkCheques;
 
-/* ============================================================================
-   CUSTOMER CHEQUES — with chain, splits, settlements, stop, cross-cheque
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOMER CHEQUES
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewCCheques(){
   const tabs=['In Hand','Issued','Cleared','Bounced','Stopped'];
   const counts=tabs.reduce((a,t)=>{a[t]=arr(db.customerCheques).filter(r=>r.status===t).length;return a;},{});
@@ -2710,7 +2730,6 @@ function showChequeDetail(id){
   const splits=chequeSplits(id);
   const settlements=chequeSettlements(id);
   const remaining=chequeRemaining(id);
-  const allSettled=settlements.length>0&&remaining<=0;
   openModal('🧾 Cheque — '+esc(c.chequeNo||'—'),
     '<div class="kpi-strip" style="margin-bottom:20px">'+
       kpiCard('Amount',moneyPlain(c.amount),'',{small:true})+
@@ -2790,8 +2809,7 @@ function openSplitCheque(id){
       kpiCard('Already Allocated',moneyPlain(c.amount-unallocated),existing.length+' splits',{small:true})+
       kpiCard('Unallocated',moneyPlain(unallocated),'',{small:true})+
     '</div>'+
-    (unallocated>0?'<div class="alert info"><span class="ico">ℹ</span><div>Splitting lets you assign portions of this cheque to multiple suppliers. Each split is tracked separately.</div></div>'+
-      '<div class="form-grid">'+
+    (unallocated>0?'<div class="form-grid">'+
       '<label class="field">Supplier <span class="req">*</span><select id="splitSupplier"><option value="">Select</option>'+arr(db.suppliers).map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</select></label>'+
       '<label class="field">Amount <span class="req">*</span><input type="number" id="splitAmount" step="0.01" max="'+unallocated+'" value="'+unallocated+'"></label>'+
       '<label class="field">Date<input type="date" id="splitDate" value="'+today()+'"></label>'+
@@ -2879,9 +2897,9 @@ function bounceCheque(chequeId,isOwn){
 }
 window.bounceCheque=bounceCheque;
 
-/* ============================================================================
-   PAYMENTS (with recurring / post-dated — H7)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAYMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewPayments(){
   return '<div class="card"><div class="card-head"><div><h3>💸 Issue Payment to Supplier</h3><div class="hint">Mix party cheques + own cheque leaves freely</div></div></div>'+
   '<form onsubmit="previewPayment(event)">'+
@@ -3053,7 +3071,6 @@ function showPaymentDetail(id){
 }
 window.showPaymentDetail=showPaymentDetail;
 
-/* RECURRING / POST-DATED */
 function openRecurringForm(){
   if(!arr(db.suppliers).length){toast('Add supplier first','error');return;}
   openModal('🔁 Set Up Recurring Cheques',
@@ -3109,9 +3126,9 @@ function stopRecurring(id){
 }
 window.stopRecurring=stopRecurring;
 
-/* ============================================================================
-   BANKS — with reconciliation, transfer, fees, overdraft
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   BANKS
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewBanks(){
   const banks=arr(db.bankAccounts);
   const overdraftWarnings=banks.filter(b=>projectedBalance(b.id,30)<0);
@@ -3293,9 +3310,9 @@ function saveTransfer(e){
 }
 window.saveTransfer=saveTransfer;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    CHEQUE BOOKS
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewChequeBooks(){
   const books=arr(db.chequeBooks);
   return '<div class="card"><div class="card-head"><h3>📚 Cheque Books ('+books.length+')</h3>'+
@@ -3350,9 +3367,9 @@ function deleteChequeBook(id){
 }
 window.deleteChequeBook=deleteChequeBook;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    OWN CHEQUES
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewOwnCheques(){
   const tabs=['Overview','Calendar','Funding Plan','Timeline','All Leaves'];
   if(!tabs.includes(ui.own.tab))ui.own.tab='Overview';
@@ -3535,14 +3552,11 @@ window.unbounceOwnLeaf=unbounceOwnLeaf;
 function bounceOwnLeaf(id){bounceCheque(id,true);}
 window.bounceOwnLeaf=bounceOwnLeaf;
 
-/* ============================================================================
-   END OF PART 3
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ END OF PART 3 ═══ */
 /* ═══ START OF PART 4 ═══ */
-
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    EXPENSES
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewExpenses(){
   let rows=arr(db.expenses).sort((a,b)=>a.date<b.date?1:-1);
   if(ui.exp.q){const q=ui.exp.q.toLowerCase();rows=rows.filter(e=>(e.category||'').toLowerCase().includes(q)||(e.description||'').toLowerCase().includes(q));}
@@ -3615,9 +3629,9 @@ function showExpenseDetail(id){
 }
 window.showExpenseDetail=showExpenseDetail;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    JOURNALS
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewJournals(){
   const rows=arr(db.journals).sort((a,b)=>a.date<b.date?1:-1);
   return '<div class="card"><div class="card-head"><h3>📓 Journals ('+rows.length+')</h3>'+
@@ -3661,9 +3675,9 @@ function deleteJournal(id){
 }
 window.deleteJournal=deleteJournal;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    LEDGER
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewLedger(){
   const t=ui.ledger.type||'supplier';
   const types=[
@@ -3711,9 +3725,9 @@ function exportLedgerCSV(){
 }
 window.exportLedgerCSV=exportLedgerCSV;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    AGING
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewAging(){
   const ga=globalAging();
   const bk=db.settings.supplierAgingBuckets||[30,60,90];
@@ -3736,9 +3750,9 @@ function viewAging(){
   '</tbody></table></div></div>';
 }
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    REPORTS
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 function viewReports(){
   const tabs=[['builder','📊 Builder'],['saved','💾 Saved'],['quick','⚡ Quick'],['analytics','📈 Analytics']];
   const active=(ui.reports&&ui.reports.tab)||'builder';
@@ -3860,6 +3874,7 @@ function renderQuickReports(){
   quick.map((q,i)=>'<div class="rpt-saved-card" onclick="loadQuickReport('+i+')"><h5>'+esc(q.title)+'</h5><div class="meta">'+esc(q.sub)+'</div><div class="actions"><button type="button" class="btn xs primary" onclick="event.stopPropagation();loadQuickReport('+i+')">Load</button></div></div>').join('')+
   '</div></div>';
 }
+window._quickReports=[];
 function loadQuickReport(i){
   const q=(window._quickReports||[])[i];if(!q){toast('Not found','error');return;}
   const src=REPORT_SOURCES[q.cfg.source];
@@ -3944,6 +3959,7 @@ function renderAnalyticsDashboard(){
 }
 window.renderAnalyticsDashboard=renderAnalyticsDashboard;
 
+/* ───────── HISTORY / LOGINS / BACKUP / TRASH / TODO ───────── */
 function viewHistory(){
   const h=ui.history;
   let entries=arr(db.activityLog).slice().reverse();
@@ -4035,16 +4051,12 @@ function loadSample(){
     suppliers:[{id:s1,name:'Colombo Footwear',phone:'0112345678',categoryId:cat1,createdAt:nowISO(),creditDays:30,openingBalance:0}],
     bankAccounts:[{id:ba1,bankName:'Commercial Bank',accountNo:'1234567890',branch:'Colombo',accountType:'Current',openingBalance:250000,openingDate:today(),createdAt:nowISO()}],
     chequeBooks:[{id:cb1,bankAccountId:ba1,bankName:'Commercial Bank',bookNo:'A0001',startNo:1000,endNo:1050,leafGenerated:false,createdAt:nowISO()}],
-    receipts:[
-      {id:uid(),customerId:cu1,customerName:'Perera Stores',date:today(),categoryId:cat1,method:'Cheque',amount:65000,chequeCount:2,createdAt:nowISO()}
-    ],
+    receipts:[{id:uid(),customerId:cu1,customerName:'Perera Stores',date:today(),categoryId:cat1,method:'Cheque',amount:65000,chequeCount:2,createdAt:nowISO()}],
     customerCheques:[
       {id:uid(),customerId:cu1,customerName:'Perera Stores',categoryId:cat1,chequeNo:'000451',bank:'Commercial Bank',date:today(),dueDate:shiftDate(today(),15),amount:35000,ref:'',chequeType:'Crossed',status:'In Hand',createdAt:nowISO()},
       {id:uid(),customerId:cu1,customerName:'Perera Stores',categoryId:cat1,chequeNo:'000452',bank:'Commercial Bank',date:today(),dueDate:shiftDate(today(),25),amount:30000,ref:'',chequeType:'Crossed',status:'In Hand',createdAt:nowISO()}
     ],
-    purchases:[
-      {id:uid(),supplierId:s1,categoryId:cat1,date:shiftDate(today(),-10),invoiceNo:'SHO-0001',amount:120000,dueDate:shiftDate(today(),20),description:'Opening stock',createdAt:nowISO()}
-    ]
+    purchases:[{id:uid(),supplierId:s1,categoryId:cat1,date:shiftDate(today(),-10),invoiceNo:'SHO-0001',amount:120000,dueDate:shiftDate(today(),20),description:'Opening stock',createdAt:nowISO()}]
   });
   db=sample;normalizeDb();save();render();toast('✅ Sample loaded','success');
 }
@@ -4089,9 +4101,9 @@ function viewTodo(){
 }
 window.viewTrash=viewTrash;window.viewTodo=viewTodo;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    SETTINGS
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 const SETTINGS_SECTIONS=[
   {key:'profile',ico:'P',label:'Business Profile',group:'General'},
   {key:'appearance',ico:'A',label:'Appearance',group:'General'},
@@ -4153,8 +4165,7 @@ function setAppearance(s){
   '<label class="field" style="max-width:200px">Base Font Size (px)<input type="number" name="st_fontSize" min="11" max="17" step="0.5" value="'+(num(s.fontSize)||13.5)+'"></label></div>'+
   '<div class="settings-section"><div class="settings-section-title">Sidebar Widgets</div>'+
   '<div class="settings-toggle-row"><div><div class="settings-toggle-label">Show Cheque Maturity Widget</div><div class="settings-toggle-desc">Next cheque countdown in sidebar</div></div><div class="switch '+(s.showMaturityWidget?'on':'')+'" onclick="toggleSwitch(this);db.settings.showMaturityWidget=!db.settings.showMaturityWidget;save();applySettings();"><input type="checkbox" '+(s.showMaturityWidget?'checked':'')+' hidden></div></div>'+
-  '</div>'+
-  '</div>';
+  '</div></div>';
 }
 function setLanguage(s){
   const langs=[{code:'en',name:'English',flag:'🇬🇧'},{code:'si',name:'සිංහල',flag:'🇱🇰'},{code:'ta',name:'தமிழ்',flag:'🇱🇰'}];
@@ -4217,15 +4228,15 @@ function setSupplier(s){
   '</div></div></div>';
 }
 function setCustomer(s){
-  return '<div class="settings-panel-head"><h2>Customer Defaults</h2><div class="desc">Customer module is cheque-based — no sales or opening balances</div></div>'+
+  return '<div class="settings-panel-head"><h2>Customer Defaults</h2><div class="desc">Customer module is cheque-based</div></div>'+
   '<div class="settings-body">'+
   '<div class="settings-section"><div class="settings-section-title">Info</div>'+
-  '<div class="alert info"><span class="ico">ℹ</span><div>Customer tracking is limited to <strong>cheque collection and bounce recovery</strong>. Sales and opening balances are not recorded in this system.</div></div>'+
+  '<div class="alert info"><span class="ico">ℹ</span><div>Customer tracking is limited to <strong>cheque collection and bounce recovery</strong>. Sales and opening balances are not recorded.</div></div>'+
   '</div>'+
   '<div class="settings-section"><div class="settings-section-title">Reliability Thresholds</div>'+
   '<div class="form-grid">'+
     '<label class="field">Trusted if % Cleared ≥<input type="number" name="st_custTrusted" value="'+(num(s.custTrustedThreshold)||90)+'"></label>'+
-    '<label class="field">Minimum Resolved Cheques for Score<input type="number" name="st_custMinResolved" value="'+(num(s.custMinResolved)||3)+'"></label>'+
+    '<label class="field">Minimum Resolved Cheques<input type="number" name="st_custMinResolved" value="'+(num(s.custMinResolved)||3)+'"></label>'+
   '</div></div></div>';
 }
 function setKpi(s){
@@ -4240,18 +4251,12 @@ function setNotifications(s){
   const row=(l,k,d)=>'<div class="settings-toggle-row"><div><div class="settings-toggle-label">'+l+'</div>'+(d?'<div class="settings-toggle-desc">'+d+'</div>':'')+'</div><div class="switch '+(s[k]?'on':'')+'" onclick="toggleSwitch(this)"><input type="checkbox" name="st_'+k+'" '+(s[k]?'checked':'')+' hidden></div></div>';
   return '<div class="settings-panel-head"><h2>Notifications</h2><div class="desc">Enable or disable notification types</div></div>'+
   '<div class="settings-body">'+
-  '<div class="settings-section"><div class="settings-section-title">Global</div>'+
-  row('Enable notifications','notifEnabled','Master toggle')+
-  '</div>'+
+  '<div class="settings-section"><div class="settings-section-title">Global</div>'+row('Enable notifications','notifEnabled','Master toggle')+'</div>'+
   '<div class="settings-section"><div class="settings-section-title">Cheque Alerts</div>'+
   row('Own cheque reminders','notifOwnCheques','Remind before due date')+
   row('Bounced cheques','notifBounced','Alert on bounced cheques')+
-  row('Cheques due soon','notifDueSoon','')+
-  row('Overdue cheques','notifOverdueCheques','')+
-  '</div>'+
-  '<div class="settings-section"><div class="settings-section-title">Smart Alerts</div>'+
-  row('Smart alerts','notifSmartAlerts','AI-powered insights (risky customers, overdrafts)')+
-  '</div></div>';
+  row('Cheques due soon','notifDueSoon','')+row('Overdue cheques','notifOverdueCheques','')+'</div>'+
+  '<div class="settings-section"><div class="settings-section-title">Smart Alerts</div>'+row('Smart alerts','notifSmartAlerts','AI-powered insights')+'</div></div>';
 }
 function setSecurity(s){
   return '<div class="settings-panel-head"><h2>Security</h2><div class="desc">Access control and safety</div></div>'+
@@ -4294,8 +4299,7 @@ function setUsers(){
       return '<tr><td>'+esc(p)+'</td><td>'+check(k?k[0]:true)+'</td><td>'+check(k?k[1]:false)+'</td><td>'+check(k?k[2]:false)+'</td></tr>';
     }).join('')+
   '</tbody></table></div>'+
-  '</div>'+
-  '</div>';
+  '</div></div>';
 }
 async function refreshUsers(){
   if(offlineMode){toast('Offline — cannot refresh','warn');return;}
@@ -4366,6 +4370,7 @@ function setAbout(){
     '<div><div class="k-label">Firebase Project</div><strong style="font-size:14px">'+firebaseConfig.projectId+'</strong></div>'+
     '<div><div class="k-label">Auth Domain</div><strong style="font-size:12px">'+firebaseConfig.authDomain+'</strong></div>'+
     '<div><div class="k-label">Firebase</div><strong style="font-size:14px">'+(firebaseReady?(offlineMode?'Offline':'Connected'):'Disconnected')+'</strong></div>'+
+    '<div><div class="k-label">Data Prefix</div><strong style="font-size:14px">'+DATA_PREFIX+'</strong></div>'+
     '<div><div class="k-label">User</div><strong style="font-size:12px;word-break:break-all">'+esc((currentUser&&currentUser.email)||'—')+'</strong></div>'+
     '<div><div class="k-label">Role</div><strong style="font-size:14px">'+esc(currentUserRole||'—')+'</strong></div>'+
     '<div><div class="k-label">Collections</div><strong style="font-size:14px">'+COLLECTIONS.length+'</strong></div>'+
@@ -4384,8 +4389,7 @@ function saveSettings(e){
   if($('st_fontSize')!==undefined)s.fontSize=num($('st_fontSize'))||13.5;
   set('currency','st_currency');set('currencyPosition','st_currencyPosition');
   if($('st_decimalPlaces')!==undefined)s.decimalPlaces=num($('st_decimalPlaces'));
-  set('thousandsSeparator','st_thousandsSeparator');
-  set('dateFormat','st_dateFormat');
+  set('thousandsSeparator','st_thousandsSeparator');set('dateFormat','st_dateFormat');
   if($('st_chequeLeafPad')!==undefined)s.chequeLeafPad=Math.max(2,num($('st_chequeLeafPad')));
   if($('st_defaultChequeDays')!==undefined)s.defaultChequeDays=num($('st_defaultChequeDays'));
   if($('st_chequeReminderDays')!==undefined)s.chequeReminderDays=num($('st_chequeReminderDays'));
@@ -4405,9 +4409,9 @@ function saveSettings(e){
 }
 window.saveSettings=saveSettings;
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    AUTH
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 async function checkAccess(email){
   if(!email)return false;
   if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase())return'admin';
@@ -4420,7 +4424,7 @@ async function checkAccess(email){
     const perms=(data.userPerms||{})[email.toLowerCase().trim()]||{};
     currentUserPerms=perms;
     return perms.role||'viewer';
-  }catch(e){return false;}
+  }catch(e){console.warn('checkAccess error:',e);return false;}
 }
 function showLoginError(msg){const el=document.getElementById('loginError');if(!el)return;el.textContent=msg;el.classList.add('show');}
 function hideLoginError(){const el=document.getElementById('loginError');if(el)el.classList.remove('show');}
@@ -4488,18 +4492,15 @@ async function registerUserLogin(user,role){
     const now=nowISO();
     if(doc.exists)await ref.set({lastLogin:now,name:user.displayName,photo:user.photoURL,role,email:user.email},{merge:true});
     else await ref.set({email:user.email,name:user.displayName,photo:user.photoURL,role,firstLogin:now,lastLogin:now});
-  }catch(e){}
+  }catch(e){console.warn('registerUserLogin failed:',e.code||e.message);}
 }
 
-/* ============================================================================
+/* ═══════════════════════════════════════════════════════════════════════════
    EVENT DELEGATION
-   ============================================================================ */
+   ═══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('click',function(e){
   const kpiEl=e.target.closest('.kpi-picker-item');
-  if(kpiEl&&kpiEl.dataset.key){
-    toggleKpiPickerItem(kpiEl.dataset.key);
-    return;
-  }
+  if(kpiEl&&kpiEl.dataset.key){toggleKpiPickerItem(kpiEl.dataset.key);return;}
   const el=e.target.closest('[data-action]');
   if(!el)return;
   const a=el.dataset.action,id=el.dataset.id;
@@ -4560,9 +4561,9 @@ document.addEventListener('click',function(e){
   if(map[a]){e.preventDefault();map[a]();return;}
 });
 
-/* ============================================================================
-   BOOT SEQUENCE (with safety fallback — never leaves a blank page)
-   ============================================================================ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOOT SEQUENCE (with safety fallback)
+   ═══════════════════════════════════════════════════════════════════════════ */
 (async function boot(){
   // Safety fallback — if boot hangs or fails, reveal the login screen
   setTimeout(function(){

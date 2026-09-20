@@ -11901,6 +11901,321 @@
             )();
 
             /* ═══ END OF PART 7 ═══ */
-        </script>
+/* ═══ START OF PART A — BUG FIXES + BANK EXPANSION ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BUG #4 FIX — Expand Sri Lankan bank list (push into existing const array)
+   ───────────────────────────────────────────────────────────────────────────── */
+(function expandSriLankanBanks(){
+  const extra = [
+    {name:'National Savings Bank', color:'#003399', short:'NSB'},
+    {name:'Regional Development Bank', color:'#c8102e', short:'RDB'},
+    {name:'Sanasa Development Bank', color:'#00a651', short:'SDB'},
+    {name:'HDFC Bank', color:'#0d4d9c', short:'HDFC'},
+    {name:'Pradeshiya Sanwardhana Bank', color:'#6b2d91', short:'PSB'},
+    {name:'State Bank of India', color:'#1e40af', short:'SBI'},
+    {name:'Indian Bank', color:'#0369a1', short:'IB'},
+    {name:'Indian Overseas Bank', color:'#c2410c', short:'IOB'},
+    {name:'Habib Bank Ltd', color:'#166534', short:'HBL'},
+    {name:'MCB Bank', color:'#047857', short:'MCB'},
+    {name:'Public Bank Berhad', color:'#dc2626', short:'PBB'},
+    {name:'Citibank', color:'#1e3a8a', short:'CITI'},
+    {name:'Deutsche Bank', color:'#111827', short:'DB'},
+    {name:'Axis Bank', color:'#be123c', short:'AXIS'},
+    {name:'Bank of China', color:'#991b1b', short:'BOC-CN'},
+    {name:'Mashreq Bank', color:'#b45309', short:'MQB'},
+    {name:'First Capital Treasuries', color:'#7c3aed', short:'FCT'}
+  ];
+  extra.forEach(b => {
+    if(!SL_BANKS.some(x => x.name === b.name)) SL_BANKS.push(b);
+  });
+  // Re-sort with 'Other' always at the end
+  const other = SL_BANKS.find(b => b.name === 'Other');
+  const rest = SL_BANKS.filter(b => b.name !== 'Other');
+  rest.sort((a,b) => a.name.localeCompare(b.name));
+  SL_BANKS.length = 0;
+  rest.forEach(b => SL_BANKS.push(b));
+  if(other) SL_BANKS.push(other);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BUG #2 FIX — Own cheque leaves grouped by BANK with optgroups
+   Replaces renderOwnLeafRows() with bank-grouped version + summary badges
+   ───────────────────────────────────────────────────────────────────────────── */
+window.renderOwnLeafRows = function(){
+  const box = document.getElementById('ownRows');
+  if(!box) return;
+  if(!ui.payOwnRows.length){
+    box.innerHTML = '<div class="empty" style="padding:20px">Click "Add Leaf" to select</div>';
+    updatePayTotals();
+    return;
+  }
+  const leaves = availableLeaves();
+  const used = new Set(ui.payOwnRows.map(r => r.leafId).filter(Boolean));
+
+  // Build bank → leaves map
+  const byBank = {};
+  leaves.forEach(l => {
+    if(used.has(l.id) && !ui.payOwnRows.some(r => r.leafId === l.id)) return;
+    const bank = l.bankName || 'Unknown';
+    if(!byBank[bank]) byBank[bank] = [];
+    byBank[bank].push(l);
+  });
+  const bankNames = Object.keys(byBank).sort();
+
+  box.innerHTML = ui.payOwnRows.map((r, idx) => {
+    // Build optgroups by bank, mark current leaf as selected
+    const optgroups = bankNames.map(bank => {
+      const opts = byBank[bank]
+        .filter(l => !used.has(l.id) || l.id === r.leafId)
+        .sort((a,b) => a.leafNo.localeCompare(b.leafNo))
+        .map(l => '<option value="' + l.id + '" ' + (r.leafId === l.id ? 'selected' : '') + '>'
+          + 'Leaf ' + esc(l.leafNo)
+          + (l.bookNo ? ' • Book ' + esc(l.bookNo) : '')
+          + ' • ' + esc(l.accountNo || l.bankAccountId ? '' : '')
+          + '</option>')
+        .join('');
+      if(!opts) return '';
+      const bankObj = bankAccountsByBankName(bank);
+      const avail = bankObj ? moneyPlain(bankBalance(bankObj.id)) : '';
+      return '<optgroup label="' + esc(bank) + (avail ? ' — Bal ' + avail : '') + '">' + opts + '</optgroup>';
+    }).join('');
+
+    const selLeaf = r.leafId ? leaves.find(l => l.id === r.leafId) : null;
+    const bankTag = selLeaf ? '<span class="badge blue" style="font-size:9.5px;padding:1px 6px">' + esc(selLeaf.bankName||'—') + '</span>' : '';
+
+    return '<div class="leaf-row" style="grid-template-columns:1fr 110px 130px 1fr 32px">'
+      + '<select onchange="updateOwnLeafRow(' + idx + ',\'leafId\',this.value)">' + (optgroups || '<option value="">No leaves available</option>') + '</select>'
+      + '<input type="number" placeholder="Amount" value="' + (r.amount || '') + '" oninput="updateOwnLeafRow(' + idx + ',\'amount\',this.value)">'
+      + '<input type="date" value="' + (r.dueDate || '') + '" onchange="updateOwnLeafRow(' + idx + ',\'dueDate\',this.value)">'
+      + '<input type="text" placeholder="Payee" value="' + esc(r.payee || '') + '" oninput="updateOwnLeafRow(' + idx + ',\'payee\',this.value)">'
+      + '<button type="button" class="icon-btn danger" onclick="removeOwnLeafRow(\'' + r.rowId + '\')">✕</button>'
+      + '</div>'
+      + (bankTag ? '<div style="margin:-2px 0 6px 6px;font-size:10.5px;color:var(--text-4)">' + bankTag + (selLeaf && selLeaf.bookNo ? ' Book ' + esc(selLeaf.bookNo) : '') + '</div>' : '');
+  }).join('');
+
+  // Bank-wise summary at bottom
+  const bankCounts = {};
+  ui.payOwnRows.forEach(r => {
+    if(!r.leafId) return;
+    const l = leaves.find(x => x.id === r.leafId);
+    if(!l) return;
+    bankCounts[l.bankName] = bankCounts[l.bankName] || {count: 0, total: 0};
+    bankCounts[l.bankName].count++;
+    bankCounts[l.bankName].total += num(r.amount);
+  });
+  const bankKeys = Object.keys(bankCounts);
+  if(bankKeys.length){
+    box.innerHTML += '<div style="margin-top:10px;padding:10px 12px;background:var(--surface-3);border-radius:8px;font-size:11.5px">'
+      + '<div style="font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Bank-wise</div>'
+      + bankKeys.map(b => '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>' + bankLogo(b) + ' ' + esc(b) + ' <span class="muted">×' + bankCounts[b].count + '</span></span><strong>' + money(bankCounts[b].total) + '</strong></div>').join('')
+      + '</div>';
+  }
+
+  updatePayTotals();
+};
+
+function bankAccountsByBankName(name){
+  return arr(db.bankAccounts).find(b => b.bankName === name);
+}
+window.bankAccountsByBankName = bankAccountsByBankName;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BUG #1 FIX — Preview now shows voucher FIRST, save happens on confirm
+   ───────────────────────────────────────────────────────────────────────────── */
+const _originalPreviewPayment = window.previewPayment;
+window.previewPayment = function(e){
+  e.preventDefault();
+  if(!canWrite()) return;
+  const sid = val('paySupplier')
+    , date = val('payDate')
+    , ref = val('payRef').trim();
+  if(!sid){ toast('Select supplier','error'); return; }
+  const supplier = supObj(sid);
+  if(!supplier){ toast('Supplier not found','error'); return; }
+
+  const pc = Array.from(ui.paySelectedParty).map(id => arr(db.customerCheques).find(r => r.id === id)).filter(Boolean);
+  const ownRows = ui.payOwnRows.filter(r => r.leafId && num(r.amount) > 0).map(r => {
+    const leaf = arr(db.chequeLeaves).find(l => l.id === r.leafId);
+    return {
+      rowId: r.rowId, leafId: r.leafId, leaf,
+      amount: num(r.amount), dueDate: r.dueDate || date,
+      payee: r.payee || supplier.name
+    };
+  });
+  const pt = sum(pc,'amount'), ot = sum(ownRows,'amount'), total = pt + ot;
+  if(total <= 0){ toast('Add items','error'); return; }
+
+  // ---- Show PREVIEW MODAL instead of saving ----
+  const bankGrouped = {};
+  ownRows.forEach(o => {
+    if(!o.leaf) return;
+    const b = o.leaf.bankName || 'Unknown';
+    if(!bankGrouped[b]) bankGrouped[b] = [];
+    bankGrouped[b].push(o);
+  });
+
+  const previewHTML = '<div class="soa-print">'
+    + '<div style="padding:24px;border:1px solid var(--border);border-radius:12px;background:#fff">'
+    +   '<div style="display:flex;justify-content:space-between;padding-bottom:14px;border-bottom:2px solid #111">'
+    +     '<div><div style="font-size:20px;font-weight:800">' + esc(db.settings.shopName || 'Lanka Shoe') + '</div>'
+    +     '<div style="font-size:11px;color:#888;margin-top:3px">' + esc(db.settings.businessAddress || '') + (db.settings.businessPhone ? ' • ' + esc(db.settings.businessPhone) : '') + '</div></div>'
+    +     '<div style="text-align:right"><div style="font-size:12px;font-weight:800;color:#7c3aed;letter-spacing:.14em">PAYMENT VOUCHER</div>'
+    +     '<div style="font-size:11px;color:#888;margin-top:2px">' + dateFmt(date) + '</div></div>'
+    +   '</div>'
+    +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 0;font-size:12px">'
+    +     '<div><span style="color:#888;font-size:10px;text-transform:uppercase">PAID TO</span><div style="font-weight:600;margin-top:3px">' + esc(supplier.name) + '</div></div>'
+    +     '<div><span style="color:#888;font-size:10px;text-transform:uppercase">REFERENCE</span><div style="font-weight:600;margin-top:3px">' + esc(ref) + '</div></div>'
+    +   '</div>'
+    +   '<div style="padding:14px 0;border-top:1px solid #eee"><div style="font-size:10px;color:#888;text-transform:uppercase;margin-bottom:8px">PAYMENT ITEMS (' + (pc.length + ownRows.length) + ')</div>'
+    +   (pc.length ? '<div style="margin-bottom:10px"><div style="font-weight:600;font-size:11.5px;margin-bottom:6px">🧾 Party Cheques</div>'
+    +     pc.map(c => '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px dashed #f3f3f3"><span>' + esc(c.customerName) + ' — ' + esc(c.chequeNo) + ' <span style="color:#888;font-size:11px">' + esc(c.bank||'') + '</span></span><strong>' + moneyPlain(c.amount) + '</strong></div>').join('') + '</div>' : '')
+    +   (ownRows.length ? Object.keys(bankGrouped).map(b => '<div style="margin-bottom:10px"><div style="font-weight:600;font-size:11.5px;margin-bottom:6px">🎯 ' + esc(b) + '</div>'
+    +     bankGrouped[b].map(o => '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px dashed #f3f3f3"><span>Leaf ' + esc(o.leaf.leafNo) + ' — ' + esc(o.payee) + ' <span style="color:#888;font-size:11px">Due ' + dateFmt(o.dueDate) + '</span></span><strong>' + moneyPlain(o.amount) + '</strong></div>').join('') + '</div>').join('') : '')
+    +   '</div>'
+    +   '<div style="display:flex;justify-content:space-between;padding:14px 0;border-top:2px solid #111;font-size:16px"><strong>Total</strong><strong style="color:#7c3aed">' + money(total) + '</strong></div>'
+    +   '<div style="font-size:11px;color:#666;font-style:italic;padding-top:6px">' + esc(amountInWords(total)) + '</div>'
+    + '</div></div>';
+
+  openModal('👁 Preview Payment — ' + esc(supplier.name),
+    '<div style="max-height:60vh;overflow:auto;background:var(--surface-2);padding:12px;border-radius:10px">' + previewHTML + '</div>'
+    + '<div class="form-actions">'
+    +   '<button class="btn" data-action="close-modal">Cancel</button>'
+    +   '<button class="btn primary" onclick="confirmAndSavePayment(\'' + sid + '\',\'' + date + '\',\'' + esc(ref).replace(/'/g,"\\'") + '\')">💾 Confirm & Save</button>'
+    + '</div>', 'wide');
+};
+
+window.confirmAndSavePayment = function(sid, date, ref){
+  if(!canWrite()) return;
+  const supplier = supObj(sid);
+  if(!supplier){ toast('Supplier not found','error'); return; }
+
+  const pc = Array.from(ui.paySelectedParty).map(id => arr(db.customerCheques).find(r => r.id === id)).filter(Boolean);
+  const ownRows = ui.payOwnRows.filter(r => r.leafId && num(r.amount) > 0).map(r => {
+    const leaf = arr(db.chequeLeaves).find(l => l.id === r.leafId);
+    return { rowId:r.rowId, leafId:r.leafId, leaf, amount:num(r.amount), dueDate:r.dueDate||date, payee:r.payee||supplier.name };
+  });
+  const pt = sum(pc,'amount'), ot = sum(ownRows,'amount'), total = pt + ot;
+  if(total <= 0){ toast('Add items','error'); return; }
+
+  const payment = {
+    id: uid(), supplierId: sid, date, reference: ref,
+    partyChequeIds: pc.map(c => c.id), partyAmount: pt,
+    ownChequeIds: ownRows.map(o => o.leafId), ownAmount: ot,
+    amount: total, createdAt: nowISO()
+  };
+
+  pc.forEach(c => { c.status='Issued'; c.paymentId=payment.id; c.issuedTo=sid; c.issuedDate=date; });
+
+  ownRows.forEach(o => {
+    if(!o.leaf) return;
+    o.leaf.status='Issued'; o.leaf.paymentId=payment.id;
+    o.leaf.date=date; o.leaf.dueDate=o.dueDate;
+    o.leaf.amount=o.amount; o.leaf.payee=o.payee; o.leaf.supplierId=sid;
+    if(!Array.isArray(db.bankTransactions)) db.bankTransactions=[];
+    db.bankTransactions.push({
+      id: uid(), bankAccountId: o.leaf.bankAccountId,
+      date: o.dueDate, type: 'cheque_issued', amount: o.amount,
+      reference: o.leaf.leafNo, chequeId: o.leaf.id, paymentId: payment.id,
+      description: 'Cheque to ' + supplier.name, createdAt: nowISO()
+    });
+  });
+
+  if(!Array.isArray(db.payments)) db.payments=[];
+  db.payments.push(payment);
+  db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo) || 1) + 1;
+  pushUndo({type:'collection_push', collection:'payments', id:payment.id, label:'Add payment ' + supplier.name});
+  logAct('Add Payment', 'Payment', payment.id, supName(sid) + ' • ' + money(total));
+  window.__dbgOk && window.__dbgOk('Payment saved: ' + supplier.name + ' • ' + money(total), 'DATA');
+
+  ui.paySelectedParty.clear();
+  ui.payOwnRows = [];
+  save();
+  closeModal();
+  render();
+  toast('✅ Payment saved • ' + money(total), 'success');
+  if(total >= 100000) confetti();
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BUG #3 FIX — Erase All Data with strict multi-step confirmation
+   ───────────────────────────────────────────────────────────────────────────── */
+window.clearAll = function(){
+  if(!can('delete')){ toast('Only admins can erase data','error'); return; }
+  const totalRecords = COLLECTIONS.reduce((sum, c) => sum + arr(db[c]).length, 0);
+
+  openModal('⚠️ DANGER — Erase ALL Data',
+    '<div class="alert danger"><span class="ico">⚠</span><div><strong>This will permanently erase:</strong><br>'
+    + '• ' + totalRecords + ' total records across ' + COLLECTIONS.length + ' collections<br>'
+    + '• All settings, users, activity logs<br>'
+    + '• This action <strong>CANNOT be undone</strong></div></div>'
+
+    + '<div class="section-title">Step 1 — Download a backup (strongly recommended)</div>'
+    + '<div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);margin-bottom:18px">'
+    +   '<div class="small muted" style="margin-bottom:10px">If you skip this, you cannot recover your data.</div>'
+    +   '<button type="button" class="btn primary" onclick="download(\'lankashoe_pre-erase_' + today() + '.json\', JSON.stringify(buildBackup(), null, 2), \'application/json\'); toast(\'Backup downloaded\',\'success\');">⬇ Download Backup JSON</button>'
+    + '</div>'
+
+    + '<div class="section-title">Step 2 — Type the exact phrase to confirm</div>'
+    + '<div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);margin-bottom:18px">'
+    +   '<label class="field">Type <strong style="color:var(--red)">ERASE ALL DATA</strong> below:'
+    +   '<input id="eraseConfirmInput" oninput="checkEraseInput(this.value)" placeholder="Type the phrase" autocomplete="off" spellcheck="false"></label>'
+    + '</div>'
+
+    + '<div class="section-title">Step 3 — Acknowledge consequences</div>'
+    + '<label style="display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);cursor:pointer">'
+    +   '<input type="checkbox" id="eraseAck1" onchange="checkEraseCheckboxes()" style="margin-top:3px">'
+    +   '<span style="font-size:12.5px">I understand this is <strong>irreversible</strong> and I have no other way to recover this data.</span>'
+    + '</label>'
+    + '<label style="display:flex;gap:10px;align-items:flex-start;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);cursor:pointer;margin-top:8px">'
+    +   '<input type="checkbox" id="eraseAck2" onchange="checkEraseCheckboxes()" style="margin-top:3px">'
+    +   '<span style="font-size:12.5px">I confirm I want to <strong>delete everything</strong> and start from zero.</span>'
+    + '</label>'
+
+    + '<div class="form-actions">'
+    +   '<button class="btn" data-action="close-modal">Cancel</button>'
+    +   '<button class="btn danger" id="eraseFinalBtn" disabled onclick="doActualErase()">🗑 ERASE EVERYTHING</button>'
+    + '</div>', 'wide');
+};
+
+window.checkEraseInput = function(v){
+  const ok = String(v).trim() === 'ERASE ALL DATA';
+  window._eraseInputOk = ok;
+  checkEraseCheckboxes();
+};
+
+window.checkEraseCheckboxes = function(){
+  const a1 = document.getElementById('eraseAck1') && document.getElementById('eraseAck1').checked;
+  const a2 = document.getElementById('eraseAck2') && document.getElementById('eraseAck2').checked;
+  const btn = document.getElementById('eraseFinalBtn');
+  if(btn) btn.disabled = !(window._eraseInputOk && a1 && a2);
+};
+
+window.doActualErase = function(){
+  // Final countdown confirmation
+  let n = 5;
+  const btn = document.getElementById('eraseFinalBtn');
+  if(!btn) return;
+  btn.disabled = true;
+  const originalText = '🗑 ERASE EVERYTHING';
+  btn.textContent = 'ERASING IN ' + n + '...';
+  const iv = setInterval(() => {
+    n--;
+    if(n > 0){
+      btn.textContent = 'ERASING IN ' + n + '...';
+    } else {
+      clearInterval(iv);
+      db = seed();
+      applySettings();
+      save();
+      closeModal();
+      render();
+      toast('🗑 All data erased', 'warn', 6000);
+    }
+  }, 1000);
+};
+
+/* ═══ END OF PART A ═══ */
+  </script>
     </body>
 </html>

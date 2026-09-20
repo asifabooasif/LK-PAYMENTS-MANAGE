@@ -18168,6 +18168,429 @@ window.testPrintFlow = function(){
 };
 
 /* ═══ END OF PART J ═══ */
+/* ═══ START OF PART K — AGGRESSIVE LOCKDOWN ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ROOT PRINCIPLE
+   Chrome DevTools has already downloaded your HTML/JS the moment the page
+   loaded. You cannot un-download it. BUT you can:
+     1. Wipe the live DOM instantly (Elements tab shows nothing useful)
+     2. Delete <script> and <style> tag contents (Sources tab loses text)
+     3. Force a page navigation to about:blank (Sources clears history)
+     4. Rewrite browser history so back-button doesn't restore
+     5. Obfuscate at build time (minify + mangle) so any remaining source
+        is unreadable
+   This part does 1–4. Step 5 is a manual build step (see bottom).
+   ───────────────────────────────────────────────────────────────────────────── */
+
+(function aggressiveLockdown(){
+  // Escape hatch — same as before
+  function isDevAllowed(){
+    try {
+      if(localStorage.getItem('lankashoe_dev_ok') === '1') return true;
+      if(location.search.indexOf('safe=1') !== -1) return true;
+      if(location.hash === '#safe') return true;
+    } catch(e){}
+    return false;
+  }
+  if(isDevAllowed()) {
+    if(window.__dbgWarn) window.__dbgWarn('Aggressive lockdown disabled (developer mode)', 'GUARD');
+    return;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // LEVEL 1 — Immediate DOM + source wipe
+  // Called the instant detection fires, BEFORE showing any overlay.
+  // ═════════════════════════════════════════════════════════════════════════
+  let wiped = false;
+
+  function wipeSourceAndDom(){
+    if(wiped) return;
+    wiped = true;
+
+    try {
+      // 1. Wipe every <script> tag's text content
+      //    — this removes inline scripts from the Elements/Sources tree
+      const scripts = document.querySelectorAll('script');
+      scripts.forEach(function(s){
+        try {
+          // Can't unload but we CAN clear the text node
+          if(s.textContent) s.textContent = '';
+          if(s.innerHTML) s.innerHTML = '';
+          // Optionally remove entirely — some browsers keep a reference
+          s.removeAttribute('src');
+          s.remove();
+        } catch(e){}
+      });
+
+      // 2. Wipe every <style> tag's content
+      document.querySelectorAll('style').forEach(function(s){
+        try { s.textContent = ''; s.remove(); } catch(e){}
+      });
+
+      // 3. Remove all <link> to CSS so styles don't reveal structure
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(function(l){
+        try { l.remove(); } catch(e){}
+      });
+
+      // 4. Remove the <title> content
+      try { document.title = '🔒'; } catch(e){}
+
+      // 5. Replace entire document body with a locked page
+      const lockedHTML =
+        '<div id="lockedPage" style="position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,#1a0b3d 0%,#000 100%);color:#fff;display:flex;align-items:center;justify-content:center;padding:40px;text-align:center;font-family:-apple-system,Segoe UI,Roboto,sans-serif;z-index:2147483647">'
+        + '<div style="max-width:560px">'
+        +   '<div style="font-size:96px;margin-bottom:20px;filter:drop-shadow(0 0 24px rgba(168,85,247,.7))">🔒</div>'
+        +   '<h1 style="font-size:26px;font-weight:800;margin-bottom:14px;color:#fff">Session Locked</h1>'
+        +   '<p style="font-size:14px;line-height:1.7;color:rgba(255,255,255,.75)">Developer tools detected. This session has been locked and the page is being reset.</p>'
+        +   '<p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:20px">Do not open developer tools while using this application.</p>'
+        + '</div>'
+        + '</div>';
+
+      // Wipe full document
+      try {
+        document.documentElement.innerHTML = '<head><title>🔒</title></head><body style="margin:0;background:#000"></body>';
+      } catch(e){}
+
+      // Write locked page
+      try {
+        document.body.innerHTML = lockedHTML;
+      } catch(e){}
+
+      // 6. Wipe all input field values (in case anything sensitive is typed)
+      try {
+        document.querySelectorAll('input,textarea').forEach(function(el){
+          el.value = '';
+        });
+      } catch(e){}
+
+      // 7. Clear any localStorage cached data (optional, aggressive)
+      //    NOTE: this doesn't delete Firestore data, only local cache
+      try { localStorage.removeItem('lankashoe_cache'); } catch(e){}
+
+      // 8. Signal to the debug panel (it may already be gone)
+      try {
+        if(window.__dbgError) window.__dbgError('Session locked — DevTools detection triggered', 'GUARD');
+      } catch(e){}
+
+    } catch(e){
+      // Failsafe
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // LEVEL 2 — Force navigation to about:blank (clears Sources history)
+  // After a short delay so the user sees the lock message first.
+  // ═════════════════════════════════════════════════════════════════════════
+  function forceNavigateAway(){
+    // Rewrite current history entry so back button can't restore
+    try {
+      history.replaceState(null, '', '/');
+      // Add 2 dummy entries so forward/back goes nowhere useful
+      history.pushState(null, '', '#locked');
+      history.pushState(null, '', '#locked2');
+    } catch(e){}
+
+    // Replace location with a blank page after 2.5 seconds
+    setTimeout(function(){
+      try {
+        // about:blank is the safest — completely empty page
+        window.location.replace('about:blank');
+      } catch(e){
+        try { window.location.href = 'about:blank'; } catch(e2){}
+      }
+    }, 2500);
+
+    // Prevent back button from returning
+    window.addEventListener('popstate', function(){
+      try { window.location.replace('about:blank'); } catch(e){}
+    }, true);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // LEVEL 3 — Detection (same 5 layers as Part J, tuned)
+  // ═════════════════════════════════════════════════════════════════════════
+  let triggered = false;
+  let lastCheck = 0;
+
+  function sizeOpen(){
+    try {
+      const w = Math.abs((window.outerWidth || 0) - (window.innerWidth || 0));
+      const h = Math.abs((window.outerHeight || 0) - (window.innerHeight || 0));
+      return w > 170 || h > 170;
+    } catch(e){ return false; }
+  }
+
+  function debuggerOpen(){
+    try {
+      const t1 = performance.now();
+      // eslint-disable-next-line no-debugger
+      debugger;
+      const t2 = performance.now();
+      return (t2 - t1) > 100;
+    } catch(e){ return false; }
+  }
+
+  let consoleProbeFired = false;
+  try {
+    const probe = /./;
+    probe.toString = function(){ consoleProbeFired = true; return 'x'; };
+    window.__consoleProbe = probe;
+  } catch(e){}
+
+  function consoleOpen(){
+    try {
+      consoleProbeFired = false;
+      // Firefox & Chrome trigger toString() only when console panel is active
+      const nativeLog = Function.prototype.call.bind(console.log, console);
+      nativeLog('%c', window.__consoleProbe);
+      return consoleProbeFired;
+    } catch(e){ return false; }
+  }
+
+  function checkDetection(){
+    const now = Date.now();
+    if(now - lastCheck < 800) return;
+    lastCheck = now;
+
+    if(sizeOpen() || debuggerOpen() || consoleOpen()){
+      triggerLockdown();
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // MASTER TRIGGER
+  // ═════════════════════════════════════════════════════════════════════════
+  function triggerLockdown(){
+    if(triggered) return;
+    triggered = true;
+
+    // 1. Wipe source and DOM
+    wipeSourceAndDom();
+
+    // 2. Force navigation away after user sees the message
+    forceNavigateAway();
+
+    // 3. Kill all intervals / timeouts we can reach
+    //    (Limits the impact of any detection loop)
+    try {
+      // Store max safe ID and clear everything below it
+      const maxId = setTimeout(function(){}, 0);
+      for(let i = 0; i <= maxId; i++){
+        try { clearTimeout(i); clearInterval(i); } catch(e){}
+      }
+    } catch(e){}
+  }
+
+  // Expose for debug
+  window.__lockdown = {
+    trigger: triggerLockdown,
+    wipe: wipeSourceAndDom,
+    navigate: forceNavigateAway
+  };
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Aggressive event blockers
+  // ═════════════════════════════════════════════════════════════════════════
+
+  // Block all keyboard combos that open DevTools
+  document.addEventListener('keydown', function(e){
+    const k = String(e.key || '').toLowerCase();
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+
+    // F12
+    if(k === 'f12'){
+      e.preventDefault(); e.stopImmediatePropagation();
+      triggerLockdown();
+      return false;
+    }
+
+    // Ctrl+Shift+I / J / C / K / E / M
+    if(ctrl && shift && ['i','j','c','k','e','m'].indexOf(k) !== -1){
+      e.preventDefault(); e.stopImmediatePropagation();
+      triggerLockdown();
+      return false;
+    }
+
+    // Cmd+Option (macOS): I / J / C / U
+    if(e.metaKey && alt && ['i','j','c','u'].indexOf(k) !== -1){
+      e.preventDefault(); e.stopImmediatePropagation();
+      triggerLockdown();
+      return false;
+    }
+
+    // Ctrl+U — view source
+    if(ctrl && !shift && k === 'u'){
+      e.preventDefault(); e.stopImmediatePropagation();
+      triggerLockdown();
+      return false;
+    }
+
+    // Ctrl+S — save page
+    if(ctrl && !shift && k === 's'){
+      e.preventDefault(); e.stopImmediatePropagation();
+      return false;
+    }
+
+    // Ctrl+Shift+S — save as
+    if(ctrl && shift && k === 's'){
+      e.preventDefault(); e.stopImmediatePropagation();
+      return false;
+    }
+  }, true);
+
+  // Block right-click
+  document.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+  }, true);
+
+  // Block drag (prevents dragging assets out to inspect)
+  document.addEventListener('dragstart', function(e){
+    e.preventDefault();
+  }, true);
+
+  // Block F5/Ctrl+R immediately after lock (prevents re-render)
+  document.addEventListener('keydown', function(e){
+    if(triggered){
+      const k = String(e.key || '').toLowerCase();
+      if(k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')){
+        e.preventDefault(); e.stopImmediatePropagation();
+        try { window.location.replace('about:blank'); } catch(err){}
+        return false;
+      }
+      if(k === 'f12' || (e.ctrlKey && e.shiftKey && k === 'i')){
+        e.preventDefault();
+        try { window.location.replace('about:blank'); } catch(err){}
+        return false;
+      }
+    }
+  }, true);
+
+  // Block print-screen key (best effort)
+  document.addEventListener('keyup', function(e){
+    if(e.key === 'PrintScreen'){
+      try { navigator.clipboard.writeText(''); } catch(err){}
+    }
+  }, true);
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Interval check — every 900ms (fast but not too aggressive)
+  // ═════════════════════════════════════════════════════════════════════════
+  const interval = setInterval(function(){
+    if(triggered) return;
+    try { checkDetection(); } catch(e){}
+  }, 900);
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Also run detection on window resize (catches docked DevTools instantly)
+  // ═════════════════════════════════════════════════════════════════════════
+  let resizeTimer;
+  window.addEventListener('resize', function(){
+    if(triggered) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      if(sizeOpen()) triggerLockdown();
+    }, 300);
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // Startup signal
+  // ═════════════════════════════════════════════════════════════════════════
+  setTimeout(function(){
+    if(window.__dbgOk) window.__dbgOk('Aggressive lockdown armed — DOM wipe + nav block active', 'GUARD');
+    if(window.__dbgWarn) window.__dbgWarn('Escape hatch: Ctrl+Shift+Alt+D or ?safe=1', 'GUARD');
+  }, 3000);
+
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ESCAPE HATCH — Ctrl+Shift+Alt+D toggles developer mode
+   Add this separately so it runs even after lockdown
+   ───────────────────────────────────────────────────────────────────────────── */
+(function devToggle(){
+  // Use capture to run before lockdown
+  window.addEventListener('keydown', function(e){
+    const k = String(e.key || '').toLowerCase();
+    if((e.ctrlKey || e.metaKey) && e.shiftKey && e.altKey && k === 'd'){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try {
+        if(localStorage.getItem('lankashoe_dev_ok') === '1'){
+          localStorage.removeItem('lankashoe_dev_ok');
+          alert('DevTools guard: ARMED. Reload to apply.');
+        } else {
+          localStorage.setItem('lankashoe_dev_ok', '1');
+          alert('DevTools guard: DISARMED. Reload to apply.');
+        }
+      } catch(err){}
+      return false;
+    }
+  }, true);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SOURCE OBFUSCATION — RECOMMENDATION
+   ─────────────────────────────────────────────────────────────────────────────
+
+   The DOM wipe in this part hides your code from the LIVE Elements/Sources
+   tab after DevTools detection. But a user who opens DevTools BEFORE the
+   detection fires will still see the HTML they've already been served.
+
+   The ONLY way to make the served source unreadable is to obfuscate it at
+   build time. Recommended options (all free):
+
+   ─── Option A: JavaScript Obfuscator (free, self-hosted) ───
+     1. Install: npm install -g javascript-obfuscator
+     2. Run:
+        javascript-obfuscator index.html --output index.min.html \
+          --compact true \
+          --control-flow-flattening true \
+          --dead-code-injection true \
+          --string-array true \
+          --string-array-encoding base64 \
+          --self-defending true \
+          --disable-console-output true
+     3. Deploy index.min.html as your production file.
+     4. Result: your 15,000-line file becomes 25,000 lines of unreadable
+        strings like `_0x1234[0x56](_0x7890(...))`. Anyone opening Sources
+        sees gibberish.
+
+   ─── Option B: HTML Obfuscation (for the inline <style> and text) ───
+     - Minify CSS with cssnano or clean-css
+     - Minify HTML with html-minifier-terser
+     - Move inline <script> to external .js file, then obfuscate that
+
+   ─── Option C: Base64 / encryption (not real security, just hides) ───
+     - Base64 the JS and eval it at runtime
+     - Detected by antivirus, avoid
+     - Anyone can decode in 2 seconds
+     - NOT RECOMMENDED
+
+   ─── Option D: Server-side gating (the REAL solution) ───
+     - Don't serve the HTML at all until auth is confirmed
+     - Firebase Hosting: use Cloud Functions to gate index.html
+     - Or Cloudflare Workers / Vercel Edge Middleware
+     - Or use Firebase App Check + Firestore security rules + never trust
+       the client with anything sensitive
+     - If the goal is truly "protect business logic", the only bulletproof
+       answer is: don't put business logic on the client
+
+   ─── Recommended workflow ───
+     1. Develop with your current unminified index.html (Parts 1–K)
+     2. On release, run JavaScript Obfuscator (Option A)
+     3. Verify the obfuscated build still works (Firebase + Google Sign-in
+        unchanged)
+     4. Deploy the obfuscated version
+     5. Source tab now shows unreadable mangled code — combined with the
+        DOM wipe in Part K, they'll get maybe 2 seconds of visibility
+        before the page locks itself
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ═══ END OF PART K ═══ */
   </script>
     </body>
 </html

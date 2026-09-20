@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width,initial-scale=1"/>
-        <title>Lanka Shoe — Enterprise v11.2</title>
+        <title>Lanka Shoe — Enterprise v11.3</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👟</text></svg>">
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -3260,6 +3260,150 @@
                     grid-template-columns: repeat(3,1fr);
                 }
             }
+
+            /* ═══════════════════════════════════════════════════════════════════════
+               NEW — Part A UI/UX upgrades (breadcrumbs, tags, skeleton, inline edit)
+               These augment the existing styles without changing anything above.
+               ═══════════════════════════════════════════════════════════════════════ */
+
+            /* Breadcrumbs */
+            .crumb-bar {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                color: var(--text-3);
+                margin-bottom: 14px;
+                padding: 0 2px;
+                flex-wrap: wrap;
+            }
+
+            .crumb-bar .crumb-link {
+                color: var(--text-3);
+                cursor: pointer;
+                transition: color .15s;
+            }
+
+            .crumb-bar .crumb-link:hover {
+                color: var(--accent);
+            }
+
+            .crumb-bar .crumb-sep {
+                color: var(--text-4);
+                opacity: .5;
+                font-size: 11px;
+            }
+
+            .crumb-bar .crumb-current {
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            /* Skeleton loader */
+            .skl-wrap {
+                display: grid;
+                gap: 14px;
+            }
+
+            .skl-card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--r-lg);
+                padding: 18px;
+            }
+
+            .skl {
+                background: linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);
+                background-size: 200% 100%;
+                animation: sklAnim 1.4s infinite;
+                border-radius: 6px;
+                height: 14px;
+                margin-bottom: 10px;
+            }
+
+            .skl-title {
+                height: 20px;
+                width: 40%;
+            }
+
+            .skl-line {
+                height: 12px;
+                width: 100%;
+            }
+
+            .skl-line.short {
+                width: 70%;
+            }
+
+            .skl-line:last-child {
+                margin-bottom: 0;
+            }
+
+            @keyframes sklAnim {
+                0% {
+                    background-position: 200% 0;
+                }
+
+                100% {
+                    background-position: -200% 0;
+                }
+            }
+
+            /* Tag pills (records) */
+            .tag-pill {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 20px;
+                font-size: 10px;
+                font-weight: 600;
+                margin-right: 4px;
+                margin-top: 2px;
+                border: 1px solid transparent;
+            }
+
+            .tag-pill.tag-green {
+                background: var(--green-soft);
+                color: var(--green);
+                border-color: var(--green-bd);
+            }
+
+            .tag-pill.tag-red {
+                background: var(--red-soft);
+                color: var(--red);
+                border-color: var(--red-bd);
+            }
+
+            .tag-pill.tag-amber {
+                background: var(--amber-soft);
+                color: var(--amber);
+                border-color: var(--amber-bd);
+            }
+
+            .tag-pill.tag-gray {
+                background: var(--surface-3);
+                color: var(--text-3);
+                border-color: var(--border);
+            }
+
+            /* Reinforce sticky table headers (already exist, but ensure z-index) */
+            .table-wrap thead th {
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 3 !important;
+                background: var(--surface-2) !important;
+            }
+
+            /* Inline editable cells */
+            .inline-editable {
+                cursor: pointer;
+                border-bottom: 1px dashed transparent;
+                transition: border-color .15s;
+            }
+
+            .inline-editable:hover {
+                border-bottom-color: var(--accent);
+                color: var(--accent-text);
+            }
         </style>
     </head>
     <body>
@@ -3291,7 +3435,7 @@
                     <div class="brand-logo" id="brandLogo">LS</div>
                     <div class="brand-text">
                         <div class="brand-name" id="brandName">Lanka Shoe</div>
-                        <div class="brand-sub" id="brandSub">Enterprise v11.2</div>
+                        <div class="brand-sub" id="brandSub">Enterprise v11.3</div>
                     </div>
                     <div class="sidebar-toggle" data-action="toggle-sidebar">◂</div>
                 </div>
@@ -3369,8 +3513,8 @@
             'use strict';
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   DEBUG PANEL (visible on-page — no DevTools needed)
-   ═══════════════════════════════════════════════════════════════════════════ */
+               DEBUG PANEL (visible on-page — no DevTools needed)
+               ═══════════════════════════════════════════════════════════════════════════ */
             (function() {
                 function build() {
                     if (document.getElementById('dbgBox'))
@@ -3433,8 +3577,8 @@
             )();
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   SAFE DEVTOOLS DETECTION (non-destructive)
-   ═══════════════════════════════════════════════════════════════════════════ */
+               SAFE DEVTOOLS DETECTION (non-destructive)
+               ═══════════════════════════════════════════════════════════════════════════ */
             (function() {
                 let overlayShown = false;
                 function showOverlay() {
@@ -3500,8 +3644,8 @@
             )();
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   FIREBASE CONFIG
-   ═══════════════════════════════════════════════════════════════════════════ */
+               FIREBASE CONFIG
+               ═══════════════════════════════════════════════════════════════════════════ */
             const firebaseConfig = {
                 apiKey: "AIzaSyB-WYN8Q0vW80_Wce8r7wFGp3eWqicBq7o",
                 authDomain: "lk-payments-manage.firebaseapp.com",
@@ -3515,17 +3659,13 @@
             const ADMIN_EMAIL = 'asifabooasif@gmail.com';
             const ROOT = 'lk';
             const DATA_PREFIX = ROOT + '_';
-            // ← FIXED: 'lk_' prefix for all data collections
             const ACCESS_DOC_PATH = ROOT + '/access';
-            // lk/access (document)
             const SETTINGS_DOC_PATH = ROOT + '/settings';
-            // lk/settings (document)
             const USERS_COL_PATH = DATA_PREFIX + 'users';
-            // lk_users (collection)
             const APP_NAME = 'Lanka Shoe Enterprise'
-              , APP_VER = '11.2.0';
+              , APP_VER = '11.3.0';
 
-            const COLLECTIONS = ['customers', 'customerNotes', 'customerContactLog', 'suppliers', 'supplierReturns', 'purchases', 'receipts', 'customerCheques', 'chequeEndorsements', 'chequeSplits', 'chequeSettlements', 'chequeBooks', 'chequeLeaves', 'payments', 'recurringCheques', 'bankAccounts', 'bankTransactions', 'bankFees', 'bankTransfers', 'expenses', 'journals', 'categories', 'activityLog', 'auditTrail', 'loginHistory', 'savedReports', 'trash', 'drafts', 'todos', 'recentlyViewed', 'kpiPrefs'];
+            const COLLECTIONS = ['customers', 'customerNotes', 'customerContactLog', 'suppliers', 'supplierReturns', 'purchases', 'receipts', 'customerCheques', 'chequeEndorsements', 'chequeSplits', 'chequeSettlements', 'chequeBooks', 'chequeLeaves', 'payments', 'recurringCheques', 'bankAccounts', 'bankTransactions', 'bankFees', 'bankTransfers', 'expenses', 'journals', 'categories', 'activityLog', 'auditTrail', 'loginHistory', 'savedReports', 'trash', 'drafts', 'todos', 'recentlyViewed', 'kpiPrefs', 'recordTags', 'versionHistory'];
 
             let firebaseApp = null
               , auth = null
@@ -4019,6 +4159,8 @@
                     recentlyViewed: [],
                     kpiPrefs: [],
                     notifRead: {},
+                    recordTags: {},
+                    versionHistory: [],
                     allowedEmails: [ADMIN_EMAIL],
                     userPerms: {}
                 };
@@ -4094,8 +4236,8 @@
             }
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   FIREBASE INIT + PERSISTENCE (FIXED PATHS)
-   ═══════════════════════════════════════════════════════════════════════════ */
+               FIREBASE INIT + PERSISTENCE
+               ═══════════════════════════════════════════════════════════════════════════ */
             async function initFirebase() {
                 try {
                     firebaseApp = firebase.initializeApp(firebaseConfig);
@@ -4192,7 +4334,7 @@
                 }
             }
 
-            /* ═══ LOAD FROM FIRESTORE — FIXED to use DATA_PREFIX ═══ */
+            /* ═══ LOAD FROM FIRESTORE ═══ */
             async function loadFromFirestore() {
                 if (offlineMode || !firebaseReady)
                     return;
@@ -4236,7 +4378,7 @@
                 }
             }
 
-            /* ═══ PUSH TO FIRESTORE — FIXED to use DATA_PREFIX ═══ */
+            /* ═══ PUSH TO FIRESTORE ═══ */
             async function pushToFirestore() {
                 try {
                     localStorage.setItem('lankashoe_cache', JSON.stringify(db));
@@ -4269,7 +4411,6 @@
                     for (const col of COLLECTIONS) {
                         const items = arr(db[col]);
                         const colRef = firestore.collection(DATA_PREFIX + col);
-                        // ← FIXED
                         try {
                             const existing = await colRef.get();
                             existing.forEach(doc => {
@@ -4409,7 +4550,8 @@
                     uid: user.uid,
                     ua: navigator.userAgent,
                     platform: navigator.platform,
-                    screen: (screen.width || 0) + 'x' + (screen.height || 0)
+                    screen: (screen.width || 0) + 'x' + (screen.height || 0),
+                    deviceFP: (navigator.platform + '|' + navigator.userAgent + '|' + screen.width + 'x' + screen.height)
                 });
                 if (db.loginHistory.length > 200)
                     db.loginHistory = db.loginHistory.slice(-200);
@@ -5840,12 +5982,393 @@
             }
             window.buildBackup = buildBackup;
 
-            /* ═══ END OF PART 1 ═══ */
-            /* ═══ START OF PART 2 ═══ */
+            /* ═══════════════════════════════════════════════════════════════════════════
+               PART A — UI/UX INFRASTRUCTURE (newly added, safe additions only)
+               ═══════════════════════════════════════════════════════════════════════════ */
+
+            /* ─── Breadcrumbs ─── */
+            const BREADCRUMB_MAP = {
+                dashboard: ['Home'],
+                customers: ['Home', 'Customers'],
+                suppliers: ['Home', 'Suppliers'],
+                purchases: ['Home', 'Purchases'],
+                categories: ['Home', 'Categories'],
+                receipts: ['Home', 'Receipts'],
+                ccheques: ['Home', 'Customer Cheques'],
+                payments: ['Home', 'Payments'],
+                own: ['Home', 'Own Cheques'],
+                chequeBooks: ['Home', 'Cheque Books'],
+                banks: ['Home', 'Bank Accounts'],
+                expenses: ['Home', 'Expenses'],
+                journals: ['Home', 'Journals'],
+                ledger: ['Home', 'Ledger'],
+                aging: ['Home', 'Aging'],
+                reports: ['Home', 'Reports'],
+                history: ['Home', 'History'],
+                logins: ['Home', 'Login History'],
+                backup: ['Home', 'Backup'],
+                settings: ['Home', 'Settings'],
+                todo: ['Home', 'Tasks'],
+                trash: ['Home', 'Trash']
+            };
+            function renderBreadcrumbs() {
+                const crumbs = BREADCRUMB_MAP[ui.view];
+                if (!crumbs || crumbs.length < 2)
+                    return '';
+                return '<div class="crumb-bar">' + crumbs.map((c, i) => {
+                    const isLast = i === crumbs.length - 1;
+                    return isLast
+                        ? '<span class="crumb-current">' + esc(c) + '</span>'
+                        : '<span class="crumb-link" onclick="ui.view=\'dashboard\';render()">' + esc(c) + '</span><span class="crumb-sep">›</span>';
+                }).join('') + '</div>';
+            }
+            window.renderBreadcrumbs = renderBreadcrumbs;
+
+            /* ─── Skeleton ─── */
+            function skeleton(count) {
+                count = count || 5;
+                let html = '<div class="skl-wrap">';
+                for (let i = 0; i < count; i++) {
+                    html += '<div class="skl-card"><div class="skl skl-title"></div><div class="skl skl-line"></div><div class="skl skl-line short"></div></div>';
+                }
+                return html + '</div>';
+            }
+            window.skeleton = skeleton;
+
+            /* ─── Tags on records ─── */
+            const TAG_PRESETS = {
+                customer: ['VIP', 'Loyal', 'Risky', 'Watch', 'Blacklist', 'Wholesale', 'Retail'],
+                supplier: ['Reliable', 'Slow Payer', 'Priority', 'Preferred', 'Discount', 'Local', 'Import']
+            };
+            function getRecordTags(kind, id) {
+                if (!db.recordTags)
+                    db.recordTags = {};
+                if (!db.recordTags[kind])
+                    db.recordTags[kind] = {};
+                return arr(db.recordTags[kind][id]);
+            }
+            function setRecordTags(kind, id, tags) {
+                if (!db.recordTags)
+                    db.recordTags = {};
+                if (!db.recordTags[kind])
+                    db.recordTags[kind] = {};
+                db.recordTags[kind][id] = uniq(arr(tags).map(t => String(t).trim()).filter(Boolean));
+                save();
+            }
+            function renderTagPills(kind, id) {
+                const tags = getRecordTags(kind, id);
+                if (!tags.length)
+                    return '';
+                return tags.map(t => {
+                    const cls = /vip|loyal|preferred|reliable/i.test(t) ? 'green'
+                        : /risky|blacklist|slow/i.test(t) ? 'red'
+                        : /watch|priority|discount/i.test(t) ? 'amber'
+                        : 'gray';
+                    return '<span class="tag-pill tag-' + cls + '">' + esc(t) + '</span>';
+                }).join('');
+            }
+            function openTagsEditor(kind, id, label) {
+                const current = getRecordTags(kind, id);
+                const presets = TAG_PRESETS[kind] || [];
+                openModal('🏷️ Tags — ' + esc(label),
+                    '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Click preset tags or type your own (comma separated).</div>' +
+                    '<div class="row-flex" style="flex-wrap:wrap;gap:6px;margin-bottom:14px">' +
+                        presets.map(p => {
+                            const on = current.indexOf(p) !== -1;
+                            return '<button type="button" class="btn xs ' + (on ? 'primary' : '') + '" data-tag="' + esc(p) + '" onclick="toggleTagPill(this)">' + esc(p) + '</button>';
+                        }).join('') +
+                    '</div>' +
+                    '<label class="field">All Tags (comma separated)<input id="tagsInput" value="' + esc(current.join(', ')) + '"></label>' +
+                    '</div>' +
+                    '<div class="form-actions"><button class="btn" data-action="close-modal">Cancel</button><button class="btn primary" onclick="saveTagsEditor(\'' + kind + '\',\'' + id + '\')">Save Tags</button></div>');
+            }
+            function toggleTagPill(btn) {
+                const inp = document.getElementById('tagsInput');
+                if (!inp)
+                    return;
+                const tag = btn.dataset.tag;
+                let list = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+                if (list.indexOf(tag) !== -1) {
+                    list = list.filter(x => x !== tag);
+                    btn.classList.remove('primary');
+                } else {
+                    list.push(tag);
+                    btn.classList.add('primary');
+                }
+                inp.value = list.join(', ');
+            }
+            function saveTagsEditor(kind, id) {
+                const inp = document.getElementById('tagsInput');
+                if (!inp)
+                    return;
+                setRecordTags(kind, id, inp.value.split(','));
+                logAct('Update Tags', kind, id, inp.value.trim());
+                closeModal();
+                render();
+                toast('Tags saved', 'success');
+            }
+            window.getRecordTags = getRecordTags;
+            window.setRecordTags = setRecordTags;
+            window.renderTagPills = renderTagPills;
+            window.openTagsEditor = openTagsEditor;
+            window.toggleTagPill = toggleTagPill;
+            window.saveTagsEditor = saveTagsEditor;
+
+            /* ─── Version history ─── */
+            function trackVersion(collection, recordId, action, before, after) {
+                if (!db.settings || db.settings.enableActivityLog === false)
+                    return;
+                if (!Array.isArray(db.versionHistory))
+                    db.versionHistory = [];
+                db.versionHistory.push({
+                    id: uid(),
+                    collection: collection,
+                    recordId: recordId,
+                    action: action,
+                    before: before ? JSON.parse(JSON.stringify(before)) : null,
+                    after: after ? JSON.parse(JSON.stringify(after)) : null,
+                    at: nowISO(),
+                    by: (currentUser && currentUser.email) || 'system'
+                });
+                if (db.versionHistory.length > 5000)
+                    db.versionHistory = db.versionHistory.slice(-5000);
+            }
+            function getVersionHistory(collection, recordId) {
+                return arr(db.versionHistory).filter(v => v.collection === collection && v.recordId === recordId).reverse();
+            }
+            function diffFields(before, after) {
+                if (!before || !after)
+                    return [];
+                const ignore = ['id', 'createdAt', 'updatedAt'];
+                const keys = uniq(Object.keys(before).concat(Object.keys(after)));
+                const out = [];
+                keys.forEach(k => {
+                    if (ignore.indexOf(k) !== -1)
+                        return;
+                    const a = JSON.stringify(before[k] === undefined ? null : before[k]);
+                    const b = JSON.stringify(after[k] === undefined ? null : after[k]);
+                    if (a !== b)
+                        out.push({ field: k, from: before[k], to: after[k] });
+                });
+                return out;
+            }
+            function fmtDiff(v) {
+                if (v === null || v === undefined)
+                    return '—';
+                if (typeof v === 'object') {
+                    try {
+                        return JSON.stringify(v).slice(0, 80);
+                    } catch (e) {
+                        return 'object';
+                    }
+                }
+                const s = String(v);
+                return s.length > 60 ? s.slice(0, 57) + '…' : s;
+            }
+            function showVersionHistory(collection, recordId, label) {
+                const hist = getVersionHistory(collection, recordId);
+                if (!hist.length) {
+                    openModal('📜 Version History — ' + esc(label || ''),
+                        '<div class="empty"><span class="big">📜</span>No change history recorded for this record yet.<br><span class="small muted">Only edits saved after this feature was added will be tracked.</span></div>' +
+                        '<div class="form-actions"><button class="btn primary" data-action="close-modal">Close</button></div>');
+                    return;
+                }
+                const body = hist.map(v => {
+                    let diffHTML = '';
+                    if (v.action === 'Update' && v.before && v.after) {
+                        const changes = diffFields(v.before, v.after);
+                        if (changes.length) {
+                            diffHTML = '<div style="margin-top:10px;background:var(--surface-3);padding:10px 12px;border-radius:8px;font-size:11.5px">' +
+                                changes.map(c => '<div style="margin-bottom:6px"><strong>' + esc(c.field) + ':</strong> <span style="color:var(--red);text-decoration:line-through">' + esc(fmtDiff(c.from)) + '</span> → <span style="color:var(--green);font-weight:600">' + esc(fmtDiff(c.to)) + '</span></div>').join('') +
+                                '</div>';
+                        }
+                    }
+                    const icon = v.action === 'Create' ? '＋' : v.action === 'Update' ? '✎' : v.action === 'Delete' ? '🗑' : '•';
+                    const iconCls = v.action === 'Create' ? 'create' : v.action === 'Update' ? 'update' : v.action === 'Delete' ? 'delete' : 'other';
+                    return '<div class="hist-item"><div class="hist-icon ' + iconCls + '">' + icon + '</div><div class="hist-body">' +
+                        '<div class="hist-head"><div><div class="hist-title">' + esc(v.action) + '</div></div><div class="hist-when">' + dateTimeFmt(v.at) + '</div></div>' +
+                        diffHTML +
+                        '<div class="hist-meta"><span>👤 ' + esc(v.by) + '</span></div>' +
+                        '</div></div>';
+                }).join('');
+                openModal('📜 Version History — ' + esc(label || ''),
+                    '<div style="max-height:60vh;overflow:auto">' + body + '</div>' +
+                    '<div class="form-actions"><button class="btn primary" data-action="close-modal">Close</button></div>', 'wide');
+            }
+            window.trackVersion = trackVersion;
+            window.getVersionHistory = getVersionHistory;
+            window.diffFields = diffFields;
+            window.showVersionHistory = showVersionHistory;
+
+            /* ─── Inline edit ─── */
+            function inlineEdit(collection, id, field, type) {
+                if (!canWrite())
+                    return;
+                const item = arr(db[collection]).find(x => x.id === id);
+                if (!item)
+                    return;
+                type = type || 'text';
+                const curVal = item[field] === undefined || item[field] === null ? '' : item[field];
+                openModal('✏️ Inline Edit — ' + esc(field),
+                    '<div class="small muted" style="margin-bottom:12px">Editing <strong>' + esc(item.name || item.invoiceNo || item.chequeNo || id) + '</strong> → field <strong>' + esc(field) + '</strong></div>' +
+                    '<label class="field">Value<input id="inlineInput" type="' + (type === 'number' ? 'number' : type === 'date' ? 'date' : 'text') + '" value="' + esc(curVal) + '" autofocus></label>' +
+                    '<div class="form-actions"><button class="btn" data-action="close-modal">Cancel</button><button class="btn primary" onclick="saveInlineEdit(\'' + collection + '\',\'' + id + '\',\'' + field + '\',\'' + type + '\')">Save</button></div>');
+                setTimeout(() => {
+                    const el = document.getElementById('inlineInput');
+                    if (el) {
+                        el.focus();
+                        el.select();
+                    }
+                }, 100);
+                const inp = document.getElementById('inlineInput');
+                if (inp)
+                    inp.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveInlineEdit(collection, id, field, type);
+                        }
+                    });
+            }
+            function saveInlineEdit(collection, id, field, type) {
+                if (!canWrite())
+                    return;
+                const inp = document.getElementById('inlineInput');
+                if (!inp)
+                    return;
+                const item = arr(db[collection]).find(x => x.id === id);
+                if (!item)
+                    return;
+                const before = JSON.parse(JSON.stringify(item));
+                let v = inp.value;
+                if (type === 'number')
+                    v = num(v);
+                item[field] = v;
+                item.updatedAt = nowISO();
+                trackVersion(collection, id, 'Update', before, item);
+                logAct('Inline Edit', collection, id, field + ' = ' + String(v).slice(0, 60));
+                save();
+                closeModal();
+                render();
+                toast('Updated ' + field, 'success');
+            }
+            window.inlineEdit = inlineEdit;
+            window.saveInlineEdit = saveInlineEdit;
+
+            /* ─── Login alert (new device) ─── */
+            function checkNewDeviceLogin(user) {
+                if (!Array.isArray(db.loginHistory))
+                    db.loginHistory = [];
+                const fp = navigator.platform + '|' + navigator.userAgent + '|' + screen.width + 'x' + screen.height;
+                const myHistory = db.loginHistory.filter(l => l.email === user.email && l.deviceFP);
+                if (myHistory.length === 0)
+                    return null;
+                const known = myHistory.some(l => l.deviceFP === fp);
+                if (known)
+                    return null;
+                return { message: 'New device login detected: ' + user.email };
+            }
+            window.checkNewDeviceLogin = checkNewDeviceLogin;
+
+            /* ─── Hook: inject breadcrumbs into every render ─── */
+            (function hookRenderForBreadcrumbs() {
+                const originalRender = window.render;
+                if (typeof originalRender !== 'function')
+                    return;
+                window.render = function() {
+                    originalRender.apply(this, arguments);
+                    const view = document.getElementById('view');
+                    if (!view)
+                        return;
+                    const cb = renderBreadcrumbs();
+                    if (cb && !view.querySelector('.crumb-bar')) {
+                        view.insertAdjacentHTML('afterbegin', cb);
+                    }
+                };
+            })();
+
+            /* ─── Hook: wrap save functions for auto versioning ─── */
+            (function wrapSaveFunctionsForVersioning() {
+                const targets = [
+                    ['saveCustomer', 'customers'],
+                    ['saveSupplier', 'suppliers'],
+                    ['savePurchase', 'purchases'],
+                    ['saveReceipt', 'receipts'],
+                    ['saveBank', 'bankAccounts'],
+                    ['saveExpense', 'expenses'],
+                    ['saveJournal', 'journals']
+                ];
+                targets.forEach(function(pair) {
+                    const fnName = pair[0];
+                    const colName = pair[1];
+                    // Defer wrapping until the function exists (defined later in the file).
+                    const wrapNow = function() {
+                        const original = window[fnName];
+                        if (typeof original !== 'function')
+                            return false;
+                        if (original.__wrapped)
+                            return true;
+                        const wrapped = function(ev) {
+                            const form = ev && ev.target;
+                            const id = form && form.dataset ? form.dataset.id : '';
+                            let beforeSnap = null;
+                            if (id) {
+                                const existing = arr(db[colName]).find(x => x.id === id);
+                                if (existing)
+                                    beforeSnap = JSON.parse(JSON.stringify(existing));
+                            }
+                            original.apply(this, arguments);
+                            if (id) {
+                                const after = arr(db[colName]).find(x => x.id === id);
+                                if (after && beforeSnap)
+                                    trackVersion(colName, id, 'Update', beforeSnap, after);
+                            } else {
+                                const list = arr(db[colName]);
+                                if (list.length) {
+                                    const last = list[list.length - 1];
+                                    if (last && last.id)
+                                        trackVersion(colName, last.id, 'Create', null, last);
+                                }
+                            }
+                        };
+                        wrapped.__wrapped = true;
+                        window[fnName] = wrapped;
+                        return true;
+                    };
+                    if (!wrapNow()) {
+                        // Retry after all parts load
+                        let tries = 0;
+                        const iv = setInterval(function() {
+                            tries++;
+                            if (wrapNow() || tries > 40)
+                                clearInterval(iv);
+                        }, 250);
+                    }
+                });
+            })();
+
+            /* ─── Hook: new device login alert ─── */
+            (function hookLoginAlert() {
+                let seen = false;
+                setInterval(function() {
+                    if (seen)
+                        return;
+                    if (!currentUser || !currentUser.email)
+                        return;
+                    seen = true;
+                    setTimeout(function() {
+                        const alert = checkNewDeviceLogin({ email: currentUser.email });
+                        if (alert)
+                            toast('🔐 New device login detected — check Login History', 'info');
+                    }, 2000);
+                }, 1500);
+            })();
+
+            /* ═══ END OF PART 2 ═══ */
+            /* ═══ START OF PART 3 ═══ */
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   REPORT SCHEMA
-   ═══════════════════════════════════════════════════════════════════════════ */
+               REPORT SCHEMA
+               ═══════════════════════════════════════════════════════════════════════════ */
             const REPORT_SOURCES = {
                 purchases: {
                     name: 'Purchases',
@@ -6429,8 +6952,8 @@
             }
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   UI STATE
-   ═══════════════════════════════════════════════════════════════════════════ */
+               UI STATE
+               ═══════════════════════════════════════════════════════════════════════════ */
             const ui = {
                 view: 'dashboard',
                 sup: {
@@ -6518,8 +7041,8 @@
             let reportCfg = defaultReportCfg();
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   NAV
-   ═══════════════════════════════════════════════════════════════════════════ */
+               NAV
+               ═══════════════════════════════════════════════════════════════════════════ */
             function renderNav() {
                 const n = document.getElementById('nav');
                 if (!n)
@@ -6553,8 +7076,8 @@
             window.renderNav = renderNav;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   GLOBAL SEARCH
-   ═══════════════════════════════════════════════════════════════════════════ */
+               GLOBAL SEARCH
+               ═══════════════════════════════════════════════════════════════════════════ */
             function onGlobalSearch() {
                 const q = (val('globalSearch') || '').trim().toLowerCase();
                 const box = document.getElementById('gsResults');
@@ -6599,8 +7122,8 @@
             window.onGlobalSearch = onGlobalSearch;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   NOTIFICATIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               NOTIFICATIONS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function getNotifications() {
                 const s = db.settings || {};
                 if (!s.notifEnabled)
@@ -6715,8 +7238,8 @@
             window.detectSmartAlerts = detectSmartAlerts;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   FAB MENU
-   ═══════════════════════════════════════════════════════════════════════════ */
+               FAB MENU
+               ═══════════════════════════════════════════════════════════════════════════ */
             function toggleFab() {
                 const m = document.getElementById('fabMenu')
                   , b = document.getElementById('fabBtn');
@@ -6732,8 +7255,8 @@
             window.toggleFab = toggleFab;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   RENDER ROUTER
-   ═══════════════════════════════════════════════════════════════════════════ */
+               RENDER ROUTER
+               ═══════════════════════════════════════════════════════════════════════════ */
             const views = {
                 dashboard: viewDashboard,
                 customers: viewCustomers,
@@ -6823,6 +7346,13 @@
                     }
                     , 0);
                 }
+                // Inject breadcrumbs after view HTML is placed
+                try {
+                    const cb = renderBreadcrumbs();
+                    if (cb && !el.querySelector('.crumb-bar')) {
+                        el.insertAdjacentHTML('afterbegin', cb);
+                    }
+                } catch (e) {}
             }
             window.render = render;
             function emptyRow(c, m) {
@@ -6860,8 +7390,8 @@
             }
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   PROJECTED BALANCE
-   ═══════════════════════════════════════════════════════════════════════════ */
+               PROJECTED BALANCE
+               ═══════════════════════════════════════════════════════════════════════════ */
             function projectedBalance(bankId, daysAhead) {
                 const current = bankBalance(bankId);
                 const t = today();
@@ -6872,8 +7402,8 @@
             window.projectedBalance = projectedBalance;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   KPI DEFINITIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               KPI DEFINITIONS
+               ═══════════════════════════════════════════════════════════════════════════ */
             const KPI_DEFS = {
                 cashBanks: {
                     label: 'Total Cash in Banks',
@@ -6998,8 +7528,8 @@
             window.saveKpiPicker = saveKpiPicker;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   DASHBOARD
-   ═══════════════════════════════════════════════════════════════════════════ */
+               DASHBOARD
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewDashboard() {
                 const t = today()
                   , tm = thisMonth()
@@ -7106,8 +7636,8 @@
             }
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   CUSTOMERS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               CUSTOMERS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewCustomers() {
                 let rows = arr(db.customers);
                 if (ui.cust.q) {
@@ -7128,13 +7658,14 @@
                     });
                 }
                 );
-                return '<div class="card"><div class="card-head"><h3>👥 Customers (' + enriched.length + ')</h3>' + '<div class="table-tools">' + '<button class="btn sm" data-action="export-cust-csv">⬇ CSV</button>' + '<button class="btn primary" data-action="add-customer">＋ Add Customer</button>' + '</div>' + '</div>' + '<div class="alert info"><span class="ico">ℹ</span><div>Customer tracking is <strong>cheque-based</strong>. Sales and opening balances are not recorded. Bounced amounts are the money owed to you.</div></div>' + '<div class="filter-bar">' + '<label class="field">Search<input type="search" value="' + esc(ui.cust.q) + '" oninput="ui.cust.q=this.value;render()" placeholder="Name or phone…"></label>' + '<label class="field">Reliability<select onchange="ui.cust.reliability=this.value;render()"><option value="all" ' + (ui.cust.reliability === 'all' ? 'selected' : '') + '>All</option><option value="trusted" ' + (ui.cust.reliability === 'trusted' ? 'selected' : '') + '>Trusted</option><option value="watch" ' + (ui.cust.reliability === 'watch' ? 'selected' : '') + '>Watch</option><option value="risky" ' + (ui.cust.reliability === 'risky' ? 'selected' : '') + '>Risky</option><option value="new" ' + (ui.cust.reliability === 'new' ? 'selected' : '') + '>New</option></select></label>' + '</div>' + '<div class="table-wrap"><table><thead><tr>' + '<th style="width:36px"><input type="checkbox" onclick="selectAllBulk(this.checked,Array.from(this.closest(\'table\').querySelectorAll(\'input[data-bulk-id]\')).map(c=>c.dataset.bulkId))"></th>' + '<th>Customer</th><th>Phone</th>' + '<th class="num">Total Chqs</th>' + '<th class="num">In Hand</th>' + '<th class="num">Issued</th>' + '<th class="num">Cleared</th>' + '<th class="num">Bounced</th>' + '<th>Reliability</th>' + '<th>Status</th>' + '</tr></thead><tbody>' + (enriched.length ? enriched.map(c => {
+                return '<div class="card"><div class="card-head"><h3>👥 Customers (' + enriched.length + ')</h3>' + '<div class="table-tools">' + '<button class="btn sm" data-action="export-cust-csv">⬇ CSV</button>' + '<button class="btn primary" data-action="add-customer">＋ Add Customer</button>' + '</div>' + '</div>' + '<div class="alert info"><span class="ico">ℹ</span><div>Customer tracking is <strong>cheque-based</strong>. Sales and opening balances are not recorded. Bounced amounts are the money owed to you.</div></div>' + '<div class="filter-bar">' + '<label class="field">Search<input type="search" value="' + esc(ui.cust.q) + '" oninput="ui.cust.q=this.value;render()" placeholder="Name or phone…"></label>' + '<label class="field">Reliability<select onchange="ui.cust.reliability=this.value;render()"><option value="all" ' + (ui.cust.reliability === 'all' ? 'selected' : '') + '>All</option><option value="trusted" ' + (ui.cust.reliability === 'trusted' ? 'selected' : '') + '>Trusted</option><option value="watch" ' + (ui.cust.reliability === 'watch' ? 'selected' : '') + '>Watch</option><option value="risky" ' + (ui.cust.reliability === 'risky' ? 'selected' : '') + '>Risky</option><option value="new" ' + (ui.cust.reliability === 'new' ? 'selected' : '') + '>New</option></select></label>' + '</div>' + '<div class="table-wrap"><table><thead><tr>' + '<th style="width:36px"><input type="checkbox" onclick="selectAllBulk(this.checked,Array.from(this.closest(\'table\').querySelectorAll(\'input[data-bulk-id]\')).map(c=>c.dataset.bulkId))"></th>' + '<th>Customer</th><th>Tags</th><th>Phone</th>' + '<th class="num">Total Chqs</th>' + '<th class="num">In Hand</th>' + '<th class="num">Issued</th>' + '<th class="num">Cleared</th>' + '<th class="num">Bounced</th>' + '<th>Reliability</th>' + '<th>Status</th>' + '</tr></thead><tbody>' + (enriched.length ? enriched.map(c => {
                     const bounced = c.bouncedAging.total;
                     const badge = bounced <= 0 ? '<span class="badge green">Clear</span>' : bounced < 50000 ? '<span class="badge blue">Low</span>' : bounced < 200000 ? '<span class="badge amber">Medium</span>' : '<span class="badge red">High</span>';
                     const rel = c.reliability;
-                    return '<tr>' + '<td onclick="event.stopPropagation()"><input type="checkbox" data-bulk-id="' + c.id + '" onchange="toggleBulkSelect(\'' + c.id + '\',this.checked)"></td>' + '<td data-action="customer-detail" data-id="' + c.id + '"><strong>' + esc(c.name) + '</strong></td>' + '<td data-action="customer-detail" data-id="' + c.id + '">' + esc(c.phone || '—') + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + c.summary.total.count + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + moneyPlain(c.summary.inHand.value) + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + moneyPlain(c.summary.issued.value) + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + moneyPlain(c.summary.cleared.value) + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '"><strong style="color:' + (bounced > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(bounced) + '</strong></td>' + '<td data-action="customer-detail" data-id="' + c.id + '"><span class="reliability ' + rel.cls + '">' + rel.label + (rel.score ? ' ' + rel.score.toFixed(0) + '%' : '') + '</span></td>' + '<td data-action="customer-detail" data-id="' + c.id + '">' + badge + '</td>' + '</tr>';
+                    const tags = renderTagPills('customer', c.id);
+                    return '<tr>' + '<td onclick="event.stopPropagation()"><input type="checkbox" data-bulk-id="' + c.id + '" onchange="toggleBulkSelect(\'' + c.id + '\',this.checked)"></td>' + '<td data-action="customer-detail" data-id="' + c.id + '"><strong>' + esc(c.name) + '</strong></td>' + '<td data-action="customer-detail" data-id="' + c.id + '">' + (tags || '<span class="muted small">—</span>') + '</td>' + '<td data-action="customer-detail" data-id="' + c.id + '">' + esc(c.phone || '—') + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + c.summary.total.count + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + moneyPlain(c.summary.inHand.value) + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + moneyPlain(c.summary.issued.value) + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '">' + moneyPlain(c.summary.cleared.value) + '</td>' + '<td class="num" data-action="customer-detail" data-id="' + c.id + '"><strong style="color:' + (bounced > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(bounced) + '</strong></td>' + '<td data-action="customer-detail" data-id="' + c.id + '"><span class="reliability ' + rel.cls + '">' + rel.label + (rel.score ? ' ' + rel.score.toFixed(0) + '%' : '') + '</span></td>' + '<td data-action="customer-detail" data-id="' + c.id + '">' + badge + '</td>' + '</tr>';
                 }
-                ).join('') : emptyRow(10, 'No customers yet — click "+ Add Customer"')) + '</tbody></table></div></div>';
+                ).join('') : emptyRow(11, 'No customers yet — click "+ Add Customer"')) + '</tbody></table></div></div>';
             }
             function openCustomerForm(id) {
                 const c = id ? custObj(id) : null;
@@ -7230,9 +7761,10 @@
                 if (!ui.cust._tab)
                     ui.cust._tab = 'Overview';
                 const tab = ui.cust._tab;
+                const tagsHTML = renderTagPills('customer', id);
                 let body = '';
                 if (tab === 'Overview') {
-                    body = '<div class="section-title">Contact</div>' + '<div class="detail-row"><span class="dr-l">Phone</span><span class="dr-v">' + esc(c.phone || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Email</span><span class="dr-v">' + esc(c.email || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Business</span><span class="dr-v">' + esc(c.business || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Address</span><span class="dr-v">' + esc(c.address || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Cheque Limit</span><span class="dr-v">' + moneyPlain(num(c.chequeLimit)) + '</span></div>' + (c.blacklisted ? '<div class="alert danger" style="margin-top:12px"><span class="ico">⛔</span><div><strong>Blacklisted</strong> — do not accept cheques from this customer.</div></div>' : '') + '<div class="section-title">Reliability</div>' + '<div class="card" style="padding:16px"><div class="row-flex" style="justify-content:space-between"><span class="reliability ' + rel.cls + '" style="font-size:14px;padding:8px 16px">' + rel.label + (rel.score ? ' • ' + rel.score.toFixed(0) + '%' : "") + '</span><span class="small muted">' + (rel.cls === 'new' ? 'Need at least 3 resolved cheques for score' : ((s.cleared.count || 0) + ' cleared / ' + (s.bounced.count || 0) + ' bounced')) + '</span></div></div>' + (c.notes ? '<div class="section-title">Notes</div><div class="card" style="padding:14px;font-size:12.5px;white-space:pre-wrap">' + esc(c.notes) + '</div>' : '');
+                    body = '<div class="section-title">Contact</div>' + '<div class="detail-row"><span class="dr-l">Phone</span><span class="dr-v">' + esc(c.phone || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Email</span><span class="dr-v">' + esc(c.email || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Business</span><span class="dr-v">' + esc(c.business || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Address</span><span class="dr-v">' + esc(c.address || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Cheque Limit</span><span class="dr-v">' + moneyPlain(num(c.chequeLimit)) + '</span></div>' + (tagsHTML ? '<div class="detail-row"><span class="dr-l">Tags</span><span class="dr-v">' + tagsHTML + '</span></div>' : '') + (c.blacklisted ? '<div class="alert danger" style="margin-top:12px"><span class="ico">⛔</span><div><strong>Blacklisted</strong> — do not accept cheques from this customer.</div></div>' : '') + '<div class="section-title">Reliability</div>' + '<div class="card" style="padding:16px"><div class="row-flex" style="justify-content:space-between"><span class="reliability ' + rel.cls + '" style="font-size:14px;padding:8px 16px">' + rel.label + (rel.score ? ' • ' + rel.score.toFixed(0) + '%' : "") + '</span><span class="small muted">' + (rel.cls === 'new' ? 'Need at least 3 resolved cheques for score' : ((s.cleared.count || 0) + ' cleared / ' + (s.bounced.count || 0) + ' bounced')) + '</span></div></div>' + (c.notes ? '<div class="section-title">Notes</div><div class="card" style="padding:14px;font-size:12.5px;white-space:pre-wrap">' + esc(c.notes) + '</div>' : '');
                 } else if (tab === 'Bounced Recovery') {
                     body = (aging.total > 0 ? '<div class="cash-req-card" style="background:linear-gradient(135deg,var(--red-soft),var(--amber-soft));border-color:var(--red-bd)"><div class="h" style="color:var(--red)">Total Owed to You</div><div class="v">' + money(aging.total) + '</div><div class="sub">' + s.bounced.count + ' bounced cheque(s)</div></div>' + '<div class="grid grid-4" style="margin-bottom:16px">' + '<div style="text-align:center">' + progressRing(aging.current, aging.total || 1, 'var(--green)', 70) + '<div class="k-label" style="margin-top:6px">Recent</div><div class="k-sub">' + moneyPlain(aging.current) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d30, aging.total || 1, 'var(--amber)', 70) + '<div class="k-label" style="margin-top:6px">30-60d</div><div class="k-sub">' + moneyPlain(aging.d30) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d60, aging.total || 1, '#ea580c', 70) + '<div class="k-label" style="margin-top:6px">60-90d</div><div class="k-sub">' + moneyPlain(aging.d60) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d90, aging.total || 1, 'var(--red)', 70) + '<div class="k-label" style="margin-top:6px">90+</div><div class="k-sub">' + moneyPlain(aging.d90) + '</div></div>' + '</div>' + '<div class="section-title">Bounced Cheques</div>' + '<div class="table-wrap"><table><thead><tr><th>Bounced On</th><th>Cheque</th><th>Bank</th><th>Reason</th><th class="num">Amount</th><th class="num">Settled</th><th class="num">Remaining</th><th>Days Ago</th><th>Actions</th></tr></thead><tbody>' + bouncedList.map(cq => {
                         const daysAgo = Math.abs(daysBetween(cq.bouncedDate || cq.date, today()));
@@ -7265,8 +7797,8 @@
                     small: true
                 }) + kpiCard('Bounced (Owed)', moneyPlain(aging.total), s.bounced.count + ' cheques', {
                     small: true
-                }) + '</div>' + '<div class="row-flex" style="margin-bottom:14px;justify-content:flex-end">' + '<button class="btn sm" onclick="copyToClipboard(whatsappReminder(\'' + id + '\',null))">💬 Copy WhatsApp</button>' + '<button class="btn sm" onclick="printCustomerStatement(\'' + id + '\')">🖨 Statement</button>' + '</div>' + '<div class="tabs" style="margin-bottom:14px">' + tabs.map(t => '<div class="tab ' + (tab === t ? 'active' : '') + '" onclick="ui.cust._tab=\'' + t + '\';showCustomerDetail(\'' + id + '\')">' + t + '</div>').join('') + '</div>' + body;
-                openModal('👤 ' + c.name, body2, '<div class="form-actions">' + (can('delete') ? '<button class="btn danger" onclick="closeModal();deleteCustomer(\'' + id + '\')">🗑 Delete</button>' : '') + '<button class="btn" onclick="closeModal();openCustomerForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>', 'xl');
+                }) + '</div>' + '<div class="row-flex" style="margin-bottom:14px;justify-content:flex-end">' + '<button class="btn sm" onclick="openTagsEditor(\'customer\',\'' + id + '\',\'' + esc(c.name).replace(/'/g, "\\'") + '\')">🏷️ Tags</button>' + '<button class="btn sm" onclick="showVersionHistory(\'customers\',\'' + id + '\',\'' + esc(c.name).replace(/'/g, "\\'") + '\')">📜 History</button>' + '<button class="btn sm" onclick="copyToClipboard(whatsappReminder(\'' + id + '\',null))">💬 Copy WhatsApp</button>' + '<button class="btn sm" onclick="printCustomerStatement(\'' + id + '\')">🖨 Statement</button>' + '</div>' + '<div class="tabs" style="margin-bottom:14px">' + tabs.map(t => '<div class="tab ' + (tab === t ? 'active' : '') + '" onclick="ui.cust._tab=\'' + t + '\';showCustomerDetail(\'' + id + '\')">' + t + '</div>').join('') + '</div>' + body;
+                openModal('👤 ' + c.name, body2, 'xl');
             }
             window.showCustomerDetail = showCustomerDetail;
             function addCustomerNote(cid) {
@@ -7394,9 +7926,12 @@
             }
             window.printCustomerStatement = printCustomerStatement;
 
+            /* ═══ END OF PART 3 ═══ */
+            /* ═══ START OF PART 4 ═══ */
+
             /* ═══════════════════════════════════════════════════════════════════════════
-   SUPPLIERS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               SUPPLIERS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewSuppliers() {
                 let rows = arr(db.suppliers);
                 if (ui.sup.q) {
@@ -7421,11 +7956,12 @@
                     };
                 }
                 ).filter(x => x.a.total > 0).sort( (a, b) => b.priorityScore - a.priorityScore);
-                return '<div class="card"><div class="card-head"><h3>🏭 Suppliers (' + enriched.length + ')</h3>' + '<div class="table-tools">' + '<button class="btn sm" data-action="export-sup-csv">⬇ CSV</button>' + '<button class="btn primary" data-action="add-supplier">＋ Add Supplier</button>' + '</div>' + '</div>' + '<div class="filter-bar">' + '<label class="field">Search<input type="search" value="' + esc(ui.sup.q) + '" oninput="ui.sup.q=this.value;render()" placeholder="Name…"></label>' + '<label class="field">Category<select onchange="ui.sup.catFilter=this.value;render()"><option value="">All Categories</option>' + arr(db.categories).map(c => '<option value="' + c.id + '" ' + (ui.sup.catFilter === c.id ? 'selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label>' + '</div>' + (priority.length ? '<div class="card" style="background:var(--surface-2);border-color:var(--amber-bd)"><div class="card-head"><h3>🎯 Payment Priority Queue</h3><span class="badge amber">Pay these first</span></div>' + '<div class="table-wrap"><table><thead><tr><th>#</th><th>Supplier</th><th class="num">90+d</th><th class="num">60-90d</th><th class="num">30-60d</th><th class="num">Total</th><th class="num">Score</th><th></th></tr></thead><tbody>' + priority.slice(0, 10).map( (p, i) => '<tr data-action="supplier-detail" data-id="' + p.s.id + '"><td><strong>#' + (i + 1) + '</strong></td><td><strong>' + esc(p.s.name) + '</strong></td><td class="num" style="color:var(--red)">' + (p.a.d90 ? moneyPlain(p.a.d90) : '—') + '</td><td class="num" style="color:#ea580c">' + (p.a.d60 ? moneyPlain(p.a.d60) : '—') + '</td><td class="num" style="color:var(--amber)">' + (p.a.d30 ? moneyPlain(p.a.d30) : '—') + '</td><td class="num"><strong>' + moneyPlain(p.a.total) + '</strong></td><td class="num">' + p.priorityScore.toFixed(0) + '</td><td onclick="event.stopPropagation()"><button class="btn xs primary" data-action="nav" data-view="payments">💸 Pay</button></td></tr>').join('') + '</tbody></table></div></div>' : '') + '<div class="table-wrap"><table><thead><tr>' + '<th style="width:36px"><input type="checkbox" onclick="selectAllBulk(this.checked,Array.from(this.closest(\'table\').querySelectorAll(\'input[data-bulk-id]\')).map(c=>c.dataset.bulkId))"></th>' + '<th>Supplier</th><th>Category</th><th>Phone</th><th class="num">Purchases</th><th class="num">Paid</th><th class="num">Payable</th><th class="num">Overdue 90+</th></tr></thead><tbody>' + (enriched.length ? enriched.map(s => {
+                return '<div class="card"><div class="card-head"><h3>🏭 Suppliers (' + enriched.length + ')</h3>' + '<div class="table-tools">' + '<button class="btn sm" data-action="export-sup-csv">⬇ CSV</button>' + '<button class="btn primary" data-action="add-supplier">＋ Add Supplier</button>' + '</div>' + '</div>' + '<div class="filter-bar">' + '<label class="field">Search<input type="search" value="' + esc(ui.sup.q) + '" oninput="ui.sup.q=this.value;render()" placeholder="Name…"></label>' + '<label class="field">Category<select onchange="ui.sup.catFilter=this.value;render()"><option value="">All Categories</option>' + arr(db.categories).map(c => '<option value="' + c.id + '" ' + (ui.sup.catFilter === c.id ? 'selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label>' + '</div>' + (priority.length ? '<div class="card" style="background:var(--surface-2);border-color:var(--amber-bd)"><div class="card-head"><h3>🎯 Payment Priority Queue</h3><span class="badge amber">Pay these first</span></div>' + '<div class="table-wrap"><table><thead><tr><th>#</th><th>Supplier</th><th class="num">90+d</th><th class="num">60-90d</th><th class="num">30-60d</th><th class="num">Total</th><th class="num">Score</th><th></th></tr></thead><tbody>' + priority.slice(0, 10).map( (p, i) => '<tr data-action="supplier-detail" data-id="' + p.s.id + '"><td><strong>#' + (i + 1) + '</strong></td><td><strong>' + esc(p.s.name) + '</strong></td><td class="num" style="color:var(--red)">' + (p.a.d90 ? moneyPlain(p.a.d90) : '—') + '</td><td class="num" style="color:#ea580c">' + (p.a.d60 ? moneyPlain(p.a.d60) : '—') + '</td><td class="num" style="color:var(--amber)">' + (p.a.d30 ? moneyPlain(p.a.d30) : '—') + '</td><td class="num"><strong>' + moneyPlain(p.a.total) + '</strong></td><td class="num">' + p.priorityScore.toFixed(0) + '</td><td onclick="event.stopPropagation()"><button class="btn xs primary" data-action="nav" data-view="payments">💸 Pay</button></td></tr>').join('') + '</tbody></table></div></div>' : '') + '<div class="table-wrap"><table><thead><tr>' + '<th style="width:36px"><input type="checkbox" onclick="selectAllBulk(this.checked,Array.from(this.closest(\'table\').querySelectorAll(\'input[data-bulk-id]\')).map(c=>c.dataset.bulkId))"></th>' + '<th>Supplier</th><th>Tags</th><th>Category</th><th>Phone</th><th class="num">Purchases</th><th class="num">Paid</th><th class="num">Payable</th><th class="num">Overdue 90+</th></tr></thead><tbody>' + (enriched.length ? enriched.map(s => {
                     const cat = s.categoryId ? catObj(s.categoryId) : null;
-                    return '<tr>' + '<td onclick="event.stopPropagation()"><input type="checkbox" data-bulk-id="' + s.id + '" onchange="toggleBulkSelect(\'' + s.id + '\',this.checked)"></td>' + '<td data-action="supplier-detail" data-id="' + s.id + '"><strong>' + esc(s.name) + '</strong></td>' + '<td data-action="supplier-detail" data-id="' + s.id + '">' + (cat ? '<span class="badge" style="background:' + cat.color + '22;color:' + cat.color + ';border:1px solid ' + cat.color + '44">' + esc(cat.name) + '</span>' : '—') + '</td>' + '<td data-action="supplier-detail" data-id="' + s.id + '">' + esc(s.phone || '—') + '</td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '">' + moneyPlain(s.purchases) + '</td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '">' + moneyPlain(s.paid) + '</td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '"><strong style="color:' + (s.balance > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(s.balance) + '</strong></td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '" style="color:' + (s.aging.d90 > 0 ? 'var(--red)' : 'var(--text-4)') + '">' + (s.aging.d90 ? moneyPlain(s.aging.d90) : '—') + '</td>' + '</tr>';
+                    const tags = renderTagPills('supplier', s.id);
+                    return '<tr>' + '<td onclick="event.stopPropagation()"><input type="checkbox" data-bulk-id="' + s.id + '" onchange="toggleBulkSelect(\'' + s.id + '\',this.checked)"></td>' + '<td data-action="supplier-detail" data-id="' + s.id + '"><strong>' + esc(s.name) + '</strong></td>' + '<td data-action="supplier-detail" data-id="' + s.id + '">' + (tags || '<span class="muted small">—</span>') + '</td>' + '<td data-action="supplier-detail" data-id="' + s.id + '">' + (cat ? '<span class="badge" style="background:' + cat.color + '22;color:' + cat.color + ';border:1px solid ' + cat.color + '44">' + esc(cat.name) + '</span>' : '—') + '</td>' + '<td data-action="supplier-detail" data-id="' + s.id + '">' + esc(s.phone || '—') + '</td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '">' + moneyPlain(s.purchases) + '</td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '">' + moneyPlain(s.paid) + '</td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '"><strong style="color:' + (s.balance > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(s.balance) + '</strong></td>' + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '" style="color:' + (s.aging.d90 > 0 ? 'var(--red)' : 'var(--text-4)') + '">' + (s.aging.d90 ? moneyPlain(s.aging.d90) : '—') + '</td>' + '</tr>';
                 }
-                ).join('') : emptyRow(8, 'No suppliers')) + '</tbody></table></div></div>';
+                ).join('') : emptyRow(9, 'No suppliers')) + '</tbody></table></div></div>';
             }
             function openSupplierForm(id) {
                 const s = id ? supObj(id) : null;
@@ -7514,6 +8050,7 @@
                 const returns = arr(db.supplierReturns).filter(r => r.supplierId === id).sort( (a, b) => a.date < b.date ? 1 : -1).slice(0, 10);
                 const cat = s.categoryId ? catObj(s.categoryId) : null;
                 const overLimit = num(s.creditLimit) > 0 && supplierBalance(id) > num(s.creditLimit);
+                const tagsHTML = renderTagPills('supplier', id);
                 openModal('🏭 ' + s.name, '<div class="kpi-strip" style="margin-bottom:20px">' + kpiCard('Opening', moneyPlain(num(s.openingBalance)), dateFmt(s.openingDate || ''), {
                     small: true
                 }) + kpiCard('Ledger Balance', moneyPlain(ledger.balance), '', {
@@ -7522,7 +8059,7 @@
                     small: true
                 }) + kpiCard('Category', (cat ? cat.name : 'Uncategorized'), '', {
                     small: true
-                }) + '</div>' + (overLimit ? '<div class="alert danger"><span class="ico">⚠</span><div><strong>Credit Limit Exceeded</strong> — Payable ' + moneyPlain(supplierBalance(id)) + ' exceeds limit ' + moneyPlain(num(s.creditLimit)) + '</div></div>' : '') + '<div class="section-title">Contact</div>' + '<div class="detail-row"><span class="dr-l">Phone</span><span class="dr-v">' + esc(s.phone || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Email</span><span class="dr-v">' + esc(s.email || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Contact</span><span class="dr-v">' + esc(s.contact || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Address</span><span class="dr-v">' + esc(s.address || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Credit Days</span><span class="dr-v">' + num(s.creditDays || 30) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Credit Limit</span><span class="dr-v">' + moneyPlain(num(s.creditLimit)) + '</span></div>' + '<div class="section-title">Aging Breakdown</div>' + '<div class="grid grid-4" style="margin-bottom:16px">' + '<div style="text-align:center">' + progressRing(aging.current, aging.total || 1, 'var(--green)', 70) + '<div class="k-label" style="margin-top:6px">Current</div><div class="k-sub">' + moneyPlain(aging.current) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d30, aging.total || 1, 'var(--amber)', 70) + '<div class="k-label" style="margin-top:6px">30-60d</div><div class="k-sub">' + moneyPlain(aging.d30) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d60, aging.total || 1, '#ea580c', 70) + '<div class="k-label" style="margin-top:6px">60-90d</div><div class="k-sub">' + moneyPlain(aging.d60) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d90, aging.total || 1, 'var(--red)', 70) + '<div class="k-label" style="margin-top:6px">90+</div><div class="k-sub">' + moneyPlain(aging.d90) + '</div></div>' + '</div>' + (purchases.length ? '<div class="section-title">Recent Purchases</div><div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Date</th><th>Invoice</th><th>Category</th><th class="num">Amount</th></tr></thead><tbody>' + purchases.map(p => '<tr><td>' + dateFmt(p.date) + '</td><td class="mono">' + esc(p.invoiceNo || '—') + '</td><td>' + esc(catName(p.categoryId)) + '</td><td class="num">' + moneyPlain(p.amount) + '</td></tr>').join('') + '</tbody></table></div>' : '') + (payments.length ? '<div class="section-title">Recent Payments</div><div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Date</th><th>Reference</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + payments.map(p => '<tr class="' + (p.fullyReversed ? 'rev-row' : '') + '"><td>' + dateFmt(p.date) + '</td><td class="mono">' + esc(p.reference || '—') + '</td><td class="num">' + moneyPlain(p.amount) + '</td><td>' + (p.fullyReversed ? '<span class="rev-badge">⚠ Reversed</span>' : '<span class="badge green">Active</span>') + '</td></tr>').join('') + '</tbody></table></div>' : '') + (returns.length ? '<div class="section-title">Returns</div><div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Date</th><th>Ref</th><th>Reason</th><th class="num">Amount</th></tr></thead><tbody>' + returns.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td class="mono">' + esc(r.reference || '—') + '</td><td>' + esc(r.reason || '') + '</td><td class="num">' + moneyPlain(r.amount) + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="section-title">Ledger (' + ledger.rows.length + ' entries)</div>' + '<div class="table-wrap" style="max-height:400px"><table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>' + (ledger.rows.length ? ledger.rows.map(r => '<tr class="' + (r.isReversal ? 'rev-row' : '') + '"><td>' + dateFmt(r.date) + '</td><td>' + (r.isReversal ? '<span class="rev-badge">REVERSAL</span>' : esc(r.type)) + '</td><td class="mono small">' + esc(r.ref || '—') + '</td><td class="num">' + (r.debit ? moneyPlain(r.debit) : '—') + '</td><td class="num">' + (r.credit ? moneyPlain(r.credit) : '—') + '</td><td class="num"><strong>' + moneyPlain(r.balance) + '</strong></td></tr>').join('') : emptyRow(6, 'Empty')) + '</tbody></table></div>' + '<div class="form-actions">' + '<button class="btn" onclick="openSupplierReturnForm(\'' + id + '\')">↩️ Return Note</button>' + '<button class="btn" onclick="printSupplierStatement(\'' + id + '\')">🖨 Statement</button>' + (can('delete') ? '<button class="btn danger" onclick="closeModal();deleteSupplier(\'' + id + '\')">🗑 Delete</button>' : '') + '<button class="btn" onclick="closeModal();openSupplierForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>', 'xl');
+                }) + '</div>' + (tagsHTML ? '<div class="row-flex" style="margin-bottom:14px"><span class="small muted">Tags:</span> ' + tagsHTML + '</div>' : '') + (overLimit ? '<div class="alert danger"><span class="ico">⚠</span><div><strong>Credit Limit Exceeded</strong> — Payable ' + moneyPlain(supplierBalance(id)) + ' exceeds limit ' + moneyPlain(num(s.creditLimit)) + '</div></div>' : '') + '<div class="section-title">Contact</div>' + '<div class="detail-row"><span class="dr-l">Phone</span><span class="dr-v">' + esc(s.phone || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Email</span><span class="dr-v">' + esc(s.email || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Contact</span><span class="dr-v">' + esc(s.contact || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Address</span><span class="dr-v">' + esc(s.address || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Credit Days</span><span class="dr-v">' + num(s.creditDays || 30) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Credit Limit</span><span class="dr-v">' + moneyPlain(num(s.creditLimit)) + '</span></div>' + '<div class="section-title">Aging Breakdown</div>' + '<div class="grid grid-4" style="margin-bottom:16px">' + '<div style="text-align:center">' + progressRing(aging.current, aging.total || 1, 'var(--green)', 70) + '<div class="k-label" style="margin-top:6px">Current</div><div class="k-sub">' + moneyPlain(aging.current) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d30, aging.total || 1, 'var(--amber)', 70) + '<div class="k-label" style="margin-top:6px">30-60d</div><div class="k-sub">' + moneyPlain(aging.d30) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d60, aging.total || 1, '#ea580c', 70) + '<div class="k-label" style="margin-top:6px">60-90d</div><div class="k-sub">' + moneyPlain(aging.d60) + '</div></div>' + '<div style="text-align:center">' + progressRing(aging.d90, aging.total || 1, 'var(--red)', 70) + '<div class="k-label" style="margin-top:6px">90+</div><div class="k-sub">' + moneyPlain(aging.d90) + '</div></div>' + '</div>' + (purchases.length ? '<div class="section-title">Recent Purchases</div><div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Date</th><th>Invoice</th><th>Category</th><th class="num">Amount</th></tr></thead><tbody>' + purchases.map(p => '<tr><td>' + dateFmt(p.date) + '</td><td class="mono">' + esc(p.invoiceNo || '—') + '</td><td>' + esc(catName(p.categoryId)) + '</td><td class="num">' + moneyPlain(p.amount) + '</td></tr>').join('') + '</tbody></table></div>' : '') + (payments.length ? '<div class="section-title">Recent Payments</div><div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Date</th><th>Reference</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + payments.map(p => '<tr class="' + (p.fullyReversed ? 'rev-row' : '') + '"><td>' + dateFmt(p.date) + '</td><td class="mono">' + esc(p.reference || '—') + '</td><td class="num">' + moneyPlain(p.amount) + '</td><td>' + (p.fullyReversed ? '<span class="rev-badge">⚠ Reversed</span>' : '<span class="badge green">Active</span>') + '</td></tr>').join('') + '</tbody></table></div>' : '') + (returns.length ? '<div class="section-title">Returns</div><div class="table-wrap" style="margin-bottom:16px"><table><thead><tr><th>Date</th><th>Ref</th><th>Reason</th><th class="num">Amount</th></tr></thead><tbody>' + returns.map(r => '<tr><td>' + dateFmt(r.date) + '</td><td class="mono">' + esc(r.reference || '—') + '</td><td>' + esc(r.reason || '') + '</td><td class="num">' + moneyPlain(r.amount) + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="section-title">Ledger (' + ledger.rows.length + ' entries)</div>' + '<div class="table-wrap" style="max-height:400px"><table><thead><tr><th>Date</th><th>Type</th><th>Ref</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>' + (ledger.rows.length ? ledger.rows.map(r => '<tr class="' + (r.isReversal ? 'rev-row' : '') + '"><td>' + dateFmt(r.date) + '</td><td>' + (r.isReversal ? '<span class="rev-badge">REVERSAL</span>' : esc(r.type)) + '</td><td class="mono small">' + esc(r.ref || '—') + '</td><td class="num">' + (r.debit ? moneyPlain(r.debit) : '—') + '</td><td class="num">' + (r.credit ? moneyPlain(r.credit) : '—') + '</td><td class="num"><strong>' + moneyPlain(r.balance) + '</strong></td></tr>').join('') : emptyRow(6, 'Empty')) + '</tbody></table></div>' + '<div class="form-actions">' + '<button class="btn" onclick="openTagsEditor(\'supplier\',\'' + id + '\',\'' + esc(s.name).replace(/'/g, "\\'") + '\')">🏷️ Tags</button>' + '<button class="btn" onclick="showVersionHistory(\'suppliers\',\'' + id + '\',\'' + esc(s.name).replace(/'/g, "\\'") + '\')">📜 History</button>' + '<button class="btn" onclick="openSupplierReturnForm(\'' + id + '\')">↩️ Return Note</button>' + '<button class="btn" onclick="printSupplierStatement(\'' + id + '\')">🖨 Statement</button>' + (can('delete') ? '<button class="btn danger" onclick="closeModal();deleteSupplier(\'' + id + '\')">🗑 Delete</button>' : '') + '<button class="btn" onclick="closeModal();openSupplierForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>', 'xl');
             }
             window.showSupplierDetail = showSupplierDetail;
             function openSupplierReturnForm(supplierId) {
@@ -7575,8 +8112,8 @@
             window.printSupplierStatement = printSupplierStatement;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   PURCHASES
-   ═══════════════════════════════════════════════════════════════════════════ */
+               PURCHASES
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewPurchases() {
                 let rows = arr(db.purchases).sort( (a, b) => a.date < b.date ? 1 : -1);
                 if (ui.pur.q) {
@@ -7687,13 +8224,13 @@
                     small: true
                 }) + kpiCard('Category', catName(p.categoryId), '', {
                     small: true
-                }) + '</div>' + '<div class="detail-row"><span class="dr-l">Supplier</span><span class="dr-v">' + esc(supplier ? supplier.name : '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Invoice</span><span class="dr-v mono">' + esc(p.invoiceNo || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Amount in Words</span><span class="dr-v" style="font-size:12px">' + esc(amountInWords(p.amount)) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Created</span><span class="dr-v">' + dateTimeFmt(p.createdAt) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Description</span><span class="dr-v">' + esc(p.description || '—') + '</span></div>' + '<div class="form-actions">' + '<button class="btn danger" onclick="closeModal();deletePurchase(\'' + id + '\')">🗑 Delete</button>' + '<button class="btn" onclick="closeModal();openPurchaseForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>', 'wide');
+                }) + '</div>' + '<div class="detail-row"><span class="dr-l">Supplier</span><span class="dr-v">' + esc(supplier ? supplier.name : '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Invoice</span><span class="dr-v mono">' + esc(p.invoiceNo || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Amount in Words</span><span class="dr-v" style="font-size:12px">' + esc(amountInWords(p.amount)) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Created</span><span class="dr-v">' + dateTimeFmt(p.createdAt) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Description</span><span class="dr-v">' + esc(p.description || '—') + '</span></div>' + '<div class="form-actions">' + '<button class="btn" onclick="showVersionHistory(\'purchases\',\'' + id + '\',\'' + esc(p.invoiceNo || '').replace(/'/g, "\\'") + '\')">📜 History</button>' + '<button class="btn danger" onclick="closeModal();deletePurchase(\'' + id + '\')">🗑 Delete</button>' + '<button class="btn" onclick="closeModal();openPurchaseForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>', 'wide');
             }
             window.showPurchaseDetail = showPurchaseDetail;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   CATEGORIES
-   ═══════════════════════════════════════════════════════════════════════════ */
+               CATEGORIES
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewCategories() {
                 return '<div class="card"><div class="card-head"><h3>🏷️ Categories (' + arr(db.categories).length + ')</h3>' + '<button class="btn primary" data-action="add-cat">＋ Add Category</button></div>' + '<div class="alert info"><span class="ico">ℹ</span><div>Click any row for full analytics (revenue, margin, bounce rate, top suppliers/customers).</div></div>' + '<div class="table-wrap"><table><thead><tr><th>Category</th><th>Prefix</th><th class="num">Suppliers</th><th class="num">Received</th><th class="num">Purchased</th><th class="num">Profit</th></tr></thead><tbody>' + (arr(db.categories).length ? arr(db.categories).map(c => {
                     const receipts = arr(db.receipts).filter(r => r.categoryId === c.id);
@@ -7838,16 +8375,13 @@
                     w: 900,
                     h: 200,
                     labels: a.months.map(monthLabel)
-                }) + '</div>' + '<div class="grid grid-2" style="gap:14px">' + '<div class="card"><div class="card-head"><h3>Cheque Status</h3></div>' + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + '<div><div class="k-label">In Hand</div><strong>' + moneyPlain(t.inHandValue) + '</strong></div>' + '<div><div class="k-label">Issued</div><strong>' + moneyPlain(t.issuedValue) + '</strong></div>' + '<div><div class="k-label">Cleared</div><strong>' + moneyPlain(t.clearedValue) + '</strong></div>' + '<div><div class="k-label">Bounced</div><strong style="color:var(--red)">' + moneyPlain(t.bouncedValue) + '</strong></div>' + '</div>' + '</div>' + '<div class="card"><div class="card-head"><h3>Top Customers</h3></div>' + (a.topCust.length ? a.topCust.map(x => '<div class="bar-row"><span class="bar-label">' + esc(x.name) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (x.value / a.topCust[0].value * 100).toFixed(1) + '%"></div></div><span class="bar-val">' + moneyPlain(x.value) + '</span></div>').join('') : '<div class="empty">No data</div>') + '</div>' + '</div>' + (a.catSuppliers.length ? '<div class="section-title">Suppliers in this Category</div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Phone</th><th class="num">Payable</th></tr></thead><tbody>' + a.catSuppliers.map(s => '<tr data-action="supplier-detail" data-id="' + s.id + '"><td><strong>' + esc(s.name) + '</strong></td><td>' + esc(s.phone || '—') + '</td><td class="num">' + moneyPlain(supplierBalance(s.id)) + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="form-actions"><button class="btn primary" data-action="close-modal">Close</button></div>', 'xl');
+                }) + '</div>' + '<div class="grid grid-2" style="gap:14px">' + '<div class="card"><div class="card-head"><h3>Cheque Status</h3></div>' + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + '<div><div class="k-label">In Hand</div><strong>' + moneyPlain(t.inHandValue) + '</strong></div>' + '<div><div class="k-label">Issued</div><strong>' + moneyPlain(t.issuedValue) + '</strong></div>' + '<div><div class="k-label">Cleared</div><strong>' + moneyPlain(t.clearedValue) + '</strong></div>' + '<div><div class="k-label">Bounced</div><strong style="color:var(--red)">' + moneyPlain(t.bouncedValue) + '</strong></div>' + '</div>' + '</div>' + '<div class="card"><div class="card-head"><h3>Top Customers</h3></div>' + (a.topCust.length ? a.topCust.map(x => '<div class="bar-row"><span class="bar-label">' + esc(x.name) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (x.value / a.topCust[0].value * 100).toFixed(1) + '%"></div></div><span class="bar-val">' + moneyPlain(x.value) + '</span></div>').join('') : '<div class="empty">No data</div>') + '</div>' + '</div>' + (a.catSuppliers.length ? '<div class="section-title">Suppliers in this Category</div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Phone</th><th class="num">Payable</th></tr></thead><tbody>' + a.catSuppliers.map(s => '<tr data-action="supplier-detail" data-id="' + s.id + '"><td><strong>' + esc(s.name) + '</strong></td><td>' + esc(s.phone || '—') + '</td><td class="num">' + moneyPlain(supplierBalance(s.id)) + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="form-actions"><button class="btn" onclick="closeModal();openCatForm(\'' + cid + '\')">✏️ Edit</button>' + '<button class="btn danger" onclick="closeModal();deleteCat(\'' + cid + '\')">🗑 Delete</button>' + '<button class="btn primary" data-action="close-modal">Close</button></div>', 'xl');
             }
             window.showCategoryAnalytics = showCategoryAnalytics;
 
-            /* ═══ END OF PART 2 ═══ */
-            /* ═══ START OF PART 3 ═══ */
-
             /* ═══════════════════════════════════════════════════════════════════════════
-   RECEIPTS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               RECEIPTS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewReceipts() {
                 let rows = arr(db.receipts).sort( (a, b) => a.date < b.date ? 1 : -1);
                 if (ui.rcp.q) {
@@ -8048,7 +8582,7 @@
                     small: true
                 }) + kpiCard('Category', catName(r.categoryId), '', {
                     small: true
-                }) + '</div>' + (cheques.length ? '<div class="section-title">Cheques (' + cheques.length + ')</div><div class="table-wrap"><table><thead><tr><th>Cheque</th><th>Bank</th><th>Due</th><th class="num">Amount</th><th>Status</th><th>Issued To</th></tr></thead><tbody>' + cheques.map(c => '<tr class="' + (c.status === 'Bounced' ? 'rev-row' : '') + '" data-action="cheque-detail" data-id="' + c.id + '"><td class="mono">' + esc(c.chequeNo) + '</td><td>' + esc(c.bank || '') + '</td><td>' + dateFmt(c.dueDate) + '</td><td class="num">' + moneyPlain(c.amount) + '</td><td>' + statusBadge(c.status) + '</td><td>' + esc(c.issuedTo ? supName(c.issuedTo) : '—') + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="form-actions"><button class="btn danger" onclick="closeModal();deleteReceipt(\'' + id + '\')">🗑 Delete</button><button class="btn primary" data-action="close-modal">Close</button></div>', 'wide');
+                }) + '</div>' + (cheques.length ? '<div class="section-title">Cheques (' + cheques.length + ')</div><div class="table-wrap"><table><thead><tr><th>Cheque</th><th>Bank</th><th>Due</th><th class="num">Amount</th><th>Status</th><th>Issued To</th></tr></thead><tbody>' + cheques.map(c => '<tr class="' + (c.status === 'Bounced' ? 'rev-row' : '') + '" data-action="cheque-detail" data-id="' + c.id + '"><td class="mono">' + esc(c.chequeNo) + '</td><td>' + esc(c.bank || '') + '</td><td>' + dateFmt(c.dueDate) + '</td><td class="num">' + moneyPlain(c.amount) + '</td><td>' + statusBadge(c.status) + '</td><td>' + esc(c.issuedTo ? supName(c.issuedTo) : '—') + '</td></tr>').join('') + '</tbody></table></div>' : '') + '<div class="form-actions">' + '<button class="btn" onclick="showVersionHistory(\'receipts\',\'' + id + '\',\'' + esc(r.customerName || '').replace(/'/g, "\\'") + '\')">📜 History</button>' + '<button class="btn danger" onclick="closeModal();deleteReceipt(\'' + id + '\')">🗑 Delete</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>', 'wide');
             }
             window.showReceiptDetail = showReceiptDetail;
 
@@ -8144,9 +8678,12 @@
             }
             window.saveBulkCheques = saveBulkCheques;
 
+            /* ═══ END OF PART 4 ═══ */
+            /* ═══ START OF PART 5 ═══ */
+
             /* ═══════════════════════════════════════════════════════════════════════════
-   CUSTOMER CHEQUES
-   ═══════════════════════════════════════════════════════════════════════════ */
+               CUSTOMER CHEQUES
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewCCheques() {
                 const tabs = ['In Hand', 'Issued', 'Cleared', 'Bounced', 'Stopped'];
                 const counts = tabs.reduce( (a, t) => {
@@ -8458,8 +8995,8 @@
             window.bounceCheque = bounceCheque;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   PAYMENTS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               PAYMENTS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewPayments() {
                 return '<div class="card"><div class="card-head"><div><h3>💸 Issue Payment to Supplier</h3><div class="hint">Mix party cheques + own cheque leaves freely</div></div></div>' + '<form onsubmit="previewPayment(event)">' + '<div class="form-grid">' + '<label class="field">Supplier <span class="req">*</span><select id="paySupplier" required><option value="">Select supplier</option>' + arr(db.suppliers).map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('') + '</select></label>' + '<label class="field">Date <span class="req">*</span><input type="date" id="payDate" required value="' + today() + '"></label>' + '<label class="field">Reference<input id="payRef" value="PAY-' + String(num(db.settings.nextPaymentNo) || 1).padStart(4, '0') + '"></label>' + '</div>' + '<div class="divider"></div>' + '<div class="grid grid-2" style="gap:18px">' + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:18px">' + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h4 style="font-size:13.5px;font-weight:600">🧾 Party Cheques</h4><span class="badge blue" id="partyCount">0 selected</span></div>' + '<div style="margin-bottom:10px"><input type="search" placeholder="Search customer/cheque…" oninput="window._pkQ=this.value;renderPartyChequeList()"></div>' + '<div class="row-flex" style="margin-bottom:8px"><button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">Select all</button><button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button></div>' + '<div class="picker-list" id="partyList" style="max-height:260px"></div>' + '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:flex;justify-content:space-between"><span class="small muted">Party Total</span><span id="partyTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span></div>' + '</div>' + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:18px">' + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h4 style="font-size:13.5px;font-weight:600">🎯 Own Cheques</h4><span class="badge blue" id="ownCount">0 rows</span></div>' + '<div class="row-flex" style="margin-bottom:10px"><button type="button" class="btn sm primary" onclick="addOwnLeafRow()">＋ Add Leaf</button></div>' + '<div id="ownRows" style="max-height:260px;overflow:auto"></div>' + '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:flex;justify-content:space-between"><span class="small muted">Own Total</span><span id="ownTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span></div>' + '</div>' + '</div>' + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:22px;padding:18px;background:linear-gradient(135deg,var(--accent-soft),var(--pink-soft));border-radius:12px;border:1px solid var(--accent-soft)">' + '<div style="text-align:center"><div class="k-label">Party</div><div class="k-value sm" id="totParty">' + money(0) + '</div></div>' + '<div style="text-align:center"><div class="k-label">Own</div><div class="k-value sm" id="totOwn">' + money(0) + '</div></div>' + '<div style="text-align:center"><div class="k-label">Grand Total</div><div class="k-value" id="totAll" style="color:var(--accent-text)">' + money(0) + '</div></div>' + '</div>' + '<div class="form-actions" style="margin-top:22px"><button type="button" class="btn" onclick="resetPaymentForm()">Reset</button><button type="submit" class="btn primary">💾 Preview & Save</button></div>' + '</form></div>' + '<div class="card"><div class="card-head"><h3>🔁 Recurring / Post-Dated Cheques</h3>' + '<button class="btn primary" onclick="openRecurringForm()">＋ Set Up Recurring</button></div>' + (arr(db.recurringCheques).length ? '<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Frequency</th><th>Amount</th><th>Next Due</th><th>Remaining</th><th>Status</th><th></th></tr></thead><tbody>' + arr(db.recurringCheques).map(r => '<tr><td><strong>' + esc(supName(r.supplierId)) + '</strong></td><td>' + esc(r.frequency) + '</td><td class="num">' + moneyPlain(r.amount) + '</td><td>' + dateFmt(r.nextDate) + '</td><td>' + r.remaining + '</td><td>' + (r.active ? '<span class="badge green">Active</span>' : '<span class="badge gray">Stopped</span>') + '</td><td><button class="btn xs danger" onclick="stopRecurring(\'' + r.id + '\')">Stop</button></td></tr>').join('') + '</tbody></table></div>' : '<div class="empty">No recurring cheques set up</div>') + '</div>' + '<div class="card"><div class="card-head"><h3>Payment History (' + arr(db.payments).length + ')</h3><div class="table-tools"><button class="btn sm" data-action="export-pay-csv">⬇ CSV</button></div></div><div id="tbl-pay">' + tablePay() + '</div></div>';
             }
@@ -8857,8 +9394,8 @@
             window.stopRecurring = stopRecurring;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   BANKS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               BANKS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewBanks() {
                 const banks = arr(db.bankAccounts);
                 const overdraftWarnings = banks.filter(b => projectedBalance(b.id, 30) < 0);
@@ -8968,7 +9505,7 @@
                     small: true
                 }) + kpiCard('Projected 30d', moneyPlain(proj30), proj30 < 0 ? '⚠ May go negative' : 'Within budget', {
                     small: true
-                }) + '</div>' + '<div class="tabs" style="margin-bottom:14px">' + tabs.map(t => '<div class="tab ' + (tab === t ? 'active' : '') + '" onclick="ui.bank._tab=\'' + t + '\';showBankDetail(\'' + id + '\')">' + t + '</div>').join('') + '</div>' + body + '<div class="form-actions"><button class="btn danger" onclick="closeModal();deleteBank(\'' + id + '\')">🗑 Delete</button><button class="btn" onclick="closeModal();openBankForm(\'' + id + '\')">✏️ Edit</button><button class="btn primary" data-action="close-modal">Close</button></div>', 'xl');
+                }) + '</div>' + '<div class="tabs" style="margin-bottom:14px">' + tabs.map(t => '<div class="tab ' + (tab === t ? 'active' : '') + '" onclick="ui.bank._tab=\'' + t + '\';showBankDetail(\'' + id + '\')">' + t + '</div>').join('') + '</div>' + body + '<div class="form-actions">' + '<button class="btn" onclick="showVersionHistory(\'bankAccounts\',\'' + id + '\',\'' + esc(b.bankName || '').replace(/'/g, "\\'") + '\')">📜 History</button>' + '<button class="btn danger" onclick="closeModal();deleteBank(\'' + id + '\')">🗑 Delete</button>' + '<button class="btn" onclick="closeModal();openBankForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button></div>', 'xl');
             }
             window.showBankDetail = showBankDetail;
             function addBankTransaction(id) {
@@ -9139,8 +9676,8 @@
             window.saveTransfer = saveTransfer;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   CHEQUE BOOKS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               CHEQUE BOOKS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewChequeBooks() {
                 const books = arr(db.chequeBooks);
                 return '<div class="card"><div class="card-head"><h3>📚 Cheque Books (' + books.length + ')</h3>' + '<button class="btn primary" data-action="add-cbook">＋ Add Cheque Book</button></div>' + (books.length ? books.map(b => {
@@ -9235,8 +9772,8 @@
             window.deleteChequeBook = deleteChequeBook;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   OWN CHEQUES
-   ═══════════════════════════════════════════════════════════════════════════ */
+               OWN CHEQUES
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewOwnCheques() {
                 const tabs = ['Overview', 'Calendar', 'Funding Plan', 'Timeline', 'All Leaves'];
                 if (!tabs.includes(ui.own.tab))
@@ -9493,12 +10030,12 @@
             }
             window.bounceOwnLeaf = bounceOwnLeaf;
 
-            /* ═══ END OF PART 3 ═══ */
-            /* ═══ START OF PART 4 ═══ */
+            /* ═══ END OF PART 5 ═══ */
+            /* ═══ START OF PART 6 ═══ */
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   EXPENSES
-   ═══════════════════════════════════════════════════════════════════════════ */
+               EXPENSES
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewExpenses() {
                 let rows = arr(db.expenses).sort( (a, b) => a.date < b.date ? 1 : -1);
                 if (ui.exp.q) {
@@ -9606,13 +10143,13 @@
                     small: true
                 }) + kpiCard('Paid Via', e.bankAccountId ? ((bankObj(e.bankAccountId) && bankObj(e.bankAccountId).bankName) || '—') : '—', '', {
                     small: true
-                }) + '</div>' + '<div class="detail-row"><span class="dr-l">Amount in Words</span><span class="dr-v" style="font-size:12px">' + esc(amountInWords(e.amount)) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Description</span><span class="dr-v">' + esc(e.description || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Created</span><span class="dr-v">' + dateTimeFmt(e.createdAt) + '</span></div>' + '<div class="form-actions">' + '<button class="btn danger" onclick="closeModal();deleteExpense(\'' + id + '\')">🗑 Delete</button>' + '<button class="btn" onclick="closeModal();openExpenseForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>');
+                }) + '</div>' + '<div class="detail-row"><span class="dr-l">Amount in Words</span><span class="dr-v" style="font-size:12px">' + esc(amountInWords(e.amount)) + '</span></div>' + '<div class="detail-row"><span class="dr-l">Description</span><span class="dr-v">' + esc(e.description || '—') + '</span></div>' + '<div class="detail-row"><span class="dr-l">Created</span><span class="dr-v">' + dateTimeFmt(e.createdAt) + '</span></div>' + '<div class="form-actions">' + '<button class="btn" onclick="showVersionHistory(\'expenses\',\'' + id + '\',\'' + esc(e.category || '').replace(/'/g, "\\'") + '\')">📜 History</button>' + '<button class="btn danger" onclick="closeModal();deleteExpense(\'' + id + '\')">🗑 Delete</button>' + '<button class="btn" onclick="closeModal();openExpenseForm(\'' + id + '\')">✏️ Edit</button>' + '<button class="btn primary" data-action="close-modal">Close</button>' + '</div>');
             }
             window.showExpenseDetail = showExpenseDetail;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   JOURNALS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               JOURNALS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewJournals() {
                 const rows = arr(db.journals).sort( (a, b) => a.date < b.date ? 1 : -1);
                 return '<div class="card"><div class="card-head"><h3>📓 Journals (' + rows.length + ')</h3>' + '<div class="table-tools"><button class="btn sm" data-action="export-jrn-csv">⬇ CSV</button><button class="btn primary" data-action="add-journal">＋ New Journal</button></div></div>' + '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Ref</th><th>Entity</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr class="' + (r.bounceReversal ? 'rev-row' : '') + '"><td>' + dateFmt(r.date) + '</td><td class="mono small">' + esc(r.reference || '—') + '</td><td>' + esc(r.entityType === 'supplier' ? supName(r.entityId) : custName(r.entityId)) + '</td><td class="small">' + esc(r.description || '') + '</td><td class="num">' + (r.debit ? moneyPlain(r.debit) : '—') + '</td><td class="num">' + (r.credit ? moneyPlain(r.credit) : '—') + '</td></tr>').join('') : emptyRow(6, 'None')) + '</tbody></table></div></div>';
@@ -9673,8 +10210,8 @@
             window.deleteJournal = deleteJournal;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   LEDGER
-   ═══════════════════════════════════════════════════════════════════════════ */
+               LEDGER
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewLedger() {
                 const t = ui.ledger.type || 'supplier';
                 const types = [{
@@ -9896,8 +10433,8 @@
             window.exportLedgerCSV = exportLedgerCSV;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   AGING
-   ═══════════════════════════════════════════════════════════════════════════ */
+               AGING
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewAging() {
                 const ga = globalAging();
                 const bk = db.settings.supplierAgingBuckets || [30, 60, 90];
@@ -9924,8 +10461,8 @@
             }
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   REPORTS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               REPORTS
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewReports() {
                 const tabs = [['builder', '📊 Builder'], ['saved', '💾 Saved'], ['quick', '⚡ Quick'], ['analytics', '📈 Analytics']];
                 const active = (ui.reports && ui.reports.tab) || 'builder';
@@ -10330,8 +10867,8 @@
             window.renderAnalyticsDashboard = renderAnalyticsDashboard;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   HISTORY / LOGINS / BACKUP / TRASH / TODO
-   ═══════════════════════════════════════════════════════════════════════════ */
+               HISTORY / LOGINS / BACKUP / TRASH / TODO
+               ═══════════════════════════════════════════════════════════════════════════ */
             function viewHistory() {
                 const h = ui.history;
                 let entries = arr(db.activityLog).slice().reverse();
@@ -10603,9 +11140,12 @@
             window.viewTrash = viewTrash;
             window.viewTodo = viewTodo;
 
+            /* ═══ END OF PART 6 ═══ */
+            /* ═══ START OF PART 7 ═══ */
+
             /* ═══════════════════════════════════════════════════════════════════════════
-   SETTINGS
-   ═══════════════════════════════════════════════════════════════════════════ */
+               SETTINGS
+               ═══════════════════════════════════════════════════════════════════════════ */
             const SETTINGS_SECTIONS = [{
                 key: 'profile',
                 ico: 'P',
@@ -11000,8 +11540,8 @@
             window.saveSettings = saveSettings;
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   AUTH
-   ═══════════════════════════════════════════════════════════════════════════ */
+               AUTH
+               ═══════════════════════════════════════════════════════════════════════════ */
             async function checkAccess(email) {
                 if (!email)
                     return false;
@@ -11189,8 +11729,8 @@
             }
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   EVENT DELEGATION
-   ═══════════════════════════════════════════════════════════════════════════ */
+               EVENT DELEGATION
+               ═══════════════════════════════════════════════════════════════════════════ */
             document.addEventListener('click', function(e) {
                 const kpiEl = e.target.closest('.kpi-picker-item');
                 if (kpiEl && kpiEl.dataset.key) {
@@ -11310,8 +11850,8 @@
             });
 
             /* ═══════════════════════════════════════════════════════════════════════════
-   BOOT SEQUENCE (with safety fallback)
-   ═══════════════════════════════════════════════════════════════════════════ */
+               BOOT SEQUENCE (with safety fallback)
+               ═══════════════════════════════════════════════════════════════════════════ */
             (async function boot() {
                 window.__dbgOk && window.__dbgOk('Boot starting • version ' + APP_VER, 'BOOT');
                 // Safety fallback — reveal login screen if boot hangs
@@ -11360,7 +11900,7 @@
             }
             )();
 
-            /* ═══ END OF PART 4 ═══ */
+            /* ═══ END OF PART 7 ═══ */
         </script>
     </body>
 </html>

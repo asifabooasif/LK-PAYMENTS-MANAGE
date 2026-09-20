@@ -17298,7 +17298,877 @@ window.downloadAllUpcomingChequesICS = function(){
 })();
 
 /* ═══ END OF PART H ═══ */
+/* ═══ START OF PART I — VOUCHER PRINT FIX ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Root cause of the bug:
+   In Part B, printPreview() had this broken line:
+     '...' + DOC_PRINT_CSS.replace(...) === '' ? '' : '...' + bodyHTML + '</div>'
+   Due to operator precedence, the opening <div> was dropped, so
+   document.getElementById('printPreviewBody') returned null → print threw.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Global holder for the current print payload */
+window._currentPrintPayload = { title: '', html: '' };
+
+/* Rewrite openPrintWindow — clean, no innerHTML extraction */
+window.openPrintWindow = function(title, bodyHTML){
+  try {
+    const w = window.open('', '_blank', 'width=920,height=1000');
+    if(!w){ toast('Popup blocked — please allow popups for this site','error'); return; }
+    const doc = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(title || 'Print') + '</title>'
+      + DOC_PRINT_CSS
+      + '</head><body>' + (bodyHTML || '') + '</body></html>';
+    w.document.open();
+    w.document.write(doc);
+    w.document.close();
+    w.focus();
+    setTimeout(function(){
+      try { w.print(); } catch(e){ console.error('print err:', e); }
+    }, 400);
+  } catch(e){
+    console.error('openPrintWindow err:', e);
+    toast('Print failed: ' + (e.message || e), 'error');
+  }
+};
+
+/* Rewrite printPreview — uses an isolated iframe so app CSS never bleeds */
+window.printPreview = function(title, bodyHTML){
+  window._currentPrintPayload = { title: title || 'Print', html: bodyHTML || '' };
+
+  openModal('🖨 Print Preview — ' + esc(title || 'Document'),
+    '<div style="background:#f3f4f6;padding:14px;border-radius:10px">'
+    +   '<iframe id="printPreviewFrame" style="width:100%;height:56vh;border:none;background:#fff;border-radius:8px;display:block"></iframe>'
+    + '</div>'
+    + '<div class="alert info" style="margin-top:14px;font-size:12px"><span class="ico">ℹ</span><div>If nothing appears below, your browser may block iframe content. Try <strong>Print Now</strong> directly.</div></div>'
+    + '<div class="form-actions">'
+    +   '<button class="btn" data-action="close-modal">Cancel</button>'
+    +   '<button class="btn" onclick="savePreviewAsHTML()">⬇ Download HTML</button>'
+    +   '<button class="btn primary" onclick="confirmPrintPreview()">🖨 Print Now</button>'
+    + '</div>', 'wide');
+
+  // Render preview inside the iframe after the modal mounts
+  setTimeout(function(){
+    const frame = document.getElementById('printPreviewFrame');
+    if(!frame) return;
+    try {
+      const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+      if(!doc) return;
+      doc.open();
+      doc.write('<!doctype html><html><head><meta charset="utf-8">'
+        + DOC_PRINT_CSS
+        + '</head><body style="padding:22px;background:#fff">'
+        + (bodyHTML || '')
+        + '</body></html>');
+      doc.close();
+    } catch(e){
+      console.error('iframe render err:', e);
+    }
+  }, 100);
+};
+
+/* Confirm button on the preview modal */
+window.confirmPrintPreview = function(){
+  const p = window._currentPrintPayload;
+  if(!p || !p.html){ toast('Nothing to print','error'); return; }
+  closeModal();
+  setTimeout(function(){ openPrintWindow(p.title, p.html); }, 150);
+};
+
+/* Save the current preview as a standalone HTML file (works offline) */
+window.savePreviewAsHTML = function(){
+  const p = window._currentPrintPayload;
+  if(!p || !p.html){ toast('Nothing to save','error'); return; }
+  const doc = '<!doctype html><html><head><meta charset="utf-8"><title>'
+    + esc(p.title || 'Document')
+    + '</title>'
+    + DOC_PRINT_CSS
+    + '</head><body>' + p.html + '</body></html>';
+  const safeName = (p.title || 'document').replace(/[^a-z0-9\-_]+/gi, '_').slice(0, 60);
+  download(safeName + '_' + today() + '.html', doc, 'text/html');
+  toast('HTML file downloaded', 'success');
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Verify all four document types still exist and are reachable
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* 1. Payment Voucher — from any saved payment */
+window.showPaymentVoucher = function(paymentId){
+  if(typeof buildPaymentVoucherHTML !== 'function'){ toast('Payment voucher builder missing','error'); return; }
+  const html = buildPaymentVoucherHTML(paymentId);
+  if(!html){ toast('Payment not found','error'); return; }
+  printPreview('Payment Voucher', html);
+};
+
+/* 2. Receipt Voucher — from any saved receipt */
+window.showReceiptVoucher = function(receiptId){
+  if(typeof buildReceiptVoucherHTML !== 'function'){ toast('Receipt voucher builder missing','error'); return; }
+  const html = buildReceiptVoucherHTML(receiptId);
+  if(!html){ toast('Receipt not found','error'); return; }
+  printPreview('Receipt Voucher', html);
+};
+
+/* 3. Statement of Account */
+window.doStatement = function(entityType){
+  const entityId = val('soaEntity');
+  const from = val('soaFrom');
+  const to = val('soaTo');
+  if(!entityId){ toast('Select an entity','error'); return; }
+  if(typeof buildStatementHTML !== 'function'){ toast('Statement builder missing','error'); return; }
+  const html = buildStatementHTML(entityType, entityId, from, to);
+  const label = entityType === 'supplier' ? supName(entityId) : custName(entityId);
+  closeModal();
+  setTimeout(function(){
+    printPreview('Statement — ' + label, html);
+  }, 120);
+};
+
+/* 4. Age Analysis */
+window.printAgeAnalysis = function(){
+  if(typeof buildAgeAnalysisHTML !== 'function'){ toast('Age analysis builder missing','error'); return; }
+  const html = buildAgeAnalysisHTML();
+  printPreview('Age Analysis', html);
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Direct print without preview (fast path)
+   ───────────────────────────────────────────────────────────────────────────── */
+window.directPrintPaymentVoucher = function(paymentId){
+  if(typeof buildPaymentVoucherHTML !== 'function'){ toast('Builder missing','error'); return; }
+  openPrintWindow('Payment Voucher', buildPaymentVoucherHTML(paymentId));
+};
+window.directPrintReceiptVoucher = function(receiptId){
+  if(typeof buildReceiptVoucherHTML !== 'function'){ toast('Builder missing','error'); return; }
+  openPrintWindow('Receipt Voucher', buildReceiptVoucherHTML(receiptId));
+};
+window.directPrintStatement = function(entityType, entityId, from, to){
+  if(typeof buildStatementHTML !== 'function'){ toast('Builder missing','error'); return; }
+  openPrintWindow('Statement', buildStatementHTML(entityType, entityId, from, to));
+};
+window.directPrintAgeAnalysis = function(){
+  if(typeof buildAgeAnalysisHTML !== 'function'){ toast('Builder missing','error'); return; }
+  openPrintWindow('Age Analysis', buildAgeAnalysisHTML());
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Documents Hub — rewrite to use the fixed functions
+   and add a direct-print button on each card
+   ───────────────────────────────────────────────────────────────────────────── */
+window.viewDocuments = function(){
+  const recentReceipts = arr(db.receipts).slice(-10).reverse();
+  const recentPayments = arr(db.payments).slice(-10).reverse();
+
+  const card = (icon, title, desc, previewFn) => ''
+    + '<div class="rpt-saved-card" style="cursor:pointer;position:relative">'
+    +   '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">'
+    +     '<div style="font-size:24px">' + icon + '</div>'
+    +     '<div style="flex:1"><h5 style="margin:0 0 3px 0">' + esc(title) + '</h5>'
+    +     '<div class="meta">' + esc(desc) + '</div></div>'
+    +   '</div>'
+    +   '<div class="row-flex" style="gap:6px;margin-top:10px">'
+    +     '<button class="btn xs primary" onclick="event.stopPropagation();' + previewFn + '">👁 Preview</button>'
+    +   '</div>'
+    + '</div>';
+
+  return '<div class="card">'
+    + '<div class="card-head"><h3>📄 Documents Hub</h3><span class="badge gray">All printable outputs</span></div>'
+    + '<div style="padding:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'
+    +   card('📄', 'Supplier Statement', 'Ledger with running balance, any date range', 'openStatementForm(\'supplier\')')
+    +   card('👤', 'Customer Statement', 'Cheque activity with balances', 'openStatementForm(\'customer\')')
+    +   card('⏳', 'Age Analysis PDF', 'Supplier payables + customer bounced', 'printAgeAnalysis()')
+    +   card('🎨', 'Letterhead Designer', 'Custom header for all printed docs', 'openLetterheadDesigner()')
+    + '</div></div>'
+
+    + '<div class="card"><div class="card-head"><h3>🧾 Recent Receipts — Print Voucher</h3></div>'
+    + (recentReceipts.length
+      ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th class="num">Amount</th><th>Actions</th></tr></thead><tbody>'
+        + recentReceipts.map(r => '<tr>'
+          + '<td>' + dateFmt(r.date) + '</td>'
+          + '<td>' + esc(r.customerName || '') + '</td>'
+          + '<td class="num">' + moneyPlain(r.amount) + '</td>'
+          + '<td><div class="row-flex">'
+          +   '<button class="btn xs" onclick="showReceiptVoucher(\'' + r.id + '\')">👁 Preview</button>'
+          +   '<button class="btn xs primary" onclick="directPrintReceiptVoucher(\'' + r.id + '\')">🖨 Print</button>'
+          + '</div></td>'
+          + '</tr>').join('')
+        + '</tbody></table></div>'
+      : '<div class="empty">No receipts yet</div>')
+    + '</div>'
+
+    + '<div class="card"><div class="card-head"><h3>💸 Recent Payments — Print Voucher</h3></div>'
+    + (recentPayments.length
+      ? '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th class="num">Amount</th><th>Actions</th></tr></thead><tbody>'
+        + recentPayments.map(p => '<tr>'
+          + '<td>' + dateFmt(p.date) + '</td>'
+          + '<td>' + esc(supName(p.supplierId)) + '</td>'
+          + '<td class="num">' + moneyPlain(p.amount) + '</td>'
+          + '<td><div class="row-flex">'
+          +   '<button class="btn xs" onclick="showPaymentVoucher(\'' + p.id + '\')">👁 Preview</button>'
+          +   '<button class="btn xs primary" onclick="directPrintPaymentVoucher(\'' + p.id + '\')">🖨 Print</button>'
+          + '</div></td>'
+          + '</tr>').join('')
+        + '</tbody></table></div>'
+      : '<div class="empty">No payments yet</div>')
+    + '</div>';
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Receipt / Payment detail modals — swap the print buttons to direct-print
+   (also adds a Preview button, so the user has both options)
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchDetailModalsForVouchers(){
+  // Receipt
+  const origReceipt = window.showReceiptDetail;
+  if(typeof origReceipt === 'function' && !origReceipt.__wrappedPartI){
+    const wrapped = function(id){
+      const r = origReceipt.apply(this, arguments);
+      setTimeout(function(){
+        const modal = document.querySelector('#modalWrap .modal-body .form-actions');
+        if(!modal || modal.querySelector('[data-voucher-btn]')) return;
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'btn';
+        previewBtn.setAttribute('data-voucher-btn', '1');
+        previewBtn.textContent = '👁 Receipt Voucher';
+        previewBtn.onclick = function(){ closeModal(); setTimeout(function(){ showReceiptVoucher(id); }, 120); };
+
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn primary';
+        printBtn.setAttribute('data-voucher-btn', '1');
+        printBtn.textContent = '🖨 Print Voucher';
+        printBtn.onclick = function(){ directPrintReceiptVoucher(id); };
+
+        modal.insertBefore(previewBtn, modal.firstChild);
+        modal.insertBefore(printBtn, modal.firstChild);
+      }, 60);
+      return r;
+    };
+    wrapped.__wrappedPartI = true;
+    window.showReceiptDetail = wrapped;
+  }
+
+  // Payment
+  const origPayment = window.showPaymentDetail;
+  if(typeof origPayment === 'function' && !origPayment.__wrappedPartI){
+    const wrapped = function(id){
+      const r = origPayment.apply(this, arguments);
+      setTimeout(function(){
+        const modal = document.querySelector('#modalWrap .modal-body .form-actions');
+        if(!modal || modal.querySelector('[data-voucher-btn]')) return;
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'btn';
+        previewBtn.setAttribute('data-voucher-btn', '1');
+        previewBtn.textContent = '👁 Payment Voucher';
+        previewBtn.onclick = function(){ closeModal(); setTimeout(function(){ showPaymentVoucher(id); }, 120); };
+
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn primary';
+        printBtn.setAttribute('data-voucher-btn', '1');
+        printBtn.textContent = '🖨 Print Voucher';
+        printBtn.onclick = function(){ directPrintPaymentVoucher(id); };
+
+        modal.insertBefore(previewBtn, modal.firstChild);
+        modal.insertBefore(printBtn, modal.firstChild);
+      }, 60);
+      return r;
+    };
+    wrapped.__wrappedPartI = true;
+    window.showPaymentDetail = wrapped;
+  }
+
+  // Supplier detail — add direct statement print
+  const origSup = window.showSupplierDetail;
+  if(typeof origSup === 'function' && !origSup.__wrappedPartI){
+    const wrapped = function(id){
+      const r = origSup.apply(this, arguments);
+      setTimeout(function(){
+        const modal = document.querySelector('#modalWrap .modal-body .form-actions');
+        if(!modal || modal.querySelector('[data-stmt-btn]')) return;
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'btn';
+        previewBtn.setAttribute('data-stmt-btn', '1');
+        previewBtn.textContent = '👁 Statement';
+        previewBtn.onclick = function(){ closeModal(); setTimeout(function(){
+          printPreview('Statement — ' + supName(id), buildStatementHTML('supplier', id, '', ''));
+        }, 120); };
+
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn primary';
+        printBtn.setAttribute('data-stmt-btn', '1');
+        printBtn.textContent = '🖨 Print Statement';
+        printBtn.onclick = function(){ directPrintStatement('supplier', id, '', ''); };
+
+        modal.insertBefore(previewBtn, modal.firstChild);
+        modal.insertBefore(printBtn, modal.firstChild);
+      }, 60);
+      return r;
+    };
+    wrapped.__wrappedPartI = true;
+    window.showSupplierDetail = wrapped;
+  }
+
+  // Customer detail — same
+  const origCust = window.showCustomerDetail;
+  if(typeof origCust === 'function' && !origCust.__wrappedPartI){
+    const wrapped = function(id){
+      const r = origCust.apply(this, arguments);
+      setTimeout(function(){
+        const modal = document.querySelector('#modalWrap .modal-body .form-actions');
+        if(!modal || modal.querySelector('[data-stmt-btn]')) return;
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'btn';
+        previewBtn.setAttribute('data-stmt-btn', '1');
+        previewBtn.textContent = '👁 Statement';
+        previewBtn.onclick = function(){ closeModal(); setTimeout(function(){
+          printPreview('Statement — ' + custName(id), buildStatementHTML('customer', id, '', ''));
+        }, 120); };
+
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn primary';
+        printBtn.setAttribute('data-stmt-btn', '1');
+        printBtn.textContent = '🖨 Print Statement';
+        printBtn.onclick = function(){ directPrintStatement('customer', id, '', ''); };
+
+        modal.insertBefore(previewBtn, modal.firstChild);
+        modal.insertBefore(printBtn, modal.firstChild);
+      }, 60);
+      return r;
+    };
+    wrapped.__wrappedPartI = true;
+    window.showCustomerDetail = wrapped;
+  }
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Debug helpers — expose in the 🐛 panel
+   ───────────────────────────────────────────────────────────────────────────── */
+window.testVoucherPrint = function(){
+  console.log('--- Voucher Print Test ---');
+  const results = {
+    openPrintWindow: typeof openPrintWindow === 'function',
+    printPreview: typeof printPreview === 'function',
+    buildPaymentVoucherHTML: typeof buildPaymentVoucherHTML === 'function',
+    buildReceiptVoucherHTML: typeof buildReceiptVoucherHTML === 'function',
+    buildStatementHTML: typeof buildStatementHTML === 'function',
+    buildAgeAnalysisHTML: typeof buildAgeAnalysisHTML === 'function',
+    DOC_PRINT_CSS_defined: typeof DOC_PRINT_CSS === 'string' && DOC_PRINT_CSS.length > 100,
+    payments_count: arr(db.payments).length,
+    receipts_count: arr(db.receipts).length
+  };
+  Object.keys(results).forEach(function(k){
+    const v = results[k];
+    const ok = v === true || (typeof v === 'number' && v >= 0);
+    const tag = ok ? 'OK' : 'ERR';
+    if(window.__dbgOk && v === true) window.__dbgOk(k + ' = ' + v, tag);
+    else if(window.__dbgWarn) window.__dbgWarn(k + ' = ' + v, tag);
+  });
+  if(!results.DOC_PRINT_CSS_defined){
+    toast('DOC_PRINT_CSS is missing — Part B did not load properly', 'error', 6000);
+  }
+  return results;
+};
+
+/* Run the check on load — logs to debug panel */
+setTimeout(function(){
+  try { testVoucherPrint(); } catch(e){ console.error(e); }
+}, 2500);
+
+/* ═══ END OF PART I ═══ */
+/* ═══ START OF PART J — PRINT FIX + DEVTOOLS GUARD ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FIX — Iframe-based printing (no popup blocker issues)
+   The iframe loads the document, calls print(), and cleans itself up.
+   ───────────────────────────────────────────────────────────────────────────── */
+window.iframePrint = function(title, bodyHTML){
+  try {
+    // Guard: nothing to print
+    if(!bodyHTML || !String(bodyHTML).trim()){
+      if(window.toast) toast('Nothing to print','error');
+      return;
+    }
+
+    // Create hidden iframe
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+    document.body.appendChild(frame);
+
+    const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+    if(!doc){
+      if(frame.parentNode) frame.parentNode.removeChild(frame);
+      if(window.toast) toast('Print iframe blocked','error');
+      return;
+    }
+
+    // Build document
+    const html = '<!doctype html><html><head><meta charset="utf-8">'
+      + '<title>' + esc(title || 'Print') + '</title>'
+      + (typeof DOC_PRINT_CSS === 'string' ? DOC_PRINT_CSS : '')
+      + '</head><body>' + bodyHTML + '</body></html>';
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    // Give the browser a moment to lay out, then print
+    setTimeout(function(){
+      try {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } catch(e){
+        console.error('iframePrint error:', e);
+        if(window.toast) toast('Print failed: ' + (e.message || e), 'error');
+      }
+      // Cleanup after print dialog has time to close
+      setTimeout(function(){
+        if(frame.parentNode) frame.parentNode.removeChild(frame);
+      }, 60000);
+    }, 350);
+  } catch(e){
+    console.error('iframePrint outer error:', e);
+    if(window.toast) toast('Print error: ' + (e.message || e), 'error');
+  }
+};
+
+/* Replace confirmPrintPreview — no setTimeout, uses iframe */
+window.confirmPrintPreview = function(){
+  const p = window._currentPrintPayload;
+  if(!p || !p.html){
+    if(window.toast) toast('Nothing to print — click Preview again','error');
+    return;
+  }
+  // Close modal FIRST, then trigger print on next tick (still same gesture window)
+  if(typeof closeModal === 'function') closeModal();
+  // Use requestAnimationFrame so we're still in the click handler's task
+  requestAnimationFrame(function(){
+    window.iframePrint(p.title, p.html);
+  });
+};
+
+/* Route openPrintWindow through iframe print (used by all vouchers) */
+window.openPrintWindow = function(title, bodyHTML){
+  window.iframePrint(title, bodyHTML);
+};
+
+/* Direct print helpers — all go through iframe */
+window.directPrintPaymentVoucher = function(paymentId){
+  if(typeof buildPaymentVoucherHTML !== 'function'){ toast('Builder missing','error'); return; }
+  const html = buildPaymentVoucherHTML(paymentId);
+  if(!html){ toast('Payment not found','error'); return; }
+  window.iframePrint('Payment Voucher', html);
+};
+window.directPrintReceiptVoucher = function(receiptId){
+  if(typeof buildReceiptVoucherHTML !== 'function'){ toast('Builder missing','error'); return; }
+  const html = buildReceiptVoucherHTML(receiptId);
+  if(!html){ toast('Receipt not found','error'); return; }
+  window.iframePrint('Receipt Voucher', html);
+};
+window.directPrintStatement = function(entityType, entityId, from, to){
+  if(typeof buildStatementHTML !== 'function'){ toast('Builder missing','error'); return; }
+  const html = buildStatementHTML(entityType, entityId, from, to);
+  if(!html){ toast('Statement failed','error'); return; }
+  window.iframePrint('Statement of Account', html);
+};
+window.directPrintAgeAnalysis = function(){
+  if(typeof buildAgeAnalysisHTML !== 'function'){ toast('Builder missing','error'); return; }
+  const html = buildAgeAnalysisHTML();
+  if(!html){ toast('Age analysis failed','error'); return; }
+  window.iframePrint('Age Analysis', html);
+};
+
+/* Global print current view — also routes through iframe */
+window.doPrintCurrentView = function(){
+  const content = document.getElementById('view');
+  if(!content){ toast('Nothing to print','warn'); return; }
+  const title = (typeof titles === 'object' && titles[ui.view]) || 'Print';
+  const css = '<style>'
+    + 'body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:20px;color:#111}'
+    + '.card{border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:14px;box-shadow:none!important}'
+    + 'table{width:100%;border-collapse:collapse;font-size:12px}'
+    + 'th{background:#f3f4f6;padding:8px 10px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#4b5563;border-bottom:1px solid #d1d5db}'
+    + 'td{padding:8px 10px;border-bottom:1px solid #f3f4f6}'
+    + 'button,.btn,.seg,.tabs,.filter-bar{display:none!important}'
+    + 'kbd{display:none}'
+    + '.kpi{background:#fff;border:1px solid #e5e7eb;padding:12px 14px;border-radius:8px}'
+    + '.kpi-value{font-size:18px;font-weight:700}'
+    + '.empty{color:#9ca3af;text-align:center;padding:20px}'
+    + '@media print{@page{size:A4;margin:12mm}}'
+    + '</style>';
+  const html = '<div style="text-align:right;font-size:11px;color:#666;margin-bottom:12px">'
+    + esc((db.settings||{}).shopName||'Lanka Shoe') + ' • ' + dateFmt(today()) + '</div>'
+    + content.innerHTML;
+  closeModal();
+  requestAnimationFrame(function(){
+    // Append custom CSS by wrapping
+    const wrapped = css.replace(/<\/?style>/g,'') + html;
+    window.iframePrint(title, wrapped);
+  });
+};
+
+/* Also patch all voucher preview "Print Now" buttons — point them at confirmPrintPreview */
+(function patchPrintPreviewButtons(){
+  document.addEventListener('click', function(e){
+    const el = e.target.closest('[onclick]');
+    if(!el) return;
+    const oc = el.getAttribute('onclick') || '';
+    // Rewrite calls to openPrintWindow with the payload
+    if(oc.indexOf('openPrintWindow') !== -1 && oc.indexOf('printPreviewBody') !== -1){
+      e.preventDefault();
+      e.stopPropagation();
+      confirmPrintPreview();
+    }
+  }, true);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ADVANCED DEVTOOLS GUARD
+   5-layer detection + fullscreen blocking overlay + escape hatch
+   ───────────────────────────────────────────────────────────────────────────── */
+
+(function advancedDevToolsGuard(){
+  // Escape hatch — set localStorage 'lankashoe_dev_ok' = '1' to bypass
+  // OR add ?safe=1 to URL OR press Ctrl+Shift+Alt+D to toggle
+  function isDeveloperAllowed(){
+    try {
+      if(localStorage.getItem('lankashoe_dev_ok') === '1') return true;
+      if(location.search.indexOf('safe=1') !== -1) return true;
+      if(location.hash === '#safe') return true;
+    } catch(e){}
+    return false;
+  }
+  if(isDeveloperAllowed()) return; // skip guard entirely
+
+  // ─── Build blocking overlay ───
+  let overlay = document.getElementById('advGuard');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'advGuard';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:radial-gradient(circle at 50% 50%,#1a0b3d 0%,#000 100%);color:#fff;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;font-family:-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden';
+    overlay.innerHTML = ''
+      + '<div style="max-width:600px;pointer-events:auto">'
+      +   '<div style="font-size:96px;margin-bottom:24px;filter:drop-shadow(0 0 24px rgba(168,85,247,.6))">🔒</div>'
+      +   '<h1 style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:16px;color:#fff">Developer Tools Detected</h1>'
+      +   '<p style="font-size:14.5px;line-height:1.7;color:rgba(255,255,255,.75);margin-bottom:8px">Please <strong style="color:#fff">close the browser developer tools / console</strong> to continue using this application.</p>'
+      +   '<p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:24px">Data protection is active. Reload the page after closing DevTools.</p>'
+      +   '<div style="margin-top:36px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">'
+      +     '<button id="advGuardReload" style="padding:13px 26px;border-radius:11px;border:none;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 8px 24px rgba(124,58,237,.5)">Reload Page</button>'
+      +     '<button id="advGuardExit" style="padding:13px 26px;border-radius:11px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#fff;font-weight:600;cursor:pointer;font-size:14px">Try to Continue</button>'
+      +   '</div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+  }
+
+  const reloadBtn = document.getElementById('advGuardReload');
+  const exitBtn = document.getElementById('advGuardExit');
+  if(reloadBtn) reloadBtn.onclick = function(){ location.reload(); };
+  if(exitBtn) exitBtn.onclick = function(){
+    // User acknowledges — hide for this session and check again
+    hideGuard();
+    // Check again in 1.5s
+    setTimeout(checkAll, 1500);
+  };
+
+  let guardVisible = false;
+  function showGuard(){
+    if(guardVisible) return;
+    guardVisible = true;
+    overlay.style.display = 'flex';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    // Vaporize any open modals / panels
+    try {
+      const modal = document.getElementById('modalWrap');
+      if(modal && modal.classList.contains('open')){
+        modal.classList.remove('open');
+        modal.innerHTML = '';
+      }
+      ['notifPanel','fabMenu','cmdPalette','stickyPanel'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('open');
+      });
+    } catch(e){}
+    // Hide FAB and other floating buttons
+    ['fabBtn','stickyBtn','dbgBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.style.display = 'none';
+    });
+  }
+
+  function hideGuard(){
+    if(!guardVisible) return;
+    guardVisible = false;
+    overlay.style.display = 'none';
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    // Restore buttons
+    ['fabBtn','stickyBtn','dbgBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && el.dataset.origDisplay !== 'none'){
+        if(id === 'fabBtn') el.style.display = '';
+        if(id === 'stickyBtn') el.style.display = '';
+        if(id === 'dbgBtn') el.style.display = '';
+      }
+    });
+  }
+
+  // ─── Layer 1: Dimension delta (catches docked DevTools) ───
+  function sizeCheck(){
+    try {
+      const wDiff = Math.abs((window.outerWidth || 0) - (window.innerWidth || 0));
+      const hDiff = Math.abs((window.outerHeight || 0) - (window.innerHeight || 0));
+      // Threshold: DevTools is at least ~160px on the docked side
+      // But we allow normal browser UI which can be up to ~120px
+      return wDiff > 170 || hDiff > 170;
+    } catch(e){ return false; }
+  }
+
+  // ─── Layer 2: Debugger timing (catches undocked / detached DevTools) ───
+  function debuggerCheck(){
+    try {
+      const t1 = performance.now();
+      // eslint-disable-next-line no-debugger
+      debugger;
+      const t2 = performance.now();
+      // With DevTools open, debugger statement pauses execution
+      // or at least takes >80ms longer than normal
+      return (t2 - t1) > 100;
+    } catch(e){ return false; }
+  }
+
+  // ─── Layer 3: Console getter trick ───
+  let consoleOpened = false;
+  const probeEl = /./;
+  probeEl.toString = function(){
+    consoleOpened = true;
+    return 'probe';
+  };
+  function consoleCheck(){
+    try {
+      consoleOpened = false;
+      // console.log with special object — browsers call toString() only when
+      // the console panel is open and rendering the object
+      // eslint-disable-next-line no-console
+      const nativeLog = Function.prototype.bind.call(
+        window.console.log,
+        window.console
+      );
+      nativeLog.call(window.console, '%c', probeEl);
+      return consoleOpened;
+    } catch(e){ return false; }
+  }
+
+  // ─── Layer 4: Focus + size heuristic ───
+  // When DevTools is docked and in focus, our window loses focus AND
+  // may report devtools-owned document.activeElement === null
+  let blurCount = 0;
+  window.addEventListener('blur', function(){ blurCount++; }, true);
+  function focusCheck(){
+    // Reset count if we're focused
+    if(document.hasFocus()){
+      blurCount = 0;
+      return false;
+    }
+    // If blurred more than 3 times quickly with unchanged size, could be
+    // an external DevTools window
+    return blurCount > 3 && sizeCheck();
+  }
+
+  // ─── Layer 5: Element inspection heuristic ───
+  // Set a getter trap on a non-enumerable property that DevTools reads
+  // when hovering elements in the Elements panel
+  let inspectionDetected = false;
+  try {
+    const trap = document.createElement('div');
+    Object.defineProperty(trap, '_',
+      { get: function(){ inspectionDetected = true; return 1; } });
+    window.__devtoolsTrap = trap;
+  } catch(e){}
+
+  // ─── Master check ───
+  function checkAll(){
+    if(guardVisible){
+      // If already showing, only hide if all checks are clear
+      const s1 = sizeCheck();
+      const s2 = debuggerCheck();
+      if(!s1 && !s2){
+        hideGuard();
+      }
+      return;
+    }
+    // Not yet shown — evaluate all layers
+    const sizeOpen = sizeCheck();
+    const debuggerOpen = debuggerCheck();
+    const consoleOpen = consoleCheck();
+    const focusOpen = focusCheck();
+
+    // Trigger guard if any strong signal fires
+    if(sizeOpen || debuggerOpen || consoleOpen || focusOpen){
+      showGuard();
+    }
+  }
+
+  // ─── Keyboard interception ───
+  document.addEventListener('keydown', function(e){
+    const k = String(e.key || '').toLowerCase();
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+
+    // F12
+    if(k === 'f12'){
+      e.preventDefault(); e.stopPropagation();
+      showGuard();
+      return false;
+    }
+    // Ctrl+Shift+I / J / C / K / E / M
+    if(ctrl && shift && ['i','j','c','k','e','m'].indexOf(k) !== -1){
+      e.preventDefault(); e.stopPropagation();
+      showGuard();
+      return false;
+    }
+    // Cmd+Option+I / J / C / U (macOS)
+    if(e.metaKey && e.altKey && ['i','j','c','u'].indexOf(k) !== -1){
+      e.preventDefault(); e.stopPropagation();
+      showGuard();
+      return false;
+    }
+    // Ctrl+U — view source
+    if(ctrl && !shift && k === 'u'){
+      e.preventDefault(); e.stopPropagation();
+      showGuard();
+      return false;
+    }
+    // Ctrl+S — save page
+    if(ctrl && k === 's'){
+      e.preventDefault(); e.stopPropagation();
+      return false;
+    }
+    // Ctrl+Shift+Alt+D — developer escape hatch (to disable guard)
+    if(ctrl && shift && e.altKey && k === 'd'){
+      try {
+        if(localStorage.getItem('lankashoe_dev_ok') === '1'){
+          localStorage.removeItem('lankashoe_dev_ok');
+          toast('DevTools guard: ON', 'success');
+        } else {
+          localStorage.setItem('lankashoe_dev_ok', '1');
+          hideGuard();
+          toast('DevTools guard: OFF (reload to apply)', 'warn');
+        }
+      } catch(err){}
+      return false;
+    }
+  }, true);
+
+  // ─── Right-click interception ───
+  document.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }, true);
+
+  // ─── Drag-start interception (prevents dragging images/text out to inspect) ───
+  document.addEventListener('dragstart', function(e){
+    e.preventDefault();
+  }, true);
+
+  // ─── Prevent text selection of sensitive areas (optional, subtle) ───
+  // (skipped — can annoy users)
+
+  // ─── Periodic check loop ───
+  // 1.2s interval — enough to feel fast, not annoying
+  const checkInterval = setInterval(function(){
+    try { checkAll(); } catch(e){}
+  }, 1200);
+
+  // ─── Immediate check on various events ───
+  window.addEventListener('resize', function(){
+    setTimeout(checkAll, 100);
+  });
+  window.addEventListener('orientationchange', function(){
+    setTimeout(checkAll, 300);
+  });
+
+  // ─── Silence console output globally to protect data ───
+  // Preserve our debug panel logging (which uses DOM, not console)
+  try {
+    const noop = function(){};
+    ['log','info','warn','error','debug','dir','table','trace','group',
+     'groupEnd','groupCollapsed','time','timeEnd','timeLog','count',
+     'countReset','clear','assert'].forEach(function(name){
+      if(window.console && console[name]){
+        try { Object.defineProperty(console, name, {
+          value: noop, writable: false, configurable: false
+        }); } catch(e){ console[name] = noop; }
+      }
+    });
+  } catch(e){}
+
+  // ─── Freeze critical globals so inspector can't tamper ───
+  try {
+    const freezeList = ['iframePrint','directPrintPaymentVoucher','directPrintReceiptVoucher'];
+    freezeList.forEach(function(name){
+      if(window[name] && typeof window[name] === 'function'){
+        try { Object.freeze(window[name]); } catch(e){}
+      }
+    });
+  } catch(e){}
+
+  // ─── Startup announcement to 🐛 panel ───
+  setTimeout(function(){
+    if(window.__dbgOk) window.__dbgOk('Advanced DevTools Guard active (5-layer detection)', 'GUARD');
+    if(window.__dbgOk) window.__dbgOk('Tip: Ctrl+Shift+Alt+D toggles guard off/on (requires localStorage flag)', 'GUARD');
+  }, 3000);
+
+  // ─── Expose for debugging ───
+  window.__guard = {
+    show: showGuard,
+    hide: hideGuard,
+    check: checkAll,
+    isDeveloperAllowed: isDeveloperAllowed
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch toggleDbg / FAB / sticky button so they don't fire while guard visible
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchFloatingButtonsForGuard(){
+  ['toggleDbg','toggleFab','toggleStickyPanel'].forEach(function(name){
+    const orig = window[name];
+    if(typeof orig !== 'function' || orig.__wrappedGuard) return;
+    const wrapped = function(){
+      const g = document.getElementById('advGuard');
+      if(g && g.style.display === 'flex'){
+        return;
+      }
+      return orig.apply(this, arguments);
+    };
+    wrapped.__wrappedGuard = true;
+    window[name] = wrapped;
+  });
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Test helper — call from debug console (or via 🐛 panel)
+   ───────────────────────────────────────────────────────────────────────────── */
+window.testPrintFlow = function(){
+  const results = {
+    iframePrint_defined: typeof window.iframePrint === 'function',
+    confirmPrintPreview_defined: typeof window.confirmPrintPreview === 'function',
+    openPrintWindow_defined: typeof window.openPrintWindow === 'function',
+    DOC_PRINT_CSS_defined: typeof DOC_PRINT_CSS === 'string' && DOC_PRINT_CSS.length > 100,
+    payments_count: arr(db.payments).length,
+    receipts_count: arr(db.receipts).length,
+    current_payload: window._currentPrintPayload ? 'set' : 'empty'
+  };
+  Object.keys(results).forEach(function(k){
+    const v = results[k];
+    if(window.__dbgOk) window.__dbgOk(k + ' = ' + v, 'PRINT');
+  });
+  return results;
+};
+
+/* ═══ END OF PART J ═══ */
   </script>
     </body>
-</html>
+</html
  

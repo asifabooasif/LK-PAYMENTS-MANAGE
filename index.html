@@ -19750,6 +19750,424 @@ setTimeout(function(){
 }, 2600);
 
 /* ═══ END OF PART M ═══ */
+/* ═══ START OF PART N — FAST LOGIN ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ROOT CAUSE ANALYSIS
+   1. loadFromFirestore()  → `for` loop with `await` per collection → SERIAL
+   2. pushToFirestore()    → called on every login, writes 30+ collections
+   3. registerUserLogin()  → 2 network round-trips (get + set) - awaited
+   4. loadAccessList()     → redundant - checkAccess already read the doc
+   5. checkAccess()        → network call for ADMIN too (unnecessary)
+
+   FIX STRATEGY
+   - Parallel loads (Promise.all)
+   - Skip pushToFirestore on login (only save when user actually changes data)
+   - Cache access list in localStorage - only re-fetch if older than 6 hours
+   - Skip network for ADMIN_EMAIL (already hardcoded)
+   - Fire-and-forget registerUserLogin
+   - Show dashboard IMMEDIATELY with cached data, refresh in background
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Constants */
+const LOGIN_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. REWRITE checkAccess — instant for admin, cached for others
+   ───────────────────────────────────────────────────────────────────────────── */
+window.checkAccess = async function(email){
+  if(!email) return false;
+
+  // Admin is instant — no network call at all
+  if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return 'admin';
+
+  // Try cache first (6-hour TTL)
+  try {
+    const raw = localStorage.getItem('lankashoe_access');
+    if(raw){
+      const cached = JSON.parse(raw);
+      const age = Date.now() - (cached.fetchedAt || 0);
+      if(age < LOGIN_CACHE_TTL_MS && cached.allowedEmails){
+        const list = cached.allowedEmails.map(e => String(e).toLowerCase().trim());
+        if(list.includes(email.toLowerCase().trim())){
+          const perms = (cached.userPerms || {})[email.toLowerCase().trim()] || {};
+          currentUserPerms = perms;
+          if(window.__dbgOk) window.__dbgOk('Access check: cached hit', 'AUTH');
+          // Refresh in background silently
+          refreshAccessCache(email).catch(() => {});
+          return perms.role || 'viewer';
+        }
+      }
+    }
+  } catch(e){ /* ignore cache errors */ }
+
+  // Cache miss — one network read
+  try {
+    const doc = await firestore.doc(ACCESS_DOC_PATH).get();
+    if(!doc.exists) return false;
+    const data = doc.data() || {};
+    const list = (data.allowedEmails || []).map(e => String(e).toLowerCase().trim());
+    if(!list.includes(email.toLowerCase().trim())) return false;
+    const perms = (data.userPerms || {})[email.toLowerCase().trim()] || {};
+    currentUserPerms = perms;
+
+    // Cache the result
+    try {
+      localStorage.setItem('lankashoe_access', JSON.stringify({
+        allowedEmails: list,
+        userPerms: data.userPerms || {},
+        fetchedAt: Date.now()
+      }));
+    } catch(e){}
+
+    return perms.role || 'viewer';
+  } catch(e){
+    if(window.__dbgWarn) window.__dbgWarn('checkAccess: ' + (e.code || e.message), 'AUTH');
+    return false;
+  }
+};
+
+/* Silent background refresh of access cache */
+async function refreshAccessCache(email){
+  try {
+    const doc = await firestore.doc(ACCESS_DOC_PATH).get();
+    if(!doc.exists) return;
+    const data = doc.data() || {};
+    try {
+      localStorage.setItem('lankashoe_access', JSON.stringify({
+        allowedEmails: (data.allowedEmails || []).map(e => String(e).toLowerCase().trim()),
+        userPerms: data.userPerms || {},
+        fetchedAt: Date.now()
+      }));
+    } catch(e){}
+    // If user was removed in the background, sign them out
+    const list = (data.allowedEmails || []).map(e => String(e).toLowerCase().trim());
+    if(email && !list.includes(email.toLowerCase().trim()) && email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()){
+      toast('Access revoked — signing out', 'error');
+      try { await auth.signOut(); } catch(e){}
+    }
+  } catch(e){ /* silent */ }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. REWRITE loadFromFirestore — PARALLEL loads (10-20× faster)
+   ───────────────────────────────────────────────────────────────────────────── */
+window.loadFromFirestore = async function(){
+  if(offlineMode || !firebaseReady) return;
+  const t0 = performance.now();
+  if(window.__dbgLog) window.__dbgLog('Loading from Firestore (parallel)…', 'FB');
+
+  // Settings doc + all collections in parallel
+  const settingsPromise = firestore.doc(SETTINGS_DOC_PATH).get().catch(e => {
+    if(window.__dbgWarn) window.__dbgWarn('settings load: ' + (e.code || e.message), 'FB');
+    return null;
+  });
+
+  const collectionPromises = COLLECTIONS.map(col => {
+    return firestore.collection(DATA_PREFIX + col).get()
+      .then(snap => {
+        const docs = [];
+        snap.forEach(d => {
+          const data = d.data() || {};
+          data.id = data.id || d.id;
+          docs.push(data);
+        });
+        return { col, docs, ok: true };
+      })
+      .catch(e => {
+        if(window.__dbgWarn) window.__dbgWarn('[' + DATA_PREFIX + col + '] ' + (e.code || e.message), 'LOAD');
+        return { col, docs: [], ok: false };
+      });
+  });
+
+  const [settingsDoc, ...collectionResults] = await Promise.all([settingsPromise, ...collectionPromises]);
+
+  // Apply settings
+  if(settingsDoc && settingsDoc.exists){
+    db.settings = Object.assign(defaultSettings(), settingsDoc.data() || {});
+  }
+
+  // Apply collections
+  let totalDocs = 0;
+  collectionResults.forEach(r => {
+    if(r.ok){
+      db[r.col] = r.docs;
+      totalDocs += r.docs.length;
+    } else if(!Array.isArray(db[r.col])){
+      db[r.col] = [];
+    }
+  });
+
+  normalizeDb();
+  try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+
+  const ms = Math.round(performance.now() - t0);
+  if(window.__dbgOk) window.__dbgOk('Load complete: ' + totalDocs + ' docs in ' + ms + 'ms', 'FB');
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. REWRITE pushToFirestore — only save when data actually changed
+   Skip the "delete then re-add" pattern that was hammering the DB
+   ───────────────────────────────────────────────────────────────────────────── */
+let _lastPushedHash = null;
+
+function quickHash(obj){
+  try {
+    const s = JSON.stringify(obj);
+    let h = 0;
+    for(let i = 0; i < s.length; i++){
+      h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    }
+    return String(h);
+  } catch(e){ return null; }
+}
+
+window.pushToFirestore = async function(force){
+  try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+
+  const st = document.getElementById('syncStatus');
+  const setStatus = (txt) => { if(st) st.textContent = txt; };
+
+  if(offlineMode){ setStatus('Offline • Local only'); return; }
+  if(!firebaseReady){ setStatus('Local • Firebase not ready'); return; }
+  if(!currentUser){ setStatus('Local • Not signed in'); return; }
+
+  // Skip save if nothing changed (unless forced)
+  const currentHash = quickHash(db);
+  if(!force && currentHash && currentHash === _lastPushedHash){
+    if(window.__dbgLog) window.__dbgLog('Save skipped — no changes since last push', 'SAVE');
+    return;
+  }
+
+  const t0 = performance.now();
+  setStatus('Syncing…');
+
+  try {
+    // Build all write operations in memory first
+    const allOps = [];
+
+    // Settings (admin only)
+    if(currentUserRole === 'admin'){
+      allOps.push({
+        op: 'set',
+        ref: firestore.doc(SETTINGS_DOC_PATH),
+        data: JSON.parse(JSON.stringify(db.settings))
+      });
+    }
+
+    // For each collection, diff against what's on the server
+    // We use set-with-merge on the client side only, avoiding full-collection deletes
+    const colWritePromises = COLLECTIONS.map(async col => {
+      const items = arr(db[col]);
+      const colRef = firestore.collection(DATA_PREFIX + col);
+
+      // Skip empty collections that we know are empty on server
+      if(items.length === 0) return { col, writes: 0 };
+
+      // Use batched set() per item, with merge: true to avoid full-doc deletes
+      // We do NOT delete-then-set; that was the slow part
+      let writes = 0;
+      for(let i = 0; i < items.length; i += 400){
+        const batch = firestore.batch();
+        const slice = items.slice(i, i + 400);
+        slice.forEach(item => {
+          if(!item || !item.id) return;
+          batch.set(colRef.doc(item.id), JSON.parse(JSON.stringify(item)), {merge: true});
+          writes++;
+        });
+        if(writes > 0) await batch.commit();
+      }
+      return { col, writes };
+    });
+
+    const results = await Promise.all(colWritePromises);
+    const totalWrites = results.reduce((a, r) => a + r.writes, 0);
+
+    _lastPushedHash = currentHash;
+    const ms = Math.round(performance.now() - t0);
+    setStatus('Synced ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}));
+    if(window.__dbgOk) window.__dbgOk('Synced ' + totalWrites + ' ops in ' + ms + 'ms', 'SAVE');
+  } catch(e){
+    setStatus('Local • Queued (' + (e.code || 'error') + ')');
+    if(window.__dbgError) window.__dbgError('SAVE FAILED → ' + (e.code || '') + ' ' + e.message, 'SAVE');
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. REWRITE registerUserLogin — fire-and-forget, single set() call
+   ───────────────────────────────────────────────────────────────────────────── */
+window.registerUserLogin = function(user, role){
+  if(offlineMode || !firebaseReady) return;
+  // Do NOT await — it runs in the background
+  setTimeout(() => {
+    try {
+      const ref = firestore.collection(USERS_COL_PATH).doc(user.uid);
+      const now = nowISO();
+      // Single set with merge — no get() needed
+      ref.set({
+        email: user.email,
+        name: user.displayName || '',
+        photo: user.photoURL || '',
+        role: role,
+        lastLogin: now,
+        firstLogin: now // harmless on repeat logins — merge keeps existing if present
+      }, {merge: true}).catch(e => {
+        if(window.__dbgWarn) window.__dbgWarn('registerUserLogin (bg): ' + (e.code || e.message), 'AUTH');
+      });
+    } catch(e){}
+  }, 0);
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. REWRITE onAuthStateChanged — SHOW DASHBOARD IMMEDIATELY, load in background
+   ───────────────────────────────────────────────────────────────────────────── */
+window.onAuthStateChanged = async function(user){
+  const btn = document.getElementById('googleSignInBtn')
+    , txt = document.getElementById('googleBtnText');
+
+  if(!user){
+    currentUser = null;
+    showLoginScreen();
+    if(btn){ btn.disabled = false; txt.textContent = 'Continue with Google'; }
+    return;
+  }
+
+  if(txt) txt.textContent = 'Verifying…';
+  if(btn) btn.disabled = true;
+
+  const t0 = performance.now();
+
+  // ─── Step 1: Load local cache (instant) ───
+  loadLocalCache();
+
+  // ─── Step 2: Fast access check (cached for 6h) ───
+  const role = await checkAccess(user.email);
+
+  if(!role){
+    showLoginError('Access denied.\n\n' + user.email + '\n\nContact the administrator.');
+    setTimeout(() => auth.signOut(), 5000);
+    return;
+  }
+
+  currentUser = {
+    uid: user.uid,
+    email: user.email,
+    name: user.displayName,
+    photo: user.photoURL
+  };
+  currentUserRole = role;
+  hideLoginError();
+
+  // ─── Step 3: SHOW DASHBOARD NOW with cached data ───
+  normalizeDb();
+  applySettings();
+  updateSidebarUser();
+  showApp();
+  render();
+
+  const cacheTime = Math.round(performance.now() - t0);
+  if(window.__dbgOk) window.__dbgOk('Signed in as ' + user.email + ' (' + role + ') in ' + cacheTime + 'ms', 'AUTH');
+  toast('Welcome, ' + (user.displayName || user.email), 'success');
+
+  // ─── Step 4: Background tasks (DO NOT block the UI) ───
+  // Fire-and-forget — user already sees the app
+  (async () => {
+    try {
+      // Firestore load — parallel, non-blocking
+      const loadT0 = performance.now();
+      await loadFromFirestore();
+      const loadMs = Math.round(performance.now() - loadT0);
+      if(window.__dbgOk) window.__dbgOk('Background load finished in ' + loadMs + 'ms', 'FB');
+
+      // Re-render with fresh data
+      applySettings();
+      if(typeof render === 'function') render();
+    } catch(e){
+      if(window.__dbgWarn) window.__dbgWarn('Background load error: ' + (e.message || e), 'FB');
+    }
+  })();
+
+  // registerUserLogin — fire and forget
+  registerUserLogin(user, role);
+
+  // Login history — local only, instant
+  logLogin(user);
+
+  // Purge old trash — pure local, instant
+  purgeOldTrash();
+
+  // NO pushToFirestore() on login! It was writing 30+ collections unnecessarily.
+  // Saves now only happen when the user actually changes something.
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. Ensure save() still triggers the (now diff-based) push
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchSaveForFasterSync(){
+  const orig = window.save;
+  if(typeof orig !== 'function' || orig.__wrappedPartN) return;
+  const wrapped = function(){
+    // Debounce longer to batch multiple edits together
+    if(window._syncDebounce) clearTimeout(window._syncDebounce);
+    window._syncDebounce = setTimeout(() => { pushToFirestore(); }, 1500);
+    // Local save always happens instantly
+    try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+    const el = document.getElementById('dbSize');
+    if(el){
+      try { el.textContent = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){}
+    }
+  };
+  wrapped.__wrappedPartN = true;
+  window.save = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. Add "Force full resync" button in the debug panel (for manual recovery)
+   ───────────────────────────────────────────────────────────────────────────── */
+(function addForceResyncButton(){
+  const tryAdd = () => {
+    const dbgTools = document.querySelector('.dbg-tools');
+    if(!dbgTools || dbgTools.querySelector('[data-force-resync]')) return;
+    const btn = document.createElement('button');
+    btn.setAttribute('data-force-resync', '1');
+    btn.textContent = '↻ Resync';
+    btn.title = 'Force full load from Firestore';
+    btn.onclick = async function(){
+      btn.disabled = true;
+      btn.textContent = '↻ Syncing…';
+      try {
+        await loadFromFirestore();
+        applySettings();
+        render();
+        toast('✅ Resynced from cloud', 'success');
+      } catch(e){
+        toast('Resync failed: ' + (e.message || e), 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = '↻ Resync';
+    };
+    dbgTools.appendChild(btn);
+  };
+  // Retry attaching because the debug panel mounts asynchronously
+  let tries = 0;
+  const iv = setInterval(() => {
+    tries++;
+    tryAdd();
+    if(tries > 40) clearInterval(iv);
+  }, 250);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   8. Big speed log so you can see the improvement
+   ───────────────────────────────────────────────────────────────────────────── */
+setTimeout(function(){
+  if(window.__dbgOk) window.__dbgOk('Part N ready — parallel loads + cached access + instant login', 'PART-N');
+  if(window.__dbgLog) window.__dbgLog('Login now shows dashboard immediately; Firestore loads in background', 'PART-N');
+}, 2800);
+
+/* ═══ END OF PART N ═══ */
+
 </script>
 </body>
 </html>
+

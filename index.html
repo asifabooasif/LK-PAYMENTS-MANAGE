@@ -20166,164 +20166,227 @@ setTimeout(function(){
 }, 2800);
 
 /* ═══ END OF PART N ═══ */
-/* ═══ START OF PART O — CLEAN PAYMENTS PAGE ═══ */
+/* ═══ START OF PART P — FORCE PATCH views.payments ═══ */
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Complete rewrite of viewPayments
+   The render() function does:
+       el.innerHTML = views[ui.view]();
+   where `views` is a private const object defined in Part 3.
+   Overwriting window.viewPayments does NOTHING because views.payments still
+   holds a reference to the ORIGINAL function.
+
+   So we patch views.payments DIRECTLY. Since all parts share the same
+   <script> tag, `views` is in scope.
    ───────────────────────────────────────────────────────────────────────────── */
-window.viewPayments = function(){
-  return ''
-    + '<div class="card">'
-    + '<div class="card-head"><div><h3>💸 Issue Payment to Supplier</h3>'
-    +   '<div class="hint">Mix party cheques, own cheque leaves, and direct bank transfers</div></div></div>'
-    + '<form onsubmit="previewPayment(event);return false">'
 
-    // ─── Header row ───
-    + '<div class="form-grid">'
-    +   '<label class="field">Supplier <span class="req">*</span>'
-    +     '<select id="paySupplier" required><option value="">Select supplier</option>'
-    +     arr(db.suppliers).map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('')
-    +     '</select></label>'
-    +   '<label class="field">Date <span class="req">*</span>'
-    +     '<input type="date" id="payDate" required value="' + today() + '"></label>'
-    +   '<label class="field">Reference'
-    +     '<input id="payRef" value="PAY-' + String(num(db.settings.nextPaymentNo) || 1).padStart(4, '0') + '"></label>'
-    + '</div>'
+(function forceViewPaymentsPatch(){
 
-    + '<div class="divider"></div>'
+  // ─── Build the new payments HTML (with bank section) ───
+  function buildNewPaymentsHTML(){
+    return ''
+      + '<div class="card">'
+      + '<div class="card-head"><div><h3>💸 Issue Payment to Supplier</h3>'
+      +   '<div class="hint">Mix party cheques, own cheque leaves, and direct bank transfers</div></div></div>'
+      + '<form onsubmit="previewPayment(event);return false">'
 
-    // ─── Three method panels (grid) ───
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">'
+      + '<div class="form-grid">'
+      +   '<label class="field">Supplier <span class="req">*</span>'
+      +     '<select id="paySupplier" required><option value="">Select supplier</option>'
+      +     arr(db.suppliers).map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('')
+      +     '</select></label>'
+      +   '<label class="field">Date <span class="req">*</span>'
+      +     '<input type="date" id="payDate" required value="' + today() + '"></label>'
+      +   '<label class="field">Reference'
+      +     '<input id="payRef" value="PAY-' + String(num(db.settings.nextPaymentNo) || 1).padStart(4, '0') + '"></label>'
+      + '</div>'
 
-    // Panel 1: Party Cheques
-    + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +     '<h4 style="font-size:13.5px;font-weight:700">🧾 Party Cheques</h4>'
-    +     '<span class="badge blue" id="partyCount">0 selected</span></div>'
-    +   '<input type="search" placeholder="Search customer / cheque…" '
-    +     'oninput="window._pkQ=this.value;renderPartyChequeList();" '
-    +     'style="width:100%;padding:9px 12px;margin-bottom:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:12.5px">'
-    +   '<div class="row-flex" style="margin-bottom:8px;gap:6px">'
-    +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">Select all</button>'
-    +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button>'
-    +   '</div>'
-    +   '<div class="picker-list" id="partyList" style="max-height:280px;overflow-y:auto"></div>'
-    +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-size:12.5px">'
-    +     '<span class="muted">Party Total</span>'
-    +     '<span id="partyTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
-    +   '</div>'
-    + '</div>'
+      + '<div class="divider"></div>'
 
-    // Panel 2: Own Cheques
-    + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +     '<h4 style="font-size:13.5px;font-weight:700">🎯 Own Cheques</h4>'
-    +     '<span class="badge blue" id="ownCount">0 rows</span></div>'
-    +   '<button type="button" class="btn sm primary" onclick="addOwnLeafRow()" style="margin-bottom:10px">🎯 Pick a Leaf</button>'
-    +   '<div id="ownRows" style="max-height:320px;overflow-y:auto"></div>'
-    +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-size:12.5px">'
-    +     '<span class="muted">Own Total</span>'
-    +     '<span id="ownTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
-    +   '</div>'
-    + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">'
 
-    + '</div>'  // end grid
+      + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +     '<h4 style="font-size:13.5px;font-weight:700">🧾 Party Cheques</h4>'
+      +     '<span class="badge blue" id="partyCount">0 selected</span></div>'
+      +   '<input type="search" placeholder="Search customer / cheque…" '
+      +     'oninput="window._pkQ=this.value;renderPartyChequeList();" '
+      +     'style="width:100%;padding:9px 12px;margin-bottom:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:12.5px">'
+      +   '<div class="row-flex" style="margin-bottom:8px;gap:6px">'
+      +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">Select all</button>'
+      +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button>'
+      +   '</div>'
+      +   '<div class="picker-list" id="partyList" style="max-height:280px;overflow-y:auto"></div>'
+      +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-size:12.5px">'
+      +     '<span class="muted">Party Total</span>'
+      +     '<span id="partyTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
+      +   '</div>'
+      + '</div>'
 
-    // ─── Panel 3: Direct Bank Transfers (full width) ───
-    + '<div style="margin-top:16px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +     '<div><h4 style="font-size:13.5px;font-weight:700;margin:0">🏦 Direct Bank Transfers</h4>'
-    +     '<div class="small muted" style="margin-top:3px">Pay instantly from a bank account — deducted from balance immediately</div></div>'
-    +     '<span class="badge blue" id="bankPaymentCount">0 rows</span></div>'
-    +   '<button type="button" class="btn sm primary" onclick="addBankPaymentRow()" style="margin-bottom:10px">＋ Add Bank Transfer</button>'
-    +   '<div id="bankPaymentRows"></div>'
-    +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-size:12.5px">'
-    +     '<span class="muted">Bank Total</span>'
-    +     '<span id="bankTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
-    +   '</div>'
-    + '</div>'
+      + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +     '<h4 style="font-size:13.5px;font-weight:700">🎯 Own Cheques</h4>'
+      +     '<span class="badge blue" id="ownCount">0 rows</span></div>'
+      +   '<button type="button" class="btn sm primary" onclick="addOwnLeafRow()" style="margin-bottom:10px">🎯 Pick a Leaf</button>'
+      +   '<div id="ownRows" style="max-height:320px;overflow-y:auto"></div>'
+      +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-size:12.5px">'
+      +     '<span class="muted">Own Total</span>'
+      +     '<span id="ownTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
+      +   '</div>'
+      + '</div>'
 
-    // ─── Grand Total card ───
-    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-top:20px;padding:16px;background:linear-gradient(135deg,var(--accent-soft),var(--pink-soft));border-radius:12px;border:1px solid var(--accent-soft)">'
-    +   '<div style="text-align:center"><div class="k-label">Party</div><div class="k-value sm" id="totParty">Rs. 0.00</div></div>'
-    +   '<div style="text-align:center"><div class="k-label">Own</div><div class="k-value sm" id="totOwn">Rs. 0.00</div></div>'
-    +   '<div style="text-align:center"><div class="k-label">Bank</div><div class="k-value sm" id="totBank">Rs. 0.00</div></div>'
-    +   '<div style="text-align:center"><div class="k-label">Grand Total</div><div class="k-value" id="totAll" style="color:var(--accent-text)">Rs. 0.00</div></div>'
-    + '</div>'
+      + '</div>'
 
-    + '<div class="form-actions" style="margin-top:20px">'
-    +   '<button type="button" class="btn" onclick="resetPaymentForm()">Reset</button>'
-    +   '<button type="submit" class="btn primary">💾 Preview & Save</button>'
-    + '</div>'
-    + '</form>'
-    + '</div>'
+      + '<div style="margin-top:16px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +     '<div><h4 style="font-size:13.5px;font-weight:700;margin:0">🏦 Direct Bank Transfers</h4>'
+      +     '<div class="small muted" style="margin-top:3px">Pay instantly from a bank account — deducted from balance immediately</div></div>'
+      +     '<span class="badge blue" id="bankPaymentCount">0 rows</span></div>'
+      +   '<button type="button" class="btn sm primary" onclick="addBankPaymentRow()" style="margin-bottom:10px">＋ Add Bank Transfer</button>'
+      +   '<div id="bankPaymentRows"></div>'
+      +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-size:12.5px">'
+      +     '<span class="muted">Bank Total</span>'
+      +     '<span id="bankTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
+      +   '</div>'
+      + '</div>'
 
-    // ─── Recurring section (unchanged) ───
-    + '<div class="card"><div class="card-head"><h3>🔁 Recurring / Post-Dated Cheques</h3>'
-    +   '<button type="button" class="btn primary" onclick="openRecurringForm()">＋ Set Up Recurring</button></div>'
-    +   (arr(db.recurringCheques).length
-      ? '<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Frequency</th><th class="num">Amount</th><th>Next Due</th><th>Remaining</th><th>Status</th><th></th></tr></thead><tbody>'
-        + arr(db.recurringCheques).map(r => '<tr><td><strong>' + esc(supName(r.supplierId)) + '</strong></td>'
-          + '<td>' + esc(r.frequency) + '</td>'
-          + '<td class="num">' + moneyPlain(r.amount) + '</td>'
-          + '<td>' + dateFmt(r.nextDate) + '</td>'
-          + '<td>' + r.remaining + '</td>'
-          + '<td>' + (r.active ? '<span class="badge green">Active</span>' : '<span class="badge gray">Stopped</span>') + '</td>'
-          + '<td><button type="button" class="btn xs danger" onclick="stopRecurring(\'' + r.id + '\')">Stop</button></td>'
-          + '</tr>').join('')
-        + '</tbody></table></div>'
-      : '<div class="empty">No recurring cheques set up</div>')
-    + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-top:20px;padding:16px;background:linear-gradient(135deg,var(--accent-soft),var(--pink-soft));border-radius:12px;border:1px solid var(--accent-soft)">'
+      +   '<div style="text-align:center"><div class="k-label">Party</div><div class="k-value sm" id="totParty">Rs. 0.00</div></div>'
+      +   '<div style="text-align:center"><div class="k-label">Own</div><div class="k-value sm" id="totOwn">Rs. 0.00</div></div>'
+      +   '<div style="text-align:center"><div class="k-label">Bank</div><div class="k-value sm" id="totBank">Rs. 0.00</div></div>'
+      +   '<div style="text-align:center"><div class="k-label">Grand Total</div><div class="k-value" id="totAll" style="color:var(--accent-text)">Rs. 0.00</div></div>'
+      + '</div>'
 
-    // ─── Payment history (unchanged) ───
-    + '<div class="card"><div class="card-head"><h3>Payment History (' + arr(db.payments).length + ')</h3>'
-    +   '<div class="table-tools"><button type="button" class="btn sm" data-action="export-pay-csv">⬇ CSV</button></div></div>'
-    +   '<div id="tbl-pay">' + tablePay() + '</div></div>';
-};
+      + '<div class="form-actions" style="margin-top:20px">'
+      +   '<button type="button" class="btn" onclick="resetPaymentForm()">Reset</button>'
+      +   '<button type="submit" class="btn primary">💾 Preview & Save</button>'
+      + '</div>'
+      + '</form>'
+      + '</div>'
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Re-attach the render hooks
-   ───────────────────────────────────────────────────────────────────────────── */
-(function patchRenderForPayments(){
-  const orig = window.render;
-  if(typeof orig !== 'function' || orig.__wrappedPartO) return;
-  const wrapped = function(){
-    const r = orig.apply(this, arguments);
-    if(ui.view === 'payments'){
-      setTimeout(function(){
-        try { renderPartyChequeList(); } catch(e){ console.error(e); }
-        try { renderOwnLeafRows(); } catch(e){ console.error(e); }
-        try { renderBankPaymentRows(); } catch(e){ console.error(e); }
-        try { updatePayTotals(); } catch(e){ console.error(e); }
-      }, 40);
+      + '<div class="card"><div class="card-head"><h3>🔁 Recurring / Post-Dated Cheques</h3>'
+      +   '<button type="button" class="btn primary" onclick="openRecurringForm()">＋ Set Up Recurring</button></div>'
+      +   (arr(db.recurringCheques).length
+        ? '<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Frequency</th><th class="num">Amount</th><th>Next Due</th><th>Remaining</th><th>Status</th><th></th></tr></thead><tbody>'
+          + arr(db.recurringCheques).map(r => '<tr><td><strong>' + esc(supName(r.supplierId)) + '</strong></td>'
+            + '<td>' + esc(r.frequency) + '</td>'
+            + '<td class="num">' + moneyPlain(r.amount) + '</td>'
+            + '<td>' + dateFmt(r.nextDate) + '</td>'
+            + '<td>' + r.remaining + '</td>'
+            + '<td>' + (r.active ? '<span class="badge green">Active</span>' : '<span class="badge gray">Stopped</span>') + '</td>'
+            + '<td><button type="button" class="btn xs danger" onclick="stopRecurring(\'' + r.id + '\')">Stop</button></td>'
+            + '</tr>').join('')
+          + '</tbody></table></div>'
+        : '<div class="empty">No recurring cheques set up</div>')
+      + '</div>'
+
+      + '<div class="card"><div class="card-head"><h3>Payment History (' + arr(db.payments).length + ')</h3>'
+      +   '<div class="table-tools"><button type="button" class="btn sm" data-action="export-pay-csv">⬇ CSV</button></div></div>'
+      +   '<div id="tbl-pay">' + tablePay() + '</div></div>';
+  }
+
+  // Store globally
+  window.__buildNewPaymentsHTML = buildNewPaymentsHTML;
+  window.viewPayments = buildNewPaymentsHTML;
+
+  // ─── THE ACTUAL FIX: patch views.payments directly ───
+  let patched = false;
+
+  try {
+    if (typeof views === 'object' && views && typeof views === 'object') {
+      views.payments = buildNewPaymentsHTML;
+      patched = true;
+      if (window.__dbgOk) window.__dbgOk('✅ views.payments patched directly (closure scope)', 'PART-P');
     }
-    return r;
-  };
-  wrapped.__wrappedPartO = true;
-  window.render = wrapped;
+  } catch(e) {
+    if (window.__dbgWarn) window.__dbgWarn('views not in scope: ' + e.message, 'PART-P');
+  }
+
+  // ─── Fallback: search for the views object on window ───
+  if (!patched) {
+    try {
+      // Walk up the scope chain via Function constructor tricks won't work.
+      // Instead, monkey-patch render() to use window functions.
+      const origRender = window.render;
+      if (typeof origRender === 'function' && !origRender.__wrappedPartP) {
+        const wrapped = function(){
+          if (ui.view === 'payments') {
+            try {
+              normalizeDb();
+              applySettings();
+              renderNav();
+              const el = document.getElementById('view');
+              if (el) {
+                el.innerHTML = buildNewPaymentsHTML();
+                const t = document.getElementById('pageTitle');
+                if (t) t.textContent = 'Supplier Payments';
+                setTimeout(function(){
+                  try { renderPartyChequeList(); } catch(e){}
+                  try { renderOwnLeafRows(); } catch(e){}
+                  try { renderBankPaymentRows(); } catch(e){}
+                  try { updatePayTotals(); } catch(e){}
+                }, 40);
+              }
+              // Inject breadcrumb
+              try {
+                const cb = renderBreadcrumbs();
+                if (cb && el && !el.querySelector('.crumb-bar')) {
+                  el.insertAdjacentHTML('afterbegin', cb);
+                }
+              } catch(e){}
+              return;
+            } catch(e) {
+              console.error('Part P render intercept error:', e);
+            }
+          }
+          return origRender.apply(this, arguments);
+        };
+        wrapped.__wrappedPartP = true;
+        window.render = wrapped;
+        patched = true;
+        if (window.__dbgWarn) window.__dbgWarn('views fallback — patched render() intercept', 'PART-P');
+      }
+    } catch(e) {}
+  }
+
+  // ─── Ultimate fallback: DOM patch after render ───
+  if (!patched) {
+    document.addEventListener('click', function(e){
+      const el = e.target.closest('[data-action="nav"]');
+      if (!el || el.dataset.view !== 'payments') return;
+      setTimeout(function(){
+        const viewEl = document.getElementById('view');
+        if (!viewEl) return;
+        if (viewEl.querySelector('#bankPaymentRows')) return; // already there
+        viewEl.innerHTML = buildNewPaymentsHTML();
+        setTimeout(function(){
+          try { renderPartyChequeList(); } catch(e){}
+          try { renderOwnLeafRows(); } catch(e){}
+          try { renderBankPaymentRows(); } catch(e){}
+          try { updatePayTotals(); } catch(e){}
+        }, 40);
+      }, 100);
+    }, true);
+    if (window.__dbgWarn) window.__dbgWarn('views fallback — patched nav click listener', 'PART-P');
+  }
+
+  // ─── Re-render so user sees the change immediately ───
+  setTimeout(function(){
+    if (ui.view === 'payments') {
+      try { if (typeof render === 'function') render(); } catch(e){}
+    }
+  }, 200);
+
+  // ─── Debug: report what happened ───
+  setTimeout(function(){
+    if (window.__dbgLog) {
+      window.__dbgLog('views.payments patched = ' + patched, 'PART-P');
+    }
+  }, 2500);
+
 })();
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Ensure ui state exists
-   ───────────────────────────────────────────────────────────────────────────── */
-(function ensurePayState(){
-  if(!Array.isArray(ui.payBankRows)) ui.payBankRows = [];
-  if(!ui.paySelectedParty) ui.paySelectedParty = new Set();
-  if(!Array.isArray(ui.payOwnRows)) ui.payOwnRows = [];
-})();
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   Startup log
-   ───────────────────────────────────────────────────────────────────────────── */
-setTimeout(function(){
-  if(window.__dbgOk) window.__dbgOk('Part O ready — clean Payments page with bank transfer section', 'PART-O');
-}, 2600);
-
-/* ═══ END OF PART O ═══ */
+/* ═══ END OF PART P ═══ */
 
 </script>
 </body>
 </html>
-
-
-

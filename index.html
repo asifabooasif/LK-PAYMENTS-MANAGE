@@ -18591,7 +18591,518 @@ window.testPrintFlow = function(){
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* ═══ END OF PART K ═══ */
-  </script>
+/* ═══ START OF PART L — LEAF PICKER + BANK LABELS ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FIX 1 — Bank custom labels
+   ─────────────────────────────────────────────────────────────────────────────
+   Adds an optional `customLabel` field to bank accounts.
+   Example: two accounts at Commercial Bank → "Commercial - Main Shop"
+                                               "Commercial - Warehouse"
+   Everywhere in the app uses bankDisplayName() which prefers customLabel.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+window.bankDisplayName = function(bankOrId){
+  const b = typeof bankOrId === 'string' ? bankObj(bankOrId) : bankOrId;
+  if(!b) return '—';
+  return b.customLabel && String(b.customLabel).trim()
+    ? b.customLabel.trim()
+    : (b.bankName || '—');
+};
+
+/* Short label for tight spaces (dropdowns, table cells) */
+window.bankShortName = function(bankOrId){
+  const b = typeof bankOrId === 'string' ? bankObj(bankOrId) : bankOrId;
+  if(!b) return '—';
+  const base = b.bankName || '—';
+  if(!b.customLabel) return base;
+  // If customLabel already contains bank name, use as-is
+  if(b.customLabel.toLowerCase().indexOf(base.toLowerCase()) !== -1) return b.customLabel;
+  return base + ' · ' + b.customLabel;
+};
+
+/* Hook openBankForm to inject the Custom Label field */
+(function patchBankFormForCustomLabel(){
+  const orig = window.openBankForm;
+  if(typeof orig !== 'function' || orig.__wrappedPartL) return;
+  const wrapped = function(id){
+    const result = orig.apply(this, arguments);
+    // After the modal is rendered, add the Custom Label field
+    setTimeout(function(){
+      const form = document.querySelector('#modalWrap form[data-id]');
+      if(!form || form.querySelector('[name="bLabel"]')) return;
+      const grid = form.querySelector('.form-grid');
+      if(!grid) return;
+
+      const labelField = document.createElement('label');
+      labelField.className = 'field';
+      labelField.style.gridColumn = 'span 2';
+      const b = id ? bankObj(id) : null;
+      labelField.innerHTML = '<span>Custom Label <span class="small muted">(optional — helps distinguish multiple accounts at the same bank)</span></span>'
+        + '<input name="bLabel" value="' + esc(b ? (b.customLabel || '') : '') + '" placeholder="e.g. Main Shop Account, Warehouse Account, Petty Cash">'
+        + '<div class="small muted" style="margin-top:4px">Shown everywhere instead of the bank name if filled.</div>';
+      grid.appendChild(labelField);
+    }, 60);
+    return result;
+  };
+  wrapped.__wrappedPartL = true;
+  window.openBankForm = wrapped;
+})();
+
+/* Hook saveBank to persist the custom label */
+(function patchSaveBankForCustomLabel(){
+  const orig = window.saveBank;
+  if(typeof orig !== 'function' || orig.__wrappedPartL) return;
+  const wrapped = function(e){
+    const form = e && e.target;
+    if(form){
+      const labelEl = form.querySelector('[name="bLabel"]');
+      // Inject into the form data by reading before orig runs
+      if(labelEl){
+        // Use a temporary closure variable so orig can find it
+        window.__pendingBankLabel = labelEl.value.trim();
+      }
+    }
+    return orig.apply(this, arguments);
+  };
+  wrapped.__wrappedPartL = true;
+  window.saveBank = wrapped;
+
+  // Post-save hook: patch the newly-saved bank account
+  const checkTimer = setInterval(function(){
+    if(typeof window.saveBank === 'function' && window.saveBank.__wrappedPartL){
+      clearInterval(checkTimer);
+    }
+  }, 500);
+
+  // Wrap the actual DB write by monkey-patching after save
+  // (Simpler approach: intercept inside saveBank by overriding entirely)
+  const baseSaveBank = window.saveBank;
+  window.saveBank = function(e){
+    // Read form values manually
+    const f = e && e.target;
+    if(!f) return baseSaveBank.apply(this, arguments);
+    const id = f.dataset.id;
+    const label = f.bLabel ? f.bLabel.value.trim() : '';
+
+    // Let the original run (which does the actual save)
+    const r = baseSaveBank.apply(this, arguments);
+
+    // Post-fix: apply the label to the saved bank
+    setTimeout(function(){
+      const target = id ? bankObj(id) : arr(db.bankAccounts)[arr(db.bankAccounts).length - 1];
+      if(target){
+        target.customLabel = label;
+        save();
+      }
+    }, 30);
+
+    return r;
+  };
+  window.saveBank.__wrappedPartL = true;
+})();
+
+/* Rewrite bank dropdown option lists so they show the custom label.
+   We do this by hooking DOM after modal opens — but a cleaner way is
+   to make sure every place that lists banks uses bankShortName.
+   We can't easily reach into every existing function, so we do a
+   DOM post-processor that runs after every render. */
+
+(function patchAllBankOptionLabels(){
+  function updateBankOptions(){
+    // Find all <select> elements containing <option> with a bank name
+    document.querySelectorAll('select').forEach(function(sel){
+      sel.querySelectorAll('option').forEach(function(opt){
+        const v = opt.value;
+        if(!v) return;
+        const b = bankObj(v);
+        if(!b || !b.customLabel) return;
+        // Rebuild label with custom name
+        const newText = bankShortName(b) + (b.accountNo ? ' — ' + b.accountNo : '');
+        if(opt.textContent !== newText) opt.textContent = newText;
+      });
+    });
+  }
+
+  // Run after every render
+  const origRender = window.render;
+  if(typeof origRender === 'function' && !origRender.__wrappedPartL){
+    const wrapped = function(){
+      const r = origRender.apply(this, arguments);
+      setTimeout(updateBankOptions, 40);
+      return r;
+    };
+    wrapped.__wrappedPartL = true;
+    window.render = wrapped;
+  }
+
+  // Also run on modal open (modal is separate from view render)
+  const origOpenModal = window.openModal;
+  if(typeof origOpenModal === 'function' && !origOpenModal.__wrappedPartL){
+    const wrapped = function(){
+      const r = origOpenModal.apply(this, arguments);
+      setTimeout(updateBankOptions, 40);
+      return r;
+    };
+    wrapped.__wrappedPartL = true;
+    window.openModal = wrapped;
+  }
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FIX 2 — Own Cheque Leaf Picker Wizard
+   ─────────────────────────────────────────────────────────────────────────────
+   Replaces the plain "Add Leaf" dropdown with a 3-step modal:
+     1. Pick bank account (grouped by bank name)
+     2. Pick cheque book (of that bank) — or "Any book"
+     3. Pick leaf from a beautiful grid — only Available leaves shown
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Override addOwnLeafRow — if called with no args, open the picker.
+   If called with a leafId, add the row directly (kept for compatibility). */
+window.addOwnLeafRow = function(leafId){
+  // Compat: direct-add path (used elsewhere)
+  if(leafId){
+    const avail = availableLeaves();
+    const leaf = avail.find(l => l.id === leafId);
+    if(!leaf){ toast('Leaf not available', 'error'); return; }
+    ui.payOwnRows.push({
+      rowId: uid(),
+      leafId: leaf.id,
+      amount: 0,
+      dueDate: shiftDate(today(), num(db.settings.defaultChequeDays) || 30),
+      payee: ''
+    });
+    renderOwnLeafRows();
+    return;
+  }
+
+  // New wizard path
+  const avail = availableLeaves();
+  if(!avail.length){
+    openModal('🚫 No Available Leaves',
+      '<div class="empty" style="padding:40px 20px">'
+      + '<div class="big">📭</div>'
+      + '<strong>You have no available cheque leaves.</strong>'
+      + '<div class="small muted" style="margin-top:8px">Add a cheque book and generate leaves first.</div>'
+      + '</div>'
+      + '<div class="form-actions">'
+      +   '<button class="btn" data-action="close-modal">Close</button>'
+      +   '<button class="btn primary" onclick="closeModal();ui.view=\'chequeBooks\';render();">Go to Cheque Books →</button>'
+      + '</div>');
+    return;
+  }
+
+  openLeafPickerWizard();
+};
+
+/* The wizard itself */
+window.openLeafPickerWizard = function(){
+  const avail = availableLeaves();
+
+  // Group leaves by bankAccountId → chequeBookId → leaf[]
+  const byBank = {};
+  avail.forEach(l => {
+    const bankId = l.bankAccountId || 'unknown-bank';
+    const bookId = l.chequeBookId || 'unknown-book';
+    if(!byBank[bankId]) byBank[bankId] = { bankId, books: {} };
+    if(!byBank[bankId].books[bookId]) byBank[bankId].books[bookId] = [];
+    byBank[bankId].books[bookId].push(l);
+  });
+
+  const bankIds = Object.keys(byBank).sort(function(a, b){
+    const ba = bankObj(a);
+    const bb = bankObj(b);
+    return (bankDisplayName(ba) || '').localeCompare(bankDisplayName(bb) || '');
+  });
+
+  // Build HTML
+  let bankStepHTML = '';
+  bankIds.forEach(function(bankId){
+    const bank = bankObj(bankId);
+    const bankInfo = byBank[bankId];
+    const leafCount = Object.keys(bankInfo.books).reduce((a, k) => a + bankInfo.books[k].length, 0);
+    const bookCount = Object.keys(bankInfo.books).length;
+    const bal = bank ? moneyPlain(bankBalance(bank.id)) : '—';
+    const logo = bank ? bankLogo(bank.bankName) : '<span class="bank-logo-sm" style="background:#6b7280">?</span>';
+    const display = bank ? bankDisplayName(bank) : 'Unknown Bank';
+    const acctNo = bank && bank.accountNo ? ' · ' + esc(bank.accountNo) : '';
+
+    bankStepHTML += '<div class="leafpick-bank-card" data-bank="' + esc(bankId) + '" onclick="leafpick_chooseBank(\'' + esc(bankId) + '\')">'
+      + '<div style="display:flex;align-items:center;gap:14px">'
+      +   '<div style="font-size:22px">' + logo + '</div>'
+      +   '<div style="flex:1;min-width:0">'
+      +     '<div style="font-weight:700;font-size:14px">' + esc(display) + '</div>'
+      +     '<div class="small muted" style="margin-top:2px">'
+      +       esc(bank ? bank.bankName : '') + acctNo
+      +       + ' · Balance <strong style="color:var(--text-2)">' + bal + '</strong>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div style="text-align:right">'
+      +     '<div style="font-size:18px;font-weight:800;color:var(--accent)">' + leafCount + '</div>'
+      +     '<div class="small muted">' + (leafCount === 1 ? 'leaf' : 'leaves') + ' · ' + bookCount + ' ' + (bookCount === 1 ? 'book' : 'books') + '</div>'
+      +   '</div>'
+      +   '<div style="font-size:20px;color:var(--text-4)">›</div>'
+      + '</div>'
+      + '</div>';
+  });
+
+  const wizardHTML = ''
+    + '<style>'
+    +   '.leafpick-bank-card{padding:16px 18px;border:1px solid var(--border);border-radius:12px;background:var(--surface);margin-bottom:10px;cursor:pointer;transition:all .15s ease}'
+    +   '.leafpick-bank-card:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px);box-shadow:var(--shadow-md)}'
+    +   '.leafpick-step-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;gap:8px}'
+    +   '.leafpick-breadcrumb{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);margin-bottom:14px;flex-wrap:wrap}'
+    +   '.leafpick-breadcrumb strong{color:var(--text);font-weight:600}'
+    +   '.leafpick-breadcrumb .lnk{color:var(--accent);cursor:pointer}'
+    +   '.leafpick-breadcrumb .lnk:hover{text-decoration:underline}'
+    +   '.leafpick-back{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12px;font-weight:500;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text-2);transition:all .15s}'
+    +   '.leafpick-back:hover{background:var(--surface-3)}'
+    +   '.leafpick-leaf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;max-height:340px;overflow-y:auto;padding:4px 4px 8px}'
+    +   '.leafpick-leaf{padding:12px 6px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);text-align:center;cursor:pointer;transition:all .12s ease;font-family:var(--mono);position:relative}'
+    +   '.leafpick-leaf:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-2px);box-shadow:var(--shadow-sm)}'
+    +   '.leafpick-leaf .leaf-no{font-size:14px;font-weight:800;color:var(--text);letter-spacing:.02em}'
+    +   '.leafpick-leaf .leaf-book{font-size:9.5px;color:var(--text-4);margin-top:3px;letter-spacing:.05em}'
+    +   '.leafpick-leaf.used{opacity:.35;cursor:not-allowed;pointer-events:none;background:var(--surface-3);border-style:dashed}'
+    +   '.leafpick-leaf.used::after{content:"used";position:absolute;top:4px;right:6px;font-size:8px;color:var(--text-4);text-transform:uppercase;letter-spacing:.08em}'
+    +   '.leafpick-book-card{padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s}'
+    +   '.leafpick-book-card:hover{border-color:var(--accent);background:var(--accent-soft)}'
+    +   '.leafpick-book-card .book-badge{width:38px;height:38px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex-shrink:0}'
+    +   '.leafpick-any-book{padding:14px 16px;border:1.5px dashed var(--border-3);border-radius:10px;background:var(--surface-2);margin-bottom:8px;cursor:pointer;text-align:center;font-size:12.5px;color:var(--text-2);transition:all .15s}'
+    +   '.leafpick-any-book:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text)}'
+    + '</style>'
+    + '<div id="leafWizardBody" style="min-height:280px">'
+    +   '<div id="leafWizardStep1">'
+    +     '<div class="leafpick-step-title">Step 1 of 3 — Choose a bank account</div>'
+    +     bankStepHTML
+    +   '</div>'
+    +   '<div id="leafWizardStep2" style="display:none"></div>'
+    +   '<div id="leafWizardStep3" style="display:none"></div>'
+    + '</div>'
+    + '<div class="form-actions">'
+    +   '<button class="btn" data-action="close-modal">Cancel</button>'
+    + '</div>';
+
+  openModal('🎯 Pick a Cheque Leaf', wizardHTML, 'wide');
+};
+
+/* Expose wizard state */
+window._leafWizard = { bankId: null, bookId: null };
+
+/* Step 1 → Step 2 */
+window.leafpick_chooseBank = function(bankId){
+  window._leafWizard.bankId = bankId;
+  const avail = availableLeaves();
+  const books = {};
+  avail.filter(l => l.bankAccountId === bankId).forEach(l => {
+    const bid = l.chequeBookId || 'unknown';
+    if(!books[bid]) books[bid] = [];
+    books[bid].push(l);
+  });
+
+  const bank = bankObj(bankId);
+  const display = bankDisplayName(bank);
+  const bookKeys = Object.keys(books).sort(function(a, b){
+    const ba = bookObj(a);
+    const bb = bookObj(b);
+    return (ba && ba.bookNo || '').localeCompare(bb && bb.bookNo || '');
+  });
+
+  const step2 = document.getElementById('leafWizardStep2');
+  if(!step2) return;
+
+  step2.innerHTML = ''
+    + '<div class="leafpick-step-title">Step 2 of 3 — Choose a cheque book</div>'
+    + '<div class="leafpick-breadcrumb">'
+    +   '<span class="lnk" onclick="leafpick_backToStep1()">All Banks</span>'
+    +   '<span>›</span>'
+    +   '<strong>' + esc(display) + '</strong>'
+    + '</div>'
+    + '<div class="leafpick-any-book" onclick="leafpick_chooseBook(\'__any__\')">'
+    +   '<strong>📚 Show all leaves in this bank</strong>'
+    +   '<div class="small muted" style="margin-top:4px">' + avail.filter(l => l.bankAccountId === bankId).length + ' leaves across ' + bookKeys.length + ' book(s)</div>'
+    + '</div>'
+    + bookKeys.map(function(bid){
+      const book = bookObj(bid);
+      const leaves = books[bid];
+      const bookLabel = book
+        ? 'Book ' + esc(book.bookNo || '—') + ' · ' + esc(book.startNo) + '–' + esc(book.endNo)
+        : 'Unknown book';
+      const bookShort = book && book.bookNo ? book.bookNo.slice(0, 3).toUpperCase() : '??';
+      return '<div class="leafpick-book-card" onclick="leafpick_chooseBook(\'' + esc(bid) + '\')">'
+        + '<div class="book-badge">' + esc(bookShort) + '</div>'
+        + '<div style="flex:1">'
+        +   '<div style="font-weight:600;font-size:13px">' + bookLabel + '</div>'
+        +   '<div class="small muted" style="margin-top:2px">' + leaves.length + ' available leaf' + (leaves.length === 1 ? '' : 's') + '</div>'
+        + '</div>'
+        + '<div style="font-size:20px;color:var(--text-4)">›</div>'
+        + '</div>';
+    }).join('')
+    + '<div style="margin-top:16px"><button class="leafpick-back" onclick="leafpick_backToStep1()">← Back</button></div>';
+
+  document.getElementById('leafWizardStep1').style.display = 'none';
+  document.getElementById('leafWizardStep2').style.display = '';
+  document.getElementById('leafWizardStep3').style.display = 'none';
+};
+
+window.leafpick_backToStep1 = function(){
+  const s1 = document.getElementById('leafWizardStep1');
+  const s2 = document.getElementById('leafWizardStep2');
+  const s3 = document.getElementById('leafWizardStep3');
+  if(s1) s1.style.display = '';
+  if(s2) s2.style.display = 'none';
+  if(s3) s3.style.display = 'none';
+  window._leafWizard.bookId = null;
+};
+
+/* Step 2 → Step 3 */
+window.leafpick_chooseBook = function(bookId){
+  window._leafWizard.bookId = bookId;
+  const avail = availableLeaves().filter(l => l.bankAccountId === window._leafWizard.bankId);
+  const filtered = bookId === '__any__'
+    ? avail
+    : avail.filter(l => l.chequeBookId === bookId);
+
+  filtered.sort((a, b) => (a.leafNo || '').localeCompare(b.leafNo || ''));
+
+  const bank = bankObj(window._leafWizard.bankId);
+  const display = bankDisplayName(bank);
+  const book = bookId !== '__any__' ? bookObj(bookId) : null;
+
+  // Which leaves are already in use in the current payment?
+  const usedInPayment = new Set(ui.payOwnRows.map(r => r.leafId).filter(Boolean));
+
+  const step3 = document.getElementById('leafWizardStep3');
+  if(!step3) return;
+
+  step3.innerHTML = ''
+    + '<div class="leafpick-step-title">Step 3 of 3 — Pick a leaf</div>'
+    + '<div class="leafpick-breadcrumb">'
+    +   '<span class="lnk" onclick="leafpick_backToStep1()">All Banks</span>'
+    +   '<span>›</span>'
+    +   '<span class="lnk" onclick="leafpick_chooseBank(\'' + esc(window._leafWizard.bankId) + '\')">' + esc(display) + '</span>'
+    +   '<span>›</span>'
+    +   '<strong>' + (book ? 'Book ' + esc(book.bookNo || '') : 'All leaves') + '</strong>'
+    + '</div>'
+    + '<div class="small muted" style="margin-bottom:10px">'
+    +   filtered.filter(l => !usedInPayment.has(l.id)).length + ' available · '
+    +   filtered.filter(l => usedInPayment.has(l.id)).length + ' already added'
+    + '</div>'
+    + '<div class="leafpick-leaf-grid">'
+    + filtered.map(function(l){
+        const used = usedInPayment.has(l.id);
+        const book = bookObj(l.chequeBookId);
+        return '<div class="leafpick-leaf ' + (used ? 'used' : '') + '" '
+          + (used ? '' : 'onclick="leafpick_pickLeaf(\'' + l.id + '\')"')
+          + ' title="' + esc(l.bankName || '') + (book ? ' · Book ' + esc(book.bookNo || '') : '') + (used ? ' — already added' : '') + '">'
+          + '<div class="leaf-no">' + esc(l.leafNo) + '</div>'
+          + (book ? '<div class="leaf-book">' + esc(book.bookNo || '') + '</div>' : '')
+          + '</div>';
+      }).join('')
+    + '</div>'
+    + '<div style="margin-top:16px">'
+    +   '<button class="leafpick-back" onclick="leafpick_chooseBank(\'' + esc(window._leafWizard.bankId) + '\')">← Back to Books</button>'
+    + '</div>';
+
+  document.getElementById('leafWizardStep1').style.display = 'none';
+  document.getElementById('leafWizardStep2').style.display = 'none';
+  document.getElementById('leafWizardStep3').style.display = '';
+};
+
+/* Final pick → add row → close modal */
+window.leafpick_pickLeaf = function(leafId){
+  const leaf = arr(db.chequeLeaves).find(l => l.id === leafId);
+  if(!leaf){ toast('Leaf not found', 'error'); return; }
+  if(leaf.status !== 'Available'){ toast('Leaf not available', 'error'); return; }
+
+  const bank = bankObj(leaf.bankAccountId);
+  const defaultDays = num(db.settings.defaultChequeDays) || 30;
+  const defaultPayee = (function(){
+    const sid = val('paySupplier');
+    return sid ? supName(sid) : '';
+  })();
+
+  ui.payOwnRows.push({
+    rowId: uid(),
+    leafId: leaf.id,
+    amount: 0,
+    dueDate: shiftDate(today(), defaultDays),
+    payee: defaultPayee
+  });
+
+  toast('✅ Leaf ' + leaf.leafNo + ' added', 'success');
+  closeModal();
+
+  // Let the payments view re-render its leaf list
+  setTimeout(function(){
+    if(typeof renderOwnLeafRows === 'function') renderOwnLeafRows();
+    if(typeof updatePayTotals === 'function') updatePayTotals();
+  }, 40);
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Improve renderOwnLeafRows — show bank name + book no as a nice badge
+   (replaces the flat version from Part C)
+   ───────────────────────────────────────────────────────────────────────────── */
+window.renderOwnLeafRows = function(){
+  const box = document.getElementById('ownRows');
+  if(!box) return;
+  if(!ui.payOwnRows.length){
+    box.innerHTML = '<div class="empty" style="padding:24px 16px">'
+      + '<div style="font-size:32px;opacity:.35;margin-bottom:8px">📚</div>'
+      + 'No leaves added yet.<br>'
+      + '<button class="btn sm primary" style="margin-top:10px" onclick="addOwnLeafRow()">🎯 Pick a Leaf</button>'
+      + '</div>';
+    if(typeof updatePayTotals === 'function') updatePayTotals();
+    return;
+  }
+
+  box.innerHTML = ui.payOwnRows.map(function(r, idx){
+    const leaf = r.leafId ? arr(db.chequeLeaves).find(l => l.id === r.leafId) : null;
+    const bank = leaf ? bankObj(leaf.bankAccountId) : null;
+    const book = leaf ? bookObj(leaf.chequeBookId) : null;
+    const bankName = bank ? bankShortName(bank) : (leaf ? (leaf.bankName || '—') : 'No leaf selected');
+
+    return '<div style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:8px">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      +   '<div style="flex:1;min-width:0">'
+      +     (leaf
+              ? '<div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;font-size:13px">' + esc(leaf.leafNo) + '</span>'
+                + '<span class="badge blue" style="font-size:9.5px;padding:1px 6px">' + bankLogo(leaf.bankName) + ' ' + esc(bankName) + '</span>'
+                + (book && book.bookNo ? '<span class="badge gray" style="font-size:9.5px;padding:1px 6px">Book ' + esc(book.bookNo) + '</span>' : '')
+                + '</div>'
+              : '<div style="font-weight:600;font-size:12.5px;color:var(--text-3)">No leaf selected</div>')
+      +   '</div>'
+      +   '<button class="icon-btn danger" title="Remove" onclick="removeOwnLeafRow(\'' + r.rowId + '\')">✕</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+      +   '<label class="field" style="font-size:11px;gap:3px">Amount'
+      +     '<input type="number" step="0.01" placeholder="0.00" value="' + (r.amount || '') + '" oninput="updateOwnLeafRow(' + idx + ',\'amount\',this.value)" style="padding:7px 10px;font-size:12px">'
+      +   '</label>'
+      +   '<label class="field" style="font-size:11px;gap:3px">Due Date'
+      +     '<input type="date" value="' + (r.dueDate || '') + '" onchange="updateOwnLeafRow(' + idx + ',\'dueDate\',this.value)" style="padding:7px 10px;font-size:12px">'
+      +   '</label>'
+      +   '<label class="field" style="font-size:11px;gap:3px">Payee'
+      +     '<input type="text" placeholder="Payee" value="' + esc(r.payee || '') + '" oninput="updateOwnLeafRow(' + idx + ',\'payee\',this.value)" style="padding:7px 10px;font-size:12px">'
+      +   '</label>'
+      + '</div>'
+      + '</div>';
+  }).join('')
+  + '<button class="btn sm" style="width:100%;margin-top:4px" onclick="addOwnLeafRow()">＋ Add Another Leaf</button>';
+
+  if(typeof updatePayTotals === 'function') updatePayTotals();
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Green-light: confirm everything hooked
+   ───────────────────────────────────────────────────────────────────────────── */
+setTimeout(function(){
+  if(window.__dbgOk){
+    window.__dbgOk('Part L ready — bank custom labels + leaf picker wizard active', 'PART-L');
+  }
+}, 2500);
+
+/* ═══ END OF PART L ═══ */
+</script>
     </body>
-</html
- 
+</html>

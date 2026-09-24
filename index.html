@@ -19103,6 +19103,653 @@ setTimeout(function(){
 }, 2500);
 
 /* ═══ END OF PART L ═══ */
+/* ═══ START OF PART M — DIRECT BANK TRANSFER PAYMENTS ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Seed UI state
+   ───────────────────────────────────────────────────────────────────────────── */
+(function seedPartM(){
+  if(!Array.isArray(ui.payBankRows)) ui.payBankRows = [];
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Bank row helpers
+   ───────────────────────────────────────────────────────────────────────────── */
+window.addBankPaymentRow = function(bankAccountId){
+  const banks = arr(db.bankAccounts);
+  if(!banks.length){
+    toast('Add a bank account first (Bank Accounts page)', 'error');
+    return;
+  }
+  ui.payBankRows.push({
+    rowId: uid(),
+    bankAccountId: bankAccountId || (banks[0] && banks[0].id) || '',
+    amount: 0,
+    reference: '',
+    date: val('payDate') || today()
+  });
+  renderBankPaymentRows();
+};
+
+window.removeBankPaymentRow = function(rowId){
+  ui.payBankRows = ui.payBankRows.filter(r => r.rowId !== rowId);
+  renderBankPaymentRows();
+};
+
+window.updateBankPaymentRow = function(idx, field, value){
+  if(!ui.payBankRows[idx]) return;
+  if(field === 'amount') value = num(value);
+  ui.payBankRows[idx][field] = value;
+  // Live update of "after balance" hint
+  const rowEl = document.querySelector('[data-bp-idx="' + idx + '"]');
+  if(rowEl){
+    const r = ui.payBankRows[idx];
+    const bank = bankObj(r.bankAccountId);
+    const bal = bank ? bankBalance(bank.id) : 0;
+    const after = bal - num(r.amount);
+    const hint = rowEl.querySelector('.bp-after');
+    if(hint){
+      hint.textContent = num(r.amount) > 0 ? ' → after: ' + moneyPlain(after) : '';
+      hint.style.color = after < 0 ? 'var(--red)' : '';
+    }
+    const nameEl = rowEl.querySelector('.bp-bank-name');
+    if(nameEl && bank) nameEl.textContent = bankShortName(bank);
+    const balEl = rowEl.querySelector('.bp-bal');
+    if(balEl) balEl.textContent = moneyPlain(bal);
+  }
+  updatePayTotals();
+};
+
+window.renderBankPaymentRows = function(){
+  const box = document.getElementById('bankPaymentRows');
+  if(!box) return;
+  if(!ui.payBankRows.length){
+    box.innerHTML = '<div style="padding:22px 16px;text-align:center;color:var(--text-3);font-size:12px;border:1px dashed var(--border-2);border-radius:10px;background:var(--surface)">'
+      + '<div style="font-size:32px;opacity:.35;margin-bottom:8px">🏦</div>'
+      + 'No bank transfers added.<br>'
+      + '<button class="btn sm primary" style="margin-top:10px" onclick="addBankPaymentRow()">＋ Add Bank Transfer</button>'
+      + '</div>';
+    const cnt = document.getElementById('bankPaymentCount');
+    if(cnt) cnt.textContent = '0 rows';
+    updatePayTotals();
+    return;
+  }
+  const banks = arr(db.bankAccounts);
+  box.innerHTML = ui.payBankRows.map(function(r, idx){
+    const bank = bankObj(r.bankAccountId);
+    const bankOpts = banks.map(b => '<option value="' + b.id + '" ' + (r.bankAccountId === b.id ? 'selected' : '') + '>'
+      + esc(bankShortName(b)) + (b.accountNo ? ' — ' + esc(b.accountNo) : '') + '</option>').join('');
+    const bal = bank ? bankBalance(bank.id) : 0;
+    const after = bal - num(r.amount);
+    return '<div data-bp-idx="' + idx + '" style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:8px">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      +   '<div style="flex:1;min-width:0">'
+      +     '<div style="font-weight:600;font-size:12.5px" class="bp-bank-name">' + (bank ? bankShortName(bank) : 'No bank selected') + '</div>'
+      +     '<div class="small muted" style="margin-top:2px">Balance: <strong class="bp-bal">' + moneyPlain(bal) + '</strong>'
+      +       '<span class="bp-after"' + (num(r.amount) > 0 ? ' style="color:' + (after < 0 ? 'var(--red)' : 'inherit') + '"' : '') + '>'
+      +       (num(r.amount) > 0 ? ' → after: ' + moneyPlain(after) : '') + '</span>'
+      +     '</div>'
+      +   '</div>'
+      +   '<button class="icon-btn danger" title="Remove" onclick="removeBankPaymentRow(\'' + r.rowId + '\')">✕</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px">'
+      +   '<label class="field" style="font-size:11px;gap:3px">Bank Account'
+      +     '<select onchange="updateBankPaymentRow(' + idx + ',\'bankAccountId\',this.value)" style="padding:7px 10px;font-size:12px">' + bankOpts + '</select>'
+      +   '</label>'
+      +   '<label class="field" style="font-size:11px;gap:3px">Amount'
+      +     '<input type="number" step="0.01" placeholder="0.00" value="' + (r.amount || '') + '" oninput="updateBankPaymentRow(' + idx + ',\'amount\',this.value)" style="padding:7px 10px;font-size:12px">'
+      +   '</label>'
+      +   '<label class="field" style="font-size:11px;gap:3px">Reference'
+      +     '<input type="text" placeholder="TXN id / ref" value="' + esc(r.reference || '') + '" oninput="updateBankPaymentRow(' + idx + ',\'reference\',this.value)" style="padding:7px 10px;font-size:12px">'
+      +   '</label>'
+      + '</div>'
+      + '</div>';
+  }).join('')
+  + '<button class="btn sm" style="width:100%;margin-top:4px" onclick="addBankPaymentRow()">＋ Add Another Bank</button>';
+  const cnt = document.getElementById('bankPaymentCount');
+  if(cnt) cnt.textContent = ui.payBankRows.length + ' row' + (ui.payBankRows.length === 1 ? '' : 's');
+  updatePayTotals();
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch viewPayments — inject bank transfer section + 4th grand-total cell
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchViewPaymentsForBankSection(){
+  const orig = window.viewPayments;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(){
+    let html = orig.apply(this, arguments);
+
+    const bankSection = ''
+      + '<div class="card" style="margin-top:18px">'
+      + '<div class="card-head">'
+      +   '<div><h3>🏦 Direct Bank Transfers</h3>'
+      +   '<div class="hint">Pay instantly from a bank account — deducted from balance immediately</div></div>'
+      +   '<span class="badge blue" id="bankPaymentCount">0 rows</span>'
+      + '</div>'
+      + '<div style="padding:0 18px 18px">'
+      +   '<div id="bankPaymentRows"></div>'
+      +   '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:flex;justify-content:space-between">'
+      +     '<span class="small muted">Bank Total</span>'
+      +     '<span id="bankTotal" style="font-weight:700;font-variant-numeric:tabular-nums">Rs. 0.00</span>'
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+
+    // Expand the grand total grid from 3 to 4 columns
+    const oldGrand = 'grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:22px;padding:18px;background:linear-gradient(135deg,var(--accent-soft),var(--pink-soft))';
+    const newGrand = 'grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-top:22px;padding:18px;background:linear-gradient(135deg,var(--accent-soft),var(--pink-soft))';
+
+    if(html.indexOf(oldGrand) !== -1){
+      html = html.replace(oldGrand, newGrand);
+    }
+
+    // Insert bank cell before Grand Total
+    const grandCellPattern = /(<div style="text-align:center"><div class="k-label">Grand Total<\/div>)/;
+    const bankCell = '<div style="text-align:center"><div class="k-label">Bank</div><div class="k-value sm" id="totBank">Rs. 0.00</div></div>';
+    html = html.replace(grandCellPattern, bankCell + '$1');
+
+    // Insert the bank section BEFORE the grand totals block
+    const grandAnchor = 'grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-top:22px';
+    if(html.indexOf(grandAnchor) !== -1){
+      html = html.replace(grandAnchor, bankSection + grandAnchor);
+    }
+
+    return html;
+  };
+  wrapped.__wrappedPartM = true;
+  window.viewPayments = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch updatePayTotals — include bank total
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchUpdatePayTotalsForBank(){
+  const orig = window.updatePayTotals;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(){
+    // Compute own totals first (recompute everything to be safe)
+    let party = 0;
+    ui.paySelectedParty.forEach(id => {
+      const c = arr(db.customerCheques).find(x => x.id === id);
+      if(c) party += num(c.amount);
+    });
+    let own = 0;
+    ui.payOwnRows.forEach(r => own += num(r.amount));
+    let bank = 0;
+    ui.payBankRows.forEach(r => bank += num(r.amount));
+    const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = money(v); };
+    set('totParty', party);
+    set('totOwn', own);
+    set('totBank', bank);
+    set('totAll', party + own + bank);
+    set('partyTotal', party);
+    set('ownTotal', own);
+    set('bankTotal', bank);
+    const pc = document.getElementById('partyCount');
+    if(pc) pc.textContent = ui.paySelectedParty.size + ' selected';
+    const oc = document.getElementById('ownCount');
+    if(oc) oc.textContent = ui.payOwnRows.length + ' rows';
+    const bc = document.getElementById('bankPaymentCount');
+    if(bc) bc.textContent = ui.payBankRows.length + ' row' + (ui.payBankRows.length === 1 ? '' : 's');
+  };
+  wrapped.__wrappedPartM = true;
+  window.updatePayTotals = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch render() to call renderBankPaymentRows when payments view mounts
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchRenderForBankRows(){
+  const orig = window.render;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(){
+    const r = orig.apply(this, arguments);
+    if(ui.view === 'payments'){
+      setTimeout(function(){
+        try { if(typeof renderBankPaymentRows === 'function') renderBankPaymentRows(); } catch(e){ console.error(e); }
+      }, 30);
+    }
+    return r;
+  };
+  wrapped.__wrappedPartM = true;
+  window.render = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch resetPaymentForm — clear bank rows too
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchResetForBankRows(){
+  const orig = window.resetPaymentForm;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(){
+    ui.payBankRows = [];
+    const r = orig.apply(this, arguments);
+    setTimeout(function(){ renderBankPaymentRows(); }, 30);
+    return r;
+  };
+  wrapped.__wrappedPartM = true;
+  window.resetPaymentForm = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Full rewrite of previewPayment — includes bank transfers in snapshot
+   ───────────────────────────────────────────────────────────────────────────── */
+window.previewPayment = function(e){
+  if(e) e.preventDefault();
+  if(!canWrite()) return;
+
+  const sid = val('paySupplier');
+  const date = val('payDate') || today();
+  const ref = (val('payRef') || '').trim();
+
+  if(!sid){ toast('Please select a supplier', 'error'); return; }
+  const supplier = supObj(sid);
+  if(!supplier){ toast('Supplier not found', 'error'); return; }
+
+  const skipped = [];
+
+  // Party cheques snapshot
+  const partyCheques = Array.from(ui.paySelectedParty)
+    .map(id => arr(db.customerCheques).find(x => x.id === id))
+    .filter(Boolean)
+    .map(c => ({
+      id: c.id, customerName: c.customerName, chequeNo: c.chequeNo,
+      bank: c.bank, amount: num(c.amount), dueDate: c.dueDate
+    }));
+
+  // Own cheques snapshot
+  const ownCheques = [];
+  ui.payOwnRows.forEach((r, i) => {
+    if(!r.leafId){ if(num(r.amount) > 0) skipped.push('Leaf row ' + (i+1) + ': no leaf selected'); return; }
+    if(num(r.amount) <= 0){ skipped.push('Leaf row ' + (i+1) + ': amount is 0'); return; }
+    const leaf = arr(db.chequeLeaves).find(l => l.id === r.leafId);
+    if(!leaf){ skipped.push('Leaf row ' + (i+1) + ': leaf not found'); return; }
+    ownCheques.push({
+      leafId: r.leafId,
+      leafNo: leaf.leafNo,
+      bankName: leaf.bankName,
+      bankAccountId: leaf.bankAccountId,
+      amount: num(r.amount),
+      dueDate: r.dueDate || date,
+      payee: r.payee || supplier.name
+    });
+  });
+
+  // Bank transfers snapshot
+  const bankPayments = [];
+  ui.payBankRows.forEach((r, i) => {
+    if(!r.bankAccountId){ if(num(r.amount) > 0) skipped.push('Bank row ' + (i+1) + ': no bank selected'); return; }
+    if(num(r.amount) <= 0){ skipped.push('Bank row ' + (i+1) + ': amount is 0'); return; }
+    const b = bankObj(r.bankAccountId);
+    if(!b){ skipped.push('Bank row ' + (i+1) + ': bank not found'); return; }
+    bankPayments.push({
+      bankAccountId: r.bankAccountId,
+      amount: num(r.amount),
+      reference: r.reference || '',
+      bankName: b.bankName,
+      bankDisplay: b.customLabel || b.bankName,
+      accountNo: b.accountNo || ''
+    });
+  });
+
+  const partyTotal = sum(partyCheques, 'amount');
+  const ownTotal = sum(ownCheques, 'amount');
+  const bankTotal = sum(bankPayments, 'amount');
+  const total = partyTotal + ownTotal + bankTotal;
+
+  if(total <= 0){
+    let msg = 'Nothing to save. ';
+    if(!partyCheques.length && !ownCheques.length && !bankPayments.length){
+      msg += 'Select party cheques, add own cheque leaves, or add a bank transfer.';
+    } else {
+      msg += 'Check that all rows have valid amounts.';
+    }
+    if(skipped.length) msg += ' Issues: ' + skipped.join('; ');
+    toast(msg, 'error', 6000);
+    return;
+  }
+
+  // Group own cheques by bank (for the voucher)
+  const ownChequesByBank = {};
+  ownCheques.forEach(o => {
+    const key = o.bankName || 'Unknown';
+    if(!ownChequesByBank[key]) ownChequesByBank[key] = [];
+    ownChequesByBank[key].push(o);
+  });
+
+  _pendingPaymentSnapshot = {
+    tempId: uid(),
+    supplierId: sid,
+    supplierName: supplier.name,
+    date, reference: ref,
+    partyCheques, ownCheques, ownChequesByBank,
+    partyAmount: partyTotal,
+    ownAmount: ownTotal,
+    bankPayments, bankAmount: bankTotal,
+    total
+  };
+
+  const previewHTML = buildPaymentPreviewHTMLPartM(_pendingPaymentSnapshot);
+
+  openModal('👁 Payment Preview — ' + esc(supplier.name),
+    '<div style="background:var(--surface-2);padding:14px;border-radius:10px;max-height:60vh;overflow:auto">' + previewHTML + '</div>'
+    + '<div class="alert info" style="margin-top:14px;font-size:12px"><span class="ico">ℹ</span><div>'
+    +   '<strong>Timing:</strong> Bank transfers are <strong style="color:var(--red)">deducted immediately</strong>. '
+    +   'Own cheque deductions are <strong style="color:var(--amber)">deferred</strong> until each cheque\'s due date (approval required).'
+    + '</div></div>'
+    + '<div class="form-actions">'
+    +   '<button class="btn" onclick="closeModal();">← Back to Edit</button>'
+    +   '<button class="btn primary" onclick="confirmAndSavePayment()">💾 Confirm & Save</button>'
+    + '</div>', 'wide');
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Preview builder — includes bank transfer section
+   ───────────────────────────────────────────────────────────────────────────── */
+window.buildPaymentPreviewHTMLPartM = function(snap){
+  const supplier = supObj(snap.supplierId);
+  const hasParty = (snap.partyCheques || []).length > 0;
+  const hasOwn = (snap.ownCheques || []).length > 0;
+  const hasBank = (snap.bankPayments || []).length > 0;
+
+  const methodList = [];
+  if(hasParty) methodList.push('Party cheques');
+  if(hasOwn) methodList.push('Own leaves');
+  if(hasBank) methodList.push('Bank transfer');
+
+  return '<div style="padding:22px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;color:#111;font-family:-apple-system,Segoe UI,Roboto,sans-serif">'
+
+    + '<div style="display:flex;justify-content:space-between;padding-bottom:14px;border-bottom:2px solid #111">'
+    +   '<div><div style="font-size:20px;font-weight:800">' + esc((db.settings||{}).shopName || 'Lanka Shoe') + '</div>'
+    +   '<div style="font-size:11px;color:#666;margin-top:3px">' + esc((db.settings||{}).businessAddress || '') + ((db.settings||{}).businessPhone ? ' • ' + esc(db.settings.businessPhone) : '') + '</div></div>'
+    +   '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#7c3aed;letter-spacing:.14em">PAYMENT VOUCHER</div>'
+    +   '<div style="font-size:11px;color:#888;margin-top:3px">PV-' + snap.tempId.slice(-6).toUpperCase() + '</div>'
+    +   '<div style="font-size:11px;color:#888">' + dateFmt(snap.date) + '</div></div>'
+    + '</div>'
+
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 0;font-size:12px">'
+    +   '<div><div style="color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em">Paid To</div>'
+    +   '<div style="font-weight:700;font-size:14px;margin-top:4px">' + esc(supplier ? supplier.name : '—') + '</div>'
+    +   (supplier && supplier.phone ? '<div style="color:#888;font-size:11px;margin-top:3px">' + esc(supplier.phone) + '</div>' : '')
+    +   '</div>'
+    +   '<div><div style="color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em">Reference</div>'
+    +   '<div style="font-weight:700;font-size:14px;margin-top:4px">' + esc(snap.reference || '—') + '</div>'
+    +   '<div style="color:#888;font-size:11px;margin-top:3px">Method: ' + methodList.join(' + ') + '</div>'
+    +   '</div>'
+    + '</div>'
+
+    + (hasParty ? '<div style="padding:12px 0;border-top:1px solid #eee">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">🧾 Party Cheques (' + snap.partyCheques.length + ')</div>'
+      + snap.partyCheques.map(c => '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed #f3f3f3">'
+        + '<div><strong>' + esc(c.customerName||'') + '</strong> — ' + esc(c.chequeNo||'')
+        + '<div style="color:#888;font-size:10.5px;margin-top:2px">' + esc(c.bank||'') + ' • Due ' + dateFmt(c.dueDate||'') + '</div></div>'
+        + '<strong>' + moneyPlain(c.amount) + '</strong></div>').join('')
+      + '</div>' : '')
+
+    + (hasOwn ? '<div style="padding:12px 0;border-top:1px solid #eee">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">🎯 Own Cheques — PENDING until due date (' + snap.ownCheques.length + ')</div>'
+      + Object.keys(snap.ownChequesByBank).map(b => '<div style="margin-bottom:10px">'
+        + '<div style="font-size:11.5px;font-weight:700;margin-bottom:5px;color:#7c3aed">' + esc(b) + '</div>'
+        + snap.ownChequesByBank[b].map(o => '<div style="display:flex;justify-content:space-between;padding:5px 0 5px 14px;font-size:12px;border-bottom:1px dashed #f3f3f3">'
+          + '<div>Leaf <strong>' + esc(o.leafNo||'') + '</strong>' + (o.payee ? ' — ' + esc(o.payee) : '')
+          + '<div style="color:#888;font-size:10.5px;margin-top:2px">Due ' + dateFmt(o.dueDate||'') + ' — <span style="color:#b45309;font-weight:600">Deduction pending approval</span></div></div>'
+          + '<strong>' + moneyPlain(o.amount) + '</strong></div>').join('')
+        + '</div>').join('')
+      + '</div>' : '')
+
+    + (hasBank ? '<div style="padding:12px 0;border-top:1px solid #eee">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">🏦 Direct Bank Transfers (' + snap.bankPayments.length + ') — DEDUCTED IMMEDIATELY</div>'
+      + snap.bankPayments.map(b => '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed #f3f3f3">'
+        + '<div><strong>' + esc(b.bankDisplay || b.bankName) + '</strong>'
+        + (b.accountNo ? ' — ' + esc(b.accountNo) : '')
+        + (b.reference ? '<div style="color:#888;font-size:10.5px;margin-top:2px">Ref: ' + esc(b.reference) + '</div>' : '')
+        + '</div>'
+        + '<strong style="color:#7c3aed">' + moneyPlain(b.amount) + '</strong></div>').join('')
+      + '</div>' : '')
+
+    + '<div style="display:flex;justify-content:space-between;padding:14px 0;border-top:2px solid #111;font-size:16px">'
+    +   '<strong>Total</strong><strong style="color:#7c3aed">' + money(snap.total) + '</strong>'
+    + '</div>'
+    + '<div style="font-size:11.5px;color:#666;font-style:italic;padding-top:6px">' + esc(amountInWords(snap.total)) + '</div>'
+
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:34px;padding-top:14px">'
+    +   '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Prepared By</div>'
+    +   '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Approved By</div>'
+    +   '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Received By</div>'
+    + '</div>'
+    + '<div style="margin-top:22px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:10.5px;color:#888;text-align:center">' + esc((db.settings||{}).shopName||'Lanka Shoe') + ' • Generated ' + dateTimeFmt(nowISO()) + '</div>'
+    + '</div>';
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Full rewrite of confirmAndSavePayment — persists bank transactions
+   ───────────────────────────────────────────────────────────────────────────── */
+window.confirmAndSavePayment = function(){
+  if(!canWrite()) return;
+  const snap = _pendingPaymentSnapshot;
+  if(!snap){ toast('Nothing to save (snapshot missing). Please try again.', 'error'); return; }
+  const supplier = supObj(snap.supplierId);
+  if(!supplier){ toast('Supplier not found', 'error'); return; }
+
+  const payment = {
+    id: uid(),
+    supplierId: snap.supplierId,
+    date: snap.date,
+    reference: snap.reference,
+    partyChequeIds: snap.partyCheques.map(c => c.id),
+    partyAmount: snap.partyAmount,
+    ownChequeIds: snap.ownCheques.map(o => o.leafId),
+    ownAmount: snap.ownAmount,
+    bankPayments: snap.bankPayments.map(b => ({
+      bankAccountId: b.bankAccountId,
+      amount: b.amount,
+      reference: b.reference || ''
+    })),
+    bankAmount: snap.bankAmount,
+    amount: snap.total,
+    createdAt: nowISO()
+  };
+
+  // 1) Party cheques → mark Issued
+  snap.partyCheques.forEach(cp => {
+    const c = arr(db.customerCheques).find(x => x.id === cp.id);
+    if(c){
+      c.status = 'Issued';
+      c.paymentId = payment.id;
+      c.issuedTo = snap.supplierId;
+      c.issuedDate = snap.date;
+    }
+  });
+
+  // 2) Own leaves → mark Issued + pending bank tx (deferred deduction)
+  if(!Array.isArray(db.bankTransactions)) db.bankTransactions = [];
+  snap.ownCheques.forEach(o => {
+    const leaf = arr(db.chequeLeaves).find(l => l.id === o.leafId);
+    if(!leaf) return;
+    leaf.status = 'Issued';
+    leaf.paymentId = payment.id;
+    leaf.date = snap.date;
+    leaf.dueDate = o.dueDate;
+    leaf.amount = o.amount;
+    leaf.payee = o.payee;
+    leaf.supplierId = snap.supplierId;
+
+    db.bankTransactions.push({
+      id: uid(),
+      bankAccountId: leaf.bankAccountId,
+      date: o.dueDate,
+      type: 'cheque_issued',
+      amount: o.amount,
+      reference: leaf.leafNo,
+      chequeId: leaf.id,
+      paymentId: payment.id,
+      description: 'Cheque to ' + supplier.name,
+      status: 'pending',
+      requiresApproval: true,
+      createdAt: nowISO()
+    });
+  });
+
+  // 3) Bank transfers → immediate withdrawal transaction
+  snap.bankPayments.forEach(b => {
+    const bank = bankObj(b.bankAccountId);
+    const txRef = b.reference || ('PAY-' + payment.id.slice(-4));
+    db.bankTransactions.push({
+      id: uid(),
+      bankAccountId: b.bankAccountId,
+      date: snap.date,
+      type: 'withdrawal',
+      amount: b.amount,
+      reference: txRef,
+      paymentId: payment.id,
+      description: 'Payment to ' + supplier.name + (bank ? ' (' + bankShortName(bank) + ')' : ''),
+      status: 'deducted',
+      createdAt: nowISO()
+    });
+    logAct('Bank Payment', 'Bank', b.bankAccountId, money(b.amount) + ' → ' + supplier.name);
+    if(window.__dbgOk) window.__dbgOk('Bank withdrawal: ' + money(b.amount) + ' from ' + (bank ? bankShortName(bank) : 'bank') + ' → ' + supplier.name, 'DATA');
+  });
+
+  // 4) Persist the payment
+  if(!Array.isArray(db.payments)) db.payments = [];
+  db.payments.push(payment);
+  db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo) || 1) + 1;
+
+  pushUndo({type:'collection_push', collection:'payments', id:payment.id, label:'Add payment ' + supplier.name});
+  logAct('Add Payment', 'Payment', payment.id, snap.supplierName + ' • ' + money(snap.total));
+
+  if(window.__dbgOk){
+    const parts = [];
+    if(snap.partyAmount > 0) parts.push('Party: ' + money(snap.partyAmount));
+    if(snap.ownAmount > 0) parts.push('Own: ' + money(snap.ownAmount) + ' (pending)');
+    if(snap.bankAmount > 0) parts.push('Bank: ' + money(snap.bankAmount) + ' (deducted)');
+    window.__dbgOk('Payment saved: ' + supplier.name + ' • ' + money(snap.total) + ' [' + parts.join(' • ') + ']', 'DATA');
+  }
+
+  // 5) Reset UI state
+  ui.paySelectedParty.clear();
+  ui.payOwnRows = [];
+  ui.payBankRows = [];
+  _pendingPaymentSnapshot = null;
+
+  save();
+  closeModal();
+  render();
+  toast('✅ Payment saved • ' + money(snap.total), 'success');
+  if(snap.total >= 100000) confetti();
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch showPaymentDetail — show bank transfers in the detail modal
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchShowPaymentDetailForBanks(){
+  const orig = window.showPaymentDetail;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(id){
+    const r = orig.apply(this, arguments);
+    setTimeout(function(){
+      const p = arr(db.payments).find(x => x.id === id);
+      if(!p || !p.bankPayments || !p.bankPayments.length) return;
+      const modalBody = document.querySelector('#modalWrap .modal-body');
+      if(!modalBody || modalBody.querySelector('[data-bank-section="1"]')) return;
+
+      const section = document.createElement('div');
+      section.setAttribute('data-bank-section', '1');
+      section.innerHTML = '<div class="section-title">🏦 Direct Bank Transfers (' + p.bankPayments.length + ')</div>'
+        + '<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr><th>Bank</th><th>Account</th><th>Reference</th><th class="num">Amount</th></tr></thead><tbody>'
+        + p.bankPayments.map(b => {
+            const bank = bankObj(b.bankAccountId);
+            return '<tr>'
+              + '<td><strong>' + esc(bank ? (bank.customLabel || bank.bankName) : '—') + '</strong></td>'
+              + '<td class="mono small">' + esc(bank ? (bank.accountNo || '—') : '—') + '</td>'
+              + '<td class="mono small">' + esc(b.reference || '—') + '</td>'
+              + '<td class="num"><strong>' + moneyPlain(b.amount) + '</strong></td>'
+              + '</tr>';
+          }).join('')
+        + '</tbody></table></div>';
+
+      const formActions = modalBody.querySelector('.form-actions');
+      if(formActions){
+        formActions.parentNode.insertBefore(section, formActions);
+      } else {
+        modalBody.appendChild(section);
+      }
+    }, 60);
+    return r;
+  };
+  wrapped.__wrappedPartM = true;
+  window.showPaymentDetail = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch deletePayment — ensure bank transactions are removed
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchDeletePaymentForBanks(){
+  const orig = window.deletePayment;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(id){
+    const r = orig.apply(this, arguments);
+    // Belt and suspenders — remove any bank transactions linked to this payment
+    setTimeout(function(){
+      const before = arr(db.bankTransactions).length;
+      db.bankTransactions = arr(db.bankTransactions).filter(t => t.paymentId !== id);
+      const removed = before - db.bankTransactions.length;
+      if(removed > 0){
+        save();
+        if(window.__dbgOk) window.__dbgOk('Removed ' + removed + ' bank transaction(s) linked to deleted payment', 'DATA');
+      }
+    }, 60);
+    return r;
+  };
+  wrapped.__wrappedPartM = true;
+  window.deletePayment = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Patch supplier ledger — include bank payments (they already appear as
+   normal payments in the ledger, but ensure they show the correct type)
+   ───────────────────────────────────────────────────────────────────────────── */
+(function patchSupplierLedgerForBankPayments(){
+  const orig = window.supplierLedger;
+  if(typeof orig !== 'function' || orig.__wrappedPartM) return;
+  const wrapped = function(id){
+    const result = orig.apply(this, arguments);
+    // The ledger already includes db.payments as 'Payment' rows.
+    // We can enrich the description to show the method used.
+    if(result && Array.isArray(result.rows)){
+      result.rows.forEach(row => {
+        if(row.type === 'Payment' && !row.desc){
+          // Find the payment this row refers to
+          const p = arr(db.payments).find(x =>
+            x.supplierId === id &&
+            x.date === row.date &&
+            (x.reference || '—') === (row.ref || '—')
+          );
+          if(p){
+            const methods = [];
+            if(num(p.partyAmount) > 0) methods.push('Party');
+            if(num(p.ownAmount) > 0) methods.push('Own cheque');
+            if(num(p.bankAmount) > 0) methods.push('Bank transfer');
+            row.desc = methods.length ? methods.join(' + ') : '';
+          }
+        }
+      });
+    }
+    return result;
+  };
+  wrapped.__wrappedPartM = true;
+  window.supplierLedger = wrapped;
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Startup log
+   ───────────────────────────────────────────────────────────────────────────── */
+setTimeout(function(){
+  if(window.__dbgOk) window.__dbgOk('Part M ready — Direct Bank Transfers active', 'PART-M');
+}, 2600);
+
+/* ═══ END OF PART M ═══ */
 </script>
-    </body>
+</body>
 </html>

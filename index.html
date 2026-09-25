@@ -18591,6 +18591,345 @@ window.testPrintFlow = function(){
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* ═══ END OF PART K ═══ */
+/* ═══ START OF PART L — GUARD FIX (NO DEBUGGER PAUSE) ═══ */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   EMERGENCY RECOVERY
+   Runs synchronously when this script loads. Kills the intervals set by
+   Part J and Part K (which contain the pausing `debugger;` statements),
+   restores the login button, and re-triggers auth if needed.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function emergencyRecovery(){
+  // 1. Kill ALL intervals and timeouts.
+  //    Firebase Auth/Firestore don't use our timer IDs — their internals
+  //    re-register automatically. So killing everything here is safe.
+  try {
+    const maxId = setTimeout(function(){}, 0);
+    for(let i = 0; i <= maxId; i++){
+      try { clearTimeout(i); } catch(e){}
+      try { clearInterval(i); } catch(e){}
+    }
+  } catch(e){}
+
+  // 2. Restore login button if stuck on "Verifying…"
+  const btn = document.getElementById('googleSignInBtn');
+  const txt = document.getElementById('googleBtnText');
+  if(btn) btn.disabled = false;
+  if(txt && txt.textContent === 'Verifying…') txt.textContent = 'Continue with Google';
+
+  // 3. Remove any stuck overlays
+  ['advGuard','dtGuard'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el){ el.style.display = 'none'; el.remove(); }
+  });
+
+  // 4. Restore document scrolling (in case lockdown froze it)
+  try {
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+  } catch(e){}
+
+  // 5. Restore hidden floating buttons
+  ['fabBtn','stickyBtn','dbgBtn'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el && el.style.display === 'none') el.style.display = '';
+  });
+
+  if(window.__dbgOk) window.__dbgOk('Emergency recovery: old guard intervals killed', 'GUARD');
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RE-TRIGGER AUTH FLOW (if user authenticated but login is stuck)
+   ═══════════════════════════════════════════════════════════════════════ */
+setTimeout(function(){
+  try {
+    if(!window.auth || !window.auth.currentUser) return;
+    const loginOverlay = document.getElementById('loginOverlay');
+    if(!loginOverlay) return;
+    const isLoginVisible = !loginOverlay.classList.contains('hidden');
+    if(!isLoginVisible) return; // already in app, no need
+
+    const user = window.auth.currentUser;
+    if(typeof window.onAuthStateChanged === 'function'){
+      if(window.__dbgWarn) window.__dbgWarn('Re-triggering auth for ' + user.email, 'AUTH');
+      window.onAuthStateChanged(user);
+    }
+  } catch(e){}
+}, 900);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SAFE DEVTOOLS GUARD
+   Zero `debugger;` statements. All checks are non-blocking.
+     1. Window dimension delta (docked DevTools)
+     2. Console `toString` probe (console panel active)
+     3. Element getter trap (Elements panel inspecting)
+     4. Focus / blur heuristic (external DevTools window)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function safeDevToolsGuard(){
+  function isDevAllowed(){
+    try {
+      if(localStorage.getItem('lankashoe_dev_ok') === '1') return true;
+      if(location.search.indexOf('safe=1') !== -1) return true;
+      if(location.hash === '#safe') return true;
+    } catch(e){}
+    return false;
+  }
+  if(isDevAllowed()){
+    if(window.__dbgWarn) window.__dbgWarn('DevTools guard disabled (developer mode)', 'GUARD');
+    return;
+  }
+
+  let triggered = false;
+  let lastCheck = 0;
+
+  /* ─── Layer 1: Window size delta ─────────────────────────────── */
+  function sizeOpen(){
+    try {
+      const w = Math.abs((window.outerWidth  || 0) - (window.innerWidth  || 0));
+      const h = Math.abs((window.outerHeight || 0) - (window.innerHeight || 0));
+      return w > 200 || h > 200;
+    } catch(e){ return false; }
+  }
+
+  /* ─── Layer 2: Console panel probe ──────────────────────────── */
+  let consoleProbeFired = false;
+  try {
+    const probe = /./;
+    probe.toString = function(){ consoleProbeFired = true; return 'x'; };
+    window.__consoleProbe = probe;
+  } catch(e){}
+  function consoleOpen(){
+    try {
+      consoleProbeFired = false;
+      // Use Function.prototype.call so the method isn't silenced by our own guard
+      const log = Function.prototype.call.bind(window.__nativeLog || console.log, console);
+      log('%c', window.__consoleProbe);
+      return consoleProbeFired;
+    } catch(e){ return false; }
+  }
+
+  /* ─── Layer 3: Element inspection trap ───────────────────────── */
+  let inspectionDetected = false;
+  try {
+    const trap = document.createElement('div');
+    Object.defineProperty(trap, '_probe', {
+      get: function(){ inspectionDetected = true; return 1; },
+      configurable: true
+    });
+    trap.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;opacity:0';
+    document.body.appendChild(trap);
+    window.__devtoolsTrap = trap;
+  } catch(e){}
+  function inspectionActive(){
+    const was = inspectionDetected;
+    inspectionDetected = false;
+    return was;
+  }
+
+  /* ─── Layer 4: Focus / blur ─────────────────────────────────── */
+  let blurCount = 0;
+  window.addEventListener('blur', function(){ blurCount++; }, true);
+  window.addEventListener('focus', function(){ blurCount = 0; }, true);
+  function externalDevTools(){
+    return blurCount > 5 && !document.hasFocus();
+  }
+
+  /* ─── Master check ──────────────────────────────────────────── */
+  function checkAll(){
+    const now = Date.now();
+    if(now - lastCheck < 900) return;
+    lastCheck = now;
+    if(sizeOpen() || consoleOpen() || inspectionActive() || externalDevTools()){
+      triggerLockdown();
+    }
+  }
+
+  /* ─── Lockdown (DOM wipe + navigate) ─────────────────────────── */
+  function triggerLockdown(){
+    if(triggered) return;
+    triggered = true;
+
+    try {
+      // Wipe every script tag
+      document.querySelectorAll('script').forEach(function(s){
+        try { s.textContent = ''; s.remove(); } catch(e){}
+      });
+      // Wipe every style tag
+      document.querySelectorAll('style').forEach(function(s){
+        try { s.textContent = ''; s.remove(); } catch(e){}
+      });
+      // Nuke whole document
+      document.documentElement.innerHTML = '<head><title>🔒</title></head><body style="margin:0;background:#000"></body>';
+      document.body.innerHTML =
+        '<div style="position:fixed;inset:0;background:radial-gradient(circle at 50% 50%,#1a0b3d 0%,#000 100%);color:#fff;display:flex;align-items:center;justify-content:center;padding:40px;text-align:center;font-family:-apple-system,Segoe UI,Roboto,sans-serif">'
+        + '<div style="max-width:560px">'
+        + '<div style="font-size:96px;margin-bottom:20px;filter:drop-shadow(0 0 24px rgba(168,85,247,.7))">🔒</div>'
+        + '<h1 style="font-size:26px;font-weight:800;margin-bottom:14px;color:#fff">Session Locked</h1>'
+        + '<p style="font-size:14px;line-height:1.7;color:rgba(255,255,255,.75)">Developer tools detected. This session has been locked.</p>'
+        + '<p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:20px">Reload after closing DevTools.</p>'
+        + '</div></div>';
+
+      // Rewrite history
+      try {
+        history.replaceState(null, '', '/');
+        history.pushState(null, '', '#locked');
+      } catch(e){}
+
+      // Navigate away
+      setTimeout(function(){
+        try { window.location.replace('about:blank'); } catch(e){}
+      }, 2500);
+
+      // Block back button
+      window.addEventListener('popstate', function(){
+        try { window.location.replace('about:blank'); } catch(e){}
+      }, true);
+    } catch(e){}
+  }
+
+  /* ─── Interval — 900 ms, no pausing ─────────────────────────── */
+  setInterval(function(){
+    if(triggered) return;
+    try { checkAll(); } catch(e){}
+  }, 900);
+
+  /* ─── Resize trigger — catches docked DevTools immediately ──── */
+  let resizeTimer;
+  window.addEventListener('resize', function(){
+    if(triggered) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      if(sizeOpen()) triggerLockdown();
+    }, 300);
+  });
+
+  /* ─── Keyboard blocking (no debugger) ───────────────────────── */
+  document.addEventListener('keydown', function(e){
+    const k = String(e.key || '').toLowerCase();
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+
+    // F12
+    if(k === 'f12'){ e.preventDefault(); e.stopImmediatePropagation(); triggerLockdown(); return false; }
+
+    // Ctrl+Shift+I / J / C / K / E / M
+    if(ctrl && shift && ['i','j','c','k','e','m'].indexOf(k) !== -1){
+      e.preventDefault(); e.stopImmediatePropagation(); triggerLockdown(); return false;
+    }
+
+    // Cmd+Option+I / J / C / U (macOS)
+    if(e.metaKey && alt && ['i','j','c','u'].indexOf(k) !== -1){
+      e.preventDefault(); e.stopImmediatePropagation(); triggerLockdown(); return false;
+    }
+
+    // Ctrl+U view-source
+    if(ctrl && !shift && k === 'u'){
+      e.preventDefault(); e.stopImmediatePropagation(); triggerLockdown(); return false;
+    }
+
+    // Ctrl+S silent block (no lockdown)
+    if(ctrl && !shift && k === 's'){
+      e.preventDefault(); e.stopImmediatePropagation(); return false;
+    }
+
+    // Escape hatch Ctrl+Shift+Alt+D
+    if(ctrl && shift && alt && k === 'd'){
+      e.preventDefault(); e.stopImmediatePropagation();
+      try {
+        if(localStorage.getItem('lankashoe_dev_ok') === '1'){
+          localStorage.removeItem('lankashoe_dev_ok');
+          alert('DevTools guard: ARMED. Reload to apply.');
+        } else {
+          localStorage.setItem('lankashoe_dev_ok', '1');
+          alert('DevTools guard: DISARMED. Reload to apply.');
+        }
+      } catch(err){}
+      return false;
+    }
+  }, true);
+
+  /* ─── Right-click block ─────────────────────────────────────── */
+  document.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+  }, true);
+
+  /* ─── Signal boot ──────────────────────────────────────────── */
+  setTimeout(function(){
+    if(window.__dbgOk) window.__dbgOk('Safe DevTools Guard active — no debugger pause', 'GUARD');
+    if(window.__dbgOk) window.__dbgOk('Escape hatch: Ctrl+Shift+Alt+D or ?safe=1', 'GUARD');
+  }, 500);
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESTORE CONSOLE (Part J silenced it — we need it back to debug)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function restoreConsole(){
+  try {
+    // Save native reference BEFORE overriding
+    if(!window.__nativeLog) window.__nativeLog = console.log;
+
+    // Try to restore common methods using a fresh iframe's console
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'display:none';
+    document.body.appendChild(iframe);
+    try {
+      const freshConsole = iframe.contentWindow.console;
+      ['log','info','warn','error','debug','dir','table','trace',
+       'group','groupEnd','groupCollapsed','time','timeEnd','timeLog',
+       'count','countReset','clear','assert'].forEach(function(name){
+        if(freshConsole && typeof freshConsole[name] === 'function'){
+          try {
+            Object.defineProperty(console, name, {
+              value: freshConsole[name].bind(console),
+              writable: true,
+              configurable: true
+            });
+          } catch(e){}
+        }
+      });
+    } finally {
+      iframe.remove();
+    }
+  } catch(e){}
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   URL-BASED AUTO-ESCAPE
+   If you load the page with ?safe=1, we set the localStorage flag
+   so subsequent reloads without the param also stay in dev mode.
+   ═══════════════════════════════════════════════════════════════════════ */
+(function urlSafeAutoSet(){
+  try {
+    if(location.search.indexOf('safe=1') !== -1 || location.hash === '#safe'){
+      localStorage.setItem('lankashoe_dev_ok', '1');
+      if(window.__dbgOk) window.__dbgOk('Dev mode armed via URL param', 'GUARD');
+    }
+  } catch(e){}
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FIX for silent failures in voucher print & other areas
+   Wait for Firebase to be ready, then trigger auth flow if login is stuck
+   ═══════════════════════════════════════════════════════════════════════ */
+setTimeout(function(){
+  try {
+    if(!window.auth) return;
+    const login = document.getElementById('loginOverlay');
+    if(!login || login.classList.contains('hidden')) return;
+    // If we're still on login overlay after 3s and Firebase has a user, force it
+    if(window.auth.currentUser){
+      if(window.__dbgWarn) window.__dbgWarn('Forcing stuck auth flow: ' + window.auth.currentUser.email, 'AUTH');
+      if(typeof window.onAuthStateChanged === 'function'){
+        window.onAuthStateChanged(window.auth.currentUser);
+      }
+    }
+  } catch(e){}
+}, 3000);
+
+/* ═══ END OF PART L ═══ */
 </script>
 </body>
 </html>

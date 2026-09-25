@@ -20697,6 +20697,374 @@ setTimeout(function(){
 }, 2800);
 
 /* ═══ END OF PART Q ═══ */
+/* ═══ START OF PART R — FRESH SAVE ENGINE ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   State
+   ───────────────────────────────────────────────────────────────────────────── */
+var __pushSnap = null;         // last successful push (JSON hash)
+var __pushInFlight = false;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. FRESH pushToFirestore — declared as a top-level function so it replaces
+   every earlier declaration in this script scope.
+   ───────────────────────────────────────────────────────────────────────────── */
+function pushToFirestore(force){
+  return (async function(){
+    // Save to localStorage first — always, no matter what
+    try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+
+    const st = document.getElementById('syncStatus');
+    const setStatus = function(txt){ if(st) st.textContent = txt; };
+
+    if(offlineMode){ setStatus('Offline • Local only'); return; }
+    if(!firebaseReady){ setStatus('Local • Firebase not ready'); return; }
+    if(!currentUser){ setStatus('Local • Not signed in'); return; }
+    if(__pushInFlight && !force){
+      if(window.__dbgLog) window.__dbgLog('Push skipped (already in flight)', 'SAVE');
+      return;
+    }
+
+    __pushInFlight = true;
+    setStatus('Syncing…');
+    const t0 = performance.now();
+
+    try {
+      // Settings doc (admin only)
+      if(currentUserRole === 'admin'){
+        try {
+          await firestore.doc(SETTINGS_DOC_PATH).set(JSON.parse(JSON.stringify(db.settings)));
+        } catch(e){
+          if(window.__dbgWarn) window.__dbgWarn('[settings] ' + (e.code || e.message), 'SAVE');
+        }
+      }
+
+      // Build all delete + set ops
+      const allOps = [];
+      for(let ci = 0; ci < COLLECTIONS.length; ci++){
+        const col = COLLECTIONS[ci];
+        const items = arr(db[col]);
+        const colRef = firestore.collection(DATA_PREFIX + col);
+
+        // Read existing to know what to delete
+        try {
+          const existing = await colRef.get();
+          existing.forEach(function(doc){
+            allOps.push({ op: 'delete', ref: doc.ref });
+          });
+        } catch(e){
+          if(window.__dbgWarn) window.__dbgWarn('[' + DATA_PREFIX + col + '] read: ' + (e.code || e.message), 'SAVE');
+        }
+
+        // Set every item
+        for(let ii = 0; ii < items.length; ii++){
+          const item = items[ii];
+          if(!item || typeof item !== 'object') continue;
+          const id = item.id || uid();
+          if(!item.id) item.id = id;
+          allOps.push({
+            op: 'set',
+            ref: colRef.doc(id),
+            data: item
+          });
+        }
+      }
+
+      // Commit in batches
+      let written = 0;
+      for(let i = 0; i < allOps.length; i += 450){
+        const b = firestore.batch();
+        const slice = allOps.slice(i, i + 450);
+        for(let k = 0; k < slice.length; k++){
+          const o = slice[k];
+          if(o.op === 'delete') b.delete(o.ref);
+          else b.set(o.ref, JSON.parse(JSON.stringify(o.data)));
+        }
+        await b.commit();
+        written += slice.length;
+      }
+
+      // Success
+      __pushSnap = JSON.stringify(db);
+      setStatus('Synced ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}));
+      const ms = Math.round(performance.now() - t0);
+      if(window.__dbgOk) window.__dbgOk('Synced ' + written + ' ops across ' + COLLECTIONS.length + ' collections in ' + ms + 'ms', 'SAVE');
+    } catch(e){
+      console.error('pushToFirestore failed:', e);
+      setStatus('Local • Queued (' + (e.code || 'error') + ')');
+      if(window.__dbgError) window.__dbgError('SAVE FAILED → ' + (e.code || '') + ' ' + e.message, 'SAVE');
+    } finally {
+      __pushInFlight = false;
+    }
+  })();
+}
+window.pushToFirestore = pushToFirestore;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. FRESH save — declared as top-level function so it replaces all earlier
+   save() bindings.
+   ───────────────────────────────────────────────────────────────────────────── */
+function save(){
+  // Local write first
+  try {
+    localStorage.setItem('lankashoe_cache', JSON.stringify(db));
+    const el = document.getElementById('dbSize');
+    if(el){
+      try { el.textContent = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){}
+    }
+  } catch(e){
+    if(window.toast) toast('Storage full', 'error');
+  }
+
+  // Respect autoSave setting
+  if(db.settings && db.settings.autoSave === false) return;
+
+  // Debounced push
+  if(window._syncDebounce) clearTimeout(window._syncDebounce);
+  window._syncDebounce = setTimeout(function(){
+    pushToFirestore();
+  }, 700);
+}
+window.save = save;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. Auto-sync heartbeat — every 4s check for local changes and push
+   (self-healing: works even if save() is never called by some code path)
+   ───────────────────────────────────────────────────────────────────────────── */
+(function autoSyncHeartbeat(){
+  setInterval(function(){
+    if(!currentUser || !firebaseReady || offlineMode) return;
+    if(__pushInFlight) return;
+
+    const currentSnap = (function(){
+      try { return JSON.stringify(db); } catch(e){ return null; }
+    })();
+    if(!currentSnap) return;
+
+    if(__pushSnap === null){
+      // First tick — establish baseline without pushing
+      __pushSnap = currentSnap;
+      return;
+    }
+
+    if(currentSnap !== __pushSnap){
+      if(window.__dbgLog) window.__dbgLog('Auto-sync: local changes detected, pushing…', 'AUTO-SYNC');
+      pushToFirestore(true);
+    }
+  }, 4000);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. Push on tab hide + before unload (last-chance sync)
+   ───────────────────────────────────────────────────────────────────────────── */
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden' && currentUser && firebaseReady && !offlineMode){
+    pushToFirestore(true);
+  }
+});
+window.addEventListener('beforeunload', function(){
+  if(currentUser && firebaseReady && !offlineMode){
+    try {
+      localStorage.setItem('lankashoe_cache', JSON.stringify(db));
+    } catch(e){}
+    // Best-effort push (sync XHR style — usually ignored by browser)
+    pushToFirestore(true);
+  }
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. DIAGNOSTIC — inspect current state
+   ───────────────────────────────────────────────────────────────────────────── */
+window.diagSave = function(){
+  const log = window.__dbgLog || console.log;
+  const ok  = window.__dbgOk  || console.log;
+  const err = window.__dbgError || console.error;
+
+  ok('════ SAVE DIAGNOSTIC ════', 'DIAG');
+  log('currentUser: ' + (currentUser ? currentUser.email : 'NULL'), 'DIAG');
+  log('currentUserRole: ' + currentUserRole, 'DIAG');
+  log('firebaseReady: ' + firebaseReady, 'DIAG');
+  log('offlineMode: ' + offlineMode, 'DIAG');
+  log('autoSave setting: ' + (db.settings ? db.settings.autoSave : 'undefined'), 'DIAG');
+  log('__pushInFlight: ' + __pushInFlight, 'DIAG');
+  log('__pushSnap set: ' + (__pushSnap !== null), 'DIAG');
+
+  let total = 0;
+  const counts = [];
+  for(let i = 0; i < COLLECTIONS.length; i++){
+    const n = arr(db[COLLECTIONS[i]]).length;
+    if(n > 0){ counts.push(COLLECTIONS[i] + '=' + n); total += n; }
+  }
+  log('Local records: ' + total + ' — ' + (counts.join(', ') || 'none'), 'DIAG');
+
+  // Cloud sample reads
+  if(firebaseReady && currentUser){
+    ['customers','suppliers','purchases','payments'].forEach(function(col){
+      firestore.collection(DATA_PREFIX + col).limit(1).get()
+        .then(function(snap){
+          log('Cloud ' + DATA_PREFIX + col + ': ' + snap.size + ' doc(s) visible', 'DIAG');
+        })
+        .catch(function(e){
+          err('Cloud ' + DATA_PREFIX + col + ' read FAILED: ' + (e.code || '') + ' — ' + e.message, 'DIAG');
+        });
+    });
+  } else {
+    err('Cannot read cloud — not signed in or firebase not ready', 'DIAG');
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. TEST — write+delete a doc to confirm Firestore allows writes
+   ───────────────────────────────────────────────────────────────────────────── */
+window.testWrite = async function(){
+  const ok  = window.__dbgOk  || console.log;
+  const err = window.__dbgError || console.error;
+
+  if(!firebaseReady){ err('Firebase not ready', 'TEST'); return; }
+  if(!currentUser){ err('Not signed in', 'TEST'); return; }
+
+  ok('Testing write to ' + DATA_PREFIX + 'customers/__diag_test__ …', 'TEST');
+  try {
+    const ref = firestore.doc(DATA_PREFIX + 'customers/__diag_test__');
+    await ref.set({
+      _test: true,
+      at: new Date().toISOString(),
+      by: currentUser.email
+    });
+    ok('✅ Write SUCCESS', 'TEST');
+    await ref.delete();
+    ok('✅ Delete SUCCESS — Firestore writes work perfectly', 'TEST');
+  } catch(e){
+    err('❌ Write FAILED: ' + (e.code || '') + ' — ' + e.message, 'TEST');
+    err('→ Most likely: Firestore rules deny writes. Re-publish the rules.', 'TEST');
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. FORCE PUSH — push everything now
+   ───────────────────────────────────────────────────────────────────────────── */
+window.forcePushNow = function(){
+  const ok  = window.__dbgOk  || console.log;
+  const err = window.__dbgError || console.error;
+
+  if(!currentUser){ err('Not signed in', 'PUSH'); return; }
+  if(!firebaseReady){ err('Firebase not ready', 'PUSH'); return; }
+
+  ok('Force push starting (all collections)…', 'PUSH');
+  pushToFirestore(true);
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   8. Add DIAG / TEST / PUSH buttons to the debug panel
+   ───────────────────────────────────────────────────────────────────────────── */
+(function attachDebugButtons(){
+  function attach(){
+    const tools = document.querySelector('.dbg-tools');
+    if(!tools || tools.querySelector('[data-part-r]')) return;
+
+    const mk = function(label, title, fn){
+      const b = document.createElement('button');
+      b.setAttribute('data-part-r', '1');
+      b.textContent = label;
+      b.title = title;
+      b.onclick = fn;
+      tools.appendChild(b);
+    };
+
+    mk('DIAG', 'Show save diagnostics', window.diagSave);
+    mk('TEST', 'Test Firestore write permission', window.testWrite);
+    mk('PUSH', 'Force push all data to Firestore', window.forcePushNow);
+  }
+  setTimeout(attach, 800);
+  setInterval(attach, 2500);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   9. Add visible "Save Now" button to topbar (always visible fallback)
+   ───────────────────────────────────────────────────────────────────────────── */
+(function addTopbarSaveButton(){
+  function attach(){
+    const actions = document.querySelector('.topbar-actions');
+    if(!actions || document.getElementById('saveNowBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'saveNowBtn';
+    btn.className = 'btn icon';
+    btn.title = 'Save to cloud now';
+    btn.textContent = '☁️';
+    btn.onclick = function(){
+      if(!currentUser){ toast('Not signed in', 'error'); return; }
+      btn.disabled = true;
+      toast('Syncing…', 'info');
+      pushToFirestore(true);
+      setTimeout(function(){ btn.disabled = false; }, 2500);
+    };
+    // Insert before the sign-out button
+    const signOut = actions.querySelector('[data-action="signout"]');
+    if(signOut) actions.insertBefore(btn, signOut);
+    else actions.appendChild(btn);
+  }
+  setTimeout(attach, 500);
+  setInterval(attach, 2500);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   10. Login screen — add a "Recover local data" link that dumps cache
+   ───────────────────────────────────────────────────────────────────────────── */
+(function addRescueLink(){
+  function attach(){
+    const note = document.querySelector('.login-note');
+    if(!note || document.getElementById('rescueLink')) return;
+    const link = document.createElement('div');
+    link.id = 'rescueLink';
+    link.style.cssText = 'margin-top:14px;font-size:11.5px;color:#94a3b8;text-align:center';
+    link.innerHTML = 'Having trouble syncing? '
+      + '<a href="#" onclick="event.preventDefault();window.__rescueLocalCache();" style="color:#7c3aed;text-decoration:underline">Download local backup</a>';
+    note.parentNode.insertBefore(link, note.nextSibling);
+  }
+  setTimeout(attach, 500);
+  setInterval(attach, 2500);
+})();
+
+window.__rescueLocalCache = function(){
+  try {
+    const raw = localStorage.getItem('lankashoe_cache');
+    if(!raw){ alert('No local cache found.'); return; }
+    const data = JSON.parse(raw);
+    let total = 0;
+    Object.keys(data).forEach(function(k){
+      if(Array.isArray(data[k])) total += data[k].length;
+    });
+    const out = {
+      rescuedAt: new Date().toISOString(),
+      totalRecords: total,
+      db: data
+    };
+    const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lankashoe_rescue_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    alert('✅ Downloaded!\n\n' + total + ' records saved.');
+  } catch(e){
+    alert('Export failed: ' + e.message);
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   11. Startup log
+   ───────────────────────────────────────────────────────────────────────────── */
+setTimeout(function(){
+  if(window.__dbgOk){
+    window.__dbgOk('Part R ready — fresh save engine + auto-sync every 4s', 'PART-R');
+    window.__dbgOk('Debug panel now has: DIAG · TEST · PUSH buttons', 'PART-R');
+  }
+}, 2800);
+
+/* ═══ END OF PART R ═══ */
 
 </script>
 </body>

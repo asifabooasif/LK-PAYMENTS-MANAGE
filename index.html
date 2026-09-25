@@ -20386,6 +20386,317 @@ setTimeout(function(){
 })();
 
 /* ═══ END OF PART P ═══ */
+/* ═══ START OF PART Q — RESTORE SAVING + RESCUE ═══ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. RESCUE — Export local cache from login screen BEFORE anything loads
+   ───────────────────────────────────────────────────────────────────────────── */
+window.exportLocalCacheRescue = function(){
+  try {
+    const raw = localStorage.getItem('lankashoe_cache');
+    if(!raw){ alert('No local cache found in this browser.'); return; }
+    const data = JSON.parse(raw);
+    let total = 0;
+    Object.keys(data).forEach(function(k){
+      if(Array.isArray(data[k])) total += data[k].length;
+    });
+    const out = {
+      rescuedAt: new Date().toISOString(),
+      source: 'localStorage cache',
+      totalRecords: total,
+      collections: Object.keys(data).filter(function(k){ return Array.isArray(data[k]); }).length,
+      db: data
+    };
+    const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lankashoe_rescue_' + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    alert('✅ Downloaded!\n\n' + total + ' records across ' + out.collections + ' collections.\n\nKeep this file safe.');
+  } catch(e){
+    alert('Export failed: ' + e.message);
+  }
+};
+
+/* Wire rescue button onto the login screen */
+(function addRescueButton(){
+  function attach(){
+    const card = document.querySelector('.login-card');
+    if(!card) return;
+    if(document.getElementById('rescueBtn')) return;
+    const note = card.querySelector('.login-note');
+    if(!note) return;
+    const btn = document.createElement('button');
+    btn.id = 'rescueBtn';
+    btn.type = 'button';
+    btn.className = 'google-btn';
+    btn.style.marginTop = '14px';
+    btn.style.background = '#fef3c7';
+    btn.style.color = '#78350f';
+    btn.style.borderColor = '#fcd34d';
+    btn.style.fontSize = '12.5px';
+    btn.innerHTML = '⚠️ Download Local Backup (do this first)';
+    btn.onclick = window.exportLocalCacheRescue;
+    note.parentNode.insertBefore(btn, note);
+  }
+  if(document.body) setTimeout(attach, 300);
+  setInterval(attach, 2000);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. RESTORE ORIGINAL pushToFirestore — with deletes + sets
+   No hash guard, no merge-only (that was the bug)
+   ───────────────────────────────────────────────────────────────────────────── */
+window.pushToFirestore = async function(force){
+  try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+
+  const st = document.getElementById('syncStatus');
+  const setStatus = function(txt){ if(st) st.textContent = txt; };
+
+  if(offlineMode){ setStatus('Offline • Local only'); return; }
+  if(!firebaseReady){ setStatus('Local • Firebase not ready'); return; }
+  if(!currentUser){ setStatus('Local • Not signed in'); return; }
+
+  setStatus('Syncing…');
+  const t0 = performance.now();
+
+  try {
+    // Settings (admin only)
+    if(currentUserRole === 'admin'){
+      try {
+        await firestore.doc(SETTINGS_DOC_PATH).set(JSON.parse(JSON.stringify(db.settings)));
+      } catch(e){
+        if(window.__dbgWarn) window.__dbgWarn('[settings] ' + (e.code || e.message), 'SAVE');
+      }
+    }
+
+    // Build all ops: delete existing, then re-add everything
+    const allOps = [];
+    for(const col of COLLECTIONS){
+      const items = arr(db[col]);
+      const colRef = firestore.collection(DATA_PREFIX + col);
+
+      try {
+        const existing = await colRef.get();
+        existing.forEach(function(doc){
+          allOps.push({ op: 'delete', ref: doc.ref });
+        });
+      } catch(e){
+        if(window.__dbgWarn) window.__dbgWarn('[' + DATA_PREFIX + col + '] ' + (e.code || e.message), 'SAVE');
+      }
+
+      items.forEach(function(item){
+        if(!item) return;
+        const id = item.id || uid();
+        if(!item.id) item.id = id;
+        allOps.push({
+          op: 'set',
+          ref: colRef.doc(id),
+          data: item
+        });
+      });
+    }
+
+    // Commit in batches of 450
+    let written = 0;
+    for(let i = 0; i < allOps.length; i += 450){
+      const b = firestore.batch();
+      allOps.slice(i, i + 450).forEach(function(o){
+        if(o.op === 'delete') b.delete(o.ref);
+        else b.set(o.ref, JSON.parse(JSON.stringify(o.data)));
+      });
+      await b.commit();
+      written += Math.min(450, allOps.length - i);
+    }
+
+    setStatus('Synced ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}));
+    const ms = Math.round(performance.now() - t0);
+    if(window.__dbgOk) window.__dbgOk('Synced ' + written + ' ops in ' + ms + 'ms', 'SAVE');
+  } catch(e){
+    console.error('pushToFirestore failed:', e);
+    setStatus('Local • Queued (' + (e.code || 'error') + ')');
+    if(window.__dbgError) window.__dbgError('SAVE FAILED → ' + (e.code || '') + ' ' + e.message, 'SAVE');
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. RESTORE ORIGINAL save
+   ───────────────────────────────────────────────────────────────────────────── */
+window.save = function(){
+  try {
+    localStorage.setItem('lankashoe_cache', JSON.stringify(db));
+    const el = document.getElementById('dbSize');
+    if(el){
+      try { el.textContent = (new Blob([JSON.stringify(db)]).size / 1024).toFixed(1) + ' KB'; } catch(e){}
+    }
+  } catch(e){
+    if(window.toast) toast('Storage full', 'error');
+  }
+  if(db.settings && db.settings.autoSave === false) return;
+  if(window._syncDebounce) clearTimeout(window._syncDebounce);
+  window._syncDebounce = setTimeout(function(){ pushToFirestore(); }, 800);
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. onAuthStateChanged — BLOCK until server load finishes + MERGE local-only
+   ───────────────────────────────────────────────────────────────────────────── */
+window.onAuthStateChanged = async function(user){
+  const btn = document.getElementById('googleSignInBtn');
+  const txt = document.getElementById('googleBtnText');
+
+  if(!user){
+    currentUser = null;
+    showLoginScreen();
+    if(btn){ btn.disabled = false; txt.textContent = 'Continue with Google'; }
+    return;
+  }
+
+  if(txt) txt.textContent = 'Loading your data…';
+  if(btn) btn.disabled = true;
+
+  const t0 = performance.now();
+
+  // Step 1: Load local cache (instant)
+  loadLocalCache();
+  const localSnapshot = JSON.parse(JSON.stringify(db));
+
+  // Step 2: Fast access check (cached 6h)
+  const role = await checkAccess(user.email);
+
+  if(!role){
+    showLoginError('Access denied.\n\n' + user.email + '\n\nContact the administrator.');
+    setTimeout(function(){ auth.signOut(); }, 5000);
+    return;
+  }
+
+  currentUser = { uid: user.uid, email: user.email, name: user.displayName, photo: user.photoURL };
+  currentUserRole = role;
+  hideLoginError();
+
+  // Step 3: BLOCK — load from Firestore BEFORE showing the app
+  // This is the critical fix. Previously this ran in the background and could
+  // overwrite user changes that hadn't been pushed yet.
+  try {
+    if(txt) txt.textContent = 'Syncing with cloud…';
+    await loadFromFirestore();
+  } catch(e){
+    console.error('Login load failed:', e);
+    if(window.__dbgError) window.__dbgError('Login load: ' + (e.message || e), 'AUTH');
+  }
+
+  // Step 4: MERGE — bring back any local-only records
+  // If the user added records in a previous session that never synced, we
+  // keep them so nothing is lost.
+  try {
+    let mergedCount = 0;
+    COLLECTIONS.forEach(function(col){
+      const serverItems = arr(db[col]);
+      const serverIds = new Set(serverItems.map(function(x){ return x.id; }).filter(Boolean));
+      const localItems = arr(localSnapshot[col]);
+      localItems.forEach(function(item){
+        if(item && item.id && !serverIds.has(item.id)){
+          serverItems.push(item);
+          mergedCount++;
+        }
+      });
+      db[col] = serverItems;
+    });
+    if(mergedCount > 0 && window.__dbgWarn){
+      window.__dbgWarn('Merged ' + mergedCount + ' local-only record(s) into server data', 'AUTH');
+    }
+  } catch(e){
+    console.error('Merge failed:', e);
+  }
+
+  normalizeDb();
+  applySettings();
+  updateSidebarUser();
+  showApp();
+  render();
+
+  const ms = Math.round(performance.now() - t0);
+  if(window.__dbgOk) window.__dbgOk('Signed in as ' + user.email + ' in ' + ms + 'ms', 'AUTH');
+  toast('Welcome, ' + (user.displayName || user.email), 'success');
+
+  // Step 5: Fire-and-forget side effects
+  registerUserLogin(user, role);
+  logLogin(user);
+  purgeOldTrash();
+
+  // Step 6: Push merged data back to cloud in background
+  setTimeout(function(){
+    pushToFirestore().catch(function(e){ console.error(e); });
+  }, 1500);
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. Make sidebar sync status clickable → force sync
+   ───────────────────────────────────────────────────────────────────────────── */
+(function makeSyncStatusClickable(){
+  function attach(){
+    const st = document.getElementById('syncStatus');
+    if(!st || st.dataset.clickable) return;
+    st.dataset.clickable = '1';
+    st.style.cursor = 'pointer';
+    st.title = 'Click to force full sync';
+    st.addEventListener('click', function(){
+      if(confirm('Force full sync to Firestore?\n\nThis will push your local data to the cloud.')){
+        pushToFirestore(true).then(function(){ toast('✅ Forced sync complete', 'success'); });
+      }
+    });
+  }
+  if(document.body) setTimeout(attach, 500);
+  setInterval(attach, 3000);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. Add Push/Backup buttons to the 🐛 debug panel
+   ───────────────────────────────────────────────────────────────────────────── */
+(function addDebugSyncButtons(){
+  function attach(){
+    const dbgTools = document.querySelector('.dbg-tools');
+    if(!dbgTools) return;
+    if(!dbgTools.querySelector('[data-force-push]')){
+      const pushBtn = document.createElement('button');
+      pushBtn.setAttribute('data-force-push', '1');
+      pushBtn.textContent = '⬆ Push';
+      pushBtn.title = 'Force push local data to Firestore';
+      pushBtn.onclick = function(){
+        pushBtn.disabled = true;
+        pushBtn.textContent = '⬆ Pushing…';
+        pushToFirestore(true).then(function(){
+          pushBtn.disabled = false;
+          pushBtn.textContent = '⬆ Push';
+          toast('✅ Synced to cloud', 'success');
+        });
+      };
+      dbgTools.appendChild(pushBtn);
+    }
+    if(!dbgTools.querySelector('[data-export-local]')){
+      const expBtn = document.createElement('button');
+      expBtn.setAttribute('data-export-local', '1');
+      expBtn.textContent = '⬇ Backup';
+      expBtn.title = 'Download local backup';
+      expBtn.onclick = window.exportLocalCacheRescue;
+      dbgTools.appendChild(expBtn);
+    }
+  }
+  setTimeout(attach, 500);
+  setInterval(attach, 2000);
+})();
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. Ready log
+   ───────────────────────────────────────────────────────────────────────────── */
+setTimeout(function(){
+  if(window.__dbgOk) window.__dbgOk('Part Q ready — saving restored + rescue available', 'PART-Q');
+}, 2800);
+
+/* ═══ END OF PART Q ═══ */
 
 </script>
 </body>

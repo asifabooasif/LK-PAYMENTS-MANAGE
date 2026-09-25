@@ -16471,69 +16471,76 @@ setTimeout(function(){
   }, 800);
 })();
 /* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 136 — BANK DISPLAY HELPERS
+   PATCH — BANK ACCOUNT NAMES + ADVANCED CHEQUE SELECTION + BANK PAYMENTS
    ═══════════════════════════════════════════════════════════════════════════
-   Returns the custom account name if set, else falls back to bankName.
-   Backward compatible: existing bank docs (no `name` field) work fine.
+   This patch replaces:
+     • viewPayments         (payment form: mode toggle + cascade + bank section)
+     • renderOwnLeafRows    (3-step cascade: Bank → Book → Leaf)
+     • updateOwnLeafRow     (handles new fields bankAccountId, chequeBookId)
+     • buildPaymentPreviewHTML (shows bank section when in bank mode)
+     • previewPayment       (validates both modes)
+     • confirmAndSavePayment (creates bank txns for direct payments)
+     • showPaymentDetail    (shows bank section in detail modal)
+     • deletePayment        (removes linked bank txns)
+     • openBankForm         (adds Account Name field)
+     • saveBank             (saves Account Name)
+     • viewBanks            (shows Account Name on bank cards)
+
+   Firebase config, auth, boot, and everything else remain untouched.
    ═══════════════════════════════════════════════════════════════════════════ */
-function bankDisplayName(bankIdOrObj){
-  const b = typeof bankIdOrObj === 'string' ? bankObj(bankIdOrObj) : bankIdOrObj;
+
+/* ─── Helpers ──────────────────────────────────────────────────────────── */
+
+function bankDisplayName(b){
   if(!b) return '—';
-  return (b.name && String(b.name).trim()) ? String(b.name).trim() : (b.bankName || '—');
+  const parts = [];
+  if(b.accountName) parts.push(b.accountName);
+  parts.push(b.bankName);
+  if(b.accountNo) parts.push(b.accountNo);
+  return parts.join(' • ');
 }
 window.bankDisplayName = bankDisplayName;
 
-function bankFullDisplayName(bankIdOrObj){
-  const b = typeof bankIdOrObj === 'string' ? bankObj(bankIdOrObj) : bankIdOrObj;
-  if(!b) return '—';
-  const customName = (b.name && String(b.name).trim()) ? String(b.name).trim() : '';
-  const bankName = b.bankName || '';
-  const accNo = b.accountNo ? ' — ' + b.accountNo : '';
-  if(customName && bankName && customName.toLowerCase() !== bankName.toLowerCase()){
-    return customName + ' (' + bankName + ')' + accNo;
-  }
-  return (customName || bankName) + accNo;
+function bankOptionsWithName(selectedId, filter){
+  const list = arr(db.bankAccounts).filter(filter || (() => true));
+  return list.map(b => {
+    const parts = [];
+    if(b.accountName) parts.push(b.accountName);
+    parts.push(b.bankName);
+    if(b.accountNo) parts.push(b.accountNo);
+    return '<option value="' + b.id + '" ' + (selectedId === b.id ? 'selected' : '') + '>'
+      + esc(parts.join(' — ')) + '</option>';
+  }).join('');
 }
-window.bankFullDisplayName = bankFullDisplayName;
+window.bankOptionsWithName = bankOptionsWithName;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 137 — BANK FORM (with custom account name)
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ─── Banks: add Account Name field ────────────────────────────────────── */
+
 window.openBankForm = function(id){
   const b = id ? bankObj(id) : null;
-
   openModal(b ? '✏️ Edit Bank Account' : '➕ Add Bank Account',
     '<form onsubmit="saveBank(event)" data-id="' + (b ? b.id : '') + '">'
-    + '<div class="alert info"><span class="ico">ℹ</span>'
-    + '<div>Give each account a unique <strong>Account Name</strong> (e.g. "Main Current Account", "Salary Account"). '
-    + 'This helps you distinguish multiple accounts at the same bank.</div></div>'
-
     + '<div class="form-grid">'
     + '<label class="field">Account Name <span class="req">*</span>'
-    + '<input name="bName" required value="' + esc(b ? (b.name || '') : '') + '" '
-    + 'placeholder="e.g. Main Current Account"></label>'
-
-    + '<label class="field">Bank <span class="req">*</span>'
-    + '<select name="bBank" required>'
-    + '<option value="">Select SL Bank</option>'
-    + bankPresetOptions(b ? b.bankName : '')
+    +   '<input name="bAccName" required value="' + esc(b ? (b.accountName || '') : '') + '" '
+    +   'placeholder="e.g. Main Current, Payroll, Supplier A/C" maxlength="60"></label>'
+    + '<label class="field">Bank <span class="req">*</span><select name="bName" required>'
+    +   '<option value="">Select SL Bank</option>'
+    +   bankPresetOptions(b ? b.bankName : '')
     + '</select></label>'
-
-    + '<label class="field">Account No<input name="bAcc" value="' + esc(b ? (b.accountNo || '') : '') + '"></label>'
-    + '<label class="field">Branch<input name="bBranch" value="' + esc(b ? (b.branch || '') : '') + '"></label>'
-
+    + '<label class="field">Account No<input name="bAcc" value="' + esc(b ? b.accountNo : '') + '"></label>'
+    + '<label class="field">Branch<input name="bBranch" value="' + esc(b ? b.branch : '') + '"></label>'
     + '<label class="field">Type<select name="bType">'
-    + '<option value="Current" ' + (b && b.accountType === 'Current' ? 'selected' : '') + '>Current</option>'
-    + '<option value="Savings" ' + (b && b.accountType === 'Savings' ? 'selected' : '') + '>Savings</option>'
-    + '<option value="Other" ' + (b && b.accountType === 'Other' ? 'selected' : '') + '>Other</option>'
+    +   '<option value="Current" ' + (b && b.accountType === 'Current' ? 'selected' : '') + '>Current</option>'
+    +   '<option value="Savings" ' + (b && b.accountType === 'Savings' ? 'selected' : '') + '>Savings</option>'
+    +   '<option value="Other" '   + (b && b.accountType === 'Other'   ? 'selected' : '') + '>Other</option>'
     + '</select></label>'
-
     + '<label class="field">Opening Balance<input name="bOpen" type="number" step="0.01" value="' + (b ? num(b.openingBalance) : 0) + '"></label>'
     + '<label class="field">Opening Date<input name="bOpenDate" type="date" value="' + (b ? (b.openingDate || today()) : today()) + '"></label>'
     + '</div>'
-
+    + '<div class="alert info" style="margin-top:14px"><span class="ico">💡</span>'
+    + '<div>The <strong>Account Name</strong> helps you tell apart multiple accounts at the same bank (e.g. "Main Current", "Payroll", "Savings").</div></div>'
     + '<label class="field" style="margin-top:14px">Notes<textarea name="bNotes">' + esc(b ? (b.notes || '') : '') + '</textarea></label>'
-
     + '<div class="form-actions">'
     + '<button type="button" class="btn" data-action="close-modal">Cancel</button>'
     + '<button type="submit" class="btn primary">' + (b ? 'Update' : 'Save') + '</button>'
@@ -16543,11 +16550,11 @@ window.openBankForm = function(id){
 window.saveBank = function(e){
   e.preventDefault();
   if(!canWrite()) return;
-
   const f = e.target, id = f.dataset.id;
+
   const data = {
-    name: f.bName.value.trim(),
-    bankName: f.bBank.value.trim(),
+    accountName: f.bAccName.value.trim(),
+    bankName: f.bName.value.trim(),
     accountNo: f.bAcc.value.trim(),
     branch: f.bBranch.value.trim(),
     accountType: f.bType.value,
@@ -16555,594 +16562,293 @@ window.saveBank = function(e){
     openingDate: f.bOpenDate.value || today(),
     notes: f.bNotes.value.trim()
   };
-
-  if(!data.name){ toast('Account Name required', 'error'); return; }
-  if(!data.bankName){ toast('Bank required', 'error'); return; }
+  if(!data.accountName){ toast('Account Name required', 'error'); return; }
+  if(!data.bankName){ toast('Bank name required', 'error'); return; }
 
   if(id){
-    const before = JSON.parse(JSON.stringify(bankObj(id)));
     Object.assign(bankObj(id), data);
-    if(typeof trackVersion === 'function') trackVersion('bankAccounts', id, 'Update', before, bankObj(id));
-    logAct('Update Bank', 'Bank', id, data.name);
   } else {
-    const bid = uid();
-    db.bankAccounts.push(Object.assign({ id: bid, createdAt: nowISO() }, data));
-    if(typeof trackVersion === 'function') trackVersion('bankAccounts', bid, 'Create', null, data);
-    logAct('Add Bank', 'Bank', bid, data.name);
+    db.bankAccounts.push(Object.assign({ id: uid(), createdAt: nowISO() }, data));
   }
-
   save();
   closeModal();
   render();
   toast('✅ Bank account saved', 'success');
 };
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 138 — BANK CARDS (show custom name)
-   ═══════════════════════════════════════════════════════════════════════════ */
-(function patchBankCardsForName(){
-  const origViewBanks = window.viewBanks;
-  if(typeof origViewBanks !== 'function' || origViewBanks.__wrappedName) return;
+/* Banks view — full replacement to show Account Name on cards */
+window.viewBanks = function(){
+  const banks = arr(db.bankAccounts);
+  const overdraftWarnings = banks.filter(b => projectedBalance(b.id, 30) < 0);
+  const pendingAll = pendingDeductions().filter(p => p.isDue);
+  const pendingFuture = pendingDeductions().filter(p => !p.isDue);
+  let banner = '';
 
-  const wrapped = function(){
-    /* Temporarily swap bank display: patch the inner cards by rendering original
-       then swapping text on bank card titles. Simpler and safer than rewriting. */
-    const html = origViewBanks.apply(this, arguments);
-    return html;
-  };
-  wrapped.__wrappedName = true;
-  window.viewBanks = wrapped;
-  if(typeof views === 'object') views.banks = wrapped;
-})();
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 139 — UPDATE BANK DROPDOWNS across the app to use display names
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Receipt form dropdown ── */
-(function patchReceiptBankDropdown(){
-  const orig = window.openReceiptForm;
-  if(typeof orig !== 'function' || orig.__wrappedBankName) return;
-
-  const wrapped = function(){
-    const r = orig.apply(this, arguments);
-    setTimeout(() => {
-      const sel = document.querySelector('#modalWrap [name="rcBank"]');
-      if(!sel) return;
-      /* Rebuild the options with display names, keeping IDs as values */
-      const current = sel.value;
-      sel.innerHTML = '<option value="">— None —</option>'
-        + arr(db.bankAccounts).map(b =>
-            '<option value="' + b.id + '" ' + (current === b.id ? 'selected' : '') + '>'
-            + esc(bankFullDisplayName(b)) + '</option>'
-          ).join('');
-    }, 40);
-    return r;
-  };
-  wrapped.__wrappedBankName = true;
-  window.openReceiptForm = wrapped;
-})();
-
-/* ── Expense form dropdown ── */
-(function patchExpenseBankDropdown(){
-  const orig = window.openExpenseForm;
-  if(typeof orig !== 'function' || orig.__wrappedBankName) return;
-
-  const wrapped = function(){
-    const r = orig.apply(this, arguments);
-    setTimeout(() => {
-      const sel = document.querySelector('#modalWrap [name="eBank"]');
-      if(!sel) return;
-      const current = sel.value;
-      sel.innerHTML = '<option value="">— None —</option>'
-        + arr(db.bankAccounts).map(b =>
-            '<option value="' + b.id + '" ' + (current === b.id ? 'selected' : '') + '>'
-            + esc(bankFullDisplayName(b)) + '</option>'
-          ).join('');
-    }, 40);
-    return r;
-  };
-  wrapped.__wrappedBankName = true;
-  window.openExpenseForm = wrapped;
-})();
-
-/* ── Transfer form dropdowns ── */
-(function patchTransferBankDropdowns(){
-  const orig = window.openTransferForm;
-  if(typeof orig !== 'function' || orig.__wrappedBankName) return;
-
-  const wrapped = function(){
-    const r = orig.apply(this, arguments);
-    setTimeout(() => {
-      ['tfFrom', 'tfTo'].forEach(n => {
-        const sel = document.querySelector('#modalWrap [name="' + n + '"]');
-        if(!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '<option value="">Select account…</option>'
-          + arr(db.bankAccounts).map(b =>
-              '<option value="' + b.id + '" ' + (current === b.id ? 'selected' : '') + '>'
-              + esc(bankFullDisplayName(b)) + '</option>'
-            ).join('');
-      });
-    }, 40);
-    return r;
-  };
-  wrapped.__wrappedBankName = true;
-  window.openTransferForm = wrapped;
-})();
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 140 — ADVANCED CHEQUE SELECTION (Bank → Book → Leaf cascade)
-   ═══════════════════════════════════════════════════════════════════════════
-   Replaces the old single-dropdown row with a 3-level cascade.
-   Each row stores: { rowId, bankId, bookId, leafId, amount, dueDate, payee }
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Ensure the payOwnRows structure supports cascade fields ── */
-function ensureOwnRowsCascade(){
-  ui.payOwnRows = Array.isArray(ui.payOwnRows) ? ui.payOwnRows : [];
-  ui.payOwnRows.forEach(r => {
-    if(r.bankId === undefined) r.bankId = '';
-    if(r.bookId === undefined) r.bookId = '';
-    if(r.leafId === undefined) r.leafId = '';
-  });
-}
-window.ensureOwnRowsCascade = ensureOwnRowsCascade;
-
-/* ── Get available books for a bank (a book has at least 1 available leaf) ── */
-function availableBooksForBank(bankId){
-  if(!bankId) return [];
-  const bank = bankObj(bankId);
-  if(!bank) return [];
-  const books = arr(db.chequeBooks).filter(b =>
-    (b.bankAccountId === bankId) ||
-    (b.bankName === bank.bankName && !b.bankAccountId)
-  );
-  return books.map(b => {
-    const leaves = arr(db.chequeLeaves).filter(l =>
-      l.chequeBookId === b.id && l.status === 'Available'
-    );
-    return Object.assign({}, b, { availableCount: leaves.length });
-  }).filter(b => b.availableCount > 0);
-}
-window.availableBooksForBank = availableBooksForBank;
-
-/* ── Get available leaves for a book ── */
-function availableLeavesForBook(bookId){
-  if(!bookId) return [];
-  return arr(db.chequeLeaves)
-    .filter(l => l.chequeBookId === bookId && l.status === 'Available')
-    .sort((a, b) => a.leafNo.localeCompare(b.leafNo));
-}
-window.availableLeavesForBook = availableLeavesForBook;
-
-/* ── Add a new empty row (no leaf picked yet) ── */
-window.addOwnLeafRow = function(){
-  ensureOwnRowsCascade();
-  ui.payOwnRows.push({
-    rowId: uid(),
-    bankId: '',
-    bookId: '',
-    leafId: '',
-    amount: 0,
-    dueDate: shiftDate(today(), 30),
-    payee: ''
-  });
-  renderOwnLeafRows();
-};
-
-window.removeOwnLeafRow = function(rowId){
-  ui.payOwnRows = ui.payOwnRows.filter(r => r.rowId !== rowId);
-  renderOwnLeafRows();
-};
-
-/* ── Update a row's cascade field ── */
-window.updateOwnLeafRow = function(idx, field, value){
-  if(!ui.payOwnRows[idx]) return;
-  const r = ui.payOwnRows[idx];
-
-  if(field === 'bankId'){
-    r.bankId = value;
-    r.bookId = '';      /* reset downstream */
-    r.leafId = '';
-    /* Default payee to selected supplier name if not set */
-    const supplierSel = document.getElementById('paySupplier');
-    if(supplierSel && supplierSel.value && !r.payee){
-      const sup = supObj(supplierSel.value);
-      if(sup) r.payee = sup.name;
-    }
-    renderOwnLeafRows();
-    return;
-  }
-
-  if(field === 'bookId'){
-    r.bookId = value;
-    r.leafId = '';      /* reset leaf */
-    renderOwnLeafRows();
-    return;
-  }
-
-  if(field === 'leafId'){
-    r.leafId = value;
-    /* Auto-populate due date from leaf (if set) — keeps amount and payee user-controlled */
-    if(value){
-      const leaf = arr(db.chequeLeaves).find(l => l.id === value);
-      if(leaf && leaf.dueDate && (!r.dueDate || r.dueDate < today())){
-        /* leave default */
-      }
-    }
-    renderOwnLeafRows();
-    return;
-  }
-
-  if(field === 'amount') r.amount = num(value);
-  else if(field === 'dueDate') r.dueDate = value;
-  else if(field === 'payee') r.payee = value;
-
-  updatePayTotals();
-};
-
-/* ── Render all own-cheque rows with the 3-level cascade ── */
-window.renderOwnLeafRows = function(){
-  const box = document.getElementById('ownRows');
-  if(!box) return;
-
-  ensureOwnRowsCascade();
-
-  if(!ui.payOwnRows.length){
-    box.innerHTML = '<div class="empty" style="padding:20px">'
-      + 'Click "Add Cheque" to pick Bank → Cheque Book → Leaf'
-      + '</div>';
-    updatePayTotals();
-    return;
-  }
-
-  /* Bank options — only banks that have at least 1 available leaf */
-  const bankOptions = arr(db.bankAccounts).filter(b => availableBooksForBank(b.id).length > 0);
-
-  box.innerHTML = ui.payOwnRows.map((r, idx) => {
-    const bankSel = bankObj(r.bankId);
-
-    /* Bank dropdown */
-    const bankSelectHTML = '<select onchange="updateOwnLeafRow(' + idx + ',\'bankId\',this.value)" style="font-size:12px">'
-      + '<option value="">— Bank —</option>'
-      + bankOptions.map(b =>
-          '<option value="' + b.id + '" ' + (r.bankId === b.id ? 'selected' : '') + '>'
-          + esc(bankDisplayName(b))
-          + '</option>'
-        ).join('')
-      + '</select>';
-
-    /* Book dropdown (populated when bank selected) */
-    const books = r.bankId ? availableBooksForBank(r.bankId) : [];
-    const bookSelectHTML = '<select onchange="updateOwnLeafRow(' + idx + ',\'bookId\',this.value)" style="font-size:12px" '
-      + (r.bankId ? '' : 'disabled')
-      + '>'
-      + '<option value="">— Cheque Book —</option>'
-      + books.map(bk =>
-          '<option value="' + bk.id + '" ' + (r.bookId === bk.id ? 'selected' : '') + '>'
-          + 'Book ' + esc(bk.bookNo || bk.startNo + '-' + bk.endNo)
-          + ' (' + bk.availableCount + ' avail)'
-          + '</option>'
-        ).join('')
-      + '</select>';
-
-    /* Leaf dropdown (populated when book selected) */
-    const leaves = r.bookId ? availableLeavesForBook(r.bookId) : [];
-    const leafSelectHTML = '<select onchange="updateOwnLeafRow(' + idx + ',\'leafId\',this.value)" style="font-size:12px" '
-      + (r.bookId ? '' : 'disabled')
-      + '>'
-      + '<option value="">— Leaf # —</option>'
-      + leaves.map(l =>
-          '<option value="' + l.id + '" ' + (r.leafId === l.id ? 'selected' : '') + '>'
-          + 'Leaf ' + esc(l.leafNo)
-          + '</option>'
-        ).join('')
-      + '</select>';
-
-    /* Bank tag below the cascade */
-    let bankTag = '';
-    if(bankSel){
-      const bankBalanceText = moneyPlain(bankBalance(bankSel.id));
-      bankTag = '<div style="margin-top:6px;font-size:10.5px;color:var(--text-4);display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-        + bankLogo(bankSel.bankName)
-        + '<span>' + esc(bankFullDisplayName(bankSel)) + '</span>'
-        + '<span style="color:var(--text-3)">•</span>'
-        + '<span>Balance: <strong style="color:var(--text-2)">' + bankBalanceText + '</strong></span>'
-        + '</div>';
-    }
-
-    return '<div style="padding:12px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);margin-bottom:10px">'
-
-      /* Row 1 — cascade */
-      + '<div style="display:grid;grid-template-columns:1.3fr 1.3fr 1fr 34px;gap:6px;align-items:center">'
-      +   bankSelectHTML
-      +   bookSelectHTML
-      +   leafSelectHTML
-      +   '<button type="button" class="icon-btn danger" onclick="removeOwnLeafRow(\'' + r.rowId + '\')" title="Remove">✕</button>'
-      + '</div>'
-
-      /* Row 2 — amount / due / payee */
-      + '<div style="display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:6px;margin-top:8px">'
-      +   '<input type="number" placeholder="Amount" value="' + (r.amount || '') + '" '
-      +   'oninput="updateOwnLeafRow(' + idx + ',\'amount\',this.value)" style="font-size:12px">'
-      +   '<input type="date" value="' + (r.dueDate || '') + '" '
-      +   'onchange="updateOwnLeafRow(' + idx + ',\'dueDate\',this.value)" style="font-size:12px">'
-      +   '<input type="text" placeholder="Payee" value="' + esc(r.payee || '') + '" '
-      +   'oninput="updateOwnLeafRow(' + idx + ',\'payee\',this.value)" style="font-size:12px">'
-      + '</div>'
-
-      + bankTag
-      + '</div>';
-  }).join('');
-
-  /* Bank-wise summary */
-  const bankCounts = {};
-  ui.payOwnRows.forEach(r => {
-    if(!r.leafId) return;
-    const l = arr(db.chequeLeaves).find(x => x.id === r.leafId);
-    if(!l) return;
-    const bankId = r.bankId;
-    const bankName = l.bankName || 'Unknown';
-    if(!bankCounts[bankId]) bankCounts[bankId] = { bankName, count: 0, total: 0 };
-    bankCounts[bankId].count++;
-    bankCounts[bankId].total += num(r.amount);
-  });
-  const bankKeys = Object.keys(bankCounts);
-  if(bankKeys.length){
-    box.innerHTML += '<div style="margin-top:12px;padding:12px;background:var(--surface-3);border-radius:10px;font-size:11.5px">'
-      + '<div style="font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:8px">'
-      + 'Selected Cheques by Bank'
-      + '</div>'
-      + bankKeys.map(k => {
-          const info = bankCounts[k];
-          return '<div style="display:flex;justify-content:space-between;padding:4px 0;align-items:center">'
-            + '<span>' + esc(info.bankName) + ' <span class="muted">×' + info.count + '</span></span>'
-            + '<strong>' + money(info.total) + '</strong></div>';
+  if(pendingAll.length){
+    const total = sum(pendingAll.map(p => p.tx.amount));
+    banner += '<div class="card" style="border-color:var(--red-bd);background:var(--red-soft);margin-bottom:16px">'
+      + '<div class="card-head" style="border-color:var(--red-bd)">'
+      + '<h3 style="color:var(--red)">🔔 ' + pendingAll.length + ' cheque deduction(s) awaiting approval — ' + money(total) + '</h3>'
+      + '<span class="badge red">Action required</span></div>'
+      + '<div style="padding:14px 18px">'
+      + pendingAll.map(p => {
+          const leaf = p.leaf;
+          const bank = p.bank;
+          return '<div style="padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">'
+            + '<div>'
+            + '<div style="font-weight:700;font-size:13.5px">' + money(p.tx.amount) + ' — Leaf ' + esc(leaf ? leaf.leafNo : '—')
+            + (p.isOverdue ? ' <span class="rev-badge">OVERDUE</span>' : '') + '</div>'
+            + '<div class="small muted" style="margin-top:3px">' + bankLogo(bank ? bank.bankName : '') + ' ' + esc(bankDisplayName(bank))
+            + ' • Payee: ' + esc(leaf ? (leaf.payee || '—') : '—')
+            + ' • Due ' + dateFmt(p.tx.date) + '</div>'
+            + '</div>'
+            + '<div class="row-flex">'
+            + '<button class="btn sm primary" onclick="approveDeductionModal(\'' + p.tx.id + '\')">✅ Approve & Deduct</button>'
+            + '<button class="btn sm" onclick="approveDeduction(\'' + p.tx.id + '\',false);">✕ Reject</button>'
+            + '</div></div>';
         }).join('')
-      + '</div>';
+      + '</div></div>';
   }
 
-  updatePayTotals();
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 141 — DIRECT BANK PAYMENTS (new payment method)
-   ═══════════════════════════════════════════════════════════════════════════
-   Adds ui.payBankRows — each row is a bank withdrawal to the supplier.
-   Saves to bankTransactions as type 'withdrawal' (reduces balance)
-   and links to the payment record via paymentId.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function ensureBankRows(){
-  ui.payBankRows = Array.isArray(ui.payBankRows) ? ui.payBankRows : [];
-}
-window.ensureBankRows = ensureBankRows;
-
-window.addBankPaymentRow = function(){
-  ensureBankRows();
-  if(!arr(db.bankAccounts).length){
-    toast('Add a bank account first', 'warn');
-    return;
-  }
-  ui.payBankRows.push({
-    rowId: uid(),
-    bankAccountId: '',
-    amount: 0,
-    reference: ''
-  });
-  renderBankPaymentRows();
-};
-
-window.removeBankPaymentRow = function(rowId){
-  ui.payBankRows = (ui.payBankRows || []).filter(r => r.rowId !== rowId);
-  renderBankPaymentRows();
-};
-
-window.updateBankPaymentRow = function(idx, field, value){
-  if(!ui.payBankRows[idx]) return;
-  const r = ui.payBankRows[idx];
-  if(field === 'amount') r.amount = num(value);
-  else r[field] = value;
-  updatePayTotals();
-};
-
-window.renderBankPaymentRows = function(){
-  const box = document.getElementById('bankRows');
-  if(!box) return;
-
-  ensureBankRows();
-
-  if(!ui.payBankRows.length){
-    box.innerHTML = '<div class="empty" style="padding:20px">'
-      + 'Click "Add Bank Payment" to pay via direct transfer'
-      + '</div>';
-    updatePayTotals();
-    return;
+  if(pendingFuture.length && !pendingAll.length){
+    banner += '<div class="card" style="background:var(--surface-2);margin-bottom:16px">'
+      + '<div style="padding:14px 18px;display:flex;align-items:center;gap:12px">'
+      + '<span style="font-size:20px">⏰</span>'
+      + '<div style="flex:1"><strong>' + pendingFuture.length + ' future cheque(s) scheduled — ' + money(sum(pendingFuture.map(p => p.tx.amount))) + '</strong>'
+      + '<div class="small muted" style="margin-top:2px">Deductions will prompt for approval on each cheque\'s due date.</div></div>'
+      + '</div></div>';
   }
 
-  const bankOptions = arr(db.bankAccounts);
+  return banner
 
-  box.innerHTML = ui.payBankRows.map((r, idx) => {
-    const bankSelectHTML = '<select onchange="updateBankPaymentRow(' + idx + ',\'bankAccountId\',this.value)" style="font-size:12px">'
-      + '<option value="">— Select bank account —</option>'
-      + bankOptions.map(b =>
-          '<option value="' + b.id + '" ' + (r.bankAccountId === b.id ? 'selected' : '') + '>'
-          + esc(bankFullDisplayName(b))
-          + '</option>'
-        ).join('')
-      + '</select>';
+    + (overdraftWarnings.length ? '<div class="alert-banner critical">'
+      + '<div class="icon">⚠</div>'
+      + '<div class="ab-body"><div class="ab-title">' + overdraftWarnings.length + ' bank account(s) may go negative in 30 days</div>'
+      + '<div class="ab-desc">' + overdraftWarnings.map(b => esc(bankDisplayName(b))).join(', ') + '</div></div></div>' : '')
 
-    const selectedBank = r.bankAccountId ? bankObj(r.bankAccountId) : null;
-    const balTag = selectedBank
-      ? '<div style="margin-top:6px;font-size:10.5px;color:var(--text-4);display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-        + bankLogo(selectedBank.bankName)
-        + '<span>Current balance: <strong style="color:var(--text-2)">'
-        + moneyPlain(bankBalance(selectedBank.id)) + '</strong></span>'
-        + (num(r.amount) > bankBalance(selectedBank.id)
-            ? '<span class="badge red">⚠ Insufficient balance</span>'
-            : '')
-        + '</div>'
-      : '';
+    + '<div class="card">'
+    + '<div class="card-head"><h3>🏛️ Bank Accounts (' + banks.length + ')</h3>'
+    + '<div class="table-tools">'
+    + '<button class="btn sm" onclick="openTransferForm()">🔄 Transfer</button>'
+    + '<button class="btn primary" data-action="add-bank">＋ Add Bank</button>'
+    + '</div></div>'
 
-    return '<div style="padding:12px;border:1px solid var(--border-2);border-radius:10px;background:var(--surface);margin-bottom:10px">'
-
-      + '<div style="display:grid;grid-template-columns:2fr 1fr 1.3fr 34px;gap:6px;align-items:center">'
-      +   bankSelectHTML
-      +   '<input type="number" placeholder="Amount" value="' + (r.amount || '') + '" '
-      +   'oninput="updateBankPaymentRow(' + idx + ',\'amount\',this.value)" style="font-size:12px">'
-      +   '<input type="text" placeholder="Reference (optional)" value="' + esc(r.reference || '') + '" '
-      +   'oninput="updateBankPaymentRow(' + idx + ',\'reference\',this.value)" style="font-size:12px">'
-      +   '<button type="button" class="icon-btn danger" onclick="removeBankPaymentRow(\'' + r.rowId + '\')" title="Remove">✕</button>'
-      + '</div>'
-
-      + balTag
-      + '</div>';
-  }).join('');
-
-  updatePayTotals();
+    + (banks.length
+        ? '<div class="grid grid-3">' + banks.map(b => {
+            const bal = bankBalance(b.id);
+            const pending = bankPendingBalance(b.id);
+            const proj30 = projectedBalance(b.id, 30);
+            const proj60 = projectedBalance(b.id, 60);
+            const proj90 = projectedBalance(b.id, 90);
+            return '<div class="bank-card" data-action="bank-detail" data-id="' + b.id + '">'
+              + '<div class="bk-name">' + bankLogo(b.bankName) + ' ' + esc(b.accountName || b.bankName) + '</div>'
+              + '<div class="bk-meta">' + esc(b.bankName)
+              + (b.accountNo ? ' • ' + esc(b.accountNo) : '')
+              + (b.branch ? ' • ' + esc(b.branch) : '')
+              + ' • ' + esc(b.accountType || 'Current') + '</div>'
+              + '<div class="bk-bal ' + (bal < 0 ? 'neg' : '') + '">' + moneyPlain(bal) + '</div>'
+              + '<div class="bk-sub">Current Balance (as of today)</div>'
+              + (pending > 0 ? '<div class="bk-pending">⏰ ' + moneyPlain(pending) + ' pending from future cheques</div>' : '')
+              + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">'
+              + '<div><div class="small" style="color:var(--text-4)">30d</div><strong style="color:' + (proj30 < 0 ? 'var(--red)' : 'var(--text)') + ';font-size:12px">' + fmtCompact(proj30) + '</strong></div>'
+              + '<div><div class="small" style="color:var(--text-4)">60d</div><strong style="color:' + (proj60 < 0 ? 'var(--red)' : 'var(--text)') + ';font-size:12px">' + fmtCompact(proj60) + '</strong></div>'
+              + '<div><div class="small" style="color:var(--text-4)">90d</div><strong style="color:' + (proj90 < 0 ? 'var(--red)' : 'var(--text)') + ';font-size:12px">' + fmtCompact(proj90) + '</strong></div>'
+              + '</div></div>';
+          }).join('') + '</div>'
+        : '<div class="empty">No bank accounts yet</div>')
+    + '</div>';
 };
+window.viewBanks.__patchedAccName = true;
+views.banks = window.viewBanks;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 142 — UPDATE PAY TOTALS (party + own + bank)
-   ═══════════════════════════════════════════════════════════════════════════ */
-window.updatePayTotals = function(){
-  let p = 0;
-  ui.paySelectedParty.forEach(id => {
-    const c = arr(db.customerCheques).find(x => x.id === id);
-    if(c) p += num(c.amount);
-  });
-
-  let o = 0;
-  (ui.payOwnRows || []).forEach(r => { o += num(r.amount); });
-
-  let b = 0;
-  (ui.payBankRows || []).forEach(r => { b += num(r.amount); });
-
-  const set = (id, val) => {
-    const el = document.getElementById(id);
-    if(el) el.textContent = money(val);
+/* Bank detail — update title to show account name */
+(function patchBankDetailTitle(){
+  const orig = window.showBankDetail;
+  if(typeof orig !== 'function' || orig.__patchedTitle) return;
+  const wrapped = function(id){
+    const r = orig.apply(this, arguments);
+    setTimeout(() => {
+      const b = bankObj(id);
+      if(!b) return;
+      const head = document.querySelector('#modalWrap .modal-head h3');
+      if(head) head.textContent = '🏛️ ' + (b.accountName || b.bankName) + (b.accountName ? ' — ' + b.bankName : '');
+    }, 30);
+    return r;
   };
-  set('totParty', p);
-  set('totOwn', o);
-  set('totBank', b);
-  set('totAll', p + o + b);
-  set('partyTotal', p);
-  set('ownTotal', o);
-  set('bankTotal', b);
-
-  const pc = document.getElementById('partyCount');
-  if(pc) pc.textContent = ui.paySelectedParty.size + ' selected';
-
-  const oc = document.getElementById('ownCount');
-  if(oc) oc.textContent = (ui.payOwnRows || []).length + ' rows';
-
-  const bc = document.getElementById('bankCount');
-  if(bc) bc.textContent = (ui.payBankRows || []).length + ' rows';
-};
+  wrapped.__patchedTitle = true;
+  window.showBankDetail = wrapped;
+})();
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 143 — PAYMENTS VIEW (with 3 sections: Party | Own Cheques | Bank)
+   PAYMENT FORM — mode toggle + cascade + bank section
    ═══════════════════════════════════════════════════════════════════════════ */
+
+ui.payMode = ui.payMode || 'cheques';   // 'cheques' | 'bank'
+ui.payBank = ui.payBank || {
+  bankAccountId: '',
+  amount: 0,
+  method: 'Bank Transfer',
+  reference: '',
+  notes: ''
+};
+
+/* Mode toggle */
+window.setPayMode = function(mode){
+  ui.payMode = mode;
+  render();
+};
+
+/* Bank-payment field updater */
+window.updatePayBank = function(field, value){
+  if(!ui.payBank) ui.payBank = { bankAccountId:'', amount:0, method:'Bank Transfer', reference:'', notes:'' };
+  if(field === 'amount') value = num(value);
+  ui.payBank[field] = value;
+  updatePayTotals();
+};
+
+/* Main payment view */
 window.viewPayments = function(){
+  const mode = ui.payMode || 'cheques';
+
   return '<div class="card">'
     + '<div class="card-head">'
-    + '<div><h3>💸 Issue Payment to Supplier</h3>'
-    + '<div class="hint">Mix party cheques + own cheque leaves + direct bank transfers</div></div>'
+    +   '<div><h3>💸 Issue Payment to Supplier</h3>'
+    +   '<div class="hint">Pay via cheque mix (party + own) OR direct bank transfer</div></div>'
     + '</div>'
 
     + '<form onsubmit="previewPayment(event)">'
 
+    /* ── Supplier / Date / Reference ── */
     + '<div class="form-grid">'
-    + '<label class="field">Supplier <span class="req">*</span><select id="paySupplier" required>'
-    + '<option value="">Select supplier</option>'
-    + arr(db.suppliers).map(s =>
-        '<option value="' + s.id + '" ' + (ui.paySupplierPreselect === s.id ? 'selected' : '') + '>'
-        + esc(s.name) + '</option>'
-      ).join('')
-    + '</select></label>'
-    + '<label class="field">Date <span class="req">*</span>'
-    + '<input type="date" id="payDate" required value="' + today() + '"></label>'
-    + '<label class="field">Reference'
-    + '<input id="payRef" value="PAY-' + String(num(db.settings.nextPaymentNo) || 1).padStart(4, '0') + '"></label>'
+    +   '<label class="field">Supplier <span class="req">*</span><select id="paySupplier" required>'
+    +     '<option value="">Select supplier</option>'
+    +     arr(db.suppliers).map(s => '<option value="' + s.id + '" ' + (ui.paySupplierPreselect === s.id ? 'selected' : '') + '>' + esc(s.name) + '</option>').join('')
+    +   '</select></label>'
+    +   '<label class="field">Date <span class="req">*</span><input type="date" id="payDate" required value="' + today() + '"></label>'
+    +   '<label class="field">Reference<input id="payRef" value="PAY-' + String(num(db.settings.nextPaymentNo) || 1).padStart(4, '0') + '"></label>'
     + '</div>'
 
     + '<div class="divider"></div>'
 
-    + '<div class="grid grid-3" style="gap:16px">'
-
-    /* ── Party cheques ── */
-    + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +     '<h4 style="font-size:13.5px;font-weight:600">🧾 Party Cheques</h4>'
-    +     '<span class="badge blue" id="partyCount">0 selected</span>'
-    +   '</div>'
-    +   '<div style="margin-bottom:10px"><input type="search" placeholder="Search…" oninput="window._pkQ=this.value;renderPartyChequeList()"></div>'
-    +   '<div class="row-flex" style="margin-bottom:8px">'
-    +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">All</button>'
-    +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button>'
-    +   '</div>'
-    +   '<div class="picker-list" id="partyList" style="max-height:240px"></div>'
-    +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between">'
-    +     '<span class="small muted">Party Total</span>'
-    +     '<span id="partyTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span>'
-    +   '</div>'
+    /* ── Mode toggle ── */
+    + '<div class="section-title" style="margin-top:0">Payment Mode</div>'
+    + '<div class="seg" style="display:inline-flex;margin-bottom:20px">'
+    +   '<button type="button" class="seg-btn ' + (mode === 'cheques' ? 'active' : '') + '" onclick="setPayMode(\'cheques\')">🧾 Cheques (Party + Own)</button>'
+    +   '<button type="button" class="seg-btn ' + (mode === 'bank' ? 'active' : '') + '" onclick="setPayMode(\'bank\')">🏦 Direct Bank Transfer</button>'
     + '</div>'
 
-    /* ── Own cheque leaves (advanced cascade) ── */
-    + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +     '<h4 style="font-size:13.5px;font-weight:600">🎯 Own Cheques</h4>'
-    +     '<span class="badge blue" id="ownCount">0 rows</span>'
-    +   '</div>'
-    +   '<div class="row-flex" style="margin-bottom:10px">'
-    +     '<button type="button" class="btn sm primary" onclick="addOwnLeafRow()">＋ Add Cheque</button>'
-    +   '</div>'
-    +   '<div id="ownRows" style="max-height:400px;overflow:auto"></div>'
-    +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between">'
-    +     '<span class="small muted">Own Cheques Total</span>'
-    +     '<span id="ownTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span>'
-    +   '</div>'
-    + '</div>'
+    /* ── Cheques mode ── */
+    + (mode === 'cheques'
+        ? '<div class="grid grid-2" style="gap:18px">'
 
-    /* ── Direct bank payments (new) ── */
-    + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:16px">'
-    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-    +     '<h4 style="font-size:13.5px;font-weight:600">🏦 Direct Bank Payment</h4>'
-    +     '<span class="badge blue" id="bankCount">0 rows</span>'
-    +   '</div>'
-    +   '<div class="row-flex" style="margin-bottom:10px">'
-    +     '<button type="button" class="btn sm primary" onclick="addBankPaymentRow()">＋ Add Bank Payment</button>'
-    +   '</div>'
-    +   '<div id="bankRows" style="max-height:400px;overflow:auto"></div>'
-    +   '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);display:flex;justify-content:space-between">'
-    +     '<span class="small muted">Bank Transfer Total</span>'
-    +     '<span id="bankTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span>'
-    +   '</div>'
-    + '</div>'
+          /* Party cheques */
+          + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:18px">'
+          +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+          +     '<h4 style="font-size:13.5px;font-weight:600">🧾 Party Cheques</h4>'
+          +     '<span class="badge blue" id="partyCount">0 selected</span>'
+          +   '</div>'
+          +   '<div style="margin-bottom:10px"><input type="search" placeholder="Search customer/cheque…" oninput="window._pkQ=this.value;renderPartyChequeList()"></div>'
+          +   '<div class="row-flex" style="margin-bottom:8px">'
+          +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(true)">Select all</button>'
+          +     '<button type="button" class="btn xs" onclick="selectAllPartyCheques(false)">Clear</button>'
+          +   '</div>'
+          +   '<div class="picker-list" id="partyList" style="max-height:300px"></div>'
+          +   '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:flex;justify-content:space-between">'
+          +     '<span class="small muted">Party Total</span>'
+          +     '<span id="partyTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span>'
+          +   '</div>'
+          + '</div>'
 
-    + '</div>'
+          /* Own cheque leaves — cascading */
+          + '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:18px">'
+          +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+          +     '<h4 style="font-size:13.5px;font-weight:600">🎯 Own Cheque Leaves</h4>'
+          +     '<span class="badge blue" id="ownCount">0 rows</span>'
+          +   '</div>'
+          +   '<div class="row-flex" style="margin-bottom:10px">'
+          +     '<button type="button" class="btn sm primary" onclick="addOwnLeafRow()">＋ Add Cheque</button>'
+          +   '</div>'
+          +   '<div id="ownRows" style="max-height:340px;overflow:auto"></div>'
+          +   '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:flex;justify-content:space-between">'
+          +     '<span class="small muted">Own Total</span>'
+          +     '<span id="ownTotal" style="font-weight:700;font-variant-numeric:tabular-nums">' + money(0) + '</span>'
+          +   '</div>'
+          + '</div>'
 
-    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-top:22px;padding:18px;'
+          + '</div>'
+        : '')
+
+    /* ── Bank mode ── */
+    + (mode === 'bank'
+        ? '<div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;padding:22px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+          +   '<h4 style="font-size:13.5px;font-weight:600">🏦 Direct Bank Payment</h4>'
+          +   '<span class="badge blue">Immediate deduction</span>'
+          + '</div>'
+
+          + '<div class="alert info" style="margin-bottom:16px"><span class="ico">💡</span>'
+          + '<div>Money is deducted from the bank account <strong>immediately</strong> — no deferral. '
+          + 'A bank transaction record is created and the balance updates right away.</div></div>'
+
+          + '<div class="form-grid">'
+          + '<label class="field">Bank Account <span class="req">*</span>'
+          +   '<select onchange="updatePayBank(\'bankAccountId\', this.value)">'
+          +     '<option value="">Select bank account</option>'
+          +     bankOptionsWithName(ui.payBank.bankAccountId || '')
+          +   '</select></label>'
+          + '<label class="field">Amount <span class="req">*</span>'
+          +   '<input type="number" step="0.01" min="0" '
+          +   'value="' + (ui.payBank.amount || '') + '" '
+          +   'oninput="updatePayBank(\'amount\', this.value)" placeholder="0.00"></label>'
+          + '<label class="field">Method'
+          +   '<select onchange="updatePayBank(\'method\', this.value)">'
+          +     ['Bank Transfer','Direct Deposit','Online Banking','Cash Deposit','Other']
+                .map(m => '<option value="' + m + '" ' + (ui.payBank.method === m ? 'selected' : '') + '>' + m + '</option>')
+                .join('')
+          +   '</select></label>'
+          + '<label class="field">Reference<input value="' + esc(ui.payBank.reference || '') + '" '
+          +   'oninput="updatePayBank(\'reference\', this.value)" placeholder="Slip no / Transaction ID"></label>'
+          + '</div>'
+
+          + '<label class="field" style="margin-top:14px">Notes<textarea rows="2" '
+          +   'oninput="updatePayBank(\'notes\', this.value)" '
+          +   'placeholder="Optional remarks">' + esc(ui.payBank.notes || '') + '</textarea></label>'
+
+          /* Balance preview */
+          + (ui.payBank.bankAccountId ? (() => {
+              const bankAcc = bankObj(ui.payBank.bankAccountId);
+              if(!bankAcc) return '';
+              const currentBal = bankBalance(bankAcc.id);
+              const afterBal = currentBal - num(ui.payBank.amount || 0);
+              return '<div class="kpi-strip" style="grid-template-columns:1fr 1fr 1fr;margin-top:20px">'
+                + kpiCard('Current Balance', moneyPlain(currentBal), bankDisplayName(bankAcc), { small: true })
+                + kpiCard('Payment Amount', moneyPlain(ui.payBank.amount || 0), '', { small: true })
+                + kpiCard('Balance After', moneyPlain(afterBal),
+                    afterBal < 0 ? '⚠ Overdraft' : 'OK', { small: true })
+                + '</div>';
+            })() : '')
+
+          + '</div>'
+        : '')
+
+    /* ── Grand total summary ── */
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-top:22px;padding:18px;'
     + 'background:linear-gradient(135deg,var(--accent-soft),var(--pink-soft));border-radius:12px;border:1px solid var(--accent-soft)">'
-    +   '<div style="text-align:center"><div class="k-label">Party</div>'
-    +   '<div class="k-value sm" id="totParty">' + money(0) + '</div></div>'
-    +   '<div style="text-align:center"><div class="k-label">Own Cheques</div>'
-    +   '<div class="k-value sm" id="totOwn">' + money(0) + '</div></div>'
-    +   '<div style="text-align:center"><div class="k-label">Bank Transfer</div>'
-    +   '<div class="k-value sm" id="totBank">' + money(0) + '</div></div>'
-    +   '<div style="text-align:center"><div class="k-label">Grand Total</div>'
-    +   '<div class="k-value" id="totAll" style="color:var(--accent-text)">' + money(0) + '</div></div>'
+    +   '<div style="text-align:center"><div class="k-label">Party</div><div class="k-value sm" id="totParty">' + money(0) + '</div></div>'
+    +   '<div style="text-align:center"><div class="k-label">Own</div><div class="k-value sm" id="totOwn">' + money(0) + '</div></div>'
+    +   '<div style="text-align:center"><div class="k-label">Bank</div><div class="k-value sm" id="totBank">' + money(0) + '</div></div>'
+    +   '<div style="text-align:center"><div class="k-label">Grand Total</div><div class="k-value" id="totAll" style="color:var(--accent-text)">' + money(0) + '</div></div>'
     + '</div>'
 
     + '<div class="form-actions" style="margin-top:22px">'
     +   '<button type="button" class="btn" onclick="resetPaymentForm()">Reset</button>'
     +   '<button type="submit" class="btn primary">👁 Preview & Save</button>'
     + '</div>'
+
     + '</form>'
     + '</div>'
 
-    /* Recurring cheques section */
+    /* ── Recurring section ── */
     + '<div class="card">'
     + '<div class="card-head"><h3>🔁 Recurring / Post-Dated Cheques</h3>'
     + '<button class="btn primary" onclick="openRecurringForm()">＋ Set Up Recurring</button></div>'
@@ -17163,26 +16869,351 @@ window.viewPayments = function(){
         : '<div class="empty">No recurring cheques set up</div>')
     + '</div>'
 
-    /* Payment history */
+    /* ── Payment history ── */
     + '<div class="card">'
     + '<div class="card-head"><h3>Payment History (' + arr(db.payments).length + ')</h3>'
     + '<div class="table-tools"><button class="btn sm" data-action="export-pay-csv">⬇ CSV</button></div></div>'
     + '<div id="tbl-pay">' + tablePay() + '</div>'
     + '</div>';
 };
-if(typeof views === 'object') views.payments = window.viewPayments;
+window.viewPayments.__patched = true;
+views.payments = window.viewPayments;
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 144 — PAYMENT PREVIEW (includes bank transfers + own cheque cascade)
+   OWN CHEQUE LEAVES — cascading selection (Bank → Book → Leaf)
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Helper: banks with at least one Available leaf */
+function banksWithAvailableLeaves(){
+  const bankIds = new Set();
+  arr(db.chequeLeaves).filter(l => l.status === 'Available' && l.bankAccountId).forEach(l => {
+    bankIds.add(l.bankAccountId);
+  });
+  return arr(db.bankAccounts).filter(b => bankIds.has(b.id));
+}
+
+/* Helper: cheque books for a given bank that have at least one Available leaf */
+function booksWithAvailableLeaves(bankId){
+  const bookIds = new Set();
+  arr(db.chequeLeaves)
+    .filter(l => l.status === 'Available' && l.bankAccountId === bankId && l.chequeBookId)
+    .forEach(l => bookIds.add(l.chequeBookId));
+  return arr(db.chequeBooks).filter(bk => bookIds.has(bk.id));
+}
+
+/* Helper: available leaves for a given book */
+function availableLeavesInBook(bookId){
+  return arr(db.chequeLeaves)
+    .filter(l => l.status === 'Available' && l.chequeBookId === bookId)
+    .sort((a, b) => String(a.leafNo).localeCompare(String(b.leafNo)));
+}
+
+/* Row state migration — handle old rows that only have leafId */
+function normalizeOwnRow(r){
+  if(!r.bankAccountId && r.leafId){
+    const l = arr(db.chequeLeaves).find(x => x.id === r.leafId);
+    if(l){
+      r.bankAccountId = l.bankAccountId || '';
+      r.chequeBookId = l.chequeBookId || '';
+    }
+  }
+  if(!r.bankAccountId) r.bankAccountId = '';
+  if(!r.chequeBookId) r.chequeBookId = '';
+  if(!r.leafId) r.leafId = '';
+  return r;
+}
+
+window.renderOwnLeafRows = function(){
+  const box = document.getElementById('ownRows');
+  if(!box) return;
+
+  if(!ui.payOwnRows.length){
+    box.innerHTML = '<div class="empty" style="padding:20px">Click "Add Cheque" to start</div>';
+    updatePayTotals();
+    return;
+  }
+
+  /* Normalize all rows first */
+  ui.payOwnRows.forEach(normalizeOwnRow);
+
+  /* Compute used leaves (any leaf chosen in any row) */
+  const usedLeafIds = new Set(ui.payOwnRows.map(r => r.leafId).filter(Boolean));
+
+  box.innerHTML = ui.payOwnRows.map((r, idx) => {
+
+    /* Bank dropdown */
+    const banks = banksWithAvailableLeaves();
+    const bankOpts = '<option value="">Select bank…</option>' + banks.map(b =>
+      '<option value="' + b.id + '" ' + (r.bankAccountId === b.id ? 'selected' : '') + '>'
+      + esc(bankDisplayName(b)) + '</option>'
+    ).join('');
+
+    /* Book dropdown — only if bank selected */
+    let bookOpts = '<option value="">Select cheque book…</option>';
+    if(r.bankAccountId){
+      const books = booksWithAvailableLeaves(r.bankAccountId);
+      bookOpts += books.map(bk =>
+        '<option value="' + bk.id + '" ' + (r.chequeBookId === bk.id ? 'selected' : '') + '>'
+        + 'Book ' + esc(bk.bookNo || '—') + ' (' + esc(bk.startNo) + '–' + esc(bk.endNo) + ')'
+        + '</option>'
+      ).join('');
+    }
+
+    /* Leaf dropdown — only if book selected */
+    let leafOpts = '<option value="">Select leaf…</option>';
+    if(r.chequeBookId){
+      const leaves = availableLeavesInBook(r.chequeBookId);
+      leafOpts += leaves
+        .filter(l => !usedLeafIds.has(l.id) || l.id === r.leafId)
+        .map(l =>
+          '<option value="' + l.id + '" ' + (r.leafId === l.id ? 'selected' : '') + '>'
+          + 'Leaf ' + esc(l.leafNo) + '</option>'
+        ).join('');
+    }
+
+    /* Bank-specific available leaves count hint */
+    const infoHint = r.leafId ? (() => {
+      const l = arr(db.chequeLeaves).find(x => x.id === r.leafId);
+      if(!l) return '';
+      return '<div style="font-size:10.5px;color:var(--text-4);margin-top:6px">'
+        + bankLogo(l.bankName) + ' ' + esc(l.bankName)
+        + (l.bookNo ? ' • Book ' + esc(l.bookNo) : '')
+        + ' • Leaf ' + esc(l.leafNo) + '</div>';
+    })() : '';
+
+    return '<div style="border:1px solid var(--border-2);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--surface)">'
+
+      /* Row 1 — Bank | Book | Leaf */
+      + '<div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr;gap:8px;margin-bottom:8px">'
+      +   '<label class="field" style="font-size:10.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">'
+      +     'Bank'
+      +     '<select onchange="updateOwnLeafRow(' + idx + ',\'bankAccountId\',this.value)">' + bankOpts + '</select>'
+      +   '</label>'
+      +   '<label class="field" style="font-size:10.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">'
+      +     'Cheque Book'
+      +     '<select onchange="updateOwnLeafRow(' + idx + ',\'chequeBookId\',this.value)" '
+      +     (r.bankAccountId ? '' : 'disabled ') + '>' + bookOpts + '</select>'
+      +   '</label>'
+      +   '<label class="field" style="font-size:10.5px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">'
+      +     'Leaf No'
+      +     '<select onchange="updateOwnLeafRow(' + idx + ',\'leafId\',this.value)" '
+      +     (r.chequeBookId ? '' : 'disabled ') + '>' + leafOpts + '</select>'
+      +   '</label>'
+      + '</div>'
+
+      /* Row 2 — Amount | Due | Payee | Remove */
+      + '<div style="display:grid;grid-template-columns:110px 130px 1fr 32px;gap:8px;align-items:center">'
+      +   '<input type="number" placeholder="Amount" step="0.01" '
+      +     'value="' + (r.amount || '') + '" '
+      +     'oninput="updateOwnLeafRow(' + idx + ',\'amount\',this.value)">'
+      +   '<input type="date" value="' + (r.dueDate || '') + '" '
+      +     'onchange="updateOwnLeafRow(' + idx + ',\'dueDate\',this.value)">'
+      +   '<input type="text" placeholder="Payee" value="' + esc(r.payee || '') + '" '
+      +     'oninput="updateOwnLeafRow(' + idx + ',\'payee\',this.value)">'
+      +   '<button type="button" class="icon-btn danger" onclick="removeOwnLeafRow(\'' + r.rowId + '\')" title="Remove">✕</button>'
+      + '</div>'
+
+      + infoHint
+      + '</div>';
+  }).join('');
+
+  /* Bank-wise summary at bottom */
+  const bankCounts = {};
+  ui.payOwnRows.forEach(r => {
+    if(!r.leafId) return;
+    const l = arr(db.chequeLeaves).find(x => x.id === r.leafId);
+    if(!l) return;
+    const b = l.bankName || 'Unknown';
+    bankCounts[b] = bankCounts[b] || { count: 0, total: 0 };
+    bankCounts[b].count++;
+    bankCounts[b].total += num(r.amount);
+  });
+  const bankKeys = Object.keys(bankCounts);
+  if(bankKeys.length){
+    box.innerHTML += '<div style="margin-top:10px;padding:10px 12px;background:var(--surface-3);border-radius:8px;font-size:11.5px">'
+      + '<div style="font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px">Bank-wise</div>'
+      + bankKeys.map(b =>
+          '<div style="display:flex;justify-content:space-between;padding:3px 0">'
+          + '<span>' + bankLogo(b) + ' ' + esc(b) + ' <span class="muted">×' + bankCounts[b].count + '</span></span>'
+          + '<strong>' + money(bankCounts[b].total) + '</strong></div>'
+        ).join('')
+      + '</div>';
+  }
+
+  updatePayTotals();
+};
+
+/* Update row — handle bank/book/leaf cascading resets */
+window.updateOwnLeafRow = function(idx, field, value){
+  if(!ui.payOwnRows[idx]) return;
+  const row = ui.payOwnRows[idx];
+
+  if(field === 'amount') value = num(value);
+  row[field] = value;
+
+  /* Reset dependent fields when parent changes */
+  if(field === 'bankAccountId'){
+    row.chequeBookId = '';
+    row.leafId = '';
+    renderOwnLeafRows();
+    return;
+  }
+  if(field === 'chequeBookId'){
+    row.leafId = '';
+    renderOwnLeafRows();
+    return;
+  }
+  if(field === 'leafId'){
+    /* Auto-fill payee with supplier name if blank */
+    if(!row.payee){
+      const supId = val('paySupplier');
+      if(supId){
+        const s = supObj(supId);
+        if(s) row.payee = s.name;
+      }
+    }
+    renderOwnLeafRows();
+    return;
+  }
+
+  updatePayTotals();
+};
+
+/* Update total display — now includes bank */
+(function patchUpdatePayTotalsForBank(){
+  const orig = window.updatePayTotals;
+  if(typeof orig !== 'function' || orig.__patched) return;
+  window.updatePayTotals = function(){
+    let p = 0;
+    ui.paySelectedParty.forEach(id => {
+      const c = arr(db.customerCheques).find(x => x.id === id);
+      if(c) p += num(c.amount);
+    });
+    let o = 0;
+    ui.payOwnRows.forEach(r => o += num(r.amount));
+    const bk = num(ui.payBank && ui.payBank.amount);
+
+    const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = money(v); };
+    set('totParty', p);
+    set('totOwn', o);
+    set('totBank', bk);
+    set('totAll', p + o + bk);
+    set('partyTotal', p);
+    set('ownTotal', o);
+
+    const pc = document.getElementById('partyCount');
+    if(pc) pc.textContent = ui.paySelectedParty.size + ' selected';
+    const oc = document.getElementById('ownCount');
+    if(oc) oc.textContent = ui.payOwnRows.length + ' rows';
+  };
+  window.updatePayTotals.__patched = true;
+})();
+
+/* Reset payment form — clears bank payment too */
 window.resetPaymentForm = function(){
   ui.paySelectedParty = new Set();
   ui.payOwnRows = [];
-  ui.payBankRows = [];
-  ui.paySupplierPreselect = '';
+  ui.payBank = { bankAccountId:'', amount:0, method:'Bank Transfer', reference:'', notes:'' };
   _pendingPaymentSnapshot = null;
+  ui.paySupplierPreselect = '';
   render();
   toast('Payment form reset', 'info');
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREVIEW & SAVE — handles both modes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+window.buildPaymentPreviewHTML = function(snap){
+  const supplier = supObj(snap.supplierId);
+  const mode = snap.paymentMode || 'cheques';
+
+  let body = '';
+
+  if(mode === 'cheques'){
+    body += (snap.partyCheques.length
+      ? '<div style="padding:12px 0;border-top:1px solid #eee">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">🧾 Party Cheques (' + snap.partyCheques.length + ')</div>'
+        + snap.partyCheques.map(c =>
+            '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed #f3f3f3">'
+            + '<div><strong>' + esc(c.customerName || '') + '</strong> — ' + esc(c.chequeNo || '')
+            + '<div style="color:#888;font-size:10.5px;margin-top:2px">' + esc(c.bank || '') + ' • Due ' + dateFmt(c.dueDate || '') + '</div></div>'
+            + '<strong>' + moneyPlain(c.amount) + '</strong></div>'
+          ).join('')
+        + '</div>' : '');
+
+    body += (snap.ownCheques.length
+      ? '<div style="padding:12px 0;border-top:1px solid #eee">'
+        + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">🎯 Own Cheques — PENDING until due date (' + snap.ownCheques.length + ')</div>'
+        + Object.keys(snap.ownChequesByBank).map(b =>
+            '<div style="margin-bottom:10px">'
+            + '<div style="font-size:11.5px;font-weight:700;margin-bottom:5px;color:#7c3aed;display:flex;align-items:center;gap:6px">' + bankLogo(b) + ' ' + esc(b) + '</div>'
+            + snap.ownChequesByBank[b].map(o =>
+                '<div style="display:flex;justify-content:space-between;padding:5px 0 5px 14px;font-size:12px;border-bottom:1px dashed #f3f3f3">'
+                + '<div>Leaf <strong>' + esc(o.leafNo || '') + '</strong>' + (o.payee ? ' — ' + esc(o.payee) : '')
+                + '<div style="color:#888;font-size:10.5px;margin-top:2px">Due ' + dateFmt(o.dueDate || '') + ' — <span style="color:#b45309;font-weight:600">Deduction pending approval</span></div></div>'
+                + '<strong>' + moneyPlain(o.amount) + '</strong></div>'
+              ).join('')
+            + '</div>'
+          ).join('')
+        + '</div>' : '');
+  }
+
+  if(mode === 'bank' && snap.bankPayment){
+    const bp = snap.bankPayment;
+    const bankAcc = bankObj(bp.bankAccountId);
+    body += '<div style="padding:14px 0;border-top:1px solid #eee">'
+      + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:10px">🏦 Direct Bank Payment</div>'
+      + '<div style="padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb">'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
+      + '<div><strong>' + esc(bankDisplayName(bankAcc)) + '</strong>'
+      + '<div style="font-size:11px;color:#666;margin-top:3px">Method: ' + esc(bp.method || 'Bank Transfer') + '</div>'
+      + (bp.reference ? '<div style="font-size:11px;color:#666">Ref: ' + esc(bp.reference) + '</div>' : '')
+      + '</div>'
+      + '<strong style="font-size:15px;color:#7c3aed">' + moneyPlain(bp.amount) + '</strong>'
+      + '</div>'
+      + (bp.notes ? '<div style="font-size:11px;color:#666;font-style:italic;margin-top:6px">' + esc(bp.notes) + '</div>' : '')
+      + '<div style="font-size:11px;color:#b45309;font-weight:600;margin-top:8px">⚠ Deducted from bank immediately</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  return '<div style="padding:22px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;color:#111;font-family:-apple-system,Segoe UI,Roboto,sans-serif">'
+    + '<div style="display:flex;justify-content:space-between;padding-bottom:14px;border-bottom:2px solid #111">'
+    +   '<div><div style="font-size:20px;font-weight:800">' + esc((db.settings || {}).shopName || 'Lanka Shoe') + '</div>'
+    +   '<div style="font-size:11px;color:#666;margin-top:3px">' + esc((db.settings || {}).businessAddress || '') + ((db.settings || {}).businessPhone ? ' • ' + esc(db.settings.businessPhone) : '') + '</div></div>'
+    +   '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#7c3aed;letter-spacing:.14em">PAYMENT VOUCHER</div>'
+    +   '<div style="font-size:11px;color:#888;margin-top:3px">PV-' + snap.tempId.slice(-6).toUpperCase() + '</div>'
+    +   '<div style="font-size:11px;color:#888">' + dateFmt(snap.date) + '</div></div>'
+    + '</div>'
+
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 0;font-size:12px">'
+    + '<div><div style="color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em">Paid To</div>'
+    + '<div style="font-weight:700;font-size:14px;margin-top:4px">' + esc(supplier ? supplier.name : '—') + '</div>'
+    + (supplier && supplier.phone ? '<div style="color:#888;font-size:11px;margin-top:3px">' + esc(supplier.phone) + '</div>' : '')
+    + '</div>'
+    + '<div><div style="color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em">Reference</div>'
+    + '<div style="font-weight:700;font-size:14px;margin-top:4px">' + esc(snap.reference || '—') + '</div>'
+    + '<div style="color:#888;font-size:11px;margin-top:3px">Method: ' + (mode === 'bank' ? 'Bank Transfer' : 'Mixed (Party + Own)') + '</div>'
+    + '</div>'
+    + '</div>'
+
+    + body
+
+    + '<div style="display:flex;justify-content:space-between;padding:14px 0;border-top:2px solid #111;font-size:16px">'
+    + '<strong>Total</strong><strong style="color:#7c3aed">' + money(snap.total) + '</strong>'
+    + '</div>'
+    + '<div style="font-size:11.5px;color:#666;font-style:italic;padding-top:6px">' + esc(amountInWords(snap.total)) + '</div>'
+
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:34px;padding-top:14px">'
+    + '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Prepared By</div>'
+    + '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Approved By</div>'
+    + '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Received By</div>'
+    + '</div>'
+
+    + '<div style="margin-top:22px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:10.5px;color:#888;text-align:center">'
+    + esc((db.settings || {}).shopName || 'Lanka Shoe') + ' • Generated ' + dateTimeFmt(nowISO()) + '</div>'
+    + '</div>';
 };
 
 window.previewPayment = function(e){
@@ -17197,7 +17228,65 @@ window.previewPayment = function(e){
   const supplier = supObj(sid);
   if(!supplier){ toast('Supplier not found', 'error'); return; }
 
-  /* ── Party cheques ── */
+  const mode = ui.payMode || 'cheques';
+
+  /* ── BANK MODE ── */
+  if(mode === 'bank'){
+    const bp = ui.payBank || {};
+    if(!bp.bankAccountId){ toast('Select a bank account', 'error'); return; }
+    const bankAcc = bankObj(bp.bankAccountId);
+    if(!bankAcc){ toast('Bank account not found', 'error'); return; }
+
+    const amount = num(bp.amount);
+    if(amount <= 0){ toast('Enter a valid amount', 'error'); return; }
+
+    const currentBal = bankBalance(bankAcc.id);
+    const afterBal = currentBal - amount;
+    if(afterBal < 0){
+      if(!confirm('⚠ INSUFFICIENT BALANCE\n\n'
+        + bankDisplayName(bankAcc) + '\n'
+        + 'Current balance: ' + moneyPlain(currentBal) + '\n'
+        + 'Payment amount: ' + moneyPlain(amount) + '\n'
+        + 'After payment: ' + moneyPlain(afterBal) + ' (OVERDRAFT)\n\n'
+        + 'Proceed anyway?')) return;
+    }
+
+    _pendingPaymentSnapshot = {
+      tempId: uid(),
+      supplierId: sid,
+      supplierName: supplier.name,
+      date, reference: ref,
+      paymentMode: 'bank',
+      partyCheques: [],
+      ownCheques: [],
+      ownChequesByBank: {},
+      partyAmount: 0,
+      ownAmount: 0,
+      bankPayment: {
+        bankAccountId: bp.bankAccountId,
+        amount: amount,
+        method: bp.method || 'Bank Transfer',
+        reference: bp.reference || '',
+        notes: bp.notes || ''
+      },
+      bankAmount: amount,
+      total: amount
+    };
+
+    const previewHTML = buildPaymentPreviewHTML(_pendingPaymentSnapshot);
+
+    openModal('👁 Payment Preview — ' + esc(supplier.name),
+      '<div style="background:var(--surface-2);padding:14px;border-radius:10px;max-height:60vh;overflow:auto">' + previewHTML + '</div>'
+      + '<div class="alert warn" style="margin-top:14px;font-size:12px"><span class="ico">⚠</span>'
+      + '<div>Bank payments are <strong>immediate</strong> — the balance is deducted the moment you save.</div></div>'
+      + '<div class="form-actions">'
+      + '<button class="btn" onclick="closeModal();">← Back to Edit</button>'
+      + '<button class="btn primary" onclick="confirmAndSavePayment()">💾 Confirm & Save</button>'
+      + '</div>', 'wide');
+    return;
+  }
+
+  /* ── CHEQUES MODE ── */
   const partyCheques = Array.from(ui.paySelectedParty)
     .map(id => arr(db.customerCheques).find(x => x.id === id))
     .filter(Boolean)
@@ -17210,35 +17299,16 @@ window.previewPayment = function(e){
       dueDate: c.dueDate
     }));
 
-  /* ── Own cheque leaves (cascade-validated) ── */
   const ownCheques = [];
   const skipped = [];
-  (ui.payOwnRows || []).forEach((r, i) => {
-    if(!r.leafId){
-      if(num(r.amount) > 0) skipped.push('Own row ' + (i + 1) + ': no leaf selected');
-      return;
-    }
-    if(num(r.amount) <= 0){
-      skipped.push('Own row ' + (i + 1) + ': amount is 0');
-      return;
-    }
+  ui.payOwnRows.forEach((r, i) => {
+    if(!r.leafId){ if(num(r.amount) > 0) skipped.push('Row ' + (i + 1) + ': no leaf selected'); return; }
+    if(num(r.amount) <= 0){ skipped.push('Row ' + (i + 1) + ': amount is 0'); return; }
     const leaf = arr(db.chequeLeaves).find(l => l.id === r.leafId);
-    if(!leaf){
-      skipped.push('Own row ' + (i + 1) + ': leaf not found');
-      return;
-    }
-    if(leaf.status !== 'Available'){
-      skipped.push('Own row ' + (i + 1) + ': leaf ' + leaf.leafNo + ' is not available (status: ' + leaf.status + ')');
-      return;
-    }
-    const book = arr(db.chequeBooks).find(b => b.id === r.bookId);
+    if(!leaf){ skipped.push('Row ' + (i + 1) + ': leaf not found'); return; }
     ownCheques.push({
-      rowId: r.rowId,
-      bankId: r.bankId,
-      bookId: r.bookId,
       leafId: r.leafId,
       leafNo: leaf.leafNo,
-      bookNo: book ? book.bookNo : '',
       bankName: leaf.bankName,
       bankAccountId: leaf.bankAccountId,
       amount: num(r.amount),
@@ -17247,53 +17317,23 @@ window.previewPayment = function(e){
     });
   });
 
-  /* ── Bank payments ── */
-  const bankPayments = [];
-  (ui.payBankRows || []).forEach((r, i) => {
-    if(!r.bankAccountId){
-      if(num(r.amount) > 0) skipped.push('Bank row ' + (i + 1) + ': no bank account selected');
-      return;
-    }
-    if(num(r.amount) <= 0){
-      skipped.push('Bank row ' + (i + 1) + ': amount is 0');
-      return;
-    }
-    const bank = bankObj(r.bankAccountId);
-    if(!bank){
-      skipped.push('Bank row ' + (i + 1) + ': bank not found');
-      return;
-    }
-    bankPayments.push({
-      rowId: r.rowId,
-      bankAccountId: r.bankAccountId,
-      bankName: bank.bankName,
-      bankDisplay: bankFullDisplayName(bank),
-      amount: num(r.amount),
-      reference: r.reference || ref || ('PAY-' + (num(db.settings.nextPaymentNo) || 1))
-    });
-  });
-
   const partyTotal = sum(partyCheques, 'amount');
   const ownTotal = sum(ownCheques, 'amount');
-  const bankTotal = sum(bankPayments, 'amount');
-  const total = partyTotal + ownTotal + bankTotal;
+  const total = partyTotal + ownTotal;
 
   if(total <= 0){
     let msg = 'Nothing to save. ';
-    if(!partyCheques.length && !ownCheques.length && !bankPayments.length){
-      msg += 'Add party cheques, own cheque leaves, or a bank payment.';
-    }
+    if(!partyCheques.length && !ownCheques.length) msg += 'Select party cheques or add own leaves with amounts.';
+    else msg += 'Check amounts.';
     if(skipped.length) msg += ' Issues: ' + skipped.join('; ');
-    toast(msg, 'error', 7000);
+    toast(msg, 'error', 6000);
     return;
   }
 
-  /* Group own by bank (for preview display) */
   const ownChequesByBank = {};
   ownCheques.forEach(o => {
-    const key = o.bankName || 'Unknown';
-    if(!ownChequesByBank[key]) ownChequesByBank[key] = [];
-    ownChequesByBank[key].push(o);
+    if(!ownChequesByBank[o.bankName]) ownChequesByBank[o.bankName] = [];
+    ownChequesByBank[o.bankName].push(o);
   });
 
   _pendingPaymentSnapshot = {
@@ -17301,126 +17341,27 @@ window.previewPayment = function(e){
     supplierId: sid,
     supplierName: supplier.name,
     date, reference: ref,
-    partyCheques, ownCheques, ownChequesByBank, bankPayments,
+    paymentMode: 'cheques',
+    partyCheques, ownCheques, ownChequesByBank,
     partyAmount: partyTotal,
     ownAmount: ownTotal,
-    bankAmount: bankTotal,
+    bankPayment: null,
+    bankAmount: 0,
     total
   };
 
-  const previewHTML = buildPaymentPreviewV2(_pendingPaymentSnapshot);
+  const previewHTML = buildPaymentPreviewHTML(_pendingPaymentSnapshot);
 
   openModal('👁 Payment Preview — ' + esc(supplier.name),
-    '<div style="background:var(--surface-2);padding:14px;border-radius:10px;max-height:60vh;overflow:auto">'
-    + previewHTML + '</div>'
-    + '<div class="alert info" style="margin-top:14px;font-size:12px">'
-    + '<span class="ico">ℹ</span>'
-    + '<div>Review carefully. Own cheque deductions are <strong>deferred</strong> — they affect the bank balance on the due date. '
-    + 'Direct bank payments <strong>deduct immediately</strong> from the selected account.</div></div>'
+    '<div style="background:var(--surface-2);padding:14px;border-radius:10px;max-height:60vh;overflow:auto">' + previewHTML + '</div>'
+    + '<div class="alert info" style="margin-top:14px;font-size:12px"><span class="ico">ℹ</span>'
+    + '<div>Own cheque deductions are <strong>deferred</strong> — they only affect the bank balance on the cheque\'s due date, after your approval.</div></div>'
     + '<div class="form-actions">'
     + '<button class="btn" onclick="closeModal();">← Back to Edit</button>'
     + '<button class="btn primary" onclick="confirmAndSavePayment()">💾 Confirm & Save</button>'
     + '</div>', 'wide');
 };
 
-/* ── Payment preview V2 (includes bank transfers) ── */
-function buildPaymentPreviewV2(snap){
-  const supplier = supObj(snap.supplierId);
-
-  return '<div style="padding:22px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;color:#111;font-family:-apple-system,Segoe UI,Roboto,sans-serif">'
-
-    + '<div style="display:flex;justify-content:space-between;padding-bottom:14px;border-bottom:2px solid #111">'
-    +   '<div><div style="font-size:20px;font-weight:800">' + esc((db.settings || {}).shopName || 'Lanka Shoe') + '</div>'
-    +   '<div style="font-size:11px;color:#666;margin-top:3px">'
-    +   esc((db.settings || {}).businessAddress || '')
-    +   ((db.settings || {}).businessPhone ? ' • ' + esc(db.settings.businessPhone) : '')
-    +   '</div></div>'
-    +   '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#7c3aed;letter-spacing:.14em">PAYMENT VOUCHER</div>'
-    +   '<div style="font-size:11px;color:#888;margin-top:3px">PV-' + snap.tempId.slice(-6).toUpperCase() + '</div>'
-    +   '<div style="font-size:11px;color:#888">' + dateFmt(snap.date) + '</div></div>'
-    + '</div>'
-
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 0;font-size:12px">'
-    + '<div><div style="color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em">Paid To</div>'
-    + '<div style="font-weight:700;font-size:14px;margin-top:4px">' + esc(supplier ? supplier.name : '—') + '</div>'
-    + (supplier && supplier.phone ? '<div style="color:#888;font-size:11px;margin-top:3px">' + esc(supplier.phone) + '</div>' : '')
-    + '</div>'
-    + '<div><div style="color:#888;font-size:10px;text-transform:uppercase;letter-spacing:.06em">Reference</div>'
-    + '<div style="font-weight:700;font-size:14px;margin-top:4px">' + esc(snap.reference || '—') + '</div>'
-    + '<div style="color:#888;font-size:11px;margin-top:3px">Method: Mixed</div>'
-    + '</div></div>'
-
-    /* Party cheques */
-    + (snap.partyCheques.length
-        ? '<div style="padding:12px 0;border-top:1px solid #eee">'
-          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">'
-          + '🧾 Party Cheques (' + snap.partyCheques.length + ')</div>'
-          + snap.partyCheques.map(c =>
-              '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed #f3f3f3">'
-              + '<div><strong>' + esc(c.customerName || '') + '</strong> — ' + esc(c.chequeNo || '')
-              + '<div style="color:#888;font-size:10.5px;margin-top:2px">' + esc(c.bank || '')
-              + ' • Due ' + dateFmt(c.dueDate || '') + '</div></div>'
-              + '<strong>' + moneyPlain(c.amount) + '</strong></div>'
-            ).join('')
-          + '</div>'
-        : '')
-
-    /* Own cheque leaves */
-    + (snap.ownCheques.length
-        ? '<div style="padding:12px 0;border-top:1px solid #eee">'
-          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">'
-          + '🎯 Own Cheques (' + snap.ownCheques.length + ') — deferred until due date</div>'
-          + Object.keys(snap.ownChequesByBank).map(b =>
-              '<div style="margin-bottom:10px">'
-              + '<div style="font-size:11.5px;font-weight:700;margin-bottom:5px;color:#7c3aed">' + esc(b) + '</div>'
-              + snap.ownChequesByBank[b].map(o =>
-                  '<div style="display:flex;justify-content:space-between;padding:5px 0 5px 14px;font-size:12px;border-bottom:1px dashed #f3f3f3">'
-                  + '<div>Leaf <strong>' + esc(o.leafNo || '') + '</strong>'
-                  + (o.payee ? ' — ' + esc(o.payee) : '')
-                  + '<div style="color:#888;font-size:10.5px;margin-top:2px">Due ' + dateFmt(o.dueDate || '') + '</div></div>'
-                  + '<strong>' + moneyPlain(o.amount) + '</strong></div>'
-                ).join('')
-              + '</div>'
-            ).join('')
-          + '</div>'
-        : '')
-
-    /* Bank transfers */
-    + (snap.bankPayments.length
-        ? '<div style="padding:12px 0;border-top:1px solid #eee">'
-          + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:8px">'
-          + '🏦 Direct Bank Transfers (' + snap.bankPayments.length + ') — deducts immediately</div>'
-          + snap.bankPayments.map(b =>
-              '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed #f3f3f3">'
-              + '<div><strong>' + esc(b.bankDisplay || b.bankName) + '</strong>'
-              + '<div style="color:#888;font-size:10.5px;margin-top:2px">Ref: ' + esc(b.reference || '—') + '</div></div>'
-              + '<strong>' + moneyPlain(b.amount) + '</strong></div>'
-            ).join('')
-          + '</div>'
-        : '')
-
-    + '<div style="display:flex;justify-content:space-between;padding:14px 0;border-top:2px solid #111;font-size:16px">'
-    + '<strong>Total</strong><strong style="color:#7c3aed">' + money(snap.total) + '</strong>'
-    + '</div>'
-
-    + '<div style="font-size:11.5px;color:#666;font-style:italic;padding-top:6px">' + esc(amountInWords(snap.total)) + '</div>'
-
-    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:34px;padding-top:14px">'
-    + '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Prepared By</div>'
-    + '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Approved By</div>'
-    + '<div style="border-top:1px solid #333;padding-top:5px;font-size:11px;color:#666;text-align:center">Received By</div>'
-    + '</div>'
-
-    + '<div style="margin-top:22px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:10.5px;color:#888;text-align:center">'
-    + esc((db.settings || {}).shopName || 'Lanka Shoe') + ' • Generated ' + dateTimeFmt(nowISO()) + '</div>'
-
-    + '</div>';
-}
-window.buildPaymentPreviewV2 = buildPaymentPreviewV2;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 145 — CONFIRM & SAVE PAYMENT (with bank transfers)
-   ═══════════════════════════════════════════════════════════════════════════ */
 window.confirmAndSavePayment = function(){
   if(!canWrite()) return;
   const snap = _pendingPaymentSnapshot;
@@ -17428,34 +17369,30 @@ window.confirmAndSavePayment = function(){
   const supplier = supObj(snap.supplierId);
   if(!supplier){ toast('Supplier not found', 'error'); return; }
 
-  /* ── Build the payment record ── */
   const payment = {
     id: uid(),
     supplierId: snap.supplierId,
     date: snap.date,
     reference: snap.reference,
-
-    /* Party cheques */
-    partyChequeIds: snap.partyCheques.map(c => c.id),
-    partyAmount: snap.partyAmount,
-
-    /* Own cheque leaves */
-    ownChequeIds: snap.ownCheques.map(o => o.leafId),
-    ownAmount: snap.ownAmount,
-
-    /* Bank transfers */
-    bankTransactionIds: [],
-    bankAmount: snap.bankAmount,
-
-    /* Total */
-    amount: snap.total,
-
-    createdAt: nowISO(),
-    createdBy: (currentUser && currentUser.email) || 'system'
+    paymentMode: snap.paymentMode || 'cheques',
+    partyChequeIds: (snap.partyCheques || []).map(c => c.id),
+    partyAmount: num(snap.partyAmount) || 0,
+    ownChequeIds: (snap.ownCheques || []).map(o => o.leafId),
+    ownAmount: num(snap.ownAmount) || 0,
+    bankPayment: snap.bankPayment ? {
+      bankAccountId: snap.bankPayment.bankAccountId,
+      amount: num(snap.bankPayment.amount),
+      method: snap.bankPayment.method || 'Bank Transfer',
+      reference: snap.bankPayment.reference || '',
+      notes: snap.bankPayment.notes || ''
+    } : null,
+    bankAmount: num(snap.bankAmount) || 0,
+    amount: num(snap.total) || 0,
+    createdAt: nowISO()
   };
 
-  /* ── 1. Mark party cheques as Issued ── */
-  snap.partyCheques.forEach(cp => {
+  /* ── Party cheques → Issued ── */
+  (snap.partyCheques || []).forEach(cp => {
     const c = arr(db.customerCheques).find(x => x.id === cp.id);
     if(c){
       c.status = 'Issued';
@@ -17465,9 +17402,9 @@ window.confirmAndSavePayment = function(){
     }
   });
 
-  /* ── 2. Mark own cheque leaves as Issued + create PENDING bank transactions ── */
+  /* ── Own cheques → Issued + PENDING bank txn (deferred) ── */
   if(!Array.isArray(db.bankTransactions)) db.bankTransactions = [];
-  snap.ownCheques.forEach(o => {
+  (snap.ownCheques || []).forEach(o => {
     const leaf = arr(db.chequeLeaves).find(l => l.id === o.leafId);
     if(!leaf) return;
     leaf.status = 'Issued';
@@ -17478,10 +17415,8 @@ window.confirmAndSavePayment = function(){
     leaf.payee = o.payee;
     leaf.supplierId = snap.supplierId;
 
-    /* Pending bank transaction (deferred — deduct on approval) */
-    const txnId = uid();
     db.bankTransactions.push({
-      id: txnId,
+      id: uid(),
       bankAccountId: leaf.bankAccountId,
       date: o.dueDate,
       type: 'cheque_issued',
@@ -17496,165 +17431,282 @@ window.confirmAndSavePayment = function(){
     });
   });
 
-  /* ── 3. Create direct bank withdrawal transactions (immediate deduction) ── */
-  snap.bankPayments.forEach(bp => {
-    const txnId = uid();
-    const txn = {
-      id: txnId,
+  /* ── Direct bank payment → immediate withdrawal ── */
+  if(payment.paymentMode === 'bank' && payment.bankPayment){
+    const bp = payment.bankPayment;
+    db.bankTransactions.push({
+      id: uid(),
       bankAccountId: bp.bankAccountId,
       date: snap.date,
       type: 'withdrawal',
-      amount: bp.amount,
-      reference: bp.reference || snap.reference || ('PAY-' + payment.id.slice(-4)),
+      amount: num(bp.amount),
+      reference: bp.reference || payment.reference || ('PAY-' + payment.id.slice(-4)),
       paymentId: payment.id,
-      description: 'Payment to ' + supplier.name + ' (direct transfer)',
-      status: 'deducted',
-      approvedAt: nowISO(),
-      approvedBy: (currentUser && currentUser.email) || 'system',
+      description: 'Supplier payment to ' + supplier.name + ' (' + bp.method + ')',
+      notes: bp.notes || '',
       createdAt: nowISO()
-    };
-    db.bankTransactions.push(txn);
-    payment.bankTransactionIds.push(txnId);
-  });
+    });
+  }
 
-  /* ── 4. Save the payment ── */
   if(!Array.isArray(db.payments)) db.payments = [];
   db.payments.push(payment);
   db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo) || 1) + 1;
 
   pushUndo({ type: 'collection_push', collection: 'payments', id: payment.id, label: 'Add payment ' + supplier.name });
-  if(typeof trackVersion === 'function') trackVersion('payments', payment.id, 'Create', null, payment);
-  logAct('Add Payment', 'Payment', payment.id,
-    snap.supplierName + ' • ' + money(snap.total)
-    + (snap.bankPayments.length ? ' • ' + snap.bankPayments.length + ' bank transfer(s)' : '')
-    + (snap.ownCheques.length ? ' • ' + snap.ownCheques.length + ' own cheque(s)' : '')
-    + (snap.partyCheques.length ? ' • ' + snap.partyCheques.length + ' party cheque(s)' : ''));
+  trackVersion('payments', payment.id, 'Create', null, payment);
 
-  if(window.__dbgOk){
-    window.__dbgOk('Payment: ' + supplier.name + ' • ' + money(snap.total)
-      + ' • ' + snap.partyCheques.length + 'P + ' + snap.ownCheques.length + 'O + ' + snap.bankPayments.length + 'B', 'DATA');
-  }
+  const summary = payment.paymentMode === 'bank'
+    ? 'Bank: ' + money(payment.bankAmount) + ' — ' + bankDisplayName(bankObj(payment.bankPayment.bankAccountId))
+    : ('Party: ' + money(payment.partyAmount) + ' + Own: ' + money(payment.ownAmount));
 
-  /* ── 5. Reset & re-render ── */
+  logAct('Add Payment', 'Payment', payment.id, snap.supplierName + ' • ' + money(payment.amount) + ' • ' + summary);
+
   ui.paySelectedParty = new Set();
   ui.payOwnRows = [];
-  ui.payBankRows = [];
+  ui.payBank = { bankAccountId:'', amount:0, method:'Bank Transfer', reference:'', notes:'' };
   ui.paySupplierPreselect = '';
   _pendingPaymentSnapshot = null;
 
   save();
   closeModal();
   render();
-  toast('✅ Payment saved • ' + money(snap.total), 'success');
-  if(snap.total >= 100000) confetti();
+  toast('✅ Payment saved • ' + money(payment.amount), 'success');
+  if(payment.amount >= 100000) confetti();
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 146 — UPDATE PAYMENT DETAIL MODAL (show bank transfers)
+   PAYMENT DETAIL MODAL — show bank payment section
    ═══════════════════════════════════════════════════════════════════════════ */
-(function patchPaymentDetailForBank(){
-  const orig = window.showPaymentDetail;
-  if(typeof orig !== 'function' || orig.__wrappedBank) return;
 
-  const wrapped = function(id){
-    const r = orig.apply(this, arguments);
-    setTimeout(() => {
-      const p = arr(db.payments).find(x => x.id === id);
-      if(!p) return;
-      const modalBody = document.querySelector('#modalWrap .modal-body');
-      if(!modalBody || modalBody.querySelector('[data-bank-txn-section]')) return;
+window.showPaymentDetail = function(id){
+  const p = arr(db.payments).find(x => x.id === id);
+  if(!p) return;
 
-      const bankTxns = arr(db.bankTransactions).filter(t => t.paymentId === id && t.type === 'withdrawal');
-      if(!bankTxns.length) return;
+  const party = (p.partyChequeIds || []).map(cid => arr(db.customerCheques).find(c => c.id === cid)).filter(Boolean);
+  const own = (p.ownChequeIds || []).map(lid => arr(db.chequeLeaves).find(l => l.id === lid)).filter(Boolean);
+  const reversals = arr(db.journals).filter(j => j.relatedPaymentId === id && j.bounceReversal);
 
-      const section = document.createElement('div');
-      section.setAttribute('data-bank-txn-section', '1');
-      section.innerHTML = '<div class="section-title">🏦 Direct Bank Transfers</div>'
-        + '<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr>'
-        + '<th>Date</th><th>Bank Account</th><th>Reference</th><th class="num">Amount</th><th>Status</th>'
-        + '</tr></thead><tbody>'
-        + bankTxns.map(t => {
-            const bank = bankObj(t.bankAccountId);
-            return '<tr><td>' + dateFmt(t.date) + '</td>'
-              + '<td>' + esc(bank ? bankFullDisplayName(bank) : '—') + '</td>'
-              + '<td class="mono small">' + esc(t.reference || '—') + '</td>'
-              + '<td class="num">' + moneyPlain(t.amount) + '</td>'
-              + '<td>' + (t.status === 'deducted' ? '<span class="badge green">Deducted</span>'
-                        : t.status === 'reversed' ? '<span class="badge red">Reversed</span>'
-                        : '<span class="badge gray">' + esc(t.status || '—') + '</span>') + '</td>'
-              + '</tr>';
-          }).join('')
-        + '</tbody></table></div>';
+  const isBank = p.paymentMode === 'bank' && p.bankPayment;
 
-      const formActions = modalBody.querySelector('.form-actions');
-      if(formActions) modalBody.insertBefore(section, formActions);
-      else modalBody.appendChild(section);
-    }, 60);
-    return r;
+  let body = '<div class="kpi-strip" style="margin-bottom:20px">'
+    + kpiCard('Total', moneyPlain(p.amount), '', { small: true })
+    + kpiCard('Party', moneyPlain(p.partyAmount), party.length + ' cheques', { small: true })
+    + kpiCard('Own', moneyPlain(p.ownAmount), own.length + ' leaves', { small: true })
+    + kpiCard('Bank', moneyPlain(p.bankAmount || 0), isBank ? 'Direct payment' : '—', { small: true })
+    + '</div>';
+
+  body += '<div class="detail-row"><span class="dr-l">Supplier</span><span class="dr-v">' + esc(supName(p.supplierId)) + '</span></div>'
+    + '<div class="detail-row"><span class="dr-l">Date</span><span class="dr-v">' + dateFmt(p.date) + '</span></div>'
+    + '<div class="detail-row"><span class="dr-l">Payment Mode</span><span class="dr-v">'
+    + (isBank ? '🏦 Direct Bank Transfer' : '🧾 Cheques') + '</span></div>'
+    + '<div class="detail-row"><span class="dr-l">Amount in Words</span><span class="dr-v" style="font-size:12px">' + esc(amountInWords(p.amount)) + '</span></div>'
+    + '<div class="detail-row"><span class="dr-l">Created</span><span class="dr-v">' + dateTimeFmt(p.createdAt) + '</span></div>';
+
+  if(isBank){
+    const bp = p.bankPayment;
+    const bankAcc = bankObj(bp.bankAccountId);
+    body += '<div class="section-title">🏦 Bank Payment Details</div>'
+      + '<div style="padding:14px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)">'
+      + '<div class="detail-row"><span class="dr-l">Bank Account</span><span class="dr-v">' + bankLogo(bankAcc ? bankAcc.bankName : '') + ' ' + esc(bankDisplayName(bankAcc)) + '</span></div>'
+      + '<div class="detail-row"><span class="dr-l">Method</span><span class="dr-v">' + esc(bp.method || '—') + '</span></div>'
+      + '<div class="detail-row"><span class="dr-l">Reference</span><span class="dr-v mono">' + esc(bp.reference || '—') + '</span></div>'
+      + '<div class="detail-row"><span class="dr-l">Amount</span><span class="dr-v"><strong>' + moneyPlain(bp.amount) + '</strong></span></div>'
+      + (bp.notes ? '<div class="detail-row"><span class="dr-l">Notes</span><span class="dr-v">' + esc(bp.notes) + '</span></div>' : '')
+      + '</div>';
+  }
+
+  if(party.length){
+    body += '<div class="section-title">Party Cheques</div>'
+      + '<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr>'
+      + '<th>Cheque</th><th>Customer</th><th class="num">Amount</th><th>Status</th>'
+      + '</tr></thead><tbody>'
+      + party.map(c =>
+          '<tr data-action="cheque-detail" data-id="' + c.id + '">'
+          + '<td class="mono">' + esc(c.chequeNo) + '</td>'
+          + '<td>' + esc(c.customerName) + '</td>'
+          + '<td class="num">' + moneyPlain(c.amount) + '</td>'
+          + '<td>' + statusBadge(c.status) + '</td></tr>'
+        ).join('')
+      + '</tbody></table></div>';
+  }
+
+  if(own.length){
+    body += '<div class="section-title">Own Cheques</div>'
+      + '<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr>'
+      + '<th>Leaf</th><th>Bank</th><th class="num">Amount</th><th>Due</th><th>Status</th>'
+      + '</tr></thead><tbody>'
+      + own.map(l =>
+          '<tr><td class="mono">' + esc(l.leafNo) + '</td>'
+          + '<td>' + esc(l.bankName) + '</td>'
+          + '<td class="num">' + moneyPlain(l.amount) + '</td>'
+          + '<td>' + dateFmt(l.dueDate) + '</td>'
+          + '<td>' + statusBadge(l.status) + '</td></tr>'
+        ).join('')
+      + '</tbody></table></div>';
+  }
+
+  if(reversals.length){
+    body += '<div class="section-title">Bounce Reversals</div>'
+      + reversals.map(r =>
+          '<div class="hist-item" style="background:linear-gradient(90deg,rgba(245,158,11,.08),transparent)">'
+          + '<div class="hist-icon bounce">🚫</div>'
+          + '<div class="hist-body"><div class="hist-title">' + esc(r.reference) + ' <span class="rev-badge">' + moneyPlain(r.reversalAmount) + '</span></div>'
+          + '<div class="hist-desc">' + esc(r.description) + '</div></div></div>'
+        ).join('');
+  }
+
+  openModal('💸 Payment — ' + esc(p.reference || ''),
+    body
+    + '<div class="form-actions">'
+    + '<button class="btn" onclick="closeModal();setTimeout(()=>showPaymentVoucher(\'' + id + '\'),120)">👁 Payment Voucher</button>'
+    + '<button class="btn" onclick="showVersionHistory(\'payments\',\'' + id + '\',\'' + esc(p.reference || '').replace(/'/g, "\\'") + '\')">📜 History</button>'
+    + (can('delete') ? '<button class="btn danger" onclick="closeModal();deletePayment(\'' + id + '\')">🗑 Delete</button>' : '')
+    + '<button class="btn primary" data-action="close-modal">Close</button>'
+    + '</div>', 'wide');
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DELETE PAYMENT — also removes bank txns and restores any deducted balance
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+window.deletePayment = function(id){
+  if(!canWrite()) return;
+  if(!confirm('Move payment to Trash? Party cheques return to In Hand, own leaves become Available, bank deductions are reversed.')) return;
+  const p = arr(db.payments).find(x => x.id === id);
+  if(!p) return;
+
+  /* Party cheques → In Hand */
+  (p.partyChequeIds || []).forEach(cid => {
+    const c = arr(db.customerCheques).find(x => x.id === cid);
+    if(c){
+      c.status = 'In Hand';
+      delete c.paymentId;
+      delete c.issuedTo;
+      delete c.issuedDate;
+    }
+  });
+
+  /* Own leaves → Available */
+  (p.ownChequeIds || []).forEach(lid => {
+    const l = arr(db.chequeLeaves).find(x => x.id === lid);
+    if(l){
+      l.status = 'Available';
+      l.paymentId = null;
+      l.date = null;
+      l.dueDate = null;
+      l.amount = 0;
+      l.payee = '';
+      l.supplierId = null;
+    }
+  });
+
+  /* Remove all bank transactions linked to this payment (cheques + direct) */
+  db.bankTransactions = arr(db.bankTransactions).filter(t => t.paymentId !== id);
+
+  if(softDelete('payments', id, supName(p.supplierId))){
+    save();
+    render();
+    toast('Moved to Trash — bank balance updated', 'success');
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMMAND PALETTE UPDATE — bank search includes account name
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function patchGlobalSearchForAccountName(){
+  const orig = window.onGlobalSearch;
+  if(typeof orig !== 'function' || orig.__patchedAccName) return;
+  window.onGlobalSearch = function(){
+    const q = (val('globalSearch') || '').trim().toLowerCase();
+    const box = document.getElementById('gsResults');
+    if(!box) return;
+
+    if(!q){ box.classList.remove('open'); box.innerHTML = ''; return; }
+
+    const r = [];
+
+    /* Customers */
+    arr(db.customers).filter(c => (c.name || '').toLowerCase().includes(q)).slice(0, 4).forEach(c => r.push({
+      type: 'Customer', label: c.name, sub: c.phone || '',
+      action: 'data-action="customer-detail" data-id="' + c.id + '"'
+    }));
+
+    /* Suppliers */
+    arr(db.suppliers).filter(s => (s.name || '').toLowerCase().includes(q)).slice(0, 4).forEach(s => r.push({
+      type: 'Supplier', label: s.name, sub: s.phone || '',
+      action: 'data-action="supplier-detail" data-id="' + s.id + '"'
+    }));
+
+    /* Banks — match name, accountName, or accountNo */
+    arr(db.bankAccounts).filter(b => {
+      const hay = ((b.accountName || '') + ' ' + (b.bankName || '') + ' ' + (b.accountNo || '')).toLowerCase();
+      return hay.includes(q);
+    }).slice(0, 4).forEach(b => r.push({
+      type: 'Bank', label: b.accountName || b.bankName, sub: b.bankName + (b.accountNo ? ' • ' + b.accountNo : ''),
+      action: 'data-action="bank-detail" data-id="' + b.id + '"'
+    }));
+
+    /* Cheques */
+    arr(db.customerCheques).filter(c => (c.chequeNo || '').toLowerCase().includes(q)).slice(0, 4).forEach(c => r.push({
+      type: 'Cheque', label: '#' + c.chequeNo,
+      sub: c.customerName + ' • ' + money(c.amount),
+      action: 'data-action="cheque-detail" data-id="' + c.id + '"'
+    }));
+
+    if(!r.length){
+      box.innerHTML = '<div class="empty" style="padding:20px">No results</div>';
+    } else {
+      const g = groupBy(r, x => x.type);
+      box.innerHTML = Object.keys(g).map(t =>
+        '<div class="gs-sec">' + esc(t) + '</div>'
+        + g[t].map(x => '<div class="gs-item" ' + x.action + '>' + esc(x.label) + '<small>' + esc(x.sub) + '</small></div>').join('')
+      ).join('');
+    }
+    box.classList.add('open');
   };
-  wrapped.__wrappedBank = true;
-  window.showPaymentDetail = wrapped;
+  window.onGlobalSearch.__patchedAccName = true;
 })();
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 147 — DELETE PAYMENT (also reverse bank transfers)
+   BACKFILL — existing bank accounts get an accountName
    ═══════════════════════════════════════════════════════════════════════════ */
-(function patchDeletePaymentForBank(){
-  const orig = window.deletePayment;
-  if(typeof orig !== 'function' || orig.__wrappedBank) return;
-
-  const wrapped = function(id){
-    const p = arr(db.payments).find(x => x.id === id);
-    if(!p){
-      return orig.apply(this, arguments);
-    }
-
-    /* Find bank txns before deleting */
-    const bankTxns = arr(db.bankTransactions).filter(t => t.paymentId === id && t.type === 'withdrawal');
-    if(bankTxns.length){
-      const total = sum(bankTxns, 'amount');
-      if(!confirm('⚠ This payment includes ' + bankTxns.length + ' direct bank transfer(s) totalling '
-        + money(total) + '.\n\nDeleting the payment will ALSO remove these bank transactions (bank balances will increase).\n\nProceed?')){
-        return;
+(function backfillBankAccountNames(){
+  let changed = false;
+  arr(db.bankAccounts).forEach(b => {
+    if(b.accountName === undefined){
+      /* Default to "<BankName> <n>" if multiple of same bank exist, else bank name */
+      const same = arr(db.bankAccounts).filter(x => x.bankName === b.bankName);
+      if(same.length > 1){
+        const idx = same.findIndex(x => x.id === b.id) + 1;
+        b.accountName = b.bankName + ' #' + idx;
+      } else {
+        b.accountName = b.bankName;
       }
-      /* Remove bank withdrawal transactions */
-      db.bankTransactions = arr(db.bankTransactions).filter(t => !(t.paymentId === id && t.type === 'withdrawal'));
+      changed = true;
     }
-
-    return orig.apply(this, arguments);
-  };
-  wrapped.__wrappedBank = true;
-  window.deletePayment = wrapped;
+  });
+  if(changed){
+    save();
+    window.__dbgOk && window.__dbgOk('Backfilled account names for ' + arr(db.bankAccounts).length + ' bank account(s)', 'DATA');
+  }
 })();
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SECTION 148 — VERIFY & INIT
+   STARTUP LOG
    ═══════════════════════════════════════════════════════════════════════════ */
-(function initPart13(){
-  /* Ensure both new collections are recognised by Firestore sync */
-  if(Array.isArray(window.COLLECTIONS)){
-    /* COLLECTIONS is const, we can't modify — but bankTransactions already exists */
-  }
-
-  /* Ensure ui.payBankRows exists as an array */
-  if(typeof ui === 'object' && !Array.isArray(ui.payBankRows)){
-    ui.payBankRows = [];
-  }
-
+setTimeout(function(){
   if(window.__dbgOk){
-    window.__dbgOk('Part 13 loaded: bank names + advanced cheque cascade + direct bank payments', 'BOOT');
+    window.__dbgOk('═══════════════════════════════════════', 'PATCH');
+    window.__dbgOk('✅ Bank account names + Advanced cheque cascade + Bank payments', 'PATCH');
+    window.__dbgOk('💡 Payment mode toggle: Cheques | Direct Bank Transfer', 'PATCH');
+    window.__dbgOk('💡 Own cheque: 3-step cascade (Bank → Book → Leaf)', 'PATCH');
+    window.__dbgOk('💡 Bank accounts now have accountName field', 'PATCH');
+    window.__dbgOk('═══════════════════════════════════════', 'PATCH');
   }
-
-  /* If we're on the payments view already, re-render it so the new sections appear */
-  setTimeout(() => {
-    if(typeof ui === 'object' && ui.view === 'payments'){
-      try { render(); } catch(e){}
-    }
-  }, 200);
-})();
+}, 3200);
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   END OF PART 13
+   END OF PATCH
    ═══════════════════════════════════════════════════════════════════════════ */
 </script>
 </body>

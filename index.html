@@ -4282,14 +4282,16 @@ async function initFirebase() {
     try { storage = firebase.storage(); } catch(e) { storage = null; }
 
     /* Enable IndexedDB persistence for offline cache (reduces reads) */
-    try {
-      await firestore.enablePersistence({ synchronizeTabs: true });
-    } catch(e) {
-      /* persistence may already be enabled or unsupported — safe to ignore */
-      if (e.code && e.code !== 'failed-precondition' && e.code !== 'unimplemented') {
-        if (window.__dbgWarn) window.__dbgWarn('Persistence: ' + e.code, 'FB');
-      }
-    }
+    /* Enable IndexedDB persistence, but NEVER let it block boot.
+   - synchronizeTabs:false avoids the BroadcastChannel lock that hangs
+   - Promise.race guarantees we move on after 2s no matter what
+   - No await on the catch path — persistence is a nice-to-have */
+Promise.race([
+  firestore.enablePersistence({ synchronizeTabs: false }),
+  new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000))
+]).catch(e => {
+  if (window.__dbgWarn) window.__dbgWarn('Persistence skipped: ' + (e.code || e.message), 'FB');
+});
 
     firebaseReady = true;
     if (window.__dbgOk) {

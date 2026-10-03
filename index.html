@@ -1241,10 +1241,6 @@ tfoot td{padding:var(--row-pad);font-weight:600;background:var(--surface-2);bord
 
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-<!--
-  ═══════════════════════════════════════════════════════════════════════════
-  SCRIPT BLOCKS WILL BE INSERTED HERE
-  Parts 2 through 18 — each in its own <script> tag, in order:
 <script>
 'use strict';
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1783,7 +1779,7 @@ const bankBalance = id => {
   return bal;
 };
 
-const bankAccountsByBankName = name => arr(db.bankAccounts).filter(b => b.bankName === name);
+var bankAccountsByBankName = name => arr(db.bankAccounts).filter(b => b.bankName === name);
 window.bankAccountsByBankName = bankAccountsByBankName;
 
 const catObj = id => arr(db.categories).find(c => c.id === id);
@@ -2143,6 +2139,7 @@ function save() {
   } catch(e) {
     console.warn('localStorage save failed:', e);
   }
+  try { localStorage.setItem('lankashoe_cloud_clean', '0'); } catch(e) {}
   if (_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
   _syncState.debounceTimer = setTimeout(() => {
     try {
@@ -2270,6 +2267,22 @@ async function _fullSync() {
 
 async function loadFromFirestore() {
   if (!window.firestore || !window.currentUser) return false;
+  /* QUOTA GUARD: a full load reads EVERY document (1 read each). On quick page
+     reloads, reuse the local copy if it was loaded <10 min ago and has no
+     unsynced edits. Use window.reloadFromCloud() to force a fresh read. */
+  try {
+    const LOAD_TTL_MS = 10 * 60 * 1000;
+    const at = +localStorage.getItem('lankashoe_cloud_loaded_at') || 0;
+    const clean = localStorage.getItem('lankashoe_cloud_clean') === '1';
+    const hasCache = !!localStorage.getItem('lankashoe_cache');
+    if (!window._forceCloudLoad && clean && hasCache && (Date.now() - at) < LOAD_TTL_MS) {
+      _syncState.initialized = true;
+      updateSyncStatus('Using recent local copy (saves quota)');
+      return true;
+    }
+  } catch(e) {}
+  window._forceCloudLoad = false;
+  let _loadFailed = false;
   updateSyncStatus('Loading from cloud...');
   try {
     try {
@@ -2294,10 +2307,16 @@ async function loadFromFirestore() {
             db[col] = items;
           }
           resolve();
-        }).catch(() => resolve());
+        }).catch(() => { _loadFailed = true; resolve(); });
       })));
     }
     _syncState.initialized = true;
+    if (!_loadFailed) {
+      try {
+        localStorage.setItem('lankashoe_cloud_loaded_at', String(Date.now()));
+        localStorage.setItem('lankashoe_cloud_clean', '1');
+      } catch(e) {}
+    }
     updateSyncStatus('Loaded from cloud');
     return true;
   } catch(e) {
@@ -4157,6 +4176,7 @@ function takeSnapshot() {
   });
   snap._settings = JSON.stringify(db.settings || {});
   window._dbSnapshot = snap;
+  window._dbSnapshotReady = true;
   if (window.__dbgOk) window.__dbgOk('Snapshot captured', 'SYNC');
 }
 window.takeSnapshot = takeSnapshot;
@@ -4183,6 +4203,14 @@ async function pushToFirestore() {
   }
   if (!currentUser) {
     if (st) st.textContent = 'Local • Not signed in';
+    return;
+  }
+
+  /* QUOTA GUARD: until the cloud load has produced a snapshot, an empty
+     snapshot would make EVERY local document look "changed" and re-write the
+     whole database. Keep the data locally and wait for the snapshot. */
+  if (!window._dbSnapshotReady) {
+    if (st) st.textContent = 'Saved locally • waiting for cloud load';
     return;
   }
 
@@ -4232,6 +4260,7 @@ async function pushToFirestore() {
   if (ops.length === 0) {
     if (st) st.textContent = 'Synced '
       + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    try { localStorage.setItem('lankashoe_cloud_clean', '1'); } catch(e) {}
     return;
   }
 
@@ -4253,6 +4282,7 @@ async function pushToFirestore() {
       written += Math.min(450, ops.length - i);
     }
     takeSnapshot();
+    try { localStorage.setItem('lankashoe_cloud_clean', '1'); } catch(e) {}
     if (st) st.textContent = 'Synced '
       + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     if (window.__dbgOk) window.__dbgOk('Pushed ' + written + ' change(s)', 'SYNC');
@@ -4632,6 +4662,12 @@ SECTION 14 — USER REGISTRATION (Firestore)
 ═══════════════════════════════════════════════════════════════════════════ */
 async function registerUserLogin(user, role) {
   if (offlineMode || !firebaseReady) return;
+  /* QUOTA GUARD: at most once per hour per browser (was 1 read + 1 write on every page load) */
+  try {
+    const last = +localStorage.getItem('lankashoe_user_reg_at') || 0;
+    if (Date.now() - last < 60 * 60 * 1000) return;
+    localStorage.setItem('lankashoe_user_reg_at', String(Date.now()));
+  } catch(e) {}
   try {
     const ref = firestore.collection(USERS_COL_PATH).doc(user.uid);
     const doc = await ref.get();
@@ -26467,6 +26503,15 @@ async function manualFullSync() {
   }
 }
 window.manualFullSync = manualFullSync;
+
+/* Force a fresh read of the whole cloud database (costs 1 read per document).
+   Call from the console or wire to a button when you need other users' latest data. */
+window.reloadFromCloud = async function() {
+  window._forceCloudLoad = true;
+  const ok = await loadFromFirestore();
+  normalizeDb(); applySettings(); takeSnapshot(); render();
+  toast(ok ? 'Reloaded from cloud' : 'Reload failed', ok ? 'success' : 'error');
+};
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 8 — SYNC STATUS INDICATOR HELPER

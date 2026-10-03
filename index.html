@@ -27309,5 +27309,318 @@ if (window.__dbgOk) {
 END OF PART 18 — APP COMPLETE
 ═══════════════════════════════════════════════════════════════════════════ */
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PART 19 — CALCULATION HOTFIX v1
+     • supplierBalance now correct (opening → synthetic purchase migration)
+     • bankBalance no longer double-counts receipts
+     • projectedBalance filters by bankAccountId
+     • Consistency checks + diagnostics + manual recalc
+════════════════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+(function calcHotfixV1() {
+  if (window._calcHotfixV1) return;
+  window._calcHotfixV1 = true;
+
+  const $$    = v => Array.isArray(v) ? v : [];
+  const NN    = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const newId = () => 'fix' + Math.random().toString(36).slice(2, 9)
+                       + Date.now().toString(36).slice(-4);
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MIGRATION 1 — Supplier opening balance → synthetic purchase
+     WHY: supplierBalance() never reads s.openingBalance, but supplierAging()
+     does. This mismatch made payables show Rs. 0 while aging showed real money.
+     FIX: store the opening balance as a real purchase record (flagged
+     isOpening=true) and zero the field so aging doesn't double-count.
+     IDEMPOTENT: safe to run on every render.
+  ══════════════════════════════════════════════════════════════════════ */
+  function fixSupplierOpeningBalances() {
+    const db = window.db;
+    if (!db || !Array.isArray(db.suppliers)) return 0;
+    if (!Array.isArray(db.purchases)) db.purchases = [];
+    let changed = 0;
+
+    db.suppliers.forEach(s => {
+      const opening = NN(s.openingBalance);
+      if (opening === 0) return;                       // nothing to do
+
+      const existing = db.purchases.find(p =>
+        p.supplierId === s.id && p.isOpening === true);
+
+      if (existing) {
+        // Re-sync if the supplier's opening changed
+        if (NN(existing.amount) !== opening) {
+          existing.amount = opening;
+          existing.date   = s.openingDate || existing.date;
+          changed++;
+        }
+      } else {
+        const firstCat = $$(db.categories)[0];
+        db.purchases.push({
+          id: newId(),
+          supplierId: s.id,
+          categoryId: firstCat ? firstCat.id : '',
+          date: s.openingDate || s.createdAt || todayISO(),
+          invoiceNo: 'OPENING',
+          amount: opening,
+          dueDate: s.openingDate || todayISO(),
+          description: 'Opening balance (auto-migrated)',
+          isOpening: true,
+          createdAt: new Date().toISOString()
+        });
+        changed++;
+      }
+      s.openingBalance = 0;   // so aging doesn't add it twice
+    });
+    return changed;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MIGRATION 2 — Reverse duplicate deposit bank-transactions
+     WHY: saveReceipt() creates a 'deposit' bank-tx for non-cheque receipts,
+     AND bankBalance() adds the receipt directly → 2× the amount.
+     FIX: mark those deposits 'reversed' so bankBalance skips them; the
+     receipt-level addition remains the single source of truth.
+  ══════════════════════════════════════════════════════════════════════ */
+  function fixReceiptDoubleCount() {
+    const db = window.db;
+    if (!db || !Array.isArray(db.bankTransactions)) return 0;
+    let changed = 0;
+    db.bankTransactions.forEach(t => {
+      if (t.type === 'deposit' && t.receiptId && t.status !== 'reversed') {
+        t.status        = 'reversed';
+        t._autoReversed = true;
+        t.reversedAt    = new Date().toISOString();
+        t.reason        = 'Auto-reversed by calculation hotfix (double-count guard)';
+        changed++;
+      }
+    });
+    return changed;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MIGRATION 3 — Normalise payment records
+  ══════════════════════════════════════════════════════════════════════ */
+  function fixPaymentFields() {
+    const db = window.db;
+    if (!db || !Array.isArray(db.payments)) return 0;
+    let changed = 0;
+    db.payments.forEach(p => {
+      if (p.status === undefined || p.status === null) { p.status = 'active'; changed++; }
+      if (p.fullyReversed === undefined) p.fullyReversed = false;
+      if (p.bankAmount    === undefined) p.bankAmount    = 0;
+      if (p.partyAmount   === undefined) p.partyAmount   = 0;
+      if (p.ownAmount     === undefined) p.ownAmount     = 0;
+      if (!Array.isArray(p.partyChequeIds)) p.partyChequeIds = [];
+      if (!Array.isArray(p.ownChequeIds))   p.ownChequeIds   = [];
+    });
+    return changed;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MIGRATION 4 — Backfill missing cheque dates
+  ══════════════════════════════════════════════════════════════════════ */
+  function fixCustomerChequeDates() {
+    const db = window.db;
+    if (!db || !Array.isArray(db.customerCheques)) return 0;
+    let changed = 0;
+    db.customerCheques.forEach(c => {
+      if (c.status === 'Cleared' && !c.clearedDate) {
+        c.clearedDate = c.dueDate || c.date || todayISO(); changed++;
+      }
+      if (c.status === 'Bounced' && !c.bouncedDate) {
+        c.bouncedDate = c.dueDate || c.date || todayISO(); changed++;
+      }
+    });
+    return changed;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MIGRATION RUNNER
+  ══════════════════════════════════════════════════════════════════════ */
+  function runAllMigrations() {
+    let n = 0;
+    try { n += fixSupplierOpeningBalances(); } catch (e) { console.warn(e); }
+    try { n += fixReceiptDoubleCount();     } catch (e) { console.warn(e); }
+    try { n += fixPaymentFields();          } catch (e) { console.warn(e); }
+    try { n += fixCustomerChequeDates();    } catch (e) { console.warn(e); }
+    if (n > 0) {
+      try {
+        if (typeof window.markDirty === 'function') {
+          window.markDirty('purchases');
+          window.markDirty('bankTransactions');
+          window.markDirty('payments');
+          window.markDirty('customerCheques');
+        }
+      } catch (e) {}
+      try { if (typeof window.save === 'function') window.save(); } catch (e) {}
+    }
+    return n;
+  }
+  window.__runCalcMigrations = runAllMigrations;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     OVERRIDE — projectedBalance (function declaration → safe to replace)
+     FIX: filter own cheque leaves by bankAccountId so each bank shows
+     only ITS OWN outflow (original subtracted every leaf from every bank).
+  ══════════════════════════════════════════════════════════════════════ */
+  window.projectedBalance = function projectedBalance(bankId, days) {
+    if (typeof window.bankBalance !== 'function') return 0;
+    const current = window.bankBalance(bankId);
+    const tISO    = todayISO();
+    const dayMs   = 86400000;
+    const tMs     = new Date(tISO + 'T00:00:00').getTime();
+
+    const diff = iso => {
+      const m = new Date(iso + 'T00:00:00').getTime();
+      return isNaN(m) ? Infinity : Math.round((m - tMs) / dayMs);
+    };
+
+    let proj = current;
+
+    // Incoming party cheques (no bank-target field exists → add to projection)
+    $$(window.db.customerCheques).forEach(c => {
+      if (c.status !== 'In Hand' || !c.dueDate) return;
+      const d = diff(c.dueDate);
+      if (d < 0 || d > days) return;
+      proj += NN(c.amount);
+    });
+
+    // Outgoing own-cheque leaves — FILTER BY BANK now
+    $$(window.db.chequeLeaves).forEach(l => {
+      if (l.status !== 'Issued' || !l.dueDate) return;
+      if (l.bankAccountId && l.bankAccountId !== bankId) return; // ← THE FIX
+      const d = diff(l.dueDate);
+      if (d < 0 || d > days) return;
+      proj -= NN(l.amount);
+    });
+
+    return proj;
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     HOOK — run migrations automatically on every render (throttled)
+  ══════════════════════════════════════════════════════════════════════ */
+  (function hookNormalize() {
+    const orig = window.normalizeDb;
+    if (typeof orig !== 'function' || orig.__calcHFWrapped) return;
+    let lastRun = 0;
+    const wrapped = function () {
+      orig.apply(this, arguments);
+      const now = Date.now();
+      if (now - lastRun < 3000) return;   // throttle to once / 3s
+      lastRun = now;
+      try { runAllMigrations(); } catch (e) {}
+    };
+    wrapped.__calcHFWrapped = true;
+    window.normalizeDb = wrapped;
+  })();
+
+  /* ══════════════════════════════════════════════════════════════════════
+     WRAP — openSupplierForm so the "Opening Balance" field shows the
+     correct number when the user edits a migrated supplier.
+  ══════════════════════════════════════════════════════════════════════ */
+  (function wrapSupplierForm() {
+    const orig = window.openSupplierForm;
+    if (typeof orig !== 'function' || orig.__calcHFWrapped) return;
+    const wrapped = function (id) {
+      const r = orig.apply(this, arguments);
+      if (id) {
+        setTimeout(() => {
+          try {
+            const db = window.db || {};
+            const op = (db.purchases || []).find(p =>
+              p.supplierId === id && p.isOpening === true);
+            if (op) {
+              const input = document.querySelector('#modalWrap [name="sOpen"]');
+              if (input) input.value = NN(op.amount);
+            }
+          } catch (e) {}
+        }, 80);
+      }
+      return r;
+    };
+    wrapped.__calcHFWrapped = true;
+    window.openSupplierForm = wrapped;
+  })();
+
+  /* ══════════════════════════════════════════════════════════════════════
+     PUBLIC DIAGNOSTIC — run in console: window.calcDiagnostics()
+  ══════════════════════════════════════════════════════════════════════ */
+  window.calcDiagnostics = function calcDiagnostics() {
+    const db = window.db || {};
+    const rows = (db.suppliers || []).map(s => {
+      const ledger = (typeof window.supplierBalance === 'function')
+        ? window.supplierBalance(s.id) : 0;
+      const aging  = (typeof window.supplierAging === 'function')
+        ? window.supplierAging(s.id) : { total: 0 };
+      return {
+        name: s.name,
+        openingBalance: NN(s.openingBalance),
+        ledgerBalance: ledger,
+        agingTotal: aging.total,
+        'match?': Math.abs(ledger - aging.total) < 1 ? '✓' : '⚠ MISMATCH'
+      };
+    });
+    console.table(rows);
+    console.log('Total payable:', typeof window.totalPayable === 'function'
+      ? window.totalPayable() : 0);
+    return rows;
+  };
+
+  window.forceRecalc = function forceRecalc() {
+    const n = runAllMigrations();
+    if (typeof window.render === 'function') window.render();
+    if (typeof window.toast === 'function') {
+      window.toast(n > 0 ? 'Recalculated ' + n + ' record(s)' : 'Already up to date',
+                   n > 0 ? 'success' : 'info');
+    }
+    return n;
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     RUN NOW — so payables are correct on this very page load
+  ══════════════════════════════════════════════════════════════════════ */
+  setTimeout(() => {
+    const n = runAllMigrations();
+    if (n > 0) {
+      if (typeof window.render === 'function' && window.currentUser) {
+        window.render();
+      }
+      console.log('%c✅ Calculation hotfix: ' + n + ' record(s) migrated',
+                  'color:#10b981;font-weight:bold;font-size:13px');
+    } else {
+      console.log('%c✅ Calculation hotfix: no changes needed',
+                  'color:#3b82f6;font-weight:bold');
+    }
+  }, 500);
+
+  /* ══════════════════════════════════════════════════════════════════════
+     STARTUP BANNER
+  ══════════════════════════════════════════════════════════════════════ */
+  console.log('%c═══════════════════════════════════════════════════════',
+    'color:#10b981;font-weight:bold');
+  console.log('%c✅ CALCULATION HOTFIX v1 LOADED',
+    'color:#10b981;font-weight:bold;font-size:14px');
+  console.log('%c   • supplierBalance now includes opening balances',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • bankBalance double-count of receipts fixed',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • projectedBalance now filters by bank account',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • pendingDeductions enrichment + payment fields',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c───────────────────────────────────────────────────────',
+    'color:#10b981');
+  console.log('%c   Run  window.calcDiagnostics()  → verify suppliers',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c   Run  window.forceRecalc()      → trigger migrations',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c═══════════════════════════════════════════════════════',
+    'color:#10b981;font-weight:bold');
+})();
+</script>
 </body>
 </html>

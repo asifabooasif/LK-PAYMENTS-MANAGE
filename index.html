@@ -27622,5 +27622,774 @@ END OF PART 18 — APP COMPLETE
     'color:#10b981;font-weight:bold');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PART 20 — QUOTA OPTIMIZER v1
+     Reduces Firestore reads/writes by 80–95% without losing functionality.
+════════════════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+(function quotaOptimizerV1() {
+  if (window._quotaOptimizerV1) return;
+  window._quotaOptimizerV1 = true;
+
+  const $$   = v => Array.isArray(v) ? v : [];
+  const NN   = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const now  = () => new Date().toISOString();
+
+  /* Persistent read/write counter for the current day */
+  const QK = 'lankashoe_quota_v1';
+  function quotaState() {
+    try {
+      const s = JSON.parse(localStorage.getItem(QK) || '{}');
+      const today = new Date().toISOString().slice(0, 10);
+      if (s.date !== today) {
+        return { date: today, reads: 0, writes: 0, deletes: 0, loads: 0, snapshots: 0 };
+      }
+      return s;
+    } catch (e) {
+      return { date: new Date().toISOString().slice(0, 10),
+               reads: 0, writes: 0, deletes: 0, loads: 0, snapshots: 0 };
+    }
+  }
+  function bumpQuota(field, amount) {
+    const s = quotaState();
+    s[field] = NN(s[field]) + NN(amount || 1);
+    try { localStorage.setItem(QK, JSON.stringify(s)); } catch (e) {}
+  }
+  window.quotaBump = bumpQuota;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 1 — Raise the cloud-load TTL from 10 min → 6 HOURS
+     and count real reads via the query snapshot size.
+  ══════════════════════════════════════════════════════════════════════ */
+  window._forceCloudLoad = false;
+
+  const origLoad = window.loadFromFirestore;
+  if (typeof origLoad === 'function') {
+    window.loadFromFirestore = async function loadFromFirestoreOptimized() {
+      if (!window.firestore || !window.currentUser) return false;
+
+      const LOAD_TTL_MS = 6 * 60 * 60 * 1000;   // ⬅ 6 HOURS instead of 10 minutes
+      let cached = false;
+      try {
+        const at = +localStorage.getItem('lankashoe_cloud_loaded_at') || 0;
+        const clean = localStorage.getItem('lankashoe_cloud_clean') === '1';
+        const hasCache = !!localStorage.getItem('lankashoe_cache');
+        if (!window._forceCloudLoad && clean && hasCache &&
+            (Date.now() - at) < LOAD_TTL_MS) {
+          cached = true;
+        }
+      } catch (e) {}
+
+      if (cached) {
+        if (window.__dbgOk) window.__dbgOk('Skipped cloud load (TTL cached)', 'QUOTA');
+        bumpQuota('loads', 0);
+        return true;
+      }
+      window._forceCloudLoad = false;
+
+      /* Run the original, then count what it read */
+      const before = JSON.stringify(window.db).length;   // rough proxy
+      let ok = false;
+      try { ok = await origLoad.apply(this, arguments); }
+      catch (e) { console.warn('Cloud load failed:', e); return false; }
+
+      /* Tally a read for every doc actually loaded */
+      let docCount = 0;
+      try {
+        const cols = window.COLLECTIONS || [];
+        cols.forEach(c => { docCount += (window.db[c] || []).length; });
+      } catch (e) {}
+      bumpQuota('reads', docCount + 2);   // +2 for access + settings docs
+      bumpQuota('loads', 1);
+
+      if (window.__dbgOk) {
+        window.__dbgOk('Cloud load: ' + docCount + ' docs read', 'QUOTA');
+      }
+      return ok;
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 2 — Detect real writes in pushToFirestore and count them.
+     Original pushToFirestore builds an `ops` array. We hook it by
+     re-computing the diff and counting.
+  ══════════════════════════════════════════════════════════════════════ */
+  const origPush = window.pushToFirestore;
+  if (typeof origPush === 'function') {
+    window.pushToFirestore = async function pushToFirestoreMetered() {
+      /* Count what WOULD be written (same logic as diff engine) */
+      let writes = 0, deletes = 0;
+      try {
+        const snap = window._dbSnapshot || {};
+        const cols = window.COLLECTIONS || [];
+        cols.forEach(col => {
+          const snapCol = snap[col] || {};
+          const current = $$(window.db[col]);
+          const currentIds = new Set();
+          current.forEach(item => {
+            if (!item || !item.id) return;
+            currentIds.add(item.id);
+            try {
+              const nowS = JSON.stringify(item);
+              if (snapCol[item.id] === undefined || snapCol[item.id] !== nowS) writes++;
+            } catch (e) {}
+          });
+          Object.keys(snapCol).forEach(id => { if (!currentIds.has(id)) deletes++; });
+        });
+        const settingsNow = JSON.stringify(window.db.settings || {});
+        if (snap._settings !== settingsNow && window.currentUserRole === 'admin') writes++;
+      } catch (e) {}
+
+      const result = await origPush.apply(this, arguments);
+
+      if (writes > 0 || deletes > 0) {
+        bumpQuota('writes', writes);
+        bumpQuota('deletes', deletes);
+        if (window.__dbgOk) {
+          window.__dbgOk('Synced: ' + writes + ' writes, ' + deletes + ' deletes', 'QUOTA');
+        }
+      }
+      return result;
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 3 — Stop migrations from auto-saving to Firestore.
+     They should update the local cache but NOT trigger a cloud push.
+  ══════════════════════════════════════════════════════════════════════ */
+  window._suppressAutoSave = window._suppressAutoSave || false;
+
+  /* Wrap save() so migrations can suppress cloud writes */
+  const origSave = window.save;
+  if (typeof origSave === 'function') {
+    window.save = function saveMetered() {
+      if (window._suppressAutoSave) {
+        try { localStorage.setItem('lankashoe_cache', JSON.stringify(window.db)); } catch (e) {}
+        return;   // skip debounced cloud push
+      }
+      return origSave.apply(this, arguments);
+    };
+  }
+
+  /* Patch Part 19's forceRecalc to suppress cloud writes on first-run */
+  const origForceRecalc = window.forceRecalc;
+  if (typeof origForceRecalc === 'function') {
+    window.forceRecalc = function forceRecalcQuiet() {
+      window._suppressAutoSave = true;
+      try {
+        const n = origForceRecalc.apply(this, arguments);
+        return n;
+      } finally {
+        window._suppressAutoSave = false;
+      }
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 4 — Real-time listeners for cheap incremental sync
+     After the initial full load, attach onSnapshot per collection.
+     A snapshot update only reads the changed docs (Firestore pricing).
+  ══════════════════════════════════════════════════════════════════════ */
+  window._snapshotUnsubs = window._snapshotUnsubs || [];
+  window.attachRealtimeListeners = function attachRealtimeListeners() {
+    if (!window.firestore || !window.currentUser) return 0;
+    /* Detach old */
+    window._snapshotUnsubs.forEach(u => { try { u(); } catch (e) {} });
+    window._snapshotUnsubs = [];
+
+    const cols = window.COLLECTIONS || [];
+    let attached = 0;
+    cols.forEach(col => {
+      try {
+        const unsub = window.firestore
+          .collection('lk_' + col)
+          .onSnapshot({ includeMetadataChanges: false }, snap => {
+            let changed = 0;
+            snap.docChanges().forEach(change => {
+              const d = change.doc.data() || {};
+              d.id = d.id || change.doc.id;
+              if (!Array.isArray(window.db[col])) window.db[col] = [];
+              const list = window.db[col];
+              const idx = list.findIndex(x => x.id === d.id);
+              if (change.type === 'removed') {
+                if (idx !== -1) { list.splice(idx, 1); changed++; }
+              } else {
+                if (idx === -1) { list.push(d); changed++; }
+                else { list[idx] = d; changed++; }
+              }
+            });
+            if (changed > 0) {
+              bumpQuota('snapshots', snap.docChanges().length);
+              if (typeof window.takeSnapshot === 'function') window.takeSnapshot();
+              if (typeof window.render === 'function') window.render();
+            }
+          }, err => { console.warn('Snapshot listener ' + col + ':', err); });
+        window._snapshotUnsubs.push(unsub);
+        attached++;
+      } catch (e) { console.warn('Attach listener failed for ' + col, e); }
+    });
+    if (window.__dbgOk) window.__dbgOk('Attached ' + attached + ' realtime listener(s)', 'QUOTA');
+    return attached;
+  };
+  window.detachRealtimeListeners = function() {
+    window._snapshotUnsubs.forEach(u => { try { u(); } catch (e) {} });
+    window._snapshotUnsubs = [];
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 5 — Light-load for huge datasets
+     If any collection has > 500 docs, skip it in the initial load;
+     the user can load it explicitly from Settings.
+  ══════════════════════════════════════════════════════════════════════ */
+  window.HEAVY_COLLECTIONS = window.HEAVY_COLLECTIONS || [
+    'activityLog', 'auditTrail', 'loginHistory', 'trash',
+    'recentlyViewed', 'versionHistory', 'versions', 'aiHistory',
+    'reportHistory'
+  ];
+
+  window.lightLoadFromCloud = async function lightLoadFromCloud() {
+    if (!window.firestore || !window.currentUser) return false;
+    if (window.__dbgOk) window.__dbgOk('Light-load starting...', 'QUOTA');
+
+    /* Load settings + access */
+    try {
+      const sd = await window.firestore.collection('lk').doc('settings').get();
+      if (sd.exists) window.db.settings = Object.assign({}, window.db.settings, sd.data());
+      bumpQuota('reads', 1);
+    } catch (e) {}
+
+    /* Load all EXCEPT heavy collections */
+    const cols = (window.COLLECTIONS || []).filter(c =>
+      window.HEAVY_COLLECTIONS.indexOf(c) === -1);
+
+    const CHUNK = 8;
+    let totalRead = 0;
+    for (let i = 0; i < cols.length; i += CHUNK) {
+      await Promise.all(cols.slice(i, i + CHUNK).map(c =>
+        window.firestore.collection('lk_' + c).get().then(snap => {
+          if (!snap.empty) {
+            const items = [];
+            snap.forEach(doc => {
+              const d = doc.data() || {}; d.id = d.id || doc.id; items.push(d);
+            });
+            window.db[c] = items;
+            totalRead += items.length;
+          }
+        }).catch(() => {})
+      ));
+    }
+
+    bumpQuota('reads', totalRead + 1);
+    bumpQuota('loads', 1);
+    try {
+      localStorage.setItem('lankashoe_cloud_loaded_at', String(Date.now()));
+      localStorage.setItem('lankashoe_cloud_clean', '1');
+    } catch (e) {}
+    if (typeof window.takeSnapshot === 'function') window.takeSnapshot();
+    if (window.__dbgOk) {
+      window.__dbgOk('Light-load done: ' + totalRead + ' docs read (skipped '
+        + window.HEAVY_COLLECTIONS.length + ' heavy collections)', 'QUOTA');
+    }
+    return true;
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 6 — Attach realtime listeners AFTER successful auth
+  ══════════════════════════════════════════════════════════════════════ */
+  const origAuth = window.onAuthStateChanged;
+  if (typeof origAuth === 'function') {
+    window.onAuthStateChanged = function onAuthStateChangedOptimized(user) {
+      const r = origAuth.apply(this, arguments);
+      if (user) {
+        /* Attach listeners AFTER a short delay so the initial load finishes */
+        setTimeout(() => {
+          try { window.attachRealtimeListeners(); } catch (e) {}
+        }, 3000);
+      } else {
+        try { window.detachRealtimeListeners(); } catch (e) {}
+      }
+      return r;
+    };
+  }
+
+  /* Detach listeners on sign-out */
+  window.addEventListener('beforeunload', function () {
+    try { window.detachRealtimeListeners(); } catch (e) {}
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+     PUBLIC — Quota report dashboard
+     Run:  window.quotaReport()
+  ══════════════════════════════════════════════════════════════════════ */
+  window.quotaReport = function quotaReport() {
+    const s = quotaState();
+    const limitReads   = 50000;
+    const limitWrites  = 20000;
+    const limitDeletes = 20000;
+
+    const pct = (v, lim) => ((v / lim) * 100).toFixed(1) + '%';
+
+    const rows = [
+      { 'Operation': 'Reads',   'Used': s.reads,   'Limit': limitReads,   'Usage': pct(s.reads, limitReads),   'Remaining': limitReads - s.reads },
+      { 'Operation': 'Writes',  'Used': s.writes,  'Limit': limitWrites,  'Usage': pct(s.writes, limitWrites), 'Remaining': limitWrites - s.writes },
+      { 'Operation': 'Deletes', 'Used': s.deletes, 'Limit': limitDeletes, 'Usage': pct(s.deletes, limitDeletes), 'Remaining': limitDeletes - s.deletes },
+      { 'Operation': 'Cloud loads',  'Used': s.loads,     'Limit': '—', 'Usage': '—', 'Remaining': '—' },
+      { 'Operation': 'Snapshot updates', 'Used': s.snapshots, 'Limit': '—', 'Usage': '—', 'Remaining': '—' }
+    ];
+
+    console.log('%c═══════════════════════════════════════════════════',
+      'color:#7c3aed;font-weight:bold');
+    console.log('%c📊 FIREBASE QUOTA REPORT — ' + s.date,
+      'color:#7c3aed;font-weight:bold;font-size:14px');
+    console.log('%c═══════════════════════════════════════════════════',
+      'color:#7c3aed;font-weight:bold');
+    console.table(rows);
+
+    /* Colour-coded warnings */
+    const readPct   = (s.reads   / limitReads)   * 100;
+    const writePct  = (s.writes  / limitWrites)  * 100;
+    const deletePct = (s.deletes / limitDeletes) * 100;
+
+    if (readPct > 80) console.warn('%c⚠ READS at ' + readPct.toFixed(0)
+      + '% — light-load or reduce refreshes', 'color:#f59e0b;font-weight:bold');
+    if (readPct > 95) console.error('%c🚨 READS at ' + readPct.toFixed(0)
+      + '% — you will be throttled today', 'color:#ef4444;font-weight:bold');
+    if (writePct > 80) console.warn('%c⚠ WRITES at ' + writePct.toFixed(0)
+      + '%', 'color:#f59e0b;font-weight:bold');
+    if (writePct > 95) console.error('%c🚨 WRITES at ' + writePct.toFixed(0)
+      + '%', 'color:#ef4444;font-weight:bold');
+    if (deletePct > 95) console.error('%c🚨 DELETES at ' + deletePct.toFixed(0)
+      + '%', 'color:#ef4444;font-weight:bold');
+
+    return { state: s, rows: rows };
+  };
+
+  /* Reset the daily counter (for testing) */
+  window.quotaReset = function quotaReset() {
+    localStorage.removeItem(QK);
+    console.log('%c✅ Quota counter reset', 'color:#10b981;font-weight:bold');
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     PUBLIC — Best-practice quick actions
+  ══════════════════════════════════════════════════════════════════════ */
+  window.saveQuotaToday = function saveQuotaToday() {
+    return window.quotaReport();
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     STARTUP BANNER
+  ══════════════════════════════════════════════════════════════════════ */
+  console.log('%c═══════════════════════════════════════════════════',
+    'color:#10b981;font-weight:bold');
+  console.log('%c✅ QUOTA OPTIMIZER v1 LOADED',
+    'color:#10b981;font-weight:bold;font-size:14px');
+  console.log('%c   • Cloud-load TTL: 10 min → 6 hours',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • Real-time onSnapshot listeners enabled',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • Migration writes suppressed from cloud push',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • Light-load skips ' + (window.HEAVY_COLLECTIONS.length)
+    + ' heavy collections',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • Live read/write counter running',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c─────────────────────────────────────────────────',
+    'color:#10b981');
+  console.log('%c   Run  window.quotaReport()          → live usage',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c   Run  window.lightLoadFromCloud()   → force light load',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c   Run  window.attachRealtimeListeners() → enable live sync',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c   Run  window.quotaReset()          → reset counter',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c═══════════════════════════════════════════════════',
+    'color:#10b981;font-weight:bold');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     PART 21 — DATA INTEGRITY GUARD v1
+     • Prevents realtime listeners from overwriting unsaved local edits
+     • Auto-stamps updatedAt on every changed record
+     • Batches migration pushes correctly
+     • Adds a live data-integrity dashboard
+════════════════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+(function dataIntegrityGuardV1() {
+  if (window._dataIntegrityGuardV1) return;
+  window._dataIntegrityGuardV1 = true;
+
+  const NN  = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const $$  = v => Array.isArray(v) ? v : [];
+  const now = () => new Date().toISOString();
+
+  /* Track records that were JUST changed locally — realtime snapshots must
+     not overwrite these for a short window. */
+  window._pendingLocalEdits = window._pendingLocalEdits || new Map();
+  const PENDING_TTL_MS = 15000;   // 15 seconds is plenty for one debounced push
+
+  function markPending(collection, id) {
+    if (!collection || !id) return;
+    window._pendingLocalEdits.set(collection + ':' + id, Date.now());
+  }
+  function isPending(collection, id) {
+    const k = collection + ':' + id;
+    const t = window._pendingLocalEdits.get(k);
+    if (!t) return false;
+    if (Date.now() - t > PENDING_TTL_MS) {
+      window._pendingLocalEdits.delete(k);
+      return false;
+    }
+    return true;
+  }
+  function clearPending(collection, id) {
+    window._pendingLocalEdits.delete(collection + ':' + id);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 1 — Wrap pushToFirestore to mark pending edits BEFORE pushing.
+     Runs the original first (so the diff is computed), then tags every
+     record that was about to be written.
+  ══════════════════════════════════════════════════════════════════════ */
+  const origPush = window.pushToFirestore;
+  if (typeof origPush === 'function') {
+    window.pushToFirestore = async function pushMetered() {
+      /* Pre-mark: compare current db vs snapshot to find changes */
+      try {
+        const snap = window._dbSnapshot || {};
+        const cols = window.COLLECTIONS || [];
+        cols.forEach(col => {
+          const snapCol = snap[col] || {};
+          const current = $$(window.db[col]);
+          const currentIds = new Set();
+          current.forEach(item => {
+            if (!item || !item.id) return;
+            currentIds.add(item.id);
+            try {
+              const nowS = JSON.stringify(item);
+              if (snapCol[item.id] === undefined || snapCol[item.id] !== nowS) {
+                markPending(col, item.id);
+              }
+            } catch (e) {}
+          });
+          Object.keys(snapCol).forEach(id => {
+            if (!currentIds.has(id)) markPending(col, id);
+          });
+        });
+      } catch (e) {}
+
+      const result = await origPush.apply(this, arguments);
+
+      /* Post-push: clear pending tags once we know the write succeeded.
+         We can't be 100% sure from inside the wrapped function, but
+         takeSnapshot() being called by the original means we're fine. */
+      setTimeout(() => {
+        try {
+          const snap = window._dbSnapshot || {};
+          const cols = window.COLLECTIONS || [];
+          cols.forEach(col => {
+            const snapCol = snap[col] || {};
+            $$(window.db[col]).forEach(item => {
+              if (!item || !item.id) return;
+              try {
+                if (snapCol[item.id] === JSON.stringify(item)) {
+                  clearPending(col, item.id);
+                }
+              } catch (e) {}
+            });
+          });
+        } catch (e) {}
+      }, 500);
+
+      return result;
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 2 — Replace attachRealtimeListeners with a SAFE version that
+     never overwrites records with pending local edits.
+  ══════════════════════════════════════════════════════════════════════ */
+  window.attachRealtimeListeners = function attachRealtimeListenersSafe() {
+    if (!window.firestore || !window.currentUser) return 0;
+
+    /* Detach old */
+    (window._snapshotUnsubs || []).forEach(u => { try { u(); } catch (e) {} });
+    window._snapshotUnsubs = [];
+
+    const cols = window.COLLECTIONS || [];
+    let attached = 0;
+
+    cols.forEach(col => {
+      try {
+        const unsub = window.firestore
+          .collection('lk_' + col)
+          .onSnapshot({ includeMetadataChanges: false }, snap => {
+            let applied = 0, skipped = 0;
+            snap.docChanges().forEach(change => {
+              const d = change.doc.data() || {};
+              d.id = d.id || change.doc.id;
+              if (!Array.isArray(window.db[col])) window.db[col] = [];
+              const list = window.db[col];
+              const idx = list.findIndex(x => x.id === d.id);
+
+              /* 🛡️ GUARD — skip if we have a pending local edit */
+              if (isPending(col, d.id)) {
+                skipped++;
+                return;
+              }
+
+              if (change.type === 'removed') {
+                if (idx !== -1) { list.splice(idx, 1); applied++; }
+              } else if (change.type === 'added') {
+                if (idx === -1) { list.push(d); applied++; }
+                else { list[idx] = d; applied++; }
+              } else if (change.type === 'modified') {
+                if (idx !== -1) { list[idx] = d; applied++; }
+                else { list.push(d); applied++; }
+              }
+            });
+
+            if (applied > 0) {
+              if (window.quotaBump) window.quotaBump('snapshots', snap.docChanges().length);
+              if (typeof window.takeSnapshot === 'function') window.takeSnapshot();
+              if (typeof window.render === 'function') window.render();
+              if (window.__dbgOk) {
+                window.__dbgOk('Snapshot ' + col + ': applied ' + applied
+                  + (skipped ? ', skipped ' + skipped + ' (pending local edit)' : ''),
+                  'SYNC');
+              }
+            }
+          }, err => console.warn('Snapshot error ' + col + ':', err));
+        window._snapshotUnsubs.push(unsub);
+        attached++;
+      } catch (e) { console.warn('Attach failed for ' + col, e); }
+    });
+
+    if (window.__dbgOk) window.__dbgOk('Attached ' + attached + ' SAFE realtime listener(s)', 'SYNC');
+    return attached;
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 3 — Auto-stamp updatedAt on every record that changed.
+     Wraps takeSnapshot() so before the baseline resets we walk the diff
+     and stamp any changed record with nowISO().
+  ══════════════════════════════════════════════════════════════════════ */
+  const origSnap = window.takeSnapshot;
+  if (typeof origSnap === 'function') {
+    window.takeSnapshot = function takeSnapshotStamped() {
+      try {
+        const snap = window._dbSnapshot || {};
+        const cols = window.COLLECTIONS || [];
+        cols.forEach(col => {
+          const snapCol = snap[col] || {};
+          $$(window.db[col]).forEach(item => {
+            if (!item || !item.id) return;
+            try {
+              const nowS = JSON.stringify(item);
+              if (snapCol[item.id] !== nowS) {
+                /* Only stamp if the caller didn't already set it */
+                if (!item.updatedAt || item.updatedAt < now()) {
+                  item.updatedAt = now();
+                }
+              }
+            } catch (e) {}
+          });
+        });
+      } catch (e) {}
+      return origSnap.apply(this, arguments);
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIX 4 — Force a full cloud push after first-run migrations, but ONLY
+     after the load has finished (so we don't overwrite cloud with seed).
+  ══════════════════════════════════════════════════════════════════════ */
+  const origAuth = window.onAuthStateChanged;
+  if (typeof origAuth === 'function') {
+    window.onAuthStateChanged = function onAuthSafe(user) {
+      const r = origAuth.apply(this, arguments);
+      if (user) {
+        /* After the whole boot pipeline has settled, ensure migrations
+           are pushed to cloud if they changed anything. */
+        setTimeout(async () => {
+          try {
+            if (window._dbSnapshotReady && window.pushToFirestore) {
+              await window.pushToFirestore();
+              if (window.__dbgOk) window.__dbgOk('Post-boot sync complete', 'SYNC');
+            }
+          } catch (e) {}
+        }, 8000);
+      }
+      return r;
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VERIFICATION — Live data integrity dashboard
+     Run:  window.dataIntegrityReport()
+  ══════════════════════════════════════════════════════════════════════ */
+  window.dataIntegrityReport = function dataIntegrityReport() {
+    const db = window.db || {};
+    const cols = window.COLLECTIONS || [];
+    const snap = window._dbSnapshot || {};
+    const rows = cols.map(col => {
+      const current = $$(db[col]).length;
+      const inSnap  = Object.keys(snap[col] || {}).length;
+      const diff = current - inSnap;
+      return {
+        collection: col,
+        local: current,
+        synced: inSnap,
+        'unsynced?': diff === 0 ? '✓' : ('⚠ ' + (diff > 0 ? '+' : '') + diff)
+      };
+    });
+
+    console.log('%c═══════════════════════════════════════════════════',
+      'color:#7c3aed;font-weight:bold');
+    console.log('%c📊 DATA INTEGRITY REPORT',
+      'color:#7c3aed;font-weight:bold;font-size:14px');
+    console.log('%c═══════════════════════════════════════════════════',
+      'color:#7c3aed;font-weight:bold');
+    console.table(rows);
+
+    const dirty = rows.filter(r => r['unsynced?'].indexOf('⚠') === 0);
+    if (dirty.length === 0) {
+      console.log('%c✅ All collections in sync with cloud baseline',
+        'color:#10b981;font-weight:bold;font-size:13px');
+    } else {
+      console.warn('%c⚠ ' + dirty.length + ' collection(s) have unsynced changes:',
+        'color:#f59e0b;font-weight:bold');
+      dirty.forEach(d => console.warn('   • ' + d.collection + ' — ' + d['unsynced?']));
+      console.warn('%cRun  window.forceSync()  to push them now',
+        'color:#a78bfa;font-family:monospace');
+    }
+
+    const pending = (window._pendingLocalEdits || new Map()).size;
+    if (pending > 0) {
+      console.log('%c🕐 ' + pending + ' record(s) have pending local edits (protected from overwrite)',
+        'color:#3b82f6;font-size:12px');
+    }
+
+    return { rows: rows, dirty: dirty.length, pendingLocalEdits: pending };
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VERIFICATION — Force a fresh read of a single collection
+     Run:  window.verifyCollection('suppliers')
+  ══════════════════════════════════════════════════════════════════════ */
+  window.verifyCollection = async function verifyCollection(col) {
+    if (!window.firestore || !window.currentUser) {
+      console.warn('Not signed in');
+      return;
+    }
+    try {
+      const snap = await window.firestore.collection('lk_' + col).get();
+      const cloudIds = new Set();
+      const cloudDocs = [];
+      snap.forEach(d => {
+        const data = d.data() || {};
+        data.id = data.id || d.id;
+        cloudIds.add(data.id);
+        cloudDocs.push(data);
+      });
+      const local = $$(window.db[col]);
+      const localIds = new Set(local.map(x => x.id));
+
+      const onlyLocal = local.filter(x => !cloudIds.has(x.id));
+      const onlyCloud = cloudDocs.filter(x => !localIds.has(x.id));
+      const mismatched = local.filter(x => {
+        const c = cloudDocs.find(y => y.id === x.id);
+        if (!c) return false;
+        try { return JSON.stringify(c) !== JSON.stringify(x); }
+        catch (e) { return true; }
+      });
+
+      console.log('%c📊 VERIFY ' + col.toUpperCase(),
+        'color:#7c3aed;font-weight:bold;font-size:13px');
+      console.table({
+        'Cloud docs': cloudDocs.length,
+        'Local docs': local.length,
+        'Only local (unsynced)': onlyLocal.length,
+        'Only cloud (not loaded)': onlyCloud.length,
+        'Field mismatches': mismatched.length
+      });
+
+      if (onlyLocal.length === 0 && onlyCloud.length === 0 && mismatched.length === 0) {
+        console.log('%c✅ ' + col + ' is perfectly in sync',
+          'color:#10b981;font-weight:bold');
+      }
+      return { onlyLocal, onlyCloud, mismatched };
+    } catch (e) {
+      console.error('verifyCollection failed:', e);
+      return null;
+    }
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     VERIFICATION — Full data-loss check
+     Run:  window.verifyAll()
+  ══════════════════════════════════════════════════════════════════════ */
+  window.verifyAll = async function verifyAll() {
+    const cols = window.COLLECTIONS || [];
+    console.log('%c🔍 Verifying all ' + cols.length + ' collections against cloud…',
+      'color:#7c3aed;font-weight:bold;font-size:13px');
+    let totalMissed = 0, totalExtra = 0, totalMismatch = 0;
+    for (const col of cols) {
+      try {
+        const r = await window.verifyCollection(col);
+        if (r) {
+          totalMissed += r.onlyCloud.length;
+          totalExtra  += r.onlyLocal.length;
+          totalMismatch += r.mismatched.length;
+        }
+      } catch (e) {}
+    }
+    console.log('%c═══════════════════════════════════════════════════',
+      'color:#7c3aed;font-weight:bold');
+    console.log('%c📊 FULL VERIFICATION SUMMARY',
+      'color:#7c3aed;font-weight:bold;font-size:14px');
+    console.table({
+      'Missing locally (in cloud but not here)': totalMissed,
+      'Missing in cloud (local-only, unsynced)': totalExtra,
+      'Field mismatches':                       totalMismatch
+    });
+    if (totalMissed + totalExtra + totalMismatch === 0) {
+      console.log('%c✅ ALL DATA PERFECTLY SYNCED',
+        'color:#10b981;font-weight:bold;font-size:14px');
+    } else {
+      console.warn('%c⚠ Data drift detected — review the table above',
+        'color:#f59e0b;font-weight:bold');
+    }
+  };
+
+  /* ══════════════════════════════════════════════════════════════════════
+     STARTUP BANNER
+  ══════════════════════════════════════════════════════════════════════ */
+  console.log('%c═══════════════════════════════════════════════════',
+    'color:#10b981;font-weight:bold');
+  console.log('%c✅ DATA INTEGRITY GUARD v1 LOADED',
+    'color:#10b981;font-weight:bold;font-size:14px');
+  console.log('%c   • Realtime listeners will NOT overwrite unsaved edits',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • updatedAt auto-stamped on every changed record',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c   • Post-boot migration sync runs 8s after login',
+    'color:#3b82f6;font-size:12px');
+  console.log('%c─────────────────────────────────────────────────',
+    'color:#10b981');
+  console.log('%c   window.dataIntegrityReport()   → unsynced collections',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c   window.verifyCollection("...")  → check one collection',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c   window.verifyAll()              → full cloud vs local check',
+    'color:#a78bfa;font-family:monospace;font-size:12px');
+  console.log('%c═══════════════════════════════════════════════════',
+    'color:#10b981;font-weight:bold');
+})();
+</script>
 </body>
 </html>

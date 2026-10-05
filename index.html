@@ -21348,15 +21348,24 @@ window.saveBank = function(e){
   e.preventDefault();
   if(!canWrite()) return;
   const f = e.target, id = f.dataset.id;
+  /* Older bank form uses bName/bAcc/... while the corrected renderer adds
+     bAccName.  The action dispatcher can still call the original lexical
+     openBankForm, so the save handler must accept BOTH versions. */
+  const field = (name, fallback) => {
+    const el = (f.elements && f.elements[name]) || f[name];
+    if(el) return el.value == null ? '' : el.value;
+    const fb = (f.elements && f.elements[fallback]) || f[fallback];
+    return fb ? (fb.value == null ? '' : fb.value) : '';
+  };
   const data = {
-    accountName: f.bAccName.value.trim(),
-    bankName: f.bName.value.trim(),
-    accountNo: f.bAcc.value.trim(),
-    branch: f.bBranch.value.trim(),
-    accountType: f.bType.value,
-    openingBalance: num(f.bOpen.value),
-    openingDate: f.bOpenDate.value || today(),
-    notes: f.bNotes.value.trim()
+    accountName: field('bAccName','bName').trim(),
+    bankName: field('bName').trim(),
+    accountNo: field('bAcc').trim(),
+    branch: field('bBranch').trim(),
+    accountType: field('bType'),
+    openingBalance: num(field('bOpen')),
+    openingDate: field('bOpenDate') || today(),
+    notes: field('bNotes').trim()
   };
   if(!data.accountName){ toast('Account Name required', 'error'); return; }
   if(!data.bankName){ toast('Bank name required', 'error'); return; }
@@ -23368,12 +23377,55 @@ Purpose:
   };
 
   window.saveCustomer = function(e){
-    e.preventDefault();if(!canWriteSafe())return;const f=e.target,id=f.dataset.id;
-    const data={name:f.cuName.value.trim(),phone:f.cuPhone.value.trim(),email:f.cuEmail.value.trim(),business:f.cuBusiness.value.trim(),address:f.cuAddress.value.trim(),notes:f.cuNotes.value.trim(),chequeLimit:n(f.cuLimit.value),blacklisted:!!f.cuBlacklist.checked,openingBalance:Math.abs(n(f.cuOpening.value)),openingDate:f.cuOpeningDate.value||todaySafe(),openingBalanceType:f.cuOpeningType.value||'receivable'};
+    e.preventDefault();
+    if(!canWriteSafe()) return;
+    const f=e.target, id=f.dataset.id;
+    /* The original customer form uses cuOpen/cuOpenDate/cuOpenType while the
+       later corrected form uses cuOpening/cuOpeningDate/cuOpeningType.  Both
+       forms can exist because older view functions are still registered.
+       Read both names so the Save action can never fail just because an older
+       form renderer supplied the legacy field names. */
+    const value = (...names) => {
+      for(const name of names){
+        const el = f.elements && f.elements[name] ? f.elements[name] : f[name];
+        if(el) return el.value == null ? '' : el.value;
+      }
+      return '';
+    };
+    const checked = (...names) => {
+      for(const name of names){
+        const el = f.elements && f.elements[name] ? f.elements[name] : f[name];
+        if(el) return !!el.checked;
+      }
+      return false;
+    };
+    const data={
+      name:value('cuName').trim(),
+      phone:value('cuPhone').trim(),
+      email:value('cuEmail').trim(),
+      business:value('cuBusiness').trim(),
+      address:value('cuAddress').trim(),
+      notes:value('cuNotes').trim(),
+      chequeLimit:n(value('cuLimit')),
+      blacklisted:checked('cuBlacklist'),
+      openingBalance:Math.abs(n(value('cuOpening','cuOpen'))),
+      openingDate:value('cuOpeningDate','cuOpenDate') || todaySafe(),
+      openingBalanceType:value('cuOpeningType','cuOpenType') || 'receivable'
+    };
     if(!data.name){toast('Name required','error');return;}
-    if(id){const c=safeArr(db.customers).find(x=>x.id===id);if(!c){toast('Customer not found','error');return;}const before=clone(c);Object.assign(c,data);c.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('customers',id,'Update',before,c);if(typeof logAct==='function')logAct('Update Customer','Customer',id,data.name);}
-    else{const item=Object.assign({id:uid(),createdAt:nowSafe()},data);db.customers.push(item);if(typeof trackVersion==='function')trackVersion('customers',item.id,'Create',null,item);if(typeof logAct==='function')logAct('Add Customer','Customer',item.id,data.name);}
-    save();closeModal();render();toast('✅ Customer saved','success');
+    if(id){
+      const c=safeArr(db.customers).find(x=>x.id===id);
+      if(!c){toast('Customer not found','error');return;}
+      const before=clone(c); Object.assign(c,data); c.updatedAt=nowSafe();
+      if(typeof trackVersion==='function') trackVersion('customers',id,'Update',before,c);
+      if(typeof logAct==='function') logAct('Update Customer','Customer',id,data.name);
+    } else {
+      const item=Object.assign({id:uid(),createdAt:nowSafe()},data);
+      db.customers.push(item);
+      if(typeof trackVersion==='function') trackVersion('customers',item.id,'Create',null,item);
+      if(typeof logAct==='function') logAct('Add Customer','Customer',item.id,data.name);
+    }
+    save(); closeModal(); render(); toast('✅ Customer saved','success');
   };
 
   /* ── SUPPLIER FORM: make opening balance semantics explicit ───────────── */

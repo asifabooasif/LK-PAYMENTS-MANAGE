@@ -1154,6 +1154,9 @@ FLOATING ELEMENTS
 </div>
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 <script>
+/* Global view registry must exist before early view modules execute. */
+var views = window.views || {};
+window.views = views;
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1365,6 +1368,57 @@ function seed() {
 const _seedTemplate = seed();
 let _seedTemplateJSON = JSON.stringify(_seedTemplate);
 
+/* ── Required data migrations (restored) ───────────────────────────────
+   These functions existed in the original application but were accidentally
+   removed from the rewritten file. normalizeDb() calls them during the first
+   render, so their absence caused a ReferenceError and left #view blank. */
+function migrateChequeLeaves(){
+  arr(db.chequeBooks).forEach(b => {
+    if(b.leafGenerated === true) return;
+    const start = num(b.startNo);
+    const end = num(b.endNo);
+    if(!start || !end || end < start){
+      b.leafGenerated = true;
+      return;
+    }
+    for(let i = start; i <= end; i++){
+      const leafNo = String(i).padStart(num(db.settings && db.settings.chequeLeafPad) || 4, '0');
+      const exists = arr(db.chequeLeaves).find(l => l.chequeBookId === b.id && l.leafNo === leafNo);
+      if(!exists){
+        db.chequeLeaves.push({
+          id: uid(),
+          chequeBookId: b.id,
+          bankAccountId: b.bankAccountId || null,
+          bankName: b.bankName || '',
+          bookNo: b.bookNo || '',
+          leafNo,
+          status: 'Available',
+          paymentId: null,
+          date: null,
+          dueDate: null,
+          amount: 0,
+          payee: '',
+          supplierId: null,
+          createdAt: nowISO()
+        });
+      }
+    }
+    b.leafGenerated = true;
+  });
+}
+
+function migrateSupplierCategories(){
+  arr(db.suppliers).forEach(s => {
+    if(s.categoryId === undefined) s.categoryId = '';
+  });
+}
+
+function migrateBankBalances(){
+  arr(db.bankAccounts).forEach(b => {
+    if(b.openingBalance === undefined) b.openingBalance = 0;
+  });
+}
+
 function normalizeDb() {
   if (!window.db) window.db = {};
   const template = JSON.parse(_seedTemplateJSON);
@@ -1413,6 +1467,22 @@ const uniq = a => [...new Set(a)];
 const sum = (list, key) => arr(list).reduce((s, o) => s + num(o[key]), 0);
 
 const thisMonth = () => today().slice(0, 7);
+
+/* Global UI state must exist before early modules execute. */
+var ui = window.ui || {
+  view: 'dashboard', dashboard: { mode: 'classic' },
+  sup: { q: '', catFilter: '', _tab: 'Overview' }, cust: { q: '', reliability: 'all', _tab: 'Overview' },
+  pur: { q: '' }, rcp: { q: '' }, cc: { tab: 'In Hand', customerFilter: '' },
+  own: { tab: 'Overview', subTab: 'Available', month: thisMonth(), from: '', to: '', filterMode: 'month', calMonth: thisMonth() },
+  pay: { q: '' }, bank: { q: '', _tab: 'Overview' }, cbook: { q: '' }, exp: { q: '' },
+  ledger: { type: 'supplier' }, settings: { tab: 'profile' }, reports: { tab: 'builder' }, history: { q: '' },
+  trash: { q: '', type: '', user: '', dateFrom: '', dateTo: '' }, todo: { filter: 'all' }, clv: { tier: 'all' },
+  supCompare: { cat: '' }, bankCompare: {}, doc: { q: '', catFilter: '' }, paySelectedParty: new Set(), payOwnRows: [],
+  payMode: 'cheques', payBank: { bankAccountId: '', amount: 0, method: 'Bank Transfer', reference: '', notes: '' },
+  paySupplierPreselect: ''
+};
+window.ui = ui;
+
 
 const daysBetween = (a, b) => {
   if (!a || !b) return Infinity;
@@ -9964,7 +10034,7 @@ function logReportExecution(){
   if(db.reportHistory.length > 100) db.reportHistory = db.reportHistory.slice(-100);
   save();
 }
-window.logReportExecution = logReportHistory;
+window.logReportExecution = logReportExecution;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 END OF PART 9
@@ -16304,41 +16374,14 @@ PART 15 — UI FRAMEWORK · ROUTER · NAV · TOPBAR · FAB · COMMAND PALETTE ·
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 1 — UI STATE OBJECT
 ═══════════════════════════════════════════════════════════════════════════ */
-const ui = {
-  view: 'dashboard',
-  dashboard: { mode: 'classic' },
-  sup: { q: '', catFilter: '', _tab: 'Overview' },
-  cust: { q: '', reliability: 'all', _tab: 'Overview' },
-  pur: { q: '' },
-  rcp: { q: '' },
-  cc: { tab: 'In Hand', customerFilter: '' },
-  own: { tab: 'Overview', subTab: 'Available', month: thisMonth(), from: '', to: '', filterMode: 'month', calMonth: thisMonth() },
-  pay: { q: '' },
-  bank: { q: '', _tab: 'Overview' },
-  cbook: { q: '' },
-  exp: { q: '' },
-  ledger: { type: 'supplier' },
-  settings: { tab: 'profile' },
-  reports: { tab: 'builder' },
-  history: { q: '' },
-  trash: { q: '', type: '', user: '', dateFrom: '', dateTo: '' },
-  todo: { filter: 'all' },
-  clv: { tier: 'all' },
-  supCompare: { cat: '' },
-  bankCompare: {},
-  doc: { q: '', catFilter: '' },
-  paySelectedParty: new Set(),
-  payOwnRows: [],
-  payMode: 'cheques',
-  payBank: { bankAccountId: '', amount: 0, method: 'Bank Transfer', reference: '', notes: '' },
-  paySupplierPreselect: ''
-};
+var ui = window.ui;
 window.ui = ui;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 2 — VIEWS REGISTRY + TITLES MAP
 ═══════════════════════════════════════════════════════════════════════════ */
-const views = {};
+var views = window.views || {};
+window.views = views;
 const titles = {
   dashboard: 'Dashboard',
   customdash: 'Custom Dashboard',

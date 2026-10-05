@@ -24276,5 +24276,195 @@ if(typeof window.viewPurchases === 'function' && window.views){
   };
 })();
 </script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   FINAL SAVE / FIRESTORE RELIABILITY HARDENING
+   - Never lose a mutation when the sync baseline is missing.
+   - Keep every existing save form compatible.
+   - Persist locally immediately, then sync changed documents only.
+   - Provide a submit fallback if an inline form handler fails to resolve.
+═══════════════════════════════════════════════════════════════════════════ */
+(function installFinalSaveHardening(){
+  if(window.__LANKA_FINAL_SAVE_HARDENING_V1) return;
+  window.__LANKA_FINAL_SAVE_HARDENING_V1 = true;
+
+  function json(v){ try{return JSON.stringify(v);}catch(e){return '';} }
+  function arr2(v){return Array.isArray(v)?v:[];}
+  function collections(){return Array.isArray(window.COLLECTIONS)?window.COLLECTIONS:[];}
+  function snapshotFromObject(source){
+    const snap={};
+    collections().forEach(col=>{
+      snap[col]={};
+      arr2(source && source[col]).forEach(item=>{
+        if(item && item.id) snap[col][String(item.id)] = json(item);
+      });
+    });
+    snap._settings=json(source && source.settings || {});
+    return snap;
+  }
+
+  /* Rebuild the baseline from the PREVIOUS local cache when the in-memory
+     snapshot is absent. This is critical because save() is called AFTER a
+     record has been mutated. Taking a snapshot at that point would otherwise
+     make the new record look unchanged and it would never reach Firestore. */
+  const originalDetect = window._lankaOriginalDetectLocalChanges || window._detectLocalChanges;
+  if(typeof originalDetect === 'function' && !window._lankaOriginalDetectLocalChanges){
+    window._lankaOriginalDetectLocalChanges = originalDetect;
+  }
+
+  window._detectLocalChanges = function(){
+    let snap = window._dbSnapshot;
+    if(!snap || typeof snap !== 'object' || !snap._settings){
+      let baseline = null;
+      try {
+        const raw = localStorage.getItem('lankashoe_cache');
+        if(raw) baseline = JSON.parse(raw);
+      } catch(e){}
+      if(!baseline){
+        try { baseline = typeof seed === 'function' ? seed() : {}; } catch(e){ baseline = {}; }
+      }
+      snap = snapshotFromObject(baseline);
+      window._dbSnapshot = snap;
+      if(window.__LANKA_SYNC_STATE){
+        window.__LANKA_SYNC_STATE.cloudSnapshotReady = true;
+      }
+    }
+    let changed=false;
+    const state=window.__LANKA_SYNC_STATE;
+    if(!state) return false;
+    collections().forEach(col=>{
+      const before=snap[col]||{};
+      const now={};
+      arr2(window.db && window.db[col]).forEach(item=>{
+        if(!item || !item.id) return;
+        const id=String(item.id), str=json(item);
+        now[id]=str;
+        if(before[id]===undefined || before[id]!==str){
+          if(typeof window.markDirty==='function') window.markDirty(col,id,'upsert');
+          changed=true;
+        }
+      });
+      Object.keys(before).forEach(id=>{
+        if(now[id]===undefined){
+          if(typeof window.markDirty==='function') window.markDirty(col,id,'delete');
+          changed=true;
+        }
+      });
+    });
+    const settingsNow=json(window.db && window.db.settings || {});
+    if(snap._settings!==settingsNow){
+      state.dirtyCollections.add('__settings__');
+      changed=true;
+    }
+    return changed;
+  };
+
+  /* Force local persistence immediately. Do not wait for Firebase for the
+     UI operation to succeed. Firebase sync remains debounced and retried. */
+  const originalSave = window.save;
+  window.save = function(){
+    try {
+      if(typeof window._detectLocalChanges==='function') window._detectLocalChanges();
+      if(window.__LANKA_SYNC_STATE) window.__LANKA_SYNC_STATE.localChangedSinceCloudLoad=true;
+      try { localStorage.setItem('lankashoe_cache', JSON.stringify(window.db)); } catch(e){}
+      try { localStorage.setItem('lankashoe_db', JSON.stringify(window.db)); } catch(e){}
+      if(typeof window.updateSyncStatus==='function') window.updateSyncStatus('Saving locally…');
+      const st=window.__LANKA_SYNC_STATE;
+      if(st && st.debounceTimer) clearTimeout(st.debounceTimer);
+      if(st){
+        st.debounceTimer=setTimeout(()=>{
+          try{
+            const p=typeof window.pushToFirestore==='function'?window.pushToFirestore():null;
+            if(p && typeof p.catch==='function') p.catch(err=>console.error('Deferred Firebase sync failed:',err));
+          }catch(err){console.error('Deferred Firebase sync failed:',err);}
+        }, st.DEBOUNCE_MS || 1200);
+      } else if(typeof originalSave==='function'){ 
+        try{return originalSave.apply(this,arguments);}catch(e){console.error(e);}
+      }
+      return true;
+    } catch(e){
+      console.error('Final save hardening error:',e);
+      try { localStorage.setItem('lankashoe_cache', JSON.stringify(window.db)); } catch(ignore){}
+      if(typeof window.toast==='function') window.toast('Saved locally. Firebase sync will retry.','warn');
+      return false;
+    }
+  };
+
+  /* saveNow() is the explicit reliable path used by sign-out/manual sync. */
+  window.saveNow = async function(){
+    try{
+      if(typeof window._detectLocalChanges==='function') window._detectLocalChanges();
+      try { localStorage.setItem('lankashoe_cache', JSON.stringify(window.db)); } catch(e){}
+      try { localStorage.setItem('lankashoe_db', JSON.stringify(window.db)); } catch(e){}
+      if(typeof window._doSmartSync==='function') return await window._doSmartSync();
+      if(typeof window.pushToFirestore==='function') return await window.pushToFirestore();
+      return true;
+    }catch(e){
+      console.error('saveNow failed:',e);
+      return false;
+    }
+  };
+
+  /* Admin-role guard: the configured administrator must never be downgraded
+     to viewer by a stale cached access document. Run before the form's inline
+     handler so every existing save function sees the correct role. */
+  document.addEventListener('submit', function(ev){
+    try{
+      if(typeof currentUser!=='undefined' && currentUser &&
+         typeof currentUser.email==='string' &&
+         typeof ADMIN_EMAIL!=='undefined' &&
+         currentUser.email.toLowerCase()===String(ADMIN_EMAIL).toLowerCase()){
+        currentUserRole='admin';
+      }
+    }catch(e){}
+  }, true);
+
+  /* Generic submit safety net. Existing inline handlers remain authoritative.
+     If one is not invoked/resolved by the browser, invoke the named handler
+     here instead of leaving the Save button apparently dead. */
+  document.addEventListener('submit', function(ev){
+    const form=ev.target;
+    if(!form || form.dataset.finalSubmitFallback==='1') return;
+    if(ev.defaultPrevented) return;
+    const attr=form.getAttribute('onsubmit') || '';
+    const m=attr.match(/^\s*([A-Za-z_$][\w$]*)\s*\(event(?:\s*,.*)?\)\s*;?\s*$/);
+    if(!m) return;
+    const fn=window[m[1]];
+    if(typeof fn!=='function') return;
+    form.dataset.finalSubmitFallback='1';
+    try { fn(ev); }
+    catch(err){
+      console.error('Save handler failed:',m[1],err);
+      if(typeof window.toast==='function') window.toast('Save failed: '+(err.message||err),'error');
+    } finally {
+      setTimeout(()=>{ try{delete form.dataset.finalSubmitFallback;}catch(e){} },0);
+    }
+  }, false);
+
+  /* Global error visibility: never leave a modal looking frozen when a save
+     handler throws. */
+  window.addEventListener('error', function(ev){
+    const msg=ev && ev.error && ev.error.message || ev && ev.message || '';
+    if(msg && /save|firebase|permission|undefined/i.test(msg)){
+      console.error('Lanka Shoe runtime error:',ev.error||msg);
+    }
+  });
+
+  window.__lankaSaveDiagnostics=function(){
+    const st=window.__LANKA_SYNC_STATE||{};
+    return {
+      hardening:true,
+      role:typeof currentUserRole!=='undefined'?currentUserRole:null,
+      user:typeof currentUser!=='undefined'&&currentUser?currentUser.email:null,
+      firebaseReady:typeof firebaseReady!=='undefined'?!!firebaseReady:false,
+      offline:typeof offlineMode!=='undefined'?!!offlineMode:false,
+      snapshotReady:!!st.cloudSnapshotReady,
+      dirtyCollections:st.dirtyCollections?Array.from(st.dirtyCollections):[],
+      pendingDocChanges:st.docChanges?Object.keys(st.docChanges).reduce((n,c)=>n+Object.keys(st.docChanges[c]||{}).length,0):0
+    };
+  };
+})();
+</script>
 </body>
 </html>

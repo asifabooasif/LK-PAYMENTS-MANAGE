@@ -1699,190 +1699,236 @@ const chequeReliability = (entityId, type) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-SECTION 5 — 🔥 NEW SMART SYNC ENGINE (Replaces old pushToFirestore)
+SECTION 5 — CANONICAL LOW-QUOTA FIRESTORE SYNC ENGINE
 
-  🔧 BUG FIX #1: The old pushToFirestore() read ALL docs from ALL
-     collections, deleted them ALL, then re-wrote them ALL on every
-     single save(). One tiny edit = thousands of Firestore ops = quota 💥
-
-  🔧 BUG FIX #3: save() fired on every keystroke with no debouncing.
-
-  NEW approach:
-  • Track which collections are dirty (changed)
-  • Only sync changed collections
-  • Use WriteBatch for atomic, efficient writes
-  • Debounce saves (1.5s) to batch rapid edits
-  • Track individual doc changes for granular sync
-  • Fallback to full sync only when needed
+  IMPORTANT:
+  • Never read a whole Firestore collection just to discover what changed.
+  • Never rewrite an entire collection on a normal save.
+  • Detect changed/deleted documents locally from the last cloud snapshot.
+  • Write only changed documents in batches.
+  • Keep one tiny sync metadata document so a new session can tell whether
+    another device changed anything without downloading every collection.
+  • Payments, bank transactions, receipts, expenses and every other local
+    mutation are detected automatically even when an older save function forgot
+    to call markDirty().
 ═══════════════════════════════════════════════════════════════════════════ */
+const SYNC_META_DOC_PATH = ROOT + '/syncMeta';
+const SYNC_META_CACHE_KEY = 'lankashoe_sync_meta';
+const SYNC_ENGINE_VERSION = 4;
 
 const _syncState = {
   dirtyCollections: new Set(),
-  pendingSave: false,
-  lastSyncTime: null,
-  syncInProgress: false,
-  fullSyncNeeded: false,
-  docChanges: {},  /* { collection: { docId: 'upsert'|'delete' } } */
+  docChanges: {},
   debounceTimer: null,
-  DEBOUNCE_MS: 1500,
-  MAX_BATCH_SIZE: 400,
-  initialized: false
+  DEBOUNCE_MS: 1200,
+  MAX_BATCH_SIZE: 450,
+  syncInProgress: false,
+  initialized: false,
+  cloudSnapshotReady: false,
+  localChangedSinceCloudLoad: false,
+  remoteMeta: null
 };
+window.__LANKA_SYNC_STATE = _syncState;
 
-/* Mark a collection as dirty */
-function markDirty(collection, docId, action) {
+function _syncClone(v){
+  try { return JSON.parse(JSON.stringify(v)); } catch(e){ return null; }
+}
+function _syncJson(v){
+  try { return JSON.stringify(v); } catch(e){ return ''; }
+}
+function _syncDocKey(v){ return v && v.id ? String(v.id) : ''; }
+function _syncCollections(){ return Array.isArray(COLLECTIONS) ? COLLECTIONS : []; }
+function _syncMetaRead(){
+  try { return JSON.parse(localStorage.getItem(SYNC_META_CACHE_KEY) || 'null'); } catch(e){ return null; }
+}
+function _syncMetaWrite(meta){
+  try { localStorage.setItem(SYNC_META_CACHE_KEY, JSON.stringify(meta || {})); } catch(e){}
+}
+
+/* Public dirty marker retained for all existing feature code. It is now only
+   an optimization hint; save() also performs a complete local diff so missing
+   markDirty() calls can never lose a payment or other record. */
+function markDirty(collection, docId, action){
+  if(!collection) return;
   _syncState.dirtyCollections.add(collection);
-  if (docId) {
-    if (!_syncState.docChanges[collection]) _syncState.docChanges[collection] = {};
-    _syncState.docChanges[collection][docId] = action || 'upsert';
+  if(docId){
+    if(!_syncState.docChanges[collection]) _syncState.docChanges[collection] = {};
+    _syncState.docChanges[collection][String(docId)] = action || 'upsert';
   }
 }
+window.markDirty = markDirty;
 
-/* ── Debounced save ─────────────────────────────────────────────────── */
-function save() {
-  /* 🔧 BUG FIX #3: Debounce rapid saves */
-  if (_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
-  _syncState.debounceTimer = setTimeout(() => {
-    _doSmartSync();
-  }, _syncState.DEBOUNCE_MS);
+function _captureCloudSnapshot(){
+  const snap = {};
+  _syncCollections().forEach(col => {
+    snap[col] = {};
+    arr(db[col]).forEach(item => {
+      const id = _syncDocKey(item);
+      if(id) snap[col][id] = _syncJson(item);
+    });
+  });
+  snap._settings = _syncJson(db.settings || {});
+  window._dbSnapshot = snap;
+  _syncState.cloudSnapshotReady = true;
+  return snap;
+}
+window.takeSnapshot = _captureCloudSnapshot;
 
-  /* Immediate local persist */
-  try {
-    localStorage.setItem('lankashoe_db', JSON.stringify(db));
-  } catch(e) {
-    console.warn('localStorage save failed:', e);
+/* Compare current memory state with the last cloud baseline. This catches
+   mutations from legacy functions that only did db.payments.push(...), etc. */
+function _detectLocalChanges(){
+  let snap = window._dbSnapshot;
+  if(!snap || typeof snap !== 'object' || !snap._settings){
+    /* The local cache is the safest baseline until the first cloud load. */
+    snap = _captureCloudSnapshot();
+    return false;
   }
-  updateSyncStatus('Saving...');
+  let changed = false;
+  const next = {};
+  _syncCollections().forEach(col => {
+    const before = snap[col] || {};
+    const current = arr(db[col]);
+    const now = {};
+    current.forEach(item => {
+      const id = _syncDocKey(item);
+      if(!id) return;
+      const str = _syncJson(item);
+      now[id] = str;
+      if(before[id] === undefined){ markDirty(col,id,'upsert'); changed = true; }
+      else if(before[id] !== str){ markDirty(col,id,'upsert'); changed = true; }
+    });
+    Object.keys(before).forEach(id => {
+      if(now[id] === undefined){ markDirty(col,id,'delete'); changed = true; }
+    });
+    next[col] = now;
+  });
+  const settingsNow = _syncJson(db.settings || {});
+  if(snap._settings !== settingsNow){
+    _syncState.dirtyCollections.add('__settings__');
+    changed = true;
+  }
+  /* Do not replace the baseline here. It is replaced only after Firebase
+     confirms the writes, so a failed network write is retried correctly. */
+  return changed;
 }
 
-/* Force immediate sync (for critical operations) */
-function saveNow() {
-  if (_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
-  _doSmartSync();
-  try {
-    localStorage.setItem('lankashoe_db', JSON.stringify(db));
-  } catch(e) {}
+function _buildSyncMeta(previous){
+  const old = previous || {};
+  const collections = Object.assign({}, old.collections || {});
+  const now = nowISO();
+  const nextRev = Math.max(0, Number(old.rev) || 0) + 1;
+  _syncState.dirtyCollections.forEach(col => {
+    if(col === '__settings__') return;
+    collections[col] = { rev: nextRev, updatedAt: now };
+  });
+  return {
+    schema: SYNC_ENGINE_VERSION,
+    rev: nextRev,
+    updatedAt: now,
+    updatedBy: (currentUser && currentUser.email) || 'system',
+    collections
+  };
 }
 
-/* ── The smart sync ─────────────────────────────────────────────────── */
-async function _doSmartSync() {
-  if (!firestore || _syncState.syncInProgress) return;
-  if (!currentUser) return;
-  if (_syncState.dirtyCollections.size === 0 && !_syncState.fullSyncNeeded) {
+async function _writeChangedDocuments(){
+  const ops = [];
+  const changedCollections = new Set(_syncState.dirtyCollections);
+  Object.keys(_syncState.docChanges || {}).forEach(c => changedCollections.add(c));
+
+  changedCollections.forEach(col => {
+    if(col === '__settings__') return;
+    const colRef = firestore.collection(DATA_PREFIX + col);
+    const changes = _syncState.docChanges[col] || {};
+    Object.keys(changes).forEach(id => {
+      const action = changes[id];
+      const ref = colRef.doc(id);
+      if(action === 'delete'){
+        ops.push({type:'delete', ref});
+      }else{
+        const item = arr(db[col]).find(x => String(x && x.id) === String(id));
+        if(item) ops.push({type:'set', ref, data:_syncClone(item)});
+      }
+    });
+  });
+
+  /* Settings is a single canonical document at lk/settings. */
+  if(_syncState.dirtyCollections.has('__settings__') && currentUserRole === 'admin'){
+    ops.push({type:'settings', ref:firestore.doc(SETTINGS_DOC_PATH), data:_syncClone(db.settings || {})});
+  }
+
+  let written = 0;
+  for(let i=0;i<ops.length;i+=_syncState.MAX_BATCH_SIZE){
+    const batch = firestore.batch();
+    const part = ops.slice(i,i+_syncState.MAX_BATCH_SIZE);
+    part.forEach(o => {
+      if(o.type === 'delete') batch.delete(o.ref);
+      else batch.set(o.ref, o.data || {}, {merge:true});
+    });
+    await batch.commit();
+    written += part.length;
+  }
+  return written;
+}
+
+async function _doSmartSync(){
+  if(!firestore || !currentUser || offlineMode) return false;
+  if(_syncState.syncInProgress) return false;
+  _detectLocalChanges();
+  if(_syncState.dirtyCollections.size === 0 && Object.keys(_syncState.docChanges).length === 0){
     updateSyncStatus('Saved locally');
-    return;
+    return true;
   }
-
   _syncState.syncInProgress = true;
-  updateSyncStatus('Syncing...');
-
-  try {
-    if (_syncState.fullSyncNeeded) {
-      await _fullSync();
-      _syncState.fullSyncNeeded = false;
-    } else {
-      await _incrementalSync();
-    }
+  updateSyncStatus('Syncing…');
+  try{
+    const oldMeta = _syncState.remoteMeta || _syncMetaRead() || {schema:SYNC_ENGINE_VERSION,rev:0,collections:{}};
+    const written = await _writeChangedDocuments();
+    const newMeta = _buildSyncMeta(oldMeta);
+    /* One tiny metadata write per actual sync, not per record. */
+    await firestore.doc(SYNC_META_DOC_PATH).set(newMeta, {merge:true});
+    _syncState.remoteMeta = newMeta;
+    _syncMetaWrite(newMeta);
+    _captureCloudSnapshot();
     _syncState.dirtyCollections.clear();
     _syncState.docChanges = {};
     _syncState.lastSyncTime = new Date();
+    _syncState.localChangedSinceCloudLoad = false;
     updateSyncStatus('Synced ' + new Date().toLocaleTimeString());
-  } catch(e) {
-    console.error('Sync error:', e);
+    return true;
+  }catch(e){
+    console.error('Low-quota sync failed:', e);
     updateSyncStatus('Sync failed — will retry');
-    /* Mark all dirty again for retry */
-    _syncState.fullSyncNeeded = true;
-  } finally {
+    return false;
+  }finally{
     _syncState.syncInProgress = false;
   }
 }
 
-/* ── Incremental sync: only changed collections ────────────────────── */
-async function _incrementalSync() {
-  const dirty = Array.from(_syncState.dirtyCollections);
-  if (!dirty.length) return;
-
-  for (const col of dirty) {
-    const colRef = firestore.collection(DATA_PREFIX + col);
-    const items = arr(db[col]);
-    const changes = _syncState.docChanges[col] || {};
-    const changedDocIds = Object.keys(changes);
-
-    if (changedDocIds.length > 0 && changedDocIds.length <= 20) {
-      /* 🔥 Granular: only write changed documents */
-      const batch = firestore.batch();
-      let ops = 0;
-      for (const docId of changedDocIds) {
-        const action = changes[docId];
-        const docRef = colRef.doc(docId);
-        if (action === 'delete') {
-          batch.delete(docRef);
-        } else {
-          const item = items.find(x => x.id === docId);
-          if (item) {
-            const data = Object.assign({}, item);
-            data._syncedAt = nowISO();
-            batch.set(docRef, data, { merge: true });
-          }
-        }
-        ops++;
-        if (ops >= _syncState.MAX_BATCH_SIZE) {
-          await batch.commit();
-          ops = 0;
-        }
-      }
-      if (ops > 0) await batch.commit();
-    } else {
-      /* Collection-level: rewrite this collection only (not ALL collections) */
-      await _syncSingleCollection(col, colRef, items);
-    }
-  }
+function save(){
+  _detectLocalChanges();
+  _syncState.localChangedSinceCloudLoad = true;
+  if(_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
+  try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+  try { localStorage.setItem('lankashoe_db', JSON.stringify(db)); } catch(e){}
+  updateSyncStatus('Saving locally…');
+  _syncState.debounceTimer = setTimeout(() => { _doSmartSync(); }, _syncState.DEBOUNCE_MS);
 }
+window.save = save;
 
-/* ── Sync a single collection efficiently ──────────────────────────── */
-async function _syncSingleCollection(colName, colRef, items) {
-  /* Get existing doc IDs from Firestore */
-  const snap = await colRef.get();
-  const existingIds = new Set();
-  snap.forEach(doc => existingIds.add(doc.id));
-
-  const newIds = new Set(items.map(x => x.id));
-  const batch = firestore.batch();
-  let ops = 0;
-
-  /* Delete docs that no longer exist locally */
-  existingIds.forEach(id => {
-    if (!newIds.has(id)) {
-      batch.delete(colRef.doc(id));
-      ops++;
-    }
-  });
-
-  /* Upsert all current items */
-  items.forEach(item => {
-    const data = Object.assign({}, item);
-    data._syncedAt = nowISO();
-    batch.set(colRef.doc(item.id), data, { merge: true });
-    ops++;
-    if (ops >= _syncState.MAX_BATCH_SIZE) {
-      /* Can't await inside forEach, so we commit what we have */
-    }
-  });
-
-  if (ops > 0) await batch.commit();
+async function saveNow(){
+  if(_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
+  _detectLocalChanges();
+  try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+  try { localStorage.setItem('lankashoe_db', JSON.stringify(db)); } catch(e){}
+  return _doSmartSync();
 }
+window.saveNow = saveNow;
 
-/* ── Full sync (fallback, only on first load or error recovery) ────── */
-async function _fullSync() {
-  for (const col of COLLECTIONS) {
-    const colRef = firestore.collection(DATA_PREFIX + col);
-    const items = arr(db[col]);
-    await _syncSingleCollection(col, colRef, items);
-  }
-  /* Sync settings separately */
-  const settingsRef = firestore.collection(DATA_PREFIX + 'settings').doc('main');
-  await settingsRef.set(Object.assign({}, db.settings, { _syncedAt: nowISO() }), { merge: true });
-}
+/* Manual sync is deliberately write-only for changed docs. It performs NO
+   collection reads. */
+window.pushToFirestore = async function(){
+  return _doSmartSync();
+};
 
 /* ── Load from Firestore (parallel, chunked) ─────────────────────────
    🔧 BUG FIX #7: OLD code loaded collections sequentially (one by one).
@@ -1890,51 +1936,109 @@ async function _fullSync() {
 ───────────────────────────────────────────────────────────────────────── */
 async function loadFromFirestore() {
   if (!firestore || !currentUser) return false;
-
-  updateSyncStatus('Loading from cloud...');
-
+  updateSyncStatus('Checking cloud…');
   try {
-    /* 1. Load settings first */
+    /* One small metadata read replaces the previous 37 collection reads on
+       every login. Firestore collections are fetched only on first load or
+       when their revision changed on another device. */
+    let remoteMeta = null;
+    let metaReadOk = true;
     try {
-      const sDoc = await firestore.collection(DATA_PREFIX + 'settings').doc('main').get();
-      if (sDoc.exists) {
-        db.settings = Object.assign(defaultSettings(), sDoc.data() || {});
-      }
-    } catch(e) {
-      window.__dbgWarn && window.__dbgWarn('[settings] ' + (e.code || e.message), 'LOAD');
+      const m = await firestore.doc(SYNC_META_DOC_PATH).get();
+      remoteMeta = m.exists ? (m.data() || {}) : null;
+    } catch(e){
+      metaReadOk = false;
+      remoteMeta = null;
+      window.__dbgWarn && window.__dbgWarn('syncMeta: ' + (e.code || e.message), 'FB');
     }
 
-    /* 2. Collections — parallel in chunks of 8 (avoid rate limit) */
-    const CHUNK = 8;
-    let loaded = 0;
-    for (let i = 0; i < COLLECTIONS.length; i += CHUNK) {
-      const chunk = COLLECTIONS.slice(i, i + CHUNK);
-      await Promise.all(chunk.map(col => new Promise(resolve => {
-        firestore.collection(DATA_PREFIX + col).get().then(snap => {
-          if (!snap.empty) {
-            const items = [];
+    /* A transient metadata read failure must NEVER trigger a 7k+ document
+       download. Keep the local cache and retry on the next explicit sync. */
+    if(!metaReadOk){
+      _syncState.initialized = true;
+      _captureCloudSnapshot();
+      updateSyncStatus('Cloud check failed — using local cache');
+      return true;
+    }
+
+    const localMeta = _syncMetaRead();
+    const cacheExists = !!localMeta && !!window._dbSnapshot;
+    const needsInitialLoad = !cacheExists;
+    const changedCollections = [];
+
+    if(needsInitialLoad || !remoteMeta){
+      _syncCollections().forEach(c => changedCollections.push(c));
+    } else {
+      const remoteCols = remoteMeta.collections || {};
+      const localCols = localMeta.collections || {};
+      _syncCollections().forEach(c => {
+        const rr = remoteCols[c] || {};
+        const lr = localCols[c] || {};
+        if(String(rr.rev || '') !== String(lr.rev || '') || String(rr.updatedAt || '') !== String(lr.updatedAt || '')){
+          changedCollections.push(c);
+        }
+      });
+    }
+
+    /* First-time migration for older installs: load all existing data once.
+       After that the metadata document prevents repeated full downloads. */
+    if(changedCollections.length){
+      const CHUNK = 8;
+      let loaded = 0;
+      for(let i=0;i<changedCollections.length;i+=CHUNK){
+        const chunk = changedCollections.slice(i,i+CHUNK);
+        await Promise.all(chunk.map(col => firestore.collection(DATA_PREFIX + col).get()
+          .then(snap => {
+            const items=[];
             snap.forEach(doc => {
-              const d = doc.data() || {};
-              d.id = d.id || doc.id;
+              const d=doc.data() || {};
+              d.id=d.id || doc.id;
               items.push(d);
             });
-            db[col] = items;
-          }
-          loaded++;
-          resolve();
-        }).catch(e => {
-          window.__dbgWarn && window.__dbgWarn('[' + col + '] ' + (e.code || e.message), 'LOAD');
-          resolve();
-        });
-      })));
+            db[col]=items;
+            loaded++;
+          })
+          .catch(e => {
+            window.__dbgWarn && window.__dbgWarn('['+DATA_PREFIX+col+'] '+(e.code||e.message),'LOAD');
+          })));
+      }
+      /* Settings is separate and only read when the metadata says cloud data
+         changed or during the initial load. */
+      try{
+        const sDoc = await firestore.doc(SETTINGS_DOC_PATH).get();
+        if(sDoc.exists) db.settings = Object.assign(defaultSettings(), sDoc.data() || {});
+      }catch(e){
+        window.__dbgWarn && window.__dbgWarn('[settings] '+(e.code||e.message),'LOAD');
+      }
+      normalizeDb();
+      if(typeof window.ensureEntityOpeningFields === 'function') window.ensureEntityOpeningFields();
+      if(typeof window.migrateExplicitOpeningPurchaseRecords === 'function') window.migrateExplicitOpeningPurchaseRecords();
+      try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
+      if(remoteMeta) _syncMetaWrite(remoteMeta);
+      else {
+        /* No metadata existed in the legacy database. Establish it only after
+           the one-time read, without rewriting any records. */
+        remoteMeta = {
+          schema: SYNC_ENGINE_VERSION,
+          rev: 1,
+          updatedAt: nowISO(),
+          updatedBy: (currentUser && currentUser.email) || 'system',
+          collections: {}
+        };
+        _syncCollections().forEach(c => remoteMeta.collections[c] = {rev:1,updatedAt:remoteMeta.updatedAt});
+        try { await firestore.doc(SYNC_META_DOC_PATH).set(remoteMeta,{merge:true}); } catch(e){}
+        _syncMetaWrite(remoteMeta);
+      }
     }
 
+    _syncState.remoteMeta = remoteMeta || localMeta || null;
     _syncState.initialized = true;
-    updateSyncStatus('Loaded from cloud');
+    _captureCloudSnapshot();
+    updateSyncStatus(changedCollections.length ? ('Updated '+changedCollections.length+' collection(s)') : 'Cloud up to date');
     return true;
-  } catch(e) {
-    console.error('Load failed:', e);
-    updateSyncStatus('Cloud load failed — using local');
+  } catch(e){
+    console.error('Low-quota load failed:',e);
+    updateSyncStatus('Cloud load failed — using local cache');
     return false;
   }
 }
@@ -3351,6 +3455,14 @@ async function initFirebase(){
     firestore = firebase.firestore(firebaseApp);
     try { storage = firebase.storage(firebaseApp); } catch(e){}
     try { firestore.settings({ merge: true }); } catch(e){}
+    /* Use the browser's Firestore offline cache when supported. This reduces
+       repeated network reads after reloads; failures are harmless and the app
+       continues with the normal online client. */
+    try {
+      if(typeof firestore.enablePersistence === 'function'){
+        await firestore.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+      }
+    } catch(e){}
     firebaseReady = true;
     window.__dbgOk && window.__dbgOk('Firebase ready • project=' + firebaseConfig.projectId, 'FB');
     return true;
@@ -3850,6 +3962,13 @@ async function loadLocalCache(){
         }
       } catch(e){}
     }
+    /* Restore the last known cloud revision so login does not trigger a full
+       Firestore download when nothing changed. */
+    try {
+      const m = JSON.parse(localStorage.getItem(SYNC_META_CACHE_KEY) || 'null');
+      if(m) _syncState.remoteMeta = m;
+    } catch(e){}
+    if(typeof _captureCloudSnapshot === 'function') _captureCloudSnapshot();
   } catch(e){}
 }
 
@@ -17069,7 +17188,7 @@ SECTION 12 — KPI DEFINITIONS + PICKER
 ═══════════════════════════════════════════════════════════════════════════ */
 const KPI_DEFS = {
   cashBanks: { label:'Total Cash in Banks', ico:'🏛️',
-    compute: () => money(sum(arr(db.bankAccounts).map(b => bankBalance(b.id)), 0)),
+    compute: () => money(sum(arr(db.bankAccounts).map(b => typeof window.bankBalance === 'function' ? window.bankBalance(b.id) : bankBalance(b.id)), 0)),
     sub: () => arr(db.bankAccounts).length + ' bank(s)' },
   totalPayable: { label:'Total Payable', ico:'💸',
     compute: () => moneyPlain(totalPayable()),
@@ -24029,6 +24148,132 @@ if(typeof window.viewPurchases === 'function' && window.views){
   }catch(e){ console.warn('Opening migration skipped:',e); }
 
   if(window.__dbgOk) window.__dbgOk('Canonical financial engine installed: bank deduplication + opening balances + purchase classification + supplier/customer balances','FINANCE');
+})();
+</script>
+
+<script id="final-quota-and-payment-safety">
+(function(){
+  'use strict';
+  if(window.__LANKA_FINAL_QUOTA_PAYMENT_SAFETY) return;
+  window.__LANKA_FINAL_QUOTA_PAYMENT_SAFETY = true;
+
+  /* Canonical bank resolver. Existing data from older versions used several
+     spellings for the account reference; normalize them for calculations only. */
+  const A=v=>Array.isArray(v)?v:[];
+  const N=v=>{const x=parseFloat(v);return Number.isFinite(x)?x:0;};
+  const S=v=>String(v||'').trim().toLowerCase();
+  const excluded=v=>['rejected','reversed','cancelled','canceled','void','archived'].includes(S(v&&v.status));
+  const bankRef=t=>t && (t.bankAccountId || t.bankId || t.accountId || t.bankAccount || '');
+  const bankIdOf=b=>b && b.id;
+
+  function finalBankBalance(bankId, asOf){
+    const bank=A(db.bankAccounts).find(b=>b.id===bankId);
+    if(!bank) return 0;
+    const okDate=d=>!asOf||!d||String(d)<=String(asOf);
+    let bal=N(bank.openingBalance);
+    let hasLedger=false;
+
+    A(db.bankTransactions).forEach(tx=>{
+      if(String(bankRef(tx))!==String(bankId)||!okDate(tx.date)||excluded(tx)) return;
+      const amount=Math.abs(N(tx.amount)); if(!amount)return;
+      hasLedger=true;
+      const t=S(tx.type), st=S(tx.status);
+      if(['deposit','credit','transfer_in','cash_deposit','bank_deposit','receipt_deposit'].includes(t)) bal+=amount;
+      else if(['withdrawal','debit','transfer_out','bank_fee','expense'].includes(t)) bal-=amount;
+      else if(['cheque_deduction','cheque_issued'].includes(t)){
+        if(['approved','deducted','cleared','settled','completed'].includes(st)) bal-=amount;
+        else if(t==='cheque_issued'){
+          const leaf=A(db.chequeLeaves).find(l=>l.id===tx.chequeId);
+          if(leaf && ['cleared','settled','completed'].includes(S(leaf.status))) bal-=amount;
+        }
+      }
+    });
+
+    const hasReceiptTx=r=>A(db.bankTransactions).some(t=>String(t.receiptId||'')===String(r.id)&&String(bankRef(t))===String(bankId)&&!excluded(t));
+    const hasPaymentTx=p=>A(db.bankTransactions).some(t=>String(t.paymentId||'')===String(p.id)&&String(bankRef(t))===String(bankId)&&!excluded(t));
+    const hasExpenseTx=e=>A(db.bankTransactions).some(t=>String(t.expenseId||'')===String(e.id)&&String(bankRef(t))===String(bankId)&&!excluded(t));
+
+    A(db.receipts).forEach(r=>{
+      if(String(bankRef(r))!==String(bankId)||!okDate(r.date)||excluded(r)||S(r.method)==='cheque')return;
+      if(!hasReceiptTx(r)){hasLedger=true;bal+=Math.abs(N(r.amount));}
+    });
+    A(db.payments).forEach(p=>{
+      const bid=p.bankAccountId || (p.bankPayment&&p.bankPayment.bankAccountId);
+      if(String(bid)!==String(bankId)||!okDate(p.date)||excluded(p)||p.fullyReversed)return;
+      const amount=N(p.bankAmount || (p.bankPayment&&p.bankPayment.amount));
+      if(amount>0&&!hasPaymentTx(p)){hasLedger=true;bal-=Math.abs(amount);}
+    });
+    A(db.expenses).forEach(e=>{
+      if(String(bankRef(e))!==String(bankId)||!okDate(e.date)||excluded(e))return;
+      if(!hasExpenseTx(e)){hasLedger=true;bal-=Math.abs(N(e.amount));}
+    });
+    A(db.bankFees).forEach(f=>{
+      if(String(bankRef(f))!==String(bankId)||!okDate(f.date)||excluded(f))return;
+      const exists=A(db.bankTransactions).some(t=>String(bankRef(t))===String(bankId)&&S(t.type)==='bank_fee'&&!excluded(t)&&String(t.date||'')===String(f.date||'')&&Math.abs(N(t.amount)-N(f.amount))<.005);
+      if(!exists){hasLedger=true;bal-=Math.abs(N(f.amount));}
+    });
+
+    /* Legacy installations sometimes kept the computed current balance on the
+       account itself. Use it only when there is no ledger data, so it cannot
+       double count a real transaction ledger. */
+    if(!hasLedger && N(bank.openingBalance)===0){
+      const legacy=N(bank.currentBalance!==undefined?bank.currentBalance:(bank.balance!==undefined?bank.balance:bank.availableBalance));
+      if(legacy!==0) return legacy;
+    }
+    return bal;
+  }
+  window.bankBalance=finalBankBalance;
+  window.bankAccountsTotal=function(asOf){return A(db.bankAccounts).reduce((t,b)=>t+finalBankBalance(b.id,asOf),0);};
+  if(window.KPI_DEFS && window.KPI_DEFS.cashBanks){
+    window.KPI_DEFS.cashBanks.compute=function(){return money(window.bankAccountsTotal());};
+  }
+
+  /* Ensure the payment collection and all related collections are detected by
+     the canonical save engine even if an old payment handler forgot markDirty. */
+  const oldConfirm=window.confirmAndSavePayment;
+  if(typeof oldConfirm==='function' && !oldConfirm.__finalPaymentSafety){
+    const wrapped=function(){
+      const before=JSON.stringify(db.payments||[]);
+      const result=oldConfirm.apply(this,arguments);
+      /* confirmAndSavePayment is synchronous; save() performs the full diff. */
+      if(typeof save==='function' && before!==JSON.stringify(db.payments||[])){
+        /* Do not call save twice if the original handler already did. The diff
+           engine is idempotent and will simply find no new changes. */
+        try{ window.save(); }catch(e){}
+      }
+      return result;
+    };
+    wrapped.__finalPaymentSafety=true;
+    window.confirmAndSavePayment=wrapped;
+  }
+
+  /* Diagnostic helper available from the console / future admin screen. */
+  /* Expose the optimized loaders/savers so command-palette and admin tools
+     cannot accidentally call the older quota-heavy implementation. */
+  window.loadFromFirestore = loadFromFirestore;
+  window.save = save;
+  window.saveNow = saveNow;
+  window.pushToFirestore = _doSmartSync;
+
+  window.getFirebaseSyncDiagnostics=function(){
+    const st=window._dbSnapshot||{};
+    const dirty=(window.__LANKA_SYNC_STATE && window.__LANKA_SYNC_STATE.dirtyCollections)
+      || [];
+    return {
+      engineVersion: 4,
+      firebaseReady: typeof firebaseReady !== 'undefined' ? !!firebaseReady : false,
+      currentUser: typeof currentUser !== 'undefined' ? !!currentUser : false,
+      collections: typeof COLLECTIONS !== 'undefined' ? COLLECTIONS.length : 0,
+      cachedSyncMeta: (()=>{try{return JSON.parse(localStorage.getItem('lankashoe_sync_meta')||'null')}catch(e){return null}})(),
+      dirtyCollections: dirty,
+      paymentCount: A(db.payments).length,
+      bankTransactionCount: A(db.bankTransactions).length,
+      purchaseCount: A(db.purchases).length,
+      actualPurchaseCount: typeof window.actualPurchases==='function'?window.actualPurchases().length:null,
+      openingPurchaseCount: A(db.purchases).filter(p=>window.isOpeningBalanceRecord&&window.isOpeningBalanceRecord(p)).length,
+      bankTotal: typeof window.bankAccountsTotal==='function'?window.bankAccountsTotal():null
+    };
+  };
 })();
 </script>
 </body>

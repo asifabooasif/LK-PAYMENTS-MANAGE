@@ -2570,7 +2570,7 @@ function viewCategories(){
     + '</tr></thead><tbody>'
     + (arr(db.categories).length ? arr(db.categories).map(c => {
       const receipts = arr(db.receipts).filter(r => r.categoryId === c.id);
-      const purchases = arr(db.purchases).filter(p => p.categoryId === c.id);
+      const purchases = (typeof actualPurchases === 'function' ? actualPurchases() : arr(db.purchases)).filter(p => p.categoryId === c.id);
       const supCount = arr(db.suppliers).filter(s => (s.categoryId || '') === c.id).length;
       const received = sum(receipts, 'amount');
       const purchased = sum(purchases, 'amount');
@@ -2581,7 +2581,7 @@ function viewCategories(){
         + '<td class="num">' + supCount + '</td>'
         + '<td class="num">' + moneyPlain(received) + '</td>'
         + '<td class="num">' + moneyPlain(purchased) + '</td>'
-        + '<td class="num"><strong style="color:' + (profit >= 0 ? 'var(--green)' : 'var(--red)') + '">' + moneyPlain(profit) + '</strong></td>'
+        + '<td class="num"><strong style="color:' + (profit >= 0 ? 'var(--green)' : 'var(--red)') + '">' + money(profit) + '</strong></td>'
         + '</tr>';
     }).join('') : emptyRow(6, 'No categories'))
     + '</tbody></table></div></div>';
@@ -2650,7 +2650,7 @@ function categoryAnalytics(cid){
   const c = catObj(cid);
   if(!c) return null;
   const receipts = arr(db.receipts).filter(r => r.categoryId === cid);
-  const purchases = arr(db.purchases).filter(p => p.categoryId === cid);
+  const purchases = (typeof actualPurchases === 'function' ? actualPurchases() : arr(db.purchases)).filter(p => p.categoryId === cid);
   const catSuppliers = arr(db.suppliers).filter(s => (s.categoryId || '') === cid);
   const catCheques = arr(db.customerCheques).filter(cq => cq.categoryId === cid);
   const months = lastMonths(12);
@@ -2702,7 +2702,7 @@ function showCategoryAnalytics(cid){
     + kpiCard('Received', moneyPlain(t.received), a.receipts.length + ' receipts', { small: true })
     + kpiCard('Purchased', moneyPlain(t.purchaseValue), a.purchases.length + ' purchases', { small: true })
     + '<div class="kpi"><div class="k-top"><span class="k-label">Profit / Margin</span></div>'
-    + '<div class="k-value sm" style="color:' + profitColor + '">' + moneyPlain(t.profit) + '</div>'
+    + '<div class="k-value sm" style="color:' + profitColor + '">' + money(t.profit) + '</div>'
     + '<div class="k-sub">' + (t.received > 0 ? ((t.profit / t.received) * 100).toFixed(1) + '% margin' : '—') + '</div></div>'
     + '<div class="kpi"><div class="k-top"><span class="k-label">Bounce Rate</span></div>'
     + '<div class="k-value sm" style="color:' + bounceColor + '">' + t.bounceRate.toFixed(1) + '%</div>'
@@ -22976,7 +22976,7 @@ Purpose:
 
   function correctedCustomerBalance(id){
     const c = safeArr(db.customers).find(x => x.id === id);
-    let bal = c ? n(c.openingBalance) : 0;
+    let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance)) : 0;
     /* Opening balance is kept separate from cheque activity. The existing
        cheque model treats bounced cheque amounts as money owed to the shop. */
     safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
@@ -23064,7 +23064,7 @@ Purpose:
     const c=safeArr(db.customers).find(x=>x.id===id);
     if(!c)return {rows:[],balance:0};
     const rows=[];
-    if(n(c.openingBalance)!==0) rows.push({date:c.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:n(c.openingBalance),credit:0,balance:0,isOpeningBalance:true});
+    if(n(c.openingBalance)!==0) { const ob = String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance); rows.push({date:c.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:Math.max(0,ob),credit:Math.max(0,-ob),balance:0,isOpeningBalance:true}); }
     safeArr(db.receipts).filter(r=>r.customerId===id).forEach(r=>rows.push({date:r.date||todaySafe(),type:'Receipt',ref:r.reference||r.id,debit:0,credit:n(r.amount),balance:0,receiptId:r.id}));
     safeArr(db.customerCheques).filter(q=>q.customerId===id).forEach(q=>rows.push({date:q.date||todaySafe(),type:'Cheque '+(q.status||''),ref:q.chequeNo||q.id,debit:q.status==='Bounced'?n(q.amount):0,credit:0,balance:0,chequeId:q.id}));
     safeArr(db.journals).filter(j=>j.entityType==='customer'&&j.entityId===id).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
@@ -23316,6 +23316,417 @@ Purpose:
   if(window.__dbgOk)window.__dbgOk('Deep data correction layer installed: opening balances, ledgers, editing and admin delete controls','DATA-FIX');
 })();
 
+</script>
+
+<script id="missing-runtime-functions-fix">
+/* Runtime helper restoration: these helpers are required by existing views/details.
+   They were accidentally omitted during the previous rewrite. */
+function customerChequeSummary(cid){
+  const all = arr(db.customerCheques).filter(cq => cq.customerId === cid);
+  const inHand  = all.filter(c => c.status === 'In Hand');
+  const issued  = all.filter(c => c.status === 'Issued');
+  const cleared = all.filter(c => c.status === 'Cleared');
+  const bounced = all.filter(c => c.status === 'Bounced');
+  const stopped = all.filter(c => c.status === 'Stopped');
+  return {
+    total:   { count: all.length,     value: sum(all, 'amount') },
+    inHand:  { count: inHand.length,  value: sum(inHand, 'amount') },
+    issued:  { count: issued.length,  value: sum(issued, 'amount') },
+    cleared: { count: cleared.length, value: sum(cleared, 'amount') },
+    bounced: { count: bounced.length, value: sum(bounced, 'amount') },
+    stopped: { count: stopped.length, value: sum(stopped, 'amount') },
+    all,
+    byStatus: { inHand, issued, cleared, bounced, stopped }
+  };
+}
+window.customerChequeSummary = customerChequeSummary;
+
+function customerReliability(cid){
+  const s = customerChequeSummary(cid);
+  const resolved = s.cleared.count + s.bounced.count;
+  if(resolved < 3) return { score: 0, label: 'New', cls: 'new' };
+  const pct = (s.cleared.count / resolved) * 100;
+  if(pct >= 90) return { score: pct, label: 'Trusted', cls: 'trusted' };
+  if(pct >= 70) return { score: pct, label: 'Watch', cls: 'watch' };
+  return { score: pct, label: 'Risky', cls: 'risky' };
+}
+window.customerReliability = customerReliability;
+
+function renderTagPills(kind, id){
+  const tags = getRecordTags(kind, id);
+  if(!tags.length) return '';
+  return tags.map(t => {
+    const cls = /vip|loyal|preferred|reliable/i.test(t) ? 'green'
+              : /risky|blacklist|slow/i.test(t) ? 'red'
+              : /watch|priority|discount/i.test(t) ? 'amber'
+              : 'gray';
+    return '<span class="tag-pill tag-' + cls + '">' + esc(t) + '</span>';
+  }).join('');
+}
+window.renderTagPills = renderTagPills;
+
+function getRecordTags(kind, id){
+  if(!db.recordTags) db.recordTags = {};
+  if(!db.recordTags[kind]) db.recordTags[kind] = {};
+  return arr(db.recordTags[kind][id]);
+}
+window.getRecordTags = getRecordTags;
+
+function setRecordTags(kind, id, tags){
+  if(!db.recordTags) db.recordTags = {};
+  if(!db.recordTags[kind]) db.recordTags[kind] = {};
+  db.recordTags[kind][id] = uniq(arr(tags).map(t => String(t).trim()).filter(Boolean));
+  save();
+}
+window.setRecordTags = setRecordTags;
+
+function saveTagsEditor(kind, id){
+  const inp = document.getElementById('tagsInput');
+  if(!inp) return;
+  setRecordTags(kind, id, inp.value.split(','));
+  logAct('Update Tags', kind, id, inp.value.trim());
+  closeModal();
+  render();
+  toast('Tags saved', 'success');
+}
+window.saveTagsEditor = saveTagsEditor;
+
+function toggleTagPill(btn){
+  const inp = document.getElementById('tagsInput');
+  if(!inp) return;
+  const tag = btn.dataset.tag;
+  let list = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+  if(list.indexOf(tag) !== -1){
+    list = list.filter(x => x !== tag);
+    btn.classList.remove('primary');
+  } else {
+    list.push(tag);
+    btn.classList.add('primary');
+  }
+  inp.value = list.join(', ');
+}
+window.toggleTagPill = toggleTagPill;
+
+function addNote(entityType, entityId, text){
+  if(!canWrite()) return;
+  if(!Array.isArray(db.customerNotes)) db.customerNotes = [];
+  db.customerNotes.push({
+    id: uid(),
+    entityType,
+    entityId,
+    text: text.trim(),
+    createdAt: nowISO(),
+    createdBy: (currentUser && currentUser.email) || 'system'
+  });
+  logAct('Add Note', entityType, entityId, text.slice(0, 80));
+  save();
+}
+window.addNote = addNote;
+
+function deleteNote(id){
+  if(!canWrite()) return;
+  if(!confirm('Delete note?')) return;
+  db.customerNotes = arr(db.customerNotes).filter(n => n.id !== id);
+  save();
+}
+window.deleteNote = deleteNote;
+
+function notesFor(entityType, entityId){
+  return arr(db.customerNotes)
+    .filter(n => n.entityType === entityType && n.entityId === entityId)
+    .sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+}
+window.notesFor = notesFor;
+
+function markViewed(kind, id, label){
+  if(!Array.isArray(db.recentlyViewed)) db.recentlyViewed = [];
+  const owner = (currentUser && currentUser.email) || 'system';
+  const existing = arr(db.recentlyViewed).find(r => r.kind === kind && r.entityId === id && r.owner === owner);
+  if(existing){
+    existing.viewedAt = nowISO();
+    existing.label = label;
+  } else {
+    db.recentlyViewed.push({
+      id: uid(), kind, entityId: id, label, owner, viewedAt: nowISO()
+    });
+  }
+  /* Keep only last 20 for this user */
+  const mine = arr(db.recentlyViewed)
+    .filter(r => r.owner === owner)
+    .sort((a, b) => a.viewedAt < b.viewedAt ? -1 : 1);
+  if(mine.length > 20){
+    const removeIds = mine.slice(0, mine.length - 20).map(r => r.id);
+    db.recentlyViewed = arr(db.recentlyViewed).filter(r => removeIds.indexOf(r.id) === -1);
+  }
+  save();
+}
+window.markViewed = markViewed;
+
+function trackVersion(collection, recordId, action, before, after){
+  if(!db.settings || db.settings.enableActivityLog === false) return;
+  if(!Array.isArray(db.versionHistory)) db.versionHistory = [];
+  db.versionHistory.push({
+    id: uid(),
+    collection, recordId, action,
+    before: before ? JSON.parse(JSON.stringify(before)) : null,
+    after: after ? JSON.parse(JSON.stringify(after)) : null,
+    at: nowISO(),
+    by: (currentUser && currentUser.email) || 'system'
+  });
+  if(db.versionHistory.length > 5000)
+    db.versionHistory = db.versionHistory.slice(-5000);
+}
+window.trackVersion = trackVersion;
+
+function recentItems(kind){
+  const owner = (currentUser && currentUser.email) || 'system';
+  let list = arr(db.recentlyViewed).filter(r => r.owner === owner);
+  if(kind) list = list.filter(r => r.kind === kind);
+  return list.sort((a, b) => a.viewedAt < b.viewedAt ? 1 : -1);
+}
+window.recentItems = recentItems;
+
+function toggleSidebar(){
+  db.settings.sidebarCollapsed = !db.settings.sidebarCollapsed;
+  save();
+  applySettings();
+}
+window.toggleSidebar = toggleSidebar;
+
+function chequeAllocated(chequeId){
+  return sum(chequeSplits(chequeId), 'amount');
+}
+window.chequeAllocated = chequeAllocated;
+
+function chequeRemaining(chequeId){
+  const c = arr(db.customerCheques).find(x => x.id === chequeId);
+  if(!c) return 0;
+  const settled = sum(arr(db.chequeSettlements).filter(s => s.chequeId === chequeId), 'amount');
+  return Math.max(0, num(c.amount) - settled);
+}
+window.chequeRemaining = chequeRemaining;
+
+function chequeSettlements(chequeId){
+  return arr(db.chequeSettlements).filter(s => s.chequeId === chequeId);
+}
+window.chequeSettlements = chequeSettlements;
+
+function chequeSplits(chequeId){
+  return arr(db.chequeSplits).filter(s => s.chequeId === chequeId);
+}
+window.chequeSplits = chequeSplits;
+
+function chequeUnallocated(chequeId){
+  const c = arr(db.customerCheques).find(x => x.id === chequeId);
+  if(!c) return 0;
+  return Math.max(0, num(c.amount) - chequeAllocated(chequeId));
+}
+window.chequeUnallocated = chequeUnallocated;
+
+function chequeChain(chequeId){
+  const c = arr(db.customerCheques).find(x => x.id === chequeId);
+  if(!c) return [];
+  const nodes = [{
+    kind: 'origin', label: c.customerName,
+    sub: 'Cheque ' + esc(c.chequeNo || '') + ' issued',
+    date: c.date
+  }];
+  const endorsements = arr(db.chequeEndorsements)
+    .filter(e => e.chequeId === chequeId)
+    .sort((a, b) => a.date < b.date ? -1 : 1);
+  endorsements.forEach(e => {
+    nodes.push({
+      kind: 'endorse',
+      label: supName(e.fromSupplierId) || 'You',
+      sub: '→ ' + supName(e.toSupplierId),
+      date: e.date,
+      amount: num(e.amount),
+      note: e.note || ''
+    });
+  });
+  return nodes;
+}
+window.chequeChain = chequeChain;
+
+function performUndo(){
+  if(!undoStack.length){ toast('Nothing to undo', 'warn'); return; }
+  const last = undoStack.pop();
+
+  if(last.type === 'collection_push'){
+    const items = arr(db[last.collection]);
+    if(items.length && items[items.length - 1].id === last.id){
+      db[last.collection] = items.slice(0, -1);
+    }
+  } else if(last.type === 'collection_delete'){
+    db[last.collection] = arr(db[last.collection]).concat([last.item]);
+  } else if(last.type === 'record_change'){
+    const list = arr(db[last.collection]);
+    const idx = list.findIndex(x => x.id === last.id);
+    if(idx !== -1) Object.assign(list[idx], last.before);
+  } else if(last.type === 'bulk_delete'){
+    const restored = arr(db[last.collection]).concat(last.snapshot);
+    db[last.collection] = restored;
+  }
+
+  save();
+  render();
+  toast('Undone: ' + last.label, 'info');
+}
+window.performUndo = performUndo;
+
+function renderMaturityWidget(){
+  const el = document.getElementById('maturityWidget');
+  if(!el) return;
+  const s = db.settings || {};
+  if(!s.showMaturityWidget || !currentUser){ el.style.display = 'none'; return; }
+
+  const t = today();
+  const upcoming = arr(db.chequeLeaves)
+    .filter(l => l.status === 'Issued' && l.dueDate && l.dueDate >= t)
+    .sort((a, b) => a.dueDate < b.dueDate ? -1 : 1);
+
+  if(!upcoming.length){
+    el.innerHTML = '<div class="mw-h">Next Cheque</div>'
+      + '<div class="mw-v" style="color:var(--green)">No pending</div>'
+      + '<div class="mw-s">All clear 🎉</div>';
+    el.style.display = '';
+    return;
+  }
+
+  const next = upcoming[0];
+  const days = daysBetween(t, next.dueDate);
+  const cls = days <= 3 ? 'var(--red)' : days <= 7 ? 'var(--amber)' : '#fff';
+  const label = days === 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : 'in ' + days + ' day' + (days === 1 ? '' : 's');
+
+  el.innerHTML = '<div class="mw-h">Next Cheque Due</div>'
+    + '<div class="mw-v" style="color:' + cls + '">' + label + '</div>'
+    + '<div class="mw-s">' + esc(next.bankName || '') + ' • ' + moneyPlain(next.amount) + '</div>'
+    + '<div class="mw-s">Leaf ' + esc(next.leafNo) + ' • ' + dateFmt(next.dueDate) + '</div>';
+  el.style.display = '';
+}
+window.renderMaturityWidget = renderMaturityWidget;
+
+</script>
+
+<script id="missing-runtime-actions-fix">
+/* Restored action helpers used by existing UI buttons. */
+function openTagsEditor(kind, id, label){
+  const current = getRecordTags(kind, id);
+  const presets = TAG_PRESETS[kind] || [];
+  openModal('🏷️ Tags — ' + esc(label),
+    '<div style="margin-bottom:14px">'
+    + '<div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Click preset tags or type your own (comma separated).</div>'
+    + '<div class="row-flex" style="flex-wrap:wrap;gap:6px;margin-bottom:14px">'
+    + presets.map(p => {
+        const on = current.indexOf(p) !== -1;
+        return '<button type="button" class="btn xs ' + (on ? 'primary' : '') + '" data-tag="' + esc(p) + '" onclick="toggleTagPill(this)">' + esc(p) + '</button>';
+      }).join('')
+    + '</div>'
+    + '<label class="field">All Tags (comma separated)<input id="tagsInput" value="' + esc(current.join(', ')) + '"></label>'
+    + '</div>'
+    + '<div class="form-actions">'
+    + '<button class="btn" data-action="close-modal">Cancel</button>'
+    + '<button class="btn primary" onclick="saveTagsEditor(\'' + kind + '\',\'' + id + '\')">Save Tags</button>'
+    + '</div>');
+}
+window.openTagsEditor = openTagsEditor;
+
+function inlineEdit(collection, id, field, type){
+  if(!canWrite()) return;
+  const item = arr(db[collection]).find(x => x.id === id);
+  if(!item) return;
+  type = type || 'text';
+  const curVal = item[field] === undefined || item[field] === null ? '' : item[field];
+
+  openModal('✏️ Inline Edit — ' + esc(field),
+    '<div class="small muted" style="margin-bottom:12px">Editing <strong>'
+    + esc(item.name || item.invoiceNo || item.chequeNo || id)
+    + '</strong> → field <strong>' + esc(field) + '</strong></div>'
+    + '<label class="field">Value<input id="inlineInput" type="'
+    + (type === 'number' ? 'number' : type === 'date' ? 'date' : 'text')
+    + '" value="' + esc(curVal) + '" autofocus></label>'
+    + '<div class="form-actions">'
+    + '<button class="btn" data-action="close-modal">Cancel</button>'
+    + '<button class="btn primary" onclick="saveInlineEdit(\'' + collection + '\',\'' + id + '\',\'' + field + '\',\'' + type + '\')">Save</button>'
+    + '</div>');
+
+  setTimeout(() => {
+    const el = document.getElementById('inlineInput');
+    if(el){ el.focus(); el.select(); }
+  }, 100);
+
+  const inp = document.getElementById('inlineInput');
+  if(inp) inp.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      saveInlineEdit(collection, id, field, type);
+    }
+  });
+}
+window.inlineEdit = inlineEdit;
+
+function saveInlineEdit(collection, id, field, type){
+  if(!canWrite()) return;
+  const inp = document.getElementById('inlineInput');
+  if(!inp) return;
+  const item = arr(db[collection]).find(x => x.id === id);
+  if(!item) return;
+
+  const before = JSON.parse(JSON.stringify(item));
+  let v = inp.value;
+  if(type === 'number') v = num(v);
+  item[field] = v;
+  item.updatedAt = nowISO();
+
+  trackVersion(collection, id, 'Update', before, item);
+  logAct('Inline Edit', collection, id, field + ' = ' + String(v).slice(0, 60));
+  save();
+  closeModal();
+  render();
+  toast('Updated ' + field, 'success');
+}
+window.saveInlineEdit = saveInlineEdit;
+
+function permanentDeleteFromTrash(trashId){
+  if(!canWrite()) return;
+  if(!confirm('Permanently delete? This cannot be undone.')) return;
+  db.trash = arr(db.trash).filter(x => x.id !== trashId);
+  save();
+  render();
+  toast('Permanently deleted', 'warn');
+}
+window.permanentDeleteFromTrash = permanentDeleteFromTrash;
+
+function purgeOldTrash(){
+  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+  const before = arr(db.trash).length;
+  db.trash = arr(db.trash).filter(t => t.deletedAt > cutoff);
+  if(arr(db.trash).length < before) save();
+}
+window.purgeOldTrash = purgeOldTrash;
+
+function restoreFromTrash(trashId){
+  if(!canWrite()) return;
+  const t = arr(db.trash).find(x => x.id === trashId);
+  if(!t) return;
+  if(!Array.isArray(db[t.originalCollection])) db[t.originalCollection] = [];
+  db[t.originalCollection].push(t.item);
+  db.trash = arr(db.trash).filter(x => x.id !== trashId);
+  logAct('Restore from Trash', t.originalCollection, t.item.id, t.label || '');
+  save();
+  render();
+  toast('Restored', 'success');
+}
+window.restoreFromTrash = restoreFromTrash;
+
+</script>
+
+<script id="final-runtime-wiring-fix">
+/* The deep purchase safety override replaces window.viewPurchases. The router
+   must use that same implementation, otherwise it would keep the old view. */
+if(typeof window.viewPurchases === 'function' && window.views){
+  window.views.purchases = window.viewPurchases;
+}
 </script>
 </body>
 </html>

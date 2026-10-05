@@ -3581,8 +3581,8 @@ function canWrite(){
   if(email && adminEmail && email === adminEmail){
     currentUserRole = 'admin';
   }
-  if(db.settings && db.settings.readOnlyMode){ toast('Read-only mode active.', 'error'); return false; }
   if(currentUserRole === 'admin') return true;
+  if(db.settings && db.settings.readOnlyMode){ toast('Read-only mode active.', 'error'); return false; }
   const p = userPerms();
   if(!p.write){ toast('Your role (' + currentUserRole + ') cannot modify data.', 'error'); return false; }
   return true;
@@ -15470,7 +15470,161 @@ function iframePrint(title, html){
     + 'h3{font-size:13px;font-weight:700;margin:16px 0 8px}'
     + 'p{font-size:11.5px;margin:8px 0}'
     + '@media print{body{margin:10px}}'
-    + '</style></head><body>' + html + '</body></html>');
+    + '</style></head><body>' + html + '<script>
+/* FINAL FORM SUBMIT DISPATCHER V5
+   The app contains several generations of dynamically-created forms.  A form
+   must have exactly one reliable submit path.  This capture-phase dispatcher
+   invokes the handler itself and stops the browser from running a second copy
+   of the inline handler.  It also captures the pre-mutation database snapshot
+   so the quota-safe diff engine can persist the mutation.
+*/
+(function installReliableFormSubmitV5(){
+  if(window.__LANKA_RELIABLE_FORM_SUBMIT_V5) return;
+  window.__LANKA_RELIABLE_FORM_SUBMIT_V5=true;
+
+  function snapDb(){
+    try{
+      if(!window.db || !Array.isArray(window.COLLECTIONS)) return;
+      const pre={};
+      window.COLLECTIONS.forEach(col=>{
+        pre[col]={};
+        const list=Array.isArray(window.db[col])?window.db[col]:[];
+        list.forEach(item=>{
+          if(item && item.id){
+            try{ pre[col][String(item.id)]=JSON.stringify(item); }catch(e){}
+          }
+        });
+      });
+      pre._settings=JSON.stringify(window.db.settings||{});
+      window._dbSnapshot=pre;
+      if(window.__LANKA_SYNC_STATE) window.__LANKA_SYNC_STATE.cloudSnapshotReady=true;
+    }catch(e){ console.error('V5 snapshot failed',e); }
+  }
+
+  document.addEventListener('submit',function(ev){
+    const form=ev.target;
+    if(!form || form.nodeType!==1) return;
+    const attr=form.getAttribute('onsubmit')||'';
+    const m=attr.match(/^\s*([A-Za-z_$][\w$]*)\s*\(\s*event(?:\s*,.*)?\s*\)\s*;?\s*$/);
+    if(!m) return;
+    const fn=window[m[1]];
+    if(typeof fn!=='function') return;
+    if(form.__v5Submitting) return;
+
+    /* This is the only submit execution path for inline save forms. */
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    form.__v5Submitting=true;
+    snapDb();
+
+    try{
+      if(typeof currentUser!=='undefined' && currentUser &&
+         typeof ADMIN_EMAIL!=='undefined' &&
+         String(currentUser.email||'').toLowerCase()===String(ADMIN_EMAIL).toLowerCase()){
+        currentUserRole='admin';
+      }
+      fn.call(form,ev);
+    }catch(err){
+      console.error('V5 submit handler failed:',m[1],err);
+      if(typeof window.toast==='function') window.toast('Save failed: '+(err && err.message || err),'error');
+    }finally{
+      setTimeout(function(){try{delete form.__v5Submitting;}catch(e){}},0);
+    }
+  },true);
+
+  /* If a form has no inline handler but its submit button has data-save-handler,
+     support that path too. */
+  document.addEventListener('click',function(ev){
+    const btn=ev.target && ev.target.closest ? ev.target.closest('button[type="submit"][data-save-handler]') : null;
+    if(!btn) return;
+    const form=btn.form;
+    const name=btn.getAttribute('data-save-handler');
+    const fn=name && window[name];
+    if(!form || typeof fn!=='function') return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    if(form.__v5Submitting) return;
+    form.__v5Submitting=true;
+    snapDb();
+    try{ fn.call(form,{preventDefault:function(){},target:form,currentTarget:form}); }
+    catch(err){
+      console.error('V5 button handler failed:',name,err);
+      if(typeof window.toast==='function') window.toast('Save failed: '+(err && err.message || err),'error');
+    }
+    finally{ setTimeout(function(){try{delete form.__v5Submitting;}catch(e){}},0); }
+  },true);
+
+  window.__lankaSaveDiagnosticsV5=function(){
+    const st=window.__LANKA_SYNC_STATE||{};
+    return {
+      version:5,
+      user:typeof currentUser!=='undefined'&&currentUser?currentUser.email:null,
+      role:typeof currentUserRole!=='undefined'?currentUserRole:null,
+      canWrite:typeof canWrite==='function'?canWrite():null,
+      readOnly:!!(window.db&&window.db.settings&&window.db.settings.readOnlyMode),
+      formHandlers:document.querySelectorAll('form[onsubmit]').length,
+      dirty:st.dirtyCollections?Array.from(st.dirtyCollections):[],
+      pending:st.docChanges?Object.keys(st.docChanges).reduce((n,c)=>n+Object.keys(st.docChanges[c]||{}).length,0):0
+    };
+  };
+})();
+</script>
+<script>
+/* FINAL SAVE CLICK ROUTER V6
+   Some browsers/embedded deployments can lose inline form submission when
+   dynamic modal DOM is replaced.  Intercept submit-button clicks before the
+   browser's default action and invoke the form's declared save handler with
+   the FORM as event.target. Keyboard/Enter submits are handled by V5's
+   submit capture listener.
+*/
+(function installSaveClickRouterV6(){
+  if(window.__LANKA_SAVE_CLICK_ROUTER_V6) return;
+  window.__LANKA_SAVE_CLICK_ROUTER_V6=true;
+  document.addEventListener('click',function(ev){
+    const el=ev.target;
+    const btn=el && el.closest ? el.closest('button[type="submit"]') : null;
+    if(!btn || btn.disabled) return;
+    const form=btn.form;
+    if(!form) return;
+    const attr=form.getAttribute('onsubmit')||'';
+    const m=attr.match(/^\s*([A-Za-z_$][\w$]*)\s*\(\s*event(?:\s*,.*)?\s*\)\s*;?\s*$/);
+    if(!m) return;
+    const fn=window[m[1]];
+    if(typeof fn!=='function') return;
+    if(form.__v6Submitting) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    form.__v6Submitting=true;
+    try{
+      if(typeof currentUser!=='undefined' && currentUser && typeof ADMIN_EMAIL!=='undefined' &&
+         String(currentUser.email||'').toLowerCase()===String(ADMIN_EMAIL).toLowerCase()) currentUserRole='admin';
+      /* Snapshot BEFORE mutation. */
+      if(window.db && Array.isArray(window.COLLECTIONS)){
+        const pre={};
+        window.COLLECTIONS.forEach(col=>{
+          pre[col]={};
+          (Array.isArray(window.db[col])?window.db[col]:[]).forEach(item=>{
+            if(item&&item.id){try{pre[col][String(item.id)]=JSON.stringify(item);}catch(e){}}
+          });
+        });
+        pre._settings=JSON.stringify(window.db.settings||{});
+        window._dbSnapshot=pre;
+      }
+      const fakeEvent={
+        target:form,currentTarget:form,submitter:btn,
+        preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}
+      };
+      fn.call(form,fakeEvent);
+    }catch(err){
+      console.error('V6 direct Save failed:',m[1],err);
+      if(typeof window.toast==='function') window.toast('Save failed: '+(err&&err.message||err),'error');
+    }finally{
+      setTimeout(function(){try{delete form.__v6Submitting;}catch(e){}},0);
+    }
+  },true);
+})();
+</script>
+</body></html>');
   doc.close();
   setTimeout(() => {
     iframe.contentWindow.focus();

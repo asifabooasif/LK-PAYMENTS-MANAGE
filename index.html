@@ -1560,25 +1560,95 @@ const bankLogo = (name) => {
 const bankObj = id => arr(db.bankAccounts).find(b => b.id === id);
 const bankName = id => { const b = bankObj(id); return b ? b.bankName : '—'; };
 
-const bankBalance = id => {
-  const acc = bankObj(id);
-  if (!acc) return 0;
-  let bal = num(acc.openingBalance);
-  /* Add receipts/payments that affect this bank */
-  arr(db.payments).filter(p => p.bankAccountId === id && p.status !== 'rejected').forEach(p => {
-    bal -= num(p.amount);
+/* ═══════════════════════════════════════════════════════════════════════════
+   CANONICAL FINANCIAL BALANCE ENGINE
+   One source of truth for bank, supplier and customer balances.
+   IMPORTANT: bank source records and their linked bankTransactions are
+   deliberately de-duplicated. Opening balances are master balances, never
+   purchases.
+═══════════════════════════════════════════════════════════════════════════ */
+const _financialArr = v => Array.isArray(v) ? v : [];
+const _financialNum = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
+const _financialStatus = v => String(v || '').trim().toLowerCase();
+const _financialDateOK = (d, asOf) => !asOf || !d || String(d) <= String(asOf);
+const _financialExcluded = t => ['reversed','rejected','cancelled','canceled','void','archived'].includes(_financialStatus(t && t.status));
+
+function _bankTxEffect(tx, bankId, asOf){
+  if(!tx || tx.bankAccountId !== bankId || !_financialDateOK(tx.date, asOf) || _financialExcluded(tx)) return 0;
+  const type = String(tx.type || '').trim().toLowerCase();
+  const amount = Math.abs(_financialNum(tx.amount));
+  if(!amount) return 0;
+  if(type === 'deposit' || type === 'credit' || type === 'transfer_in' || type === 'cash_deposit' || type === 'bank_deposit') return amount;
+  if(type === 'withdrawal' || type === 'debit' || type === 'transfer_out' || type === 'bank_fee') return -amount;
+  if(type === 'cheque_deduction'){
+    const st = _financialStatus(tx.status);
+    return ['approved','deducted','cleared','settled','completed'].includes(st) ? -amount : 0;
+  }
+  if(type === 'cheque_issued'){
+    const st = _financialStatus(tx.status);
+    if(['pending','rejected','reversed','cancelled','canceled','void'].includes(st)) return 0;
+    if(['deducted','approved','cleared','settled','completed'].includes(st)) return -amount;
+    /* A linked own leaf may have been marked Cleared while the legacy
+       transaction still says pending. Treat the cleared leaf as the
+       authoritative settlement state. */
+    const leaf = _financialArr(db.chequeLeaves).find(l => l.id === tx.chequeId);
+    if(leaf && ['cleared','settled','completed'].includes(_financialStatus(leaf.status))) return -amount;
+    return 0;
+  }
+  return 0;
+}
+
+function _hasReceiptBankTx(r){
+  return _financialArr(db.bankTransactions).some(t =>
+    t.receiptId === r.id && t.bankAccountId === r.bankAccountId && !_financialExcluded(t));
+}
+function _hasPaymentBankTx(p){
+  return _financialArr(db.bankTransactions).some(t =>
+    t.paymentId === p.id && t.bankAccountId === (p.bankAccountId || (p.bankPayment && p.bankPayment.bankAccountId)) && !_financialExcluded(t));
+}
+function _hasExpenseBankTx(e){
+  return _financialArr(db.bankTransactions).some(t => t.expenseId === e.id && t.bankAccountId === e.bankAccountId && !_financialExcluded(t));
+}
+function _hasFeeBankTx(f){
+  return _financialArr(db.bankTransactions).some(t =>
+    t.bankAccountId === f.bankAccountId && String(t.type || '').toLowerCase() === 'bank_fee' &&
+    !_financialExcluded(t) && String(t.date || '') === String(f.date || '') &&
+    Math.abs(_financialNum(t.amount) - _financialNum(f.amount)) < 0.005 &&
+    (!f.reference || !t.reference || String(t.reference) === String(f.reference)));
+}
+
+const bankBalance = (id, asOf) => {
+  const acc = arr(db.bankAccounts).find(b => b.id === id);
+  if(!acc) return 0;
+  const cutoff = asOf || null;
+  let bal = _financialNum(acc.openingBalance);
+
+  /* Canonical bank transaction ledger. */
+  _financialArr(db.bankTransactions).forEach(tx => { bal += _bankTxEffect(tx, id, cutoff); });
+
+  /* Legacy/source-record fallbacks. These are added ONLY when their linked
+     bank transaction does not exist, preventing double counting. */
+  _financialArr(db.receipts).forEach(r => {
+    if(r.bankAccountId !== id || !_financialDateOK(r.date, cutoff) || _financialExcluded(r)) return;
+    if(String(r.method || '').trim().toLowerCase() === 'cheque') return;
+    if(!_hasReceiptBankTx(r)) bal += Math.abs(_financialNum(r.amount));
   });
-  arr(db.receipts).filter(r => r.bankAccountId === id && r.status !== 'rejected').forEach(r => {
-    bal += num(r.amount);
+
+  _financialArr(db.payments).forEach(p => {
+    const bankId = p.bankAccountId || (p.bankPayment && p.bankPayment.bankAccountId);
+    if(bankId !== id || !_financialDateOK(p.date, cutoff) || _financialExcluded(p) || p.fullyReversed) return;
+    const amount = _financialNum(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
+    if(amount > 0 && !_hasPaymentBankTx(p)) bal -= Math.abs(amount);
   });
-  /* Add bank transactions */
-  arr(db.bankTransactions).filter(t => t.bankAccountId === id).forEach(t => {
-    if (t.type === 'credit') bal += num(t.amount);
-    else if (t.type === 'debit') bal -= num(t.amount);
+
+  _financialArr(db.expenses).forEach(e => {
+    if(e.bankAccountId !== id || !_financialDateOK(e.date, cutoff) || e.status === 'rejected') return;
+    if(!_hasExpenseBankTx(e)) bal -= Math.abs(_financialNum(e.amount));
   });
-  /* Deduct approved cheque deductions */
-  arr(db.bankTransactions).filter(t => t.bankAccountId === id && t.type === 'cheque_deduction' && t.status === 'approved').forEach(t => {
-    bal -= num(t.amount);
+
+  _financialArr(db.bankFees).forEach(f => {
+    if(f.bankAccountId !== id || !_financialDateOK(f.date, cutoff)) return;
+    if(!_hasFeeBankTx(f)) bal -= Math.abs(_financialNum(f.amount));
   });
   return bal;
 };
@@ -1587,25 +1657,36 @@ const bankAccountsByBankName = name => arr(db.bankAccounts).filter(b => b.bankNa
 
 const catObj = id => arr(db.categories).find(c => c.id === id);
 const catName = id => { const c = catObj(id); return c ? c.name : '—'; };
-
 const custObj = id => arr(db.customers).find(c => c.id === id);
 const custName = id => { const c = custObj(id); return c ? c.name : '—'; };
-
 const supObj = id => arr(db.suppliers).find(s => s.id === id);
 const supName = id => { const s = supObj(id); return s ? s.name : '—'; };
 
 const customerBalance = id => {
-  let bal = 0;
-  arr(db.receipts).filter(r => r.customerId === id).forEach(r => bal += num(r.amount));
-  arr(db.customerCheques).filter(c => c.customerId === id && c.status !== 'Bounced' && c.status !== 'Cancelled').forEach(c => bal += num(c.amount));
-  arr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id).forEach(p => bal -= num(p.amount));
+  const c = custObj(id);
+  let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -_financialNum(c.openingBalance) : _financialNum(c.openingBalance)) : 0;
+  _financialArr(db.customerCheques).filter(q => q.customerId === id && _financialStatus(q.status) === 'bounced').forEach(q => {
+    bal += Math.abs(_financialNum(typeof chequeRemaining === 'function' ? chequeRemaining(q.id) : q.amount));
+  });
+  _financialArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && !_financialExcluded(p)).forEach(p => {
+    bal -= Math.abs(_financialNum(p.amount));
+  });
+  _financialArr(db.journals).filter(j => j.entityType === 'customer' && j.entityId === id && !j.bounceReversal).forEach(j => {
+    bal += _financialNum(j.debit) - _financialNum(j.credit);
+  });
   return bal;
 };
 
 const supplierBalance = id => {
-  let bal = 0;
-  arr(db.purchases).filter(p => p.supplierId === id).forEach(p => bal += num(p.amount));
-  arr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected').forEach(p => bal -= num(p.amount));
+  const s = supObj(id);
+  let bal = s ? _financialNum(s.openingBalance) : 0;
+  const purchases = typeof actualPurchases === 'function' ? actualPurchases() : _financialArr(db.purchases).filter(p => !p.isOpeningBalance && String(p.transactionType || '').toLowerCase() !== 'opening_balance');
+  purchases.filter(p => p.supplierId === id).forEach(p => bal += Math.abs(_financialNum(p.amount)));
+  _financialArr(db.supplierReturns).filter(r => r.supplierId === id && !_financialExcluded(r)).forEach(r => bal -= Math.abs(_financialNum(r.amount)));
+  _financialArr(db.payments).filter(p => p.supplierId === id && !_financialExcluded(p) && !p.fullyReversed).forEach(p => bal -= Math.abs(_financialNum(p.amount)));
+  _financialArr(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal).forEach(j => {
+    bal += _financialNum(j.credit) - _financialNum(j.debit);
+  });
   return bal;
 };
 
@@ -2382,7 +2463,7 @@ PART 3 — PURCHASES · CATEGORIES · RECEIPTS · BULK CHEQUE ENTRY
 SECTION 1 — PURCHASES VIEW
 ═══════════════════════════════════════════════════════════════════════════ */
 function viewPurchases(){
-  let rows = arr(db.purchases).sort((a, b) => a.date < b.date ? 1 : -1);
+  let rows = actualPurchases().sort((a, b) => a.date < b.date ? 1 : -1);
   if(ui.pur.q){
     const q = ui.pur.q.toLowerCase();
     rows = rows.filter(p =>
@@ -2631,7 +2712,7 @@ window.saveCat = saveCat;
 function deleteCat(id){
   if(!canWrite()) return;
   if(arr(db.receipts).some(r => r.categoryId === id) ||
-     arr(db.purchases).some(p => p.categoryId === id) ||
+     actualPurchases().some(p => p.categoryId === id) ||
      arr(db.suppliers).some(s => s.categoryId === id)){
     toast('In use — cannot delete', 'error'); return;
   }
@@ -2698,9 +2779,10 @@ function showCategoryAnalytics(cid){
   const profitColor = t.profit >= 0 ? 'var(--green)' : 'var(--red)';
   const bounceColor = t.bounceRate > 10 ? 'var(--red)' : t.bounceRate > 5 ? 'var(--amber)' : 'var(--green)';
   openModal('📊 Category — ' + c.name,
-    '<div class="kpi-strip" style="margin-bottom:20px">'
+    '<div class="alert info" style="margin-bottom:16px"><span class="ico">ℹ</span><div>Net difference is <strong>receipts minus actual purchase value</strong>. It is a cash-performance measure, not a full accounting profit because sales/invoice cost recognition is not stored in this system.</div></div>'
+    + '<div class="kpi-strip" style="margin-bottom:20px">'
     + kpiCard('Received', moneyPlain(t.received), a.receipts.length + ' receipts', { small: true })
-    + kpiCard('Purchased', moneyPlain(t.purchaseValue), a.purchases.length + ' purchases', { small: true })
+    + kpiCard('Purchased', moneyPlain(t.purchaseValue), a.purchases.length + ' actual purchases', { small: true })
     + '<div class="kpi"><div class="k-top"><span class="k-label">Profit / Margin</span></div>'
     + '<div class="k-value sm" style="color:' + profitColor + '">' + money(t.profit) + '</div>'
     + '<div class="k-sub">' + (t.received > 0 ? ((t.profit / t.received) * 100).toFixed(1) + '% margin' : '—') + '</div></div>'
@@ -6204,7 +6286,7 @@ function viewBanks(){
         return '<div class="bank-card" data-action="bank-detail" data-id="' + b.id + '">'
           + '<div class="bk-name">' + bankLogo(b.bankName) + ' ' + esc(b.bankName) + '</div>'
           + '<div class="bk-meta">' + esc(b.accountNo || '—') + ' • ' + esc(b.branch || '—') + ' • ' + esc(b.accountType || 'Current') + '</div>'
-          + '<div class="bk-bal ' + (bal < 0 ? 'neg' : '') + '">' + moneyPlain(bal) + '</div>'
+          + '<div class="bk-bal ' + (bal < 0 ? 'neg' : '') + '">' + money(bal) + '</div>'
           + '<div class="bk-sub">Current Balance (as of today)</div>'
           + (pending > 0 ? '<div class="bk-pending">⏰ ' + moneyPlain(pending) + ' pending from future cheques</div>' : '')
           + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">'
@@ -6398,7 +6480,7 @@ function showBankDetail(id){
   }
   openModal('🏛️ ' + b.bankName,
     '<div class="kpi-strip" style="margin-bottom:20px">'
-    + kpiCard('Current Balance', moneyPlain(bal), 'As of ' + dateFmt(today()), { small: true })
+    + kpiCard('Current Balance', money(bal), 'As of ' + dateFmt(today()), { small: true })
     + kpiCard('Opening', moneyPlain(num(b.openingBalance)), dateFmt(b.openingDate || ''), { small: true })
     + kpiCard('Pending Cheques', moneyPlain(pending), 'Future debits', { small: true })
     + kpiCard('Projected 30d', moneyPlain(proj30), proj30 < 0 ? '⚠ May go negative' : 'Within budget', { small: true })
@@ -8080,7 +8162,7 @@ function agingTrendChart(){
       if(num(s.openingBalance) > 0){
         items.push({ date: s.openingDate || today(), amount: num(s.openingBalance) });
       }
-      arr(db.purchases).filter(p => p.supplierId === s.id && p.date <= endOfMonth).forEach(p => {
+      actualPurchases().filter(p => p.supplierId === s.id && p.date <= endOfMonth).forEach(p => {
         items.push({ date: p.date, amount: num(p.amount) });
       });
       items.sort((a, b) => a.date < b.date ? -1 : 1);
@@ -8691,7 +8773,7 @@ SECTION 3 — BUILD REPORT ROWS (11 sources)
 function buildReportRows(source){
   const rows = [];
   if(source === 'purchases'){
-    arr(db.purchases).forEach(p => rows.push({
+    actualPurchases().forEach(p => rows.push({
       id: p.id, date: p.date, invoiceNo: p.invoiceNo || '',
       supplier: supName(p.supplierId), supplierId: p.supplierId,
       category: catName(p.categoryId), categoryId: p.categoryId,
@@ -8768,7 +8850,7 @@ function buildReportRows(source){
   } else if(source === 'categories'){
     arr(db.categories).forEach(c => {
       const receipts = arr(db.receipts).filter(r => r.categoryId === c.id);
-      const purchases = arr(db.purchases).filter(p => p.categoryId === c.id);
+      const purchases = actualPurchases().filter(p => p.categoryId === c.id);
       const supplierCount = arr(db.suppliers).filter(s => (s.categoryId || '') === c.id).length;
       rows.push({
         id: c.id, name: c.name,
@@ -9396,13 +9478,13 @@ function renderAnalyticsDashboard(){
   const yoy = [
     {
       year: thisYear - 1,
-      purchases: sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount'),
+      purchases: sum(actualPurchases().filter(p => (p.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount'),
       payments: sum(arr(db.payments).filter(p => (p.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount'),
       receipts: sum(arr(db.receipts).filter(r => (r.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount')
     },
     {
       year: thisYear,
-      purchases: sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 4) === thisYear + ''), 'amount'),
+      purchases: sum(actualPurchases().filter(p => (p.date || '').slice(0, 4) === thisYear + ''), 'amount'),
       payments: sum(arr(db.payments).filter(p => (p.date || '').slice(0, 4) === thisYear + ''), 'amount'),
       receipts: sum(arr(db.receipts).filter(r => (r.date || '').slice(0, 4) === thisYear + ''), 'amount')
     }
@@ -9577,7 +9659,7 @@ window.drillDownOpen = drillDownOpen;
   const wrapped = function(){
     const months = lastMonths(12);
     const monthlyPurchases = months.map(m => {
-      const items = arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m);
+      const items = actualPurchases().filter(p => (p.date || '').slice(0, 7) === m);
       return {
         label: monthLabel(m),
         value: sum(items, 'amount'),
@@ -11011,7 +11093,7 @@ SECTION 8 — SUPPLIER COMPARISON
 function computeSupplierMetrics(supplierId){
   const s = supObj(supplierId);
   if(!s) return null;
-  const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
+  const purchases = actualPurchases().filter(p => p.supplierId === supplierId);
   const payments = arr(db.payments).filter(p => p.supplierId === supplierId && !p.fullyReversed);
   const returns = arr(db.supplierReturns).filter(r => r.supplierId === supplierId);
   const totalPurchased = sum(purchases, 'amount');
@@ -13186,7 +13268,11 @@ function executeCustomerImport(){
           business: p[3] || '',
           address: p[4] || '',
           chequeLimit: num(p[5]) || 0,
-          blacklisted: (p[6] || '').toLowerCase() === 'yes'
+          openingBalance: Math.abs(num(p[5])) || 0,
+          openingDate: p[6] || today(),
+          openingBalanceType: ((p[7] || 'receivable').toLowerCase() === 'credit' ? 'credit' : 'receivable'),
+          chequeLimit: num(p[8]) || 0,
+          blacklisted: (p[9] || '').toLowerCase() === 'yes'
         };
       }).filter(r => r.name);
       if(!rows.length){ toast('No valid rows', 'error'); return; }
@@ -13201,6 +13287,9 @@ function executeCustomerImport(){
           business: r.business,
           address: r.address,
           chequeLimit: r.chequeLimit,
+          openingBalance: r.openingBalance || 0,
+          openingDate: r.openingDate || today(),
+          openingBalanceType: r.openingBalanceType || 'receivable',
           blacklisted: r.blacklisted,
           createdAt: nowISO()
         });
@@ -13839,7 +13928,7 @@ function viewSuppliers(){
   if(ui.sup.catFilter) rows = rows.filter(s => (s.categoryId || '') === ui.sup.catFilter);
   const enriched = rows.map(s => Object.assign({}, s, {
     balance: supplierBalance(s.id),
-    purchases: sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount'),
+    purchases: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount'),
     paid: sum(arr(db.payments).filter(p => p.supplierId === s.id && !p.fullyReversed), 'amount'),
     aging: supplierAging(s.id)
   }));
@@ -14015,7 +14104,7 @@ SECTION 4 — DELETE SUPPLIER (with transaction check)
 ═══════════════════════════════════════════════════════════════════════════ */
 function deleteSupplier(id){
   if(!canWrite()) return;
-  if(arr(db.purchases).some(p => p.supplierId === id) || arr(db.payments).some(p => p.supplierId === id)){
+  if(actualPurchases().some(p => p.supplierId === id) || arr(db.payments).some(p => p.supplierId === id)){
     toast('Has transactions — cannot delete', 'error'); return;
   }
   if(!confirm('Move to Trash?')) return;
@@ -14036,7 +14125,7 @@ function showSupplierDetail(id){
   markViewed('supplier', id, s.name);
   const ledger = supplierLedger(id);
   const aging = supplierAging(id);
-  const purchases = arr(db.purchases).filter(p => p.supplierId === id).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 10);
+  const purchases = actualPurchases().filter(p => p.supplierId === id).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 10);
   const payments = arr(db.payments).filter(p => p.supplierId === id).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 10);
   const returns = arr(db.supplierReturns).filter(r => r.supplierId === id).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 10);
   const cat = s.categoryId ? catObj(s.categoryId) : null;
@@ -14276,7 +14365,7 @@ function exportSuppliersCSV(){
   const rows = items.map(s => {
     const bal = supplierBalance(s.id);
     const aging = supplierAging(s.id);
-    const purchases = sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount');
+    const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
     const paid = sum(arr(db.payments).filter(p => p.supplierId === s.id && !p.fullyReversed), 'amount');
     return [
       s.name, catName(s.categoryId), s.phone || '', s.email || '', s.contact || '', s.address || '',
@@ -14297,7 +14386,7 @@ function bulkDeleteSuppliers(ids){
   if(!ids.length){ toast('No suppliers selected', 'warn'); return; }
   let blocked = 0;
   ids.forEach(id => {
-    if(arr(db.purchases).some(p => p.supplierId === id) || arr(db.payments).some(p => p.supplierId === id)){
+    if(actualPurchases().some(p => p.supplierId === id) || arr(db.payments).some(p => p.supplierId === id)){
       blocked++;
     }
   });
@@ -14363,7 +14452,7 @@ function topSuppliersByPurchaseVolume(limit){
   return arr(db.suppliers).map(s => ({
     id: s.id,
     name: s.name,
-    volume: sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount')
+    volume: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount')
   })).filter(x => x.volume > 0).sort((a, b) => b.volume - a.volume).slice(0, limit);
 }
 window.topSuppliersByPurchaseVolume = topSuppliersByPurchaseVolume;
@@ -14374,7 +14463,7 @@ SECTION 13 — SUPPLIER AGGREGATE ANALYTICS
 function supplierAggregateAnalytics(){
   const months = lastMonths(12);
   const monthlyPurchases = months.map(m =>
-    sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m), 'amount')
+    sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === m), 'amount')
   );
   const monthlyPayments = months.map(m =>
     sum(arr(db.payments).filter(p => !p.fullyReversed && (p.date || '').slice(0, 7) === m), 'amount')
@@ -14643,7 +14732,7 @@ window.supplierWatchlist = supplierWatchlist;
 SECTION 23 — SUPPLIER PAYMENT VELOCITY (avg days to pay)
 ═══════════════════════════════════════════════════════════════════════════ */
 function supplierPaymentVelocity(supplierId){
-  const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
+  const purchases = actualPurchases().filter(p => p.supplierId === supplierId);
   const payments = arr(db.payments).filter(p => p.supplierId === supplierId && !p.fullyReversed);
   if(!payments.length) return { avgDays: 0, count: 0, lastDate: null };
   let totalDays = 0, count = 0;
@@ -14674,7 +14763,7 @@ function supplierCategoryBreakdown(){
     if(!byCat[cat]) byCat[cat] = { count: 0, payable: 0, purchases: 0 };
     byCat[cat].count++;
     byCat[cat].payable += supplierBalance(s.id);
-    byCat[cat].purchases += sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount');
+    byCat[cat].purchases += sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
   });
   return Object.entries(byCat).map(([cat, data]) => ({
     category: cat,
@@ -14782,9 +14871,9 @@ function supplierSearchWithPreview(query){
       + '<div class="hist-body">'
       + '<div class="hist-head"><div><div class="hist-title">' + esc(s.name) + '</div>'
       + '<div class="hist-desc">' + esc(s.phone || '—') + ' • ' + esc(catName(s.categoryId)) + '</div></div>'
-      + '<span class="badge ' + (bal > 0 ? 'red' : 'green') + '">' + moneyPlain(bal) + '</span></div>'
+      + '<span class="badge ' + (bal > 0 ? 'red' : 'green') + '">' + money(bal) + '</span></div>'
       + '<div class="hist-meta">'
-      + '<span>Payable: ' + moneyPlain(bal) + '</span>'
+      + '<span>Payable: ' + money(bal) + '</span>'
       + '<span>Overdue 90+: ' + moneyPlain(aging.d90) + '</span>'
       + '</div></div></div>';
   }).join('');
@@ -14819,7 +14908,7 @@ SECTION 29 — SUPPLIER PURCHASE TREND (for supplier analytics)
 ═══════════════════════════════════════════════════════════════════════════ */
 function supplierPurchaseTrend(supplierId){
   const months = lastMonths(12);
-  const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
+  const purchases = actualPurchases().filter(p => p.supplierId === supplierId);
   return months.map(m => ({
     month: m,
     count: purchases.filter(p => (p.date || '').slice(0, 7) === m).length,
@@ -14861,7 +14950,7 @@ SECTION 31 — SUPPLIER SEGMENTATION (by volume + reliability)
 ═══════════════════════════════════════════════════════════════════════════ */
 function supplierSegmentation(){
   const all = arr(db.suppliers).map(s => {
-    const purchases = sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount');
+    const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
     const velocity = supplierPaymentVelocity(s.id);
     return {
       id: s.id,
@@ -14952,7 +15041,7 @@ function doSupplierMerge(){
   if(targetId === sourceId){ toast('Target and source must differ', 'error'); return; }
   if(!confirm('Merge ' + supName(sourceId) + ' into ' + supName(targetId) + '? This cannot be undone.')) return;
   /* Move all purchases */
-  arr(db.purchases).forEach(p => {
+  actualPurchases().forEach(p => {
     if(p.supplierId === sourceId){
       p.supplierId = targetId;
     }
@@ -15130,7 +15219,7 @@ function supplierAgingTrend(supplierId){
     if(num(s.openingBalance) > 0){
       items.push({ date: s.openingDate || today(), amount: num(s.openingBalance) });
     }
-    arr(db.purchases).filter(p => p.supplierId === supplierId && p.date <= endOfMonth).forEach(p => {
+    actualPurchases().filter(p => p.supplierId === supplierId && p.date <= endOfMonth).forEach(p => {
       items.push({ date: p.date, amount: num(p.amount) });
     });
     items.sort((a, b) => a.date < b.date ? -1 : 1);
@@ -15380,7 +15469,7 @@ function openDocumentUpload(){
         let options = '<option value="">— Select —</option>';
         if(type === 'customer') options += arr(db.customers).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
         else if(type === 'supplier') options += arr(db.suppliers).map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
-        else if(type === 'purchase') options += arr(db.purchases).map(p => '<option value="' + p.id + '">' + esc(p.invoiceNo || p.id) + '</option>').join('');
+        else if(type === 'purchase') options += actualPurchases().map(p => '<option value="' + p.id + '">' + esc(p.invoiceNo || p.id) + '</option>').join('');
         else if(type === 'payment') options += arr(db.payments).map(p => '<option value="' + p.id + '">' + esc(p.reference || p.id) + '</option>').join('');
         else if(type === 'bank') options += arr(db.bankAccounts).map(b => '<option value="' + b.id + '">' + esc(b.bankName) + '</option>').join('');
         entitySel.innerHTML = options;
@@ -16488,7 +16577,7 @@ function renderNav(){
   const c = {
     customers: arr(db.customers).length,
     suppliers: arr(db.suppliers).length,
-    purchases: arr(db.purchases).length,
+    purchases: actualPurchases().length,
     categories: arr(db.categories).length,
     receipts: arr(db.receipts).length,
     ccheques: arr(db.customerCheques).filter(x => x.status === 'In Hand').length,
@@ -16980,7 +17069,7 @@ SECTION 12 — KPI DEFINITIONS + PICKER
 ═══════════════════════════════════════════════════════════════════════════ */
 const KPI_DEFS = {
   cashBanks: { label:'Total Cash in Banks', ico:'🏛️',
-    compute: () => moneyPlain(sum(arr(db.bankAccounts).map(b => bankBalance(b.id)), 0)),
+    compute: () => money(sum(arr(db.bankAccounts).map(b => bankBalance(b.id)), 0)),
     sub: () => arr(db.bankAccounts).length + ' bank(s)' },
   totalPayable: { label:'Total Payable', ico:'💸',
     compute: () => moneyPlain(totalPayable()),
@@ -16992,7 +17081,7 @@ const KPI_DEFS = {
     compute: () => moneyPlain(sum(arr(db.bankAccounts).map(b => bankPendingBalance(b.id)), 0)),
     sub: () => 'Future bank debits' },
   purchasesMtd: { label:'Purchases · MTD', ico:'🛒',
-    compute: () => moneyPlain(sum(arr(db.purchases).filter(p => inMonth(p.date, thisMonth())), 'amount')),
+    compute: () => moneyPlain(sum(actualPurchases().filter(p => inMonth(p.date, thisMonth())), 'amount')),
     sub: () => 'This month' },
   receiptsMtd: { label:'Receipts · MTD', ico:'📥',
     compute: () => moneyPlain(sum(arr(db.receipts).filter(r => inMonth(r.date, thisMonth())), 'amount')),
@@ -17099,8 +17188,8 @@ function viewDashboard(){
     d.setMonth(d.getMonth() - 1);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   })();
-  const purTM = sum(arr(db.purchases).filter(p => inMonth(p.date, tm)), 'amount');
-  const purPM = sum(arr(db.purchases).filter(p => inMonth(p.date, pm)), 'amount');
+  const purTM = sum(actualPurchases().filter(p => inMonth(p.date, tm)), 'amount');
+  const purPM = sum(actualPurchases().filter(p => inMonth(p.date, pm)), 'amount');
   const recTM = sum(arr(db.receipts).filter(r => inMonth(r.date, tm)), 'amount');
   const recPM = sum(arr(db.receipts).filter(r => inMonth(r.date, pm)), 'amount');
   const ga = globalAging();
@@ -17111,7 +17200,7 @@ function viewDashboard(){
   const upcomingTotal = sum(upcoming, 'amount');
   const kpiKeys = currentKpiPrefs();
   const ms = lastMonths(12);
-  const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount'));
+  const purS = ms.map(m => sum(actualPurchases().filter(p => inMonth(p.date, m)), 'amount'));
   const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m) && !p.fullyReversed), 'amount'));
   const recS = ms.map(m => sum(arr(db.receipts).filter(r => inMonth(r.date, m)), 'amount'));
   const expS = ms.map(m => sum(arr(db.expenses).filter(e => inMonth(e.date, m)), 'amount'));
@@ -17200,7 +17289,7 @@ function viewDashboard(){
         return '<div class="bar-row">'
           + '<span class="bar-label" style="display:flex;align-items:center;gap:6px">' + bankLogo(b.bankName) + ' ' + esc(b.accountName || b.bankName) + '</span>'
           + '<div class="bar-track"><div class="bar-fill" style="width:' + Math.min(100, (Math.abs(bal) / max) * 100).toFixed(1) + '%' + (warn ? ';background:var(--red)' : '') + '"></div></div>'
-          + '<span class="bar-val">' + moneyPlain(bal) + '</span></div>'
+          + '<span class="bar-val">' + money(bal) + '</span></div>'
           + (warn ? '<div class="small" style="color:var(--red);margin:-8px 0 12px 130px">⚠ Projected 30d: ' + moneyPlain(projected30) + '</div>' : '');
       }).join('');
     })() : '<div class="empty">No banks</div>')
@@ -18361,7 +18450,7 @@ SECTION 25 — HOVER PREVIEW
         + '<div><div class="hp-name">' + esc(s.name) + '</div>'
         + '<div class="hp-sub">' + esc(s.phone || '—') + '</div></div></div>'
         + '<div class="hp-row"><span>Balance</span>'
-        + '<span style="color:' + (bal > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(bal) + '</span></div>'
+        + '<span style="color:' + (bal > 0 ? 'var(--red)' : 'var(--green)') + '">' + money(bal) + '</span></div>'
         + '<div class="hp-row"><span>Aging Total</span><span>' + moneyPlain(aging.total) + '</span></div>'
         + '<div class="hp-row"><span>Overdue 90+</span>'
         + '<span style="color:' + (aging.d90 > 0 ? 'var(--red)' : 'var(--text-3)') + '">' + moneyPlain(aging.d90) + '</span></div>'
@@ -18377,7 +18466,7 @@ SECTION 25 — HOVER PREVIEW
         + '<div class="hp-avatar">' + bankLogo(b.bankName) + '</div>'
         + '<div><div class="hp-name">' + esc(b.accountName || b.bankName) + '</div>'
         + '<div class="hp-sub">' + esc(b.accountNo || '—') + '</div></div></div>'
-        + '<div class="hp-row"><span>Balance</span><span>' + moneyPlain(bal) + '</span></div>'
+        + '<div class="hp-row"><span>Balance</span><span>' + money(bal) + '</span></div>'
         + '<div class="hp-row"><span>Projected 30d</span>'
         + '<span style="color:' + (proj30 < 0 ? 'var(--red)' : 'var(--text)') + '">' + moneyPlain(proj30) + '</span></div>'
         + '<div class="hp-row"><span>Branch</span><span>' + esc(b.branch || '—') + '</span></div>'
@@ -19085,7 +19174,7 @@ function aiAnswerQuestion(q){
   if(/top.*supplier|biggest.*supplier/.test(s)){
     const list = arr(db.suppliers).map(x => ({
       name: x.name,
-      amt: sum(arr(db.purchases).filter(p => p.supplierId === x.id), 'amount')
+      amt: sum(actualPurchases().filter(p => p.supplierId === x.id), 'amount')
     })).filter(x => x.amt > 0).sort((a, b) => b.amt - a.amt).slice(0, 5);
     if(!list.length) return 'No purchases recorded yet.';
     return '🏆 Top 5 suppliers by purchases:\n'
@@ -19112,11 +19201,11 @@ function aiAnswerQuestion(q){
   /* Purchases */
   if(/purchase/.test(s)){
     if(/this month/.test(s)){
-      const t = sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === thisM), 'amount');
+      const t = sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === thisM), 'amount');
       return '🛒 Purchases this month: **' + money(t) + '**';
     }
-    return '🛒 Total purchases: **' + money(sum(arr(db.purchases), 'amount')) + '** across '
-      + arr(db.purchases).length + ' invoices.';
+    return '🛒 Total purchases: **' + money(sum(actualPurchases(), 'amount')) + '** across '
+      + actualPurchases().length + ' invoices.';
   }
   /* Expenses */
   if(/expense|spent|spend/.test(s)){
@@ -19137,7 +19226,7 @@ function aiAnswerQuestion(q){
   if(supMatch){
     const bal = supplierBalance(supMatch.id);
     const paid = sum(arr(db.payments).filter(p => p.supplierId === supMatch.id && !p.fullyReversed), 'amount');
-    const purch = sum(arr(db.purchases).filter(p => p.supplierId === supMatch.id), 'amount');
+    const purch = sum(actualPurchases().filter(p => p.supplierId === supMatch.id), 'amount');
     return '🏭 **' + supMatch.name + '**\n'
       + '• Outstanding: ' + money(bal) + '\n'
       + '• Total purchased: ' + money(purch) + '\n'
@@ -19363,12 +19452,12 @@ function widgetBankBalances(){
   const banks = arr(db.bankAccounts);
   if(!banks.length) return '<div class="empty small">No banks</div>';
   const total = banks.reduce((a, b) => a + bankBalance(b.id), 0);
-  return '<div class="k-value" style="font-size:20px">' + moneyPlain(total) + '</div>'
+  return '<div class="k-value" style="font-size:20px">' + money(total) + '</div>'
     + '<div class="small muted">' + banks.length + ' account(s)</div>'
     + banks.slice(0, 3).map(b =>
       '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-2);font-size:12px">'
       + '<span>' + bankLogo(b.bankName) + ' ' + esc(bankDisplayName(b)) + '</span>'
-      + '<strong>' + moneyPlain(bankBalance(b.id)) + '</strong></div>'
+      + '<strong>' + money(bankBalance(b.id)) + '</strong></div>'
     ).join('');
 }
 
@@ -19392,15 +19481,15 @@ function widgetPendingCheques(){
 
 function widgetPurchasesMtd(){
   const m = today().slice(0, 7);
-  const total = sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m), 'amount');
-  return '<div class="k-value" style="font-size:20px">' + moneyPlain(total) + '</div>'
+  const total = sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === m), 'amount');
+  return '<div class="k-value" style="font-size:20px">' + money(total) + '</div>'
     + '<div class="small muted">This month</div>';
 }
 
 function widgetReceiptsMtd(){
   const m = today().slice(0, 7);
   const total = sum(arr(db.receipts).filter(r => (r.date || '').slice(0, 7) === m), 'amount');
-  return '<div class="k-value" style="font-size:20px">' + moneyPlain(total) + '</div>'
+  return '<div class="k-value" style="font-size:20px">' + money(total) + '</div>'
     + '<div class="small muted">This month</div>';
 }
 
@@ -19458,7 +19547,7 @@ function widgetAgingRings(){
 
 function widgetCashFlow12m(){
   const ms = lastMonths(12);
-  const purS = ms.map(m => sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m), 'amount'));
+  const purS = ms.map(m => sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === m), 'amount'));
   const payS = ms.map(m => sum(arr(db.payments).filter(p => !p.fullyReversed && (p.date || '').slice(0, 7) === m), 'amount'));
   return lineChartSVG([
     { values: purS, color: 'var(--accent)' },
@@ -19833,7 +19922,7 @@ window.drillDownOpen = drillDownOpen;
   const wrapped = function(){
     const months = lastMonths(12);
     const monthlyPurchases = months.map(m => {
-      const items = arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m);
+      const items = actualPurchases().filter(p => (p.date || '').slice(0, 7) === m);
       return {
         label: monthLabel(m),
         value: sum(items, 'amount'),
@@ -20218,7 +20307,7 @@ SECTION 9 — SUPPLIER COMPARISON
 function computeSupplierMetrics(supplierId){
   const s = supObj(supplierId);
   if(!s) return null;
-  const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
+  const purchases = actualPurchases().filter(p => p.supplierId === supplierId);
   const payments = arr(db.payments).filter(p => p.supplierId === supplierId && !p.fullyReversed);
   const returns = arr(db.supplierReturns).filter(r => r.supplierId === supplierId);
   const totalPurchased = sum(purchases, 'amount');
@@ -21223,7 +21312,7 @@ window.viewBanks = function(){
           + (b.accountNo ? ' • ' + esc(b.accountNo) : '')
           + (b.branch ? ' • ' + esc(b.branch) : '')
           + ' • ' + esc(b.accountType || 'Current') + '</div>'
-          + '<div class="bk-bal ' + (bal < 0 ? 'neg' : '') + '">' + moneyPlain(bal) + '</div>'
+          + '<div class="bk-bal ' + (bal < 0 ? 'neg' : '') + '">' + money(bal) + '</div>'
           + '<div class="bk-sub">Current Balance (as of today)</div>'
           + (pending > 0 ? '<div class="bk-pending">⏰ ' + moneyPlain(pending) + ' pending from future cheques</div>' : '')
           + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">'
@@ -22322,6 +22411,8 @@ SECTION 15 — 🔥 MASTER PERFORMANCE PATCH (Fixes Firebase Quota Exhaustion)
         })));
       }
       normalizeDb();
+      if(typeof window.ensureEntityOpeningFields === 'function') window.ensureEntityOpeningFields();
+      if(typeof window.migrateExplicitOpeningPurchaseRecords === 'function') window.migrateExplicitOpeningPurchaseRecords();
       try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
       takeSnapshot();
       window.__dbgOk && window.__dbgOk('Load complete (' + loaded + ' collections)', 'FB');
@@ -22933,6 +23024,8 @@ Purpose:
       if(!s.openingBalanceType) s.openingBalanceType = 'payable';
     });
   }
+
+  window.ensureEntityOpeningFields = ensureEntityOpeningFields;
 
   /* Only migrate records that already explicitly identify themselves as an
      opening-balance entry. This intentionally does NOT guess from amount,
@@ -23727,6 +23820,216 @@ window.restoreFromTrash = restoreFromTrash;
 if(typeof window.viewPurchases === 'function' && window.views){
   window.views.purchases = window.viewPurchases;
 }
+</script>
+<script id="canonical-financial-reconciliation-final">
+/* ═══════════════════════════════════════════════════════════════════════════
+   FINAL CANONICAL FINANCIAL RECONCILIATION
+   This is intentionally the LAST script so no later feature can overwrite
+   the corrected calculations.
+═══════════════════════════════════════════════════════════════════════════ */
+(function installCanonicalFinancialReconciliation(){
+  'use strict';
+  if(window.__LANKA_CANONICAL_FINANCE_V3) return;
+  window.__LANKA_CANONICAL_FINANCE_V3 = true;
+
+  const A = v => Array.isArray(v) ? v : [];
+  const N = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
+  const ST = v => String(v || '').trim().toLowerCase();
+  const excluded = x => ['rejected','reversed','cancelled','canceled','void','archived'].includes(ST(x && x.status));
+  const asOfOK = (d, asOf) => !asOf || !d || String(d) <= String(asOf);
+  const actual = () => typeof actualPurchases === 'function' ? actualPurchases() : A(db.purchases).filter(p => !window.isOpeningBalanceRecord || !window.isOpeningBalanceRecord(p));
+
+  /* Canonical bank calculation. Source documents are fallback-only when no
+     linked bank transaction exists. */
+  function canonicalBankBalance(bankId, asOf){
+    const bank = A(db.bankAccounts).find(b => b.id === bankId);
+    if(!bank) return 0;
+    let bal = N(bank.openingBalance);
+    const txs = A(db.bankTransactions);
+    txs.forEach(tx => {
+      if(tx.bankAccountId !== bankId || !asOfOK(tx.date, asOf) || excluded(tx)) return;
+      const type = ST(tx.type), amount = Math.abs(N(tx.amount));
+      if(!amount) return;
+      if(['deposit','credit','transfer_in','cash_deposit','bank_deposit'].includes(type)) bal += amount;
+      else if(['withdrawal','debit','transfer_out','bank_fee'].includes(type)) bal -= amount;
+      else if(type === 'cheque_deduction'){
+        if(['approved','deducted','cleared','settled','completed'].includes(ST(tx.status))) bal -= amount;
+      } else if(type === 'cheque_issued'){
+        const leaf = A(db.chequeLeaves).find(l => l.id === tx.chequeId);
+        const settled = ['deducted','approved','cleared','settled','completed'].includes(ST(tx.status))
+          || (leaf && ['cleared','settled','completed'].includes(ST(leaf.status)));
+        if(settled) bal -= amount;
+      }
+    });
+    const hasReceiptTx = r => txs.some(t => t.receiptId === r.id && t.bankAccountId === bankId && !excluded(t));
+    const hasPaymentTx = p => txs.some(t => t.paymentId === p.id && t.bankAccountId === bankId && !excluded(t));
+    const hasExpenseTx = e => txs.some(t => t.expenseId === e.id && t.bankAccountId === bankId && !excluded(t));
+    const hasFeeTx = f => txs.some(t => t.bankAccountId === bankId && ST(t.type) === 'bank_fee' && !excluded(t)
+      && String(t.date || '') === String(f.date || '') && Math.abs(N(t.amount)-N(f.amount)) < .005
+      && (!f.reference || !t.reference || String(t.reference) === String(f.reference)));
+    A(db.receipts).forEach(r => {
+      if(r.bankAccountId !== bankId || !asOfOK(r.date, asOf) || excluded(r) || ST(r.method) === 'cheque') return;
+      if(!hasReceiptTx(r)) bal += Math.abs(N(r.amount));
+    });
+    A(db.payments).forEach(p => {
+      const pid = p.bankAccountId || (p.bankPayment && p.bankPayment.bankAccountId);
+      if(pid !== bankId || !asOfOK(p.date, asOf) || excluded(p) || p.fullyReversed) return;
+      const amount = N(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
+      if(amount > 0 && !hasPaymentTx(p)) bal -= Math.abs(amount);
+    });
+    A(db.expenses).forEach(e => {
+      if(e.bankAccountId !== bankId || !asOfOK(e.date, asOf) || excluded(e)) return;
+      if(!hasExpenseTx(e)) bal -= Math.abs(N(e.amount));
+    });
+    A(db.bankFees).forEach(f => {
+      if(f.bankAccountId !== bankId || !asOfOK(f.date, asOf)) return;
+      if(!hasFeeTx(f)) bal -= Math.abs(N(f.amount));
+    });
+    return bal;
+  }
+  window.bankBalance = canonicalBankBalance;
+
+  function canonicalSupplierBalance(id){
+    const s = A(db.suppliers).find(x => x.id === id);
+    let bal = s ? N(s.openingBalance) : 0;
+    actual().filter(p => p.supplierId === id).forEach(p => bal += Math.abs(N(p.amount)));
+    A(db.supplierReturns).filter(r => r.supplierId === id && !excluded(r)).forEach(r => bal -= Math.abs(N(r.amount)));
+    A(db.payments).filter(p => p.supplierId === id && !excluded(p) && !p.fullyReversed).forEach(p => bal -= Math.abs(N(p.amount)));
+    A(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal).forEach(j => bal += N(j.credit) - N(j.debit));
+    return bal;
+  }
+  window.supplierBalance = canonicalSupplierBalance;
+
+  function canonicalCustomerBalance(id){
+    const c = A(db.customers).find(x => x.id === id);
+    let bal = c ? (ST(c.openingBalanceType) === 'credit' ? -N(c.openingBalance) : N(c.openingBalance)) : 0;
+    A(db.customerCheques).filter(q => q.customerId === id && ST(q.status) === 'bounced').forEach(q => {
+      bal += Math.abs(N(typeof chequeRemaining === 'function' ? chequeRemaining(q.id) : q.amount));
+    });
+    A(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && !excluded(p)).forEach(p => bal -= Math.abs(N(p.amount)));
+    A(db.journals).filter(j => j.entityType === 'customer' && j.entityId === id && !j.bounceReversal).forEach(j => bal += N(j.debit) - N(j.credit));
+    return bal;
+  }
+  window.customerBalance = canonicalCustomerBalance;
+
+  function canonicalSupplierAging(id, asOf){
+    const s=A(db.suppliers).find(x=>x.id===id);
+    if(!s) return {current:0,d30:0,d60:0,d90:0,total:0};
+    const end=asOf || today();
+    const items=[];
+    if(N(s.openingBalance)>0) items.push({date:s.openingDate||end,amount:N(s.openingBalance),source:'Opening Balance'});
+    actual().filter(p=>p.supplierId===id && asOfOK(p.date,end)).forEach(p=>items.push({date:p.date||end,amount:Math.abs(N(p.amount)),source:'Purchase',id:p.id}));
+    items.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    let credit=A(db.payments).filter(p=>p.supplierId===id && asOfOK(p.date,end) && !excluded(p) && !p.fullyReversed).reduce((x,p)=>x+Math.abs(N(p.amount)),0);
+    let returns=A(db.supplierReturns).filter(r=>r.supplierId===id && asOfOK(r.date,end) && !excluded(r)).reduce((x,r)=>x+Math.abs(N(r.amount)),0);
+    credit += returns;
+    const bk=(db.settings&&db.settings.supplierAgingBuckets)||[30,60,90];
+    const b1=N(bk[0])||30,b2=N(bk[1])||60,b3=N(bk[2])||90;
+    let current=0,d30=0,d60=0,d90=0;
+    items.forEach(it=>{
+      if(credit>=it.amount){credit-=it.amount;return;}
+      const out=it.amount-Math.max(0,credit);credit=0;
+      let age=0;try{age=Math.max(0,Math.floor((new Date(end+'T00:00:00')-new Date((it.date||end)+'T00:00:00'))/86400000));}catch(e){}
+      const effective=Math.max(0,age-(N(s.creditDays)||N(db.settings&&db.settings.defaultSupplierCreditDays)||30));
+      if(effective<=b1)current+=out; else if(effective<=b2)d30+=out; else if(effective<=b3)d60+=out; else d90+=out;
+    });
+    return {current,d30,d60,d90,total:current+d30+d60+d90};
+  }
+  window.supplierAging=canonicalSupplierAging;
+
+  function canonicalCustomerAging(id,asOf){
+    const end=asOf||today();let current=0,d30=0,d60=0,d90=0,count=0;
+    A(db.customerCheques).filter(q=>q.customerId===id && ST(q.status)==='bounced' && asOfOK(q.bouncedDate||q.date,end)).forEach(q=>{
+      const amount=Math.abs(N(typeof chequeRemaining==='function'?chequeRemaining(q.id):q.amount)); if(amount<=0)return; count++;
+      const d=q.bouncedDate||q.date||end;let age=0;try{age=Math.max(0,Math.floor((new Date(end+'T00:00:00')-new Date(d+'T00:00:00'))/86400000));}catch(e){}
+      if(age<=30)current+=amount;else if(age<=60)d30+=amount;else if(age<=90)d60+=amount;else d90+=amount;
+    });
+    return {current,d30,d60,d90,total:current+d30+d60+d90,bounced:count};
+  }
+  window.customerAging=canonicalCustomerAging;
+  window.globalAging=function(){
+    const out={current:0,d30:0,d60:0,d90:0,total:0};
+    A(db.suppliers).forEach(s=>{const x=canonicalSupplierAging(s.id);out.current+=x.current;out.d30+=x.d30;out.d60+=x.d60;out.d90+=x.d90;});
+    out.total=out.current+out.d30+out.d60+out.d90;return out;
+  };
+
+  /* Correct category analytics: opening purchases never enter the purchase
+     denominator. Also keep the negative sign visible. */
+  window.categoryAnalytics=function(cid){
+    const c=catObj(cid);if(!c)return null;
+    const receipts=A(db.receipts).filter(r=>r.categoryId===cid&&!excluded(r));
+    const purchases=actual().filter(p=>p.categoryId===cid);
+    const catSuppliers=A(db.suppliers).filter(s=>(s.categoryId||'')===cid);
+    const catCheques=A(db.customerCheques).filter(q=>q.categoryId===cid);
+    const months=lastMonths(12);
+    const monthlyReceipts=months.map(m=>sum(receipts.filter(r=>inMonth(r.date,m)),'amount'));
+    const monthlyPurchases=months.map(m=>sum(purchases.filter(p=>inMonth(p.date,m)),'amount'));
+    const byStatus={InHand:catCheques.filter(x=>x.status==='In Hand'),Issued:catCheques.filter(x=>x.status==='Issued'),Cleared:catCheques.filter(x=>x.status==='Cleared'),Bounced:catCheques.filter(x=>x.status==='Bounced')};
+    const totalReceived=sum(receipts,'amount'),totalPurchased=sum(purchases,'amount'),difference=totalReceived-totalPurchased;
+    const avgCheque=catCheques.length?sum(catCheques,'amount')/catCheques.length:0;
+    const bounceRate=catCheques.length?(byStatus.Bounced.length/catCheques.length)*100:0;
+    const topCust=uniq(catCheques.map(x=>x.customerId)).map(cid2=>({name:custName(cid2),count:catCheques.filter(x=>x.customerId===cid2).length,value:sum(catCheques.filter(x=>x.customerId===cid2),'amount')})).sort((a,b)=>b.value-a.value).slice(0,5);
+    return {category:c,receipts,purchases,catSuppliers,catCheques,byStatus,months,monthlyReceipts,monthlyPurchases,topCust,totals:{received:totalReceived,purchaseValue:totalPurchased,profit:difference,difference,inHandValue:sum(byStatus.InHand,'amount'),issuedValue:sum(byStatus.Issued,'amount'),clearedValue:sum(byStatus.Cleared,'amount'),bouncedValue:sum(byStatus.Bounced,'amount'),avgCheque,bounceRate,chequeCount:catCheques.length}};
+  };
+
+  /* KPI/report calculations that previously used raw purchases. */
+  if(window.KPI_DEFS){
+    if(window.KPI_DEFS.purchasesMtd) window.KPI_DEFS.purchasesMtd.compute=()=>moneyPlain(sum(actual().filter(p=>inMonth(p.date,thisMonth())),'amount'));
+    if(window.KPI_DEFS.cashBanks) window.KPI_DEFS.cashBanks.compute=()=>money(bankAccountsTotal());
+  }
+  window.bankAccountsTotal=function(asOf){return A(db.bankAccounts).reduce((a,b)=>a+canonicalBankBalance(b.id,asOf),0);};
+
+  /* Ensure customer/supplier opening fields exist whenever data is refreshed. */
+  function ensureOpenings(){
+    A(db.customers).forEach(c=>{if(c.openingBalance==null)c.openingBalance=0;if(!c.openingDate)c.openingDate=today();if(!c.openingBalanceType)c.openingBalanceType='receivable';});
+    A(db.suppliers).forEach(s=>{if(s.openingBalance==null)s.openingBalance=0;if(!s.openingDate)s.openingDate=today();if(!s.openingBalanceType)s.openingBalanceType='payable';});
+  }
+  ensureOpenings();
+  window.ensureEntityOpeningFields=ensureOpenings;
+
+  /* Customer detail: make the opening balance visible and clearly separate
+     from cheque activity. */
+  const oldCustomerDetail=window.showCustomerDetail;
+  if(typeof oldCustomerDetail==='function' && !oldCustomerDetail.__canonicalOpening){
+    const wrapped=function(id){
+      const result=oldCustomerDetail.apply(this,arguments);
+      setTimeout(()=>{
+        const c=A(db.customers).find(x=>x.id===id);const body=document.querySelector('#modalWrap.open .modal-body');
+        if(!c||!body||body.querySelector('[data-canonical-opening="customer"]'))return;
+        const sign=ST(c.openingBalanceType)==='credit'?-1:1;
+        const val=sign*N(c.openingBalance);
+        const box=document.createElement('div');box.setAttribute('data-canonical-opening','customer');
+        box.className='alert info';box.style.marginBottom='16px';
+        box.innerHTML='<span class="ico">📌</span><div><strong>Opening Balance</strong> — '+(val<0?'Credit / customer advance':'Receivable / customer owes us')+': <strong>'+money(val)+'</strong>'+(c.openingDate?' • '+dateFmt(c.openingDate):'')+'<br><span class="small muted">This is a master opening balance. It is not a receipt, cheque, or purchase.</span></div>';
+        body.insertBefore(box,body.firstChild);
+      },20);
+      return result;
+    };
+    wrapped.__canonicalOpening=true;window.showCustomerDetail=wrapped;
+  }
+
+  /* Correct category presentation sign. */
+  const oldCatDetail=window.showCategoryAnalytics;
+  if(typeof oldCatDetail==='function' && !oldCatDetail.__canonicalProfit){
+    const wrapped=function(cid){
+      const result=oldCatDetail.apply(this,arguments);
+      setTimeout(()=>{
+        const modal=document.querySelector('#modalWrap.open .modal-body');
+        if(!modal)return;
+        const nodes=Array.from(modal.querySelectorAll('.k-value.sm'));
+        nodes.forEach(n=>{ if(n.textContent && /Rs\.\s*26,982,237|Rs\.\s*\d/.test(n.textContent) && n.closest('.kpi') && /Profit|Margin/.test(n.closest('.kpi').textContent)){ const a=window.categoryAnalytics(cid); if(a)n.textContent=money(a.totals.profit); } });
+      },20);return result;
+    };wrapped.__canonicalProfit=true;window.showCategoryAnalytics=wrapped;
+  }
+
+  /* Re-run the explicit-only opening migration after Firestore data arrives.
+     Never guess that a normal purchase is an opening balance. */
+  try{
+    if(typeof window.migrateExplicitOpeningPurchaseRecords==='function') window.migrateExplicitOpeningPurchaseRecords();
+  }catch(e){ console.warn('Opening migration skipped:',e); }
+
+  if(window.__dbgOk) window.__dbgOk('Canonical financial engine installed: bank deduplication + opening balances + purchase classification + supplier/customer balances','FINANCE');
+})();
 </script>
 </body>
 </html>

@@ -3574,7 +3574,15 @@ function can(perm){
 }
 
 function canWrite(){
+  /* The configured administrator must always be allowed to write.  Do not let
+     a stale cached access/role document turn the admin account into viewer. */
+  const email = currentUser && currentUser.email ? String(currentUser.email).trim().toLowerCase() : '';
+  const adminEmail = typeof ADMIN_EMAIL !== 'undefined' ? String(ADMIN_EMAIL).trim().toLowerCase() : '';
+  if(email && adminEmail && email === adminEmail){
+    currentUserRole = 'admin';
+  }
   if(db.settings && db.settings.readOnlyMode){ toast('Read-only mode active.', 'error'); return false; }
+  if(currentUserRole === 'admin') return true;
   const p = userPerms();
   if(!p.write){ toast('Your role (' + currentUserRole + ') cannot modify data.', 'error'); return false; }
   return true;
@@ -12775,6 +12783,9 @@ function openCustomerForm(id){
     + '<label class="field">Phone<input name="cuPhone" value="' + esc(c ? c.phone : '') + '"></label>'
     + '<label class="field">Email<input name="cuEmail" type="email" value="' + esc(c ? (c.email || '') : '') + '"></label>'
     + '<label class="field">Business<input name="cuBusiness" value="' + esc(c ? (c.business || '') : '') + '"></label>'
+    + '<label class="field">Opening Balance<input name="cuOpen" type="number" step="0.01" value="' + (c ? num(c.openingBalance) : 0) + '"></label>'
+    + '<label class="field">Opening Date<input name="cuOpenDate" type="date" value="' + (c ? (c.openingDate || today()) : today()) + '"></label>'
+    + '<label class="field">Opening Balance Type<select name="cuOpenType"><option value="receivable" ' + (c && c.openingBalanceType === 'credit' ? '' : 'selected') + '>Receivable — customer owes us</option><option value="credit" ' + (c && c.openingBalanceType === 'credit' ? 'selected' : '') + '>Credit — we owe customer</option></select></label>'
     + '<label class="field">Cheque Acceptance Limit<input name="cuLimit" type="number" step="0.01" value="' + (c ? num(c.chequeLimit) : 0) + '" placeholder="Max outstanding cheque amount"></label>'
     + '<label class="field" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="cuBlacklist" ' + (c && c.blacklisted ? 'checked' : '') + '> <span>Blacklist (do not accept cheques)</span></label>'
     + '</div>'
@@ -12802,6 +12813,9 @@ function saveCustomer(e){
     business: f.cuBusiness.value.trim(),
     address: f.cuAddress.value.trim(),
     notes: f.cuNotes.value.trim(),
+    openingBalance: num(f.cuOpen ? f.cuOpen.value : 0),
+    openingDate: (f.cuOpenDate ? f.cuOpenDate.value : today()) || today(),
+    openingBalanceType: (f.cuOpenType ? f.cuOpenType.value : 'receivable') || 'receivable',
     chequeLimit: num(f.cuLimit.value),
     blacklisted: f.cuBlacklist.checked
   };
@@ -24411,6 +24425,20 @@ if(typeof window.viewPurchases === 'function' && window.views){
      handler so every existing save function sees the correct role. */
   document.addEventListener('submit', function(ev){
     try{
+      /* Capture the database state BEFORE the inline save handler mutates it.
+         This makes every legacy form reliably detectable by the low-quota diff
+         engine, even when the local cache was written by an older version. */
+      if(window.db && Array.isArray(window.COLLECTIONS)){
+        const pre={};
+        window.COLLECTIONS.forEach(function(col){
+          pre[col]={};
+          const list=Array.isArray(window.db[col])?window.db[col]:[];
+          list.forEach(function(item){ if(item && item.id){ try{ pre[col][String(item.id)]=JSON.stringify(item); }catch(e){} } });
+        });
+        pre._settings=JSON.stringify(window.db.settings || {});
+        window._dbSnapshot=pre;
+        if(window.__LANKA_SYNC_STATE) window.__LANKA_SYNC_STATE.cloudSnapshotReady=true;
+      }
       if(typeof currentUser!=='undefined' && currentUser &&
          typeof currentUser.email==='string' &&
          typeof ADMIN_EMAIL!=='undefined' &&

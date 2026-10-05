@@ -10,6 +10,16 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script>
+window.__LankaShoeGoogleLogin=function(event){
+  try{if(event){event.preventDefault();event.stopPropagation();}}catch(e){}
+  try{
+    if(typeof handleSignIn==='function') handleSignIn();
+    else{const el=document.getElementById('loginError');if(el){el.textContent='Login is still loading. Please try again in a moment.';el.classList.add('show');}}
+  }catch(err){const el=document.getElementById('loginError');if(el){el.textContent='Login error: '+(err&&(err.message||err));el.classList.add('show');}}
+  return false;
+};
+</script>
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
 ROOT TOKENS
@@ -1051,7 +1061,7 @@ LOGIN OVERLAY
 <div class="login-logo" id="loginLogo">LS</div>
 <h1 id="loginTitle">Lanka Shoe</h1>
 <div class="tagline" id="loginTagline">Sign in to access the enterprise suite</div>
-<button type="button" class="google-btn" id="googleSignInBtn">
+<button type="button" class="google-btn" id="googleSignInBtn" onclick="return window.__LankaShoeGoogleLogin(event);">
 <svg viewBox="0 0 48 48">
 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
 <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -1154,35 +1164,19 @@ FLOATING ELEMENTS
 </div>
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 <script>
+/* Global view registry must exist before early view modules execute. */
+var views = window.views || {};
+window.views = views;
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 1 — FIREBASE CONFIG & APP INIT
 ═══════════════════════════════════════════════════════════════════════════ */
-/* Firebase variables (the real config + initFirebase() live in PART 4).
-   Declared ONCE here so Part 4 does not re-declare them (a duplicate let/const
-   is a fatal SyntaxError that stopped Part 4, i.e. the whole login). */
-let firebaseApp = null, firestore = null, auth = null, storage = null, currentUser = null;
-
+/* Firebase bootstrap removed: authoritative init is in Part 4. */
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 2 — CONSTANTS
 ═══════════════════════════════════════════════════════════════════════════ */
-const DATA_PREFIX = 'lk_';   /* single declaration (Part 4 uses it too) */
-
-const COLLECTIONS = [
-  'customers', 'customerNotes', 'customerContactLog',
-  'suppliers', 'supplierReturns',
-  'purchases', 'receipts',
-  'customerCheques', 'chequeEndorsements', 'chequeSplits', 'chequeSettlements',
-  'chequeBooks', 'chequeLeaves',
-  'payments', 'recurringCheques',
-  'bankAccounts', 'bankTransactions', 'bankFees', 'bankTransfers',
-  'expenses', 'journals', 'categories',
-  'activityLog', 'auditTrail', 'loginHistory',
-  'savedReports', 'trash', 'drafts', 'todos', 'recentlyViewed',
-  'kpiPrefs', 'recordTags', 'versionHistory',
-  'budgets', 'budgetHistory', 'archive', 'stickyNotes', 'aiHistory'
-];
+/* Legacy DATA_PREFIX/COLLECTIONS removed; Part 4 defines authoritative values. */
 
 const NAV_ITEMS = [
   { group: 'Main', items: [
@@ -1384,6 +1378,57 @@ function seed() {
 const _seedTemplate = seed();
 let _seedTemplateJSON = JSON.stringify(_seedTemplate);
 
+/* ── Required data migrations (restored) ───────────────────────────────
+   These functions existed in the original application but were accidentally
+   removed from the rewritten file. normalizeDb() calls them during the first
+   render, so their absence caused a ReferenceError and left #view blank. */
+function migrateChequeLeaves(){
+  arr(db.chequeBooks).forEach(b => {
+    if(b.leafGenerated === true) return;
+    const start = num(b.startNo);
+    const end = num(b.endNo);
+    if(!start || !end || end < start){
+      b.leafGenerated = true;
+      return;
+    }
+    for(let i = start; i <= end; i++){
+      const leafNo = String(i).padStart(num(db.settings && db.settings.chequeLeafPad) || 4, '0');
+      const exists = arr(db.chequeLeaves).find(l => l.chequeBookId === b.id && l.leafNo === leafNo);
+      if(!exists){
+        db.chequeLeaves.push({
+          id: uid(),
+          chequeBookId: b.id,
+          bankAccountId: b.bankAccountId || null,
+          bankName: b.bankName || '',
+          bookNo: b.bookNo || '',
+          leafNo,
+          status: 'Available',
+          paymentId: null,
+          date: null,
+          dueDate: null,
+          amount: 0,
+          payee: '',
+          supplierId: null,
+          createdAt: nowISO()
+        });
+      }
+    }
+    b.leafGenerated = true;
+  });
+}
+
+function migrateSupplierCategories(){
+  arr(db.suppliers).forEach(s => {
+    if(s.categoryId === undefined) s.categoryId = '';
+  });
+}
+
+function migrateBankBalances(){
+  arr(db.bankAccounts).forEach(b => {
+    if(b.openingBalance === undefined) b.openingBalance = 0;
+  });
+}
+
 function normalizeDb() {
   if (!window.db) window.db = {};
   const template = JSON.parse(_seedTemplateJSON);
@@ -1433,6 +1478,22 @@ const sum = (list, key) => arr(list).reduce((s, o) => s + num(o[key]), 0);
 
 const thisMonth = () => today().slice(0, 7);
 
+/* Global UI state must exist before early modules execute. */
+var ui = window.ui || {
+  view: 'dashboard', dashboard: { mode: 'classic' },
+  sup: { q: '', catFilter: '', _tab: 'Overview' }, cust: { q: '', reliability: 'all', _tab: 'Overview' },
+  pur: { q: '' }, rcp: { q: '' }, cc: { tab: 'In Hand', customerFilter: '' },
+  own: { tab: 'Overview', subTab: 'Available', month: thisMonth(), from: '', to: '', filterMode: 'month', calMonth: thisMonth() },
+  pay: { q: '' }, bank: { q: '', _tab: 'Overview' }, cbook: { q: '' }, exp: { q: '' },
+  ledger: { type: 'supplier' }, settings: { tab: 'profile' }, reports: { tab: 'builder' }, history: { q: '' },
+  trash: { q: '', type: '', user: '', dateFrom: '', dateTo: '' }, todo: { filter: 'all' }, clv: { tier: 'all' },
+  supCompare: { cat: '' }, bankCompare: {}, doc: { q: '', catFilter: '' }, paySelectedParty: new Set(), payOwnRows: [],
+  payMode: 'cheques', payBank: { bankAccountId: '', amount: 0, method: 'Bank Transfer', reference: '', notes: '' },
+  paySupplierPreselect: ''
+};
+window.ui = ui;
+
+
 const daysBetween = (a, b) => {
   if (!a || !b) return Infinity;
   const d1 = new Date(a), d2 = new Date(b);
@@ -1474,34 +1535,11 @@ const fmtCompact = v => {
   return n.toFixed(0);
 };
 
-var toCSV = (headers, rows) => {
-  const esc_csv = v => {
-    const s = String(v ?? '');
-    return s.includes(',') || s.includes('"') || s.includes('\n')
-      ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  return [headers.map(esc_csv).join(','), ...rows.map(r => r.map(esc_csv).join(','))].join('\n');
-};
+/* Legacy toCSV replaced by Part 15 implementation. */
 
-var download = (filename, content, type) => {
-  const blob = new Blob([content], { type: type || 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
+/* Legacy download replaced by Part 15 implementation. */
 
-var kpiCard = (label, value, sub, opts) => {
-  const o = opts || {};
-  return '<div class="kpi">' +
-    '<div class="k-top"><span class="k-label">' + esc(label) + '</span>' +
-    (o.delta ? '<span class="k-delta ' + o.delta.dir + '">' + o.delta.icon + ' ' + o.delta.text + '</span>' : '') +
-    '</div>' +
-    '<div class="k-value' + (o.small ? ' sm' : '') + '">' + value + '</div>' +
-    (sub ? '<div class="k-sub">' + sub + '</div>' : '') +
-    '</div>';
-};
+/* Legacy kpiCard replaced by Part 15 implementation. */
 
 const badgeStatus = (status) => {
   const map = {
@@ -1581,10 +1619,6 @@ const supplierBalance = id => {
   return bal;
 };
 
-var pendingDeductions = bankId => arr(db.bankTransactions).filter(t =>
-  t.bankAccountId === bankId && t.type === 'cheque_deduction' && t.status === 'pending'
-);
-
 const chequeReliability = (entityId, type) => {
   const field = type === 'customer' ? 'customerId' : 'supplierId';
   const cheques = arr(db.customerCheques).filter(c => c[field] === entityId);
@@ -1633,27 +1667,30 @@ function markDirty(collection, docId, action) {
   }
 }
 
-/* ── Debounced save ─────────────────────────────────────────────────── */
-function save() {
-  /* 🔧 BUG FIX #3: Debounce rapid saves */
-  if (_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
-  _syncState.debounceTimer = setTimeout(() => {
-    _doSmartSync();
-  }, _syncState.DEBOUNCE_MS);
-
-  /* Immediate local persist */
-  try {
-    localStorage.setItem('lankashoe_db', JSON.stringify(db));
-  } catch(e) {
-    console.warn('localStorage save failed:', e);
-  }
-  updateSyncStatus('Saving...');
+/* ── Debounced save with automatic granular change detection ─────────── */
+function detectDirtyFromSnapshot(){
+  const snap=window._dbSnapshot||{};
+  COLLECTIONS.forEach(col=>{
+    const before=snap[col]||{}, current=arr(db[col]), seen=new Set();
+    current.forEach(item=>{if(!item||!item.id)return;seen.add(item.id);let now='';try{now=JSON.stringify(item);}catch(e){return;}if(before[item.id]!==now)markDirty(col,item.id,'upsert');});
+    Object.keys(before).forEach(id=>{if(!seen.has(id))markDirty(col,id,'delete');});
+  });
+  const nowSettings=JSON.stringify(db.settings||{});
+  if(snap._settings!==undefined&&snap._settings!==nowSettings)markDirty('settings','main','upsert');
+}
+function save(){
+  detectDirtyFromSnapshot();
+  if(_syncState.debounceTimer)clearTimeout(_syncState.debounceTimer);
+  _syncState.debounceTimer=setTimeout(()=>{_doSmartSync();},_syncState.DEBOUNCE_MS);
+  try{localStorage.setItem('lankashoe_db',JSON.stringify(db));localStorage.setItem('lankashoe_cache',JSON.stringify(db));}catch(e){console.warn('local save failed:',e);}
+  updateSyncStatus('Saving…');
 }
 
 /* Force immediate sync (for critical operations) */
-function saveNow() {
+async function saveNow() {
+  detectDirtyFromSnapshot();
   if (_syncState.debounceTimer) clearTimeout(_syncState.debounceTimer);
-  _doSmartSync();
+  await _doSmartSync();
   try {
     localStorage.setItem('lankashoe_db', JSON.stringify(db));
   } catch(e) {}
@@ -1685,51 +1722,23 @@ async function _doSmartSync() {
   } catch(e) {
     console.error('Sync error:', e);
     updateSyncStatus('Sync failed — will retry');
-    /* Mark all dirty again for retry */
-    _syncState.fullSyncNeeded = true;
+    /* Keep exact dirty document set for retry; never rewrite all collections automatically. */
   } finally {
     _syncState.syncInProgress = false;
   }
 }
 
-/* ── Incremental sync: only changed collections ────────────────────── */
-async function _incrementalSync() {
-  const dirty = Array.from(_syncState.dirtyCollections);
-  if (!dirty.length) return;
-
-  for (const col of dirty) {
-    const colRef = firestore.collection(DATA_PREFIX + col);
-    const items = arr(db[col]);
-    const changes = _syncState.docChanges[col] || {};
-    const changedDocIds = Object.keys(changes);
-
-    if (changedDocIds.length > 0 && changedDocIds.length <= 20) {
-      /* 🔥 Granular: only write changed documents */
-      const batch = firestore.batch();
-      let ops = 0;
-      for (const docId of changedDocIds) {
-        const action = changes[docId];
-        const docRef = colRef.doc(docId);
-        if (action === 'delete') {
-          batch.delete(docRef);
-        } else {
-          const item = items.find(x => x.id === docId);
-          if (item) {
-            const data = Object.assign({}, item);
-            data._syncedAt = nowISO();
-            batch.set(docRef, data, { merge: true });
-          }
-        }
-        ops++;
-        if (ops >= _syncState.MAX_BATCH_SIZE) {
-          await batch.commit();
-          ops = 0;
-        }
-      }
-      if (ops > 0) await batch.commit();
-    } else {
-      /* Collection-level: rewrite this collection only (not ALL collections) */
-      await _syncSingleCollection(col, colRef, items);
+/* ── Incremental sync: granular documents only ───────────────────────── */
+async function _incrementalSync(){
+  const dirty=Array.from(_syncState.dirtyCollections);
+  for(const col of dirty){
+    const colRef=firestore.collection(DATA_PREFIX+col), items=arr(db[col]);
+    const byId=new Map(items.filter(x=>x&&x.id).map(x=>[x.id,x]));
+    const changes=_syncState.docChanges[col]||{}, ids=Object.keys(changes);
+    for(let i=0;i<ids.length;i+=450){
+      const batch=firestore.batch(), chunk=ids.slice(i,i+450);
+      for(const id of chunk){const ref=colRef.doc(id),action=changes[id];if(action==='delete')batch.delete(ref);else{const item=byId.get(id);if(item)batch.set(ref,JSON.parse(JSON.stringify(item)),{merge:true});}}
+      if(chunk.length)await batch.commit();
     }
   }
 }
@@ -1857,9 +1866,6 @@ SECTION 6 — UI STATE & ACCESS CONTROL
 ═══════════════════════════════════════════════════════════════════════════ */
 let userRole = 'viewer';
 
-/* Screen registry — created here so Parts 3-14 can register views at load time */
-const views = {};
-
 const ROLES = {
   owner: { level: 100, label: 'Owner', can: ['read','write','delete','admin','settings','users','export','import','archive'] },
   admin: { level: 90, label: 'Admin', can: ['read','write','delete','settings','export','import','archive'] },
@@ -1886,27 +1892,8 @@ function getRoleForEmail(email) {
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 7 — UI STATE OBJECT
 ═══════════════════════════════════════════════════════════════════════════ */
-const ui = {
-  view: 'dashboard',
-  modal: null,
-  fabOpen: false,
-  notifOpen: false,
-  sidebarCollapsed: false,
-  bulkMode: false,
-  bulkCollection: null,
-  bulkSelection: new Set(),
-  searchQuery: '',
-  recentViews: [],
-  todo: { filter: 'all' },
-  settingsTab: 'general',
-  reportTab: 'builder',
-  dashTab: 'classic'
-};
-
-window.ui = ui;
+/* UI state is defined authoritatively in Part 15. */
 window.db = db;
-window.currentUser = null;
-window.userRole = 'viewer';
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 8 — TOAST & MODAL SYSTEM
@@ -2373,689 +2360,6 @@ END OF PART 2
 <script>
 'use strict';
 /* ═══════════════════════════════════════════════════════════════════════════
-RESTORED HELPERS — ledgers · aging · cheque balances · reliability · undo · notes/tags · migrations
-These are called throughout the app but were missing from the first script block.
-═══════════════════════════════════════════════════════════════════════════ */
-const customerReliability = id => {
-  const cheques = arr(db.customerCheques).filter(c => c.customerId === id);
-  if (!cheques.length) {
-    return { cls: 'new', label: 'New', score: null };
-  }
-  const resolved = cheques.filter(c =>
-    c.status === 'Cleared' || c.status === 'Bounced' || c.status === 'Stopped' || c.status === 'Settled'
-  );
-  const min = num(db.settings.custMinResolved) || 3;
-  if (resolved.length < min) {
-    return { cls: 'new', label: 'New', score: null };
-  }
-  const cleared = cheques.filter(c => c.status === 'Cleared').length;
-  const rate = Math.round((cleared / resolved.length) * 100);
-  if (rate >= (num(db.settings.custTrustedThreshold) || 90))
-    return { cls: 'trusted', label: 'Trusted', score: rate };
-  if (rate >= 70) return { cls: 'watch', label: 'Watch', score: rate };
-  return { cls: 'risky', label: 'Risky', score: rate };
-};
-
-const customerChequeSummary = id => {
-  const all = arr(db.customerCheques).filter(c => c.customerId === id);
-  const byStatus = {
-    inHand: all.filter(c => c.status === 'In Hand'),
-    issued: all.filter(c => c.status === 'Issued'),
-    cleared: all.filter(c => c.status === 'Cleared'),
-    bounced: all.filter(c => c.status === 'Bounced'),
-    stopped: all.filter(c => c.status === 'Stopped')
-  };
-  return {
-    all,
-    total: { count: all.length, value: sum(all, 'amount') },
-    inHand: { count: byStatus.inHand.length, value: sum(byStatus.inHand, 'amount') },
-    issued: { count: byStatus.issued.length, value: sum(byStatus.issued, 'amount') },
-    cleared: { count: byStatus.cleared.length, value: sum(byStatus.cleared, 'amount') },
-    bounced: { count: byStatus.bounced.length, value: sum(byStatus.bounced, 'amount') },
-    stopped: { count: byStatus.stopped.length, value: sum(byStatus.stopped, 'amount') },
-    byStatus
-  };
-};
-
-const chequeRemaining = chequeId => {
-  const c = arr(db.customerCheques).find(x => x.id === chequeId);
-  if (!c) return 0;
-  const settled = sum(arr(db.chequeSettlements).filter(s => s.chequeId === chequeId), 'amount');
-  return Math.max(0, num(c.amount) - settled);
-};
-
-const chequeSplits = chequeId =>
-  arr(db.chequeSplits).filter(s => s.chequeId === chequeId);
-
-const chequeUnallocated = chequeId => {
-  const c = arr(db.customerCheques).find(x => x.id === chequeId);
-  if (!c) return 0;
-  const allocated = sum(chequeSplits(chequeId), 'amount');
-  return Math.max(0, num(c.amount) - allocated);
-};
-
-const chequeSettlements = chequeId =>
-  arr(db.chequeSettlements).filter(s => s.chequeId === chequeId);
-
-const chequeChain = chequeId => {
-  const c = arr(db.customerCheques).find(x => x.id === chequeId);
-  if (!c) return [];
-  const chain = [];
-  /* 1. Customer → shop */
-  chain.push({
-    label: c.customerName || custName(c.customerId),
-    sub: 'Received from customer',
-    date: c.date,
-    amount: c.amount,
-    note: c.ref || ''
-  });
-  /* 2. Splits (partially allocated to suppliers) */
-  chequeSplits(chequeId).forEach(s => {
-    chain.push({
-      label: supName(s.supplierId),
-      sub: 'Split allocation' + (s.status ? ' — ' + s.status : ''),
-      date: s.date,
-      amount: s.amount,
-      note: ''
-    });
-  });
-  /* 3. Issued to a supplier via payment */
-  if (c.issuedTo) {
-    chain.push({
-      label: supName(c.issuedTo),
-      sub: 'Endorsed / issued',
-      date: c.issuedDate || c.date,
-      amount: c.amount,
-      note: c.paymentId ? 'Via payment' : ''
-    });
-  }
-  /* 4. Settlements */
-  chequeSettlements(chequeId).forEach(s => {
-    chain.push({
-      label: s.method || 'Settlement',
-      sub: 'Settled' + (s.reference ? ' — ' + s.reference : ''),
-      date: s.date,
-      amount: s.amount,
-      note: ''
-    });
-  });
-  return chain;
-};
-
-const supplierAging = sid => {
-  const s = supObj(sid);
-  if (!s) return { current: 0, d30: 0, d60: 0, d90: 0, total: 0 };
-  const items = [];
-  if (num(s.openingBalance) > 0) {
-    items.push({ date: s.openingDate || today(), amount: num(s.openingBalance) });
-  }
-  arr(db.purchases).filter(p => p.supplierId === sid).forEach(p => {
-    items.push({ date: p.date, amount: num(p.amount) });
-  });
-  items.sort((a, b) => a.date < b.date ? -1 : 1);
-  let avail = sum(arr(db.payments).filter(p =>
-    p.supplierId === sid && !p.fullyReversed
-  ), 'amount')
-    + sum(arr(db.supplierReturns).filter(r => r.supplierId === sid), 'amount');
-  const [b1, b2, b3] = (db.settings.supplierAgingBuckets || [30, 60, 90]).map(n => num(n));
-  const credit = num(s.creditDays) || num(db.settings.defaultSupplierCreditDays) || 30;
-  let current = 0, d30 = 0, d60 = 0, d90 = 0;
-  items.forEach(it => {
-    if (avail >= it.amount) { avail -= it.amount; return; }
-    const amt = it.amount - avail;
-    avail = 0;
-    const age = daysBetween(it.date, today());
-    const eff = Math.max(0, age - credit);
-    if (eff <= b1) current += amt;
-    else if (eff <= b2) d30 += amt;
-    else if (eff <= b3) d60 += amt;
-    else d90 += amt;
-  });
-  return { current, d30, d60, d90, total: current + d30 + d60 + d90 };
-};
-
-const customerAging = cid => {
-  const bounced = arr(db.customerCheques).filter(c =>
-    c.customerId === cid && c.status === 'Bounced'
-  );
-  const [b1, b2, b3] = (db.settings.supplierAgingBuckets || [30, 60, 90]).map(n => num(n));
-  let current = 0, d30 = 0, d60 = 0, d90 = 0;
-  bounced.forEach(c => {
-    const remaining = chequeRemaining(c.id);
-    if (remaining <= 0) return;
-    const age = Math.abs(daysBetween(c.bouncedDate || c.date, today()));
-    if (age <= b1) current += remaining;
-    else if (age <= b2) d30 += remaining;
-    else if (age <= b3) d60 += remaining;
-    else d90 += remaining;
-  });
-  return { current, d30, d60, d90, total: current + d30 + d60 + d90 };
-};
-
-const globalAging = () => {
-  const out = { current: 0, d30: 0, d60: 0, d90: 0, total: 0 };
-  arr(db.suppliers).forEach(s => {
-    const a = supplierAging(s.id);
-    out.current += a.current;
-    out.d30 += a.d30;
-    out.d60 += a.d60;
-    out.d90 += a.d90;
-  });
-  out.total = out.current + out.d30 + out.d60 + out.d90;
-  return out;
-};
-
-const supplierLedger = sid => {
-  const s = supObj(sid);
-  if (!s) return { rows: [], balance: 0 };
-  const events = [];
-  if (num(s.openingBalance) !== 0) {
-    events.push({
-      date: s.openingDate || today(),
-      type: 'Opening',
-      ref: 'Opening Balance',
-      desc: 'Opening balance',
-      debit: num(s.openingBalance),
-      credit: 0
-    });
-  }
-  arr(db.purchases).filter(p => p.supplierId === sid).forEach(p => {
-    events.push({
-      date: p.date, type: 'Purchase', ref: p.invoiceNo || '',
-      desc: catName(p.categoryId) + (p.description ? ' — ' + p.description : ''),
-      debit: num(p.amount), credit: 0
-    });
-  });
-  arr(db.supplierReturns).filter(r => r.supplierId === sid).forEach(r => {
-    events.push({
-      date: r.date, type: 'Return', ref: r.reference || '',
-      desc: r.reason || 'Return / Debit note',
-      debit: 0, credit: num(r.amount)
-    });
-  });
-  arr(db.payments).filter(p => p.supplierId === sid && !p.fullyReversed).forEach(p => {
-    events.push({
-      date: p.date, type: 'Payment', ref: p.reference || '',
-      desc: p.paymentMode === 'bank' ? 'Bank transfer' : 'Cheques',
-      debit: 0, credit: num(p.amount)
-    });
-  });
-  arr(db.journals).filter(j =>
-    j.entityType === 'supplier' && j.entityId === sid && !j.bounceReversal
-  ).forEach(j => {
-    if (num(j.debit) || num(j.credit)) {
-      events.push({
-        date: j.date, type: 'Adjustment', ref: j.reference || '',
-        desc: j.description || '',
-        debit: num(j.debit), credit: num(j.credit)
-      });
-    }
-  });
-  arr(db.journals).filter(j =>
-    j.entityType === 'supplier' && j.entityId === sid && j.bounceReversal
-  ).forEach(j => {
-    events.push({
-      date: j.date, type: 'Reversal', ref: j.reference || '',
-      desc: j.description || 'Bounce reversal',
-      debit: 0, credit: num(j.reversalAmount),
-      isReversal: true
-    });
-  });
-  events.sort((a, b) => a.date < b.date ? -1 : 1);
-  let running = 0;
-  events.forEach(e => {
-    running += num(e.debit) - num(e.credit);
-    e.balance = running;
-  });
-  return { rows: events, balance: running };
-};
-
-const customerLedger = cid => {
-  const c = custObj(cid);
-  if (!c) return { rows: [], balance: 0 };
-  const events = [];
-  arr(db.customerCheques).filter(x => x.customerId === cid).forEach(ch => {
-    events.push({
-      date: ch.date,
-      type: ch.status === 'Bounced' ? 'Bounced' : 'Cheque',
-      ref: ch.chequeNo || '',
-      desc: ch.bank || '',
-      chequeId: ch.id,
-      amount: num(ch.amount),
-      status: ch.status,
-      isReversal: ch.status === 'Bounced'
-    });
-  });
-  events.sort((a, b) => a.date < b.date ? -1 : 1);
-  let running = 0;
-  events.forEach(e => {
-    if (e.status === 'Cleared') running += num(e.amount);
-    else if (e.status === 'Bounced') running -= num(e.amount);
-    e.balance = running;
-  });
-  return { rows: events, balance: running };
-};
-
-function trackVersion(collection, recordId, action, before, after) {
-  const entry = {
-    id: uid(),
-    collection: collection,
-    recordId: recordId,
-    label: action,
-    action: action,
-    changes: before || after ? diffFields(before, after) : [],
-    before: before,
-    after: after,
-    user: (window.currentUser && window.currentUser.email) || 'system',
-    at: nowISO()
-  };
-  if (!Array.isArray(db.versionHistory)) db.versionHistory = [];
-  db.versionHistory.unshift(entry);
-  if (db.versionHistory.length > 3000) db.versionHistory = db.versionHistory.slice(0, 3000);
-  markDirty('versionHistory');
-}
-
-window.trackVersion = trackVersion;
-
-function restoreFromTrash(trashId) { return restoreTrash(trashId); }
-
-window.restoreFromTrash = restoreFromTrash;
-
-function permanentDeleteFromTrash(trashId) {
-  if (!confirm('Permanently delete this item? This cannot be undone.')) return;
-  db.trash = arr(db.trash).filter(t => t.id !== trashId);
-  save();
-  if (typeof window.render === 'function') window.render();
-  toast('Permanently deleted', 'success');
-}
-
-window.permanentDeleteFromTrash = permanentDeleteFromTrash;
-
-function performUndo() {
-  if (!_undoStack.length) { toast('Nothing to undo', 'warn'); return; }
-  const last = _undoStack.pop();
-  try {
-    if (last.type === 'collection_push') {
-      const items = arr(db[last.collection]);
-      const idx = items.findIndex(x => x.id === last.id);
-      if (idx !== -1) items.splice(idx, 1);
-    } else if (last.type === 'record_change') {
-      const list = arr(db[last.collection]);
-      const idx = list.findIndex(x => x.id === last.data.id);
-      if (idx !== -1) Object.assign(list[idx], last.data.before);
-    } else if (last.type === 'collection_delete') {
-      db[last.collection] = arr(db[last.collection]).concat([last.data.item]);
-    } else if (last.type === 'bulk_delete') {
-      db[last.collection] = arr(db[last.collection]).concat(last.data.snapshot);
-    } else if (last.type === 'record_create') {
-      const items = arr(db[last.collection]);
-      const idx = items.findIndex(x => x.id === last.data.id);
-      if (idx !== -1) items.splice(idx, 1);
-    }
-    markDirty(last.collection);
-    save();
-    if (typeof window.render === 'function') window.render();
-    toast('Undone: ' + (last.label || 'action'), 'info');
-  } catch(e) {
-    toast('Undo failed', 'error');
-  }
-}
-
-window.performUndo = performUndo;
-
-function markViewed(kind, id, label) {
-  if (!Array.isArray(db.recentlyViewed)) db.recentlyViewed = [];
-  const userEmail = (window.currentUser && window.currentUser.email) || 'system';
-  db.recentlyViewed = db.recentlyViewed.filter(r =>
-    !(r.kind === kind && r.entityId === id && r.user === userEmail)
-  );
-  db.recentlyViewed.unshift({
-    id: uid(),
-    kind: kind,
-    entityId: id,
-    label: label || '',
-    user: userEmail,
-    viewedAt: nowISO()
-  });
-  if (db.recentlyViewed.length > 100) db.recentlyViewed = db.recentlyViewed.slice(0, 100);
-}
-
-window.markViewed = markViewed;
-
-function recentItems() {
-  const userEmail = (window.currentUser && window.currentUser.email) || 'system';
-  return arr(db.recentlyViewed).filter(r => r.user === userEmail).slice(0, 20);
-}
-
-window.recentItems = recentItems;
-
-function toggleSidebar() {
-  ui.sidebarCollapsed = !ui.sidebarCollapsed;
-  document.body.classList.toggle('sidebar-collapsed',
-    ui.sidebarCollapsed);
-}
-
-window.toggleSidebar = toggleSidebar;
-
-function migrateChequeLeaves() {
-  let changed = false;
-
-  arr(db.chequeLeaves).forEach(l => {
-    /* Backfill bankAccountId / bankName from cheque book */
-    if (!l.bankAccountId && l.chequeBookId) {
-      const book = arr(db.chequeBooks).find(bk =>
-        bk.id === l.chequeBookId);
-      if (book) {
-        l.bankAccountId = book.bankAccountId || '';
-        if (!l.bankName) l.bankName = book.bankName || '';
-        changed = true;
-      }
-    }
-    /* Backfill bookNo from cheque book */
-    if (!l.bookNo && l.chequeBookId) {
-      const book = arr(db.chequeBooks).find(bk =>
-        bk.id === l.chequeBookId);
-      if (book && book.bookNo) {
-        l.bookNo = book.bookNo;
-        changed = true;
-      }
-    }
-    /* Ensure status is set */
-    if (!l.status) {
-      l.status = 'Available';
-      changed = true;
-    }
-  });
-
-  return changed;
-}
-
-window.migrateChequeLeaves = migrateChequeLeaves;
-
-function migrateSupplierCategories() {
-  let changed = false;
-  const hasCategories = arr(db.categories).length > 0;
-
-  arr(db.suppliers).forEach(s => {
-    if (!s.categoryId && hasCategories) {
-      /* Leave blank — the supplier form allows "— Uncategorized —"
-         so this just ensures the field is defined for filtering */
-      if (s.categoryId === undefined) {
-        s.categoryId = '';
-        changed = true;
-      }
-    }
-  });
-
-  return changed;
-}
-
-window.migrateSupplierCategories = migrateSupplierCategories;
-
-function migrateBankBalances() {
-  let changed = false;
-
-  arr(db.bankAccounts).forEach(b => {
-    if (b.openingBalance === undefined || b.openingBalance === null) {
-      b.openingBalance = 0;
-      changed = true;
-    }
-    if (!b.openingDate) {
-      b.openingDate = today();
-      changed = true;
-    }
-    if (!b.accountType) {
-      b.accountType = 'Current';
-      changed = true;
-    }
-  });
-
-  return changed;
-}
-
-window.migrateBankBalances = migrateBankBalances;
-
-function notesFor(entityType, entityId) {
-  if (!Array.isArray(db.customerNotes)) db.customerNotes = [];
-  return db.customerNotes
-    .filter(n => n.entityType === entityType && n.entityId === entityId)
-    .sort((a, b) => (a.createdAt || '') < (b.createdAt || '') ? 1 : -1);
-}
-
-window.notesFor = notesFor;
-
-function addNote(entityType, entityId, text) {
-  if (!canWrite()) return null;
-  if (!text || !text.trim()) return null;
-  if (!Array.isArray(db.customerNotes)) db.customerNotes = [];
-  const note = {
-    id: uid(),
-    entityType: entityType,
-    entityId: entityId,
-    text: text.trim(),
-    createdAt: nowISO(),
-    createdBy: (window.currentUser && window.currentUser.email)
-      || 'system'
-  };
-  db.customerNotes.push(note);
-  logAct('Add Note', entityType === 'supplier' ? 'Supplier' : 'Customer',
-    entityId, text.slice(0, 60));
-  save();
-  return note;
-}
-
-window.addNote = addNote;
-
-function deleteNote(id) {
-  if (!canWrite()) return;
-  if (!confirm('Delete this note?')) return;
-  const n = arr(db.customerNotes).find(x => x.id === id);
-  db.customerNotes = arr(db.customerNotes).filter(x => x.id !== id);
-  if (n) {
-    logAct('Delete Note', n.entityType === 'supplier'
-      ? 'Supplier' : 'Customer', n.entityId,
-      (n.text || '').slice(0, 60));
-  }
-  save();
-  render();
-  toast('Note deleted', 'success');
-}
-
-window.deleteNote = deleteNote;
-
-function _tagKey(entityType, entityId) {
-  return entityType + ':' + entityId;
-}
-
-function getTagsFor(entityType, entityId) {
-  if (!db.recordTags || typeof db.recordTags !== 'object') {
-    db.recordTags = {};
-  }
-  const key = _tagKey(entityType, entityId);
-  return Array.isArray(db.recordTags[key]) ? db.recordTags[key] : [];
-}
-
-window.getTagsFor = getTagsFor;
-
-function _tagClass(tag) {
-  const t = String(tag).toLowerCase();
-  if (['vip', 'trusted', 'preferred', 'priority', 'gold'].includes(t)) {
-    return 'tag-green';
-  }
-  if (['risky', 'blacklisted', 'problem', 'overdue', 'block'].includes(t)) {
-    return 'tag-red';
-  }
-  if (['watch', 'caution', 'review', 'pending', 'follow-up'].includes(t)) {
-    return 'tag-amber';
-  }
-  return 'tag-gray';
-}
-
-function renderTagPills(entityType, entityId) {
-  const tags = getTagsFor(entityType, entityId);
-  if (!tags.length) return '';
-  return tags.map(t =>
-    '<span class="tag-pill ' + _tagClass(t) + '">' + esc(t)
-    + '</span>'
-  ).join('');
-}
-
-window.renderTagPills = renderTagPills;
-
-const _TAG_PRESETS = {
-  customer: ['VIP', 'Trusted', 'Preferred', 'Watch', 'Risky',
-    'Blacklisted', 'Priority', 'Follow-up'],
-  supplier: ['Preferred', 'Priority', 'Reliable', 'Watch', 'Risky',
-    'Overdue', 'Cheap', 'Expensive', 'Slow']
-};
-
-window._TAG_PRESETS = _TAG_PRESETS;
-
-function openTagsEditor(entityType, entityId, entityName) {
-  const current = getTagsFor(entityType, entityId);
-  const presets = _TAG_PRESETS[entityType] || [];
-
-  openModal('🏷️ Tags — ' + esc(entityName),
-    '<div class="alert info"><span class="ico">ℹ</span>'
-    + '<div>Tags help you filter and categorise '
-    + esc(entityType) + 's. Click a preset to add it, or type your own.'
-    + '</div></div>'
-    + '<div class="section-title">Current Tags</div>'
-    + '<div id="tagCurrent" style="min-height:32px;margin-bottom:18px">'
-    + (current.length
-      ? current.map(t =>
-          '<span class="tag-pill ' + _tagClass(t) + '" '
-          + 'style="cursor:pointer;padding:6px 12px;font-size:11.5px;'
-          + 'margin-right:6px" '
-          + 'onclick="removeTagFromRecord(\'' + entityType + '\',\''
-          + entityId + '\',\'' + esc(t).replace(/'/g, "\\'") + '\')" '
-          + 'title="Click to remove">'
-          + esc(t) + ' ×</span>'
-        ).join('')
-      : '<span class="muted small">No tags yet</span>')
-    + '</div>'
-    + (presets.length
-      ? '<div class="section-title">Presets</div>'
-        + '<div class="row-flex" style="gap:6px;margin-bottom:18px">'
-        + presets.map(t => {
-            const already = current.includes(t);
-            return '<button class="btn xs ' + (already ? 'primary' : '')
-              + '" '
-              + (already ? 'disabled ' : '')
-              + 'onclick="addTagToRecord(\'' + entityType + '\',\''
-              + entityId + '\',\'' + esc(t).replace(/'/g, "\\'")
-              + '\')">'
-              + (already ? '✓ ' : '＋ ') + esc(t) + '</button>';
-          }).join('')
-        + '</div>'
-      : '')
-    + '<div class="section-title">Add Custom Tag</div>'
-    + '<div class="row-flex">'
-    + '<input type="text" id="newTagInput" maxlength="24" '
-    + 'placeholder="e.g. Season2025, Bulk buyer, Slow payer…" '
-    + 'style="flex:1">'
-    + '<button class="btn primary" '
-    + 'onclick="addTagFromInput(\'' + entityType + '\',\'' + entityId
-    + '\')">＋ Add</button>'
-    + '</div>'
-    + '<div class="form-actions">'
-    + '<button class="btn primary" data-action="close-modal">Done</button>'
-    + '</div>');
-}
-
-window.openTagsEditor = openTagsEditor;
-
-function addTagFromInput(entityType, entityId) {
-  const inp = document.getElementById('newTagInput');
-  if (!inp) return;
-  const t = inp.value.trim();
-  if (!t) return;
-  addTagToRecord(entityType, entityId, t);
-  inp.value = '';
-}
-
-window.addTagFromInput = addTagFromInput;
-
-function addTagToRecord(entityType, entityId, tag) {
-  if (!canWrite()) return;
-  tag = String(tag).trim();
-  if (!tag) return;
-  if (!db.recordTags || typeof db.recordTags !== 'object') {
-    db.recordTags = {};
-  }
-  const key = _tagKey(entityType, entityId);
-  if (!Array.isArray(db.recordTags[key])) db.recordTags[key] = [];
-  if (db.recordTags[key].includes(tag)) return;
-  db.recordTags[key].push(tag);
-  markDirty('recordTags');
-  logAct('Add Tag', entityType === 'supplier' ? 'Supplier' : 'Customer',
-    entityId, tag);
-  save();
-  /* Re-open the editor to reflect the new state */
-  const ent = entityType === 'customer'
-    ? custObj(entityId) : supObj(entityId);
-  setTimeout(() => openTagsEditor(entityType, entityId,
-    ent ? ent.name : ''), 80);
-  toast('Tag added: ' + tag, 'success');
-}
-
-window.addTagToRecord = addTagToRecord;
-
-function removeTagFromRecord(entityType, entityId, tag) {
-  if (!canWrite()) return;
-  if (!db.recordTags || typeof db.recordTags !== 'object') return;
-  const key = _tagKey(entityType, entityId);
-  if (!Array.isArray(db.recordTags[key])) return;
-  db.recordTags[key] = db.recordTags[key].filter(t => t !== tag);
-  markDirty('recordTags');
-  logAct('Remove Tag', entityType === 'supplier'
-    ? 'Supplier' : 'Customer', entityId, tag);
-  save();
-  const ent = entityType === 'customer'
-    ? custObj(entityId) : supObj(entityId);
-  setTimeout(() => openTagsEditor(entityType, entityId,
-    ent ? ent.name : ''), 80);
-  toast('Tag removed', 'info');
-}
-
-window.removeTagFromRecord = removeTagFromRecord;
-
-function inlineEdit(collection, id, field) {
-  if (!canWrite()) return;
-  const list = arr(db[collection]);
-  const item = list.find(x => x.id === id);
-  if (!item) { toast('Record not found', 'error'); return; }
-  const current = item[field];
-  const next = window.prompt(
-    'Edit "' + field + '":',
-    current === undefined || current === null ? '' : String(current)
-  );
-  if (next === null) return; /* user cancelled */
-  const trimmed = next.trim();
-  if (trimmed === String(current || '')) return; /* no change */
-
-  const before = JSON.parse(JSON.stringify(item));
-  item[field] = trimmed;
-  item.updatedAt = nowISO();
-
-  const label = item.name || item.invoiceNo || item.chequeNo
-    || item.reference || id;
-  trackVersion(collection, id, 'Update', before, item);
-  logAct('Inline Edit', collection, id,
-    field + ': "' + String(current || '') + '" → "' + trimmed + '"');
-  save();
-  render();
-  toast('Updated ' + field, 'success');
-}
-
-window.inlineEdit = inlineEdit;
-
-/* Part 4 calls purgeOldTrash() on login — alias to the existing cleaner */
-window.purgeOldTrash = cleanOldTrash;
-</script>
-<script>
-'use strict';
-/* ═══════════════════════════════════════════════════════════════════════════
 PART 3 — PURCHASES · CATEGORIES · RECEIPTS · BULK CHEQUE ENTRY
 ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -3082,7 +2386,6 @@ function viewPurchases(){
     + '</div>'
     + '<div class="table-wrap"><table><thead><tr>'
     + '<th>Date</th><th>Invoice</th><th>Supplier</th><th>Category</th><th class="num">Amount</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(p =>
       '<tr data-action="purchase-detail" data-id="' + p.id + '">'
@@ -3091,7 +2394,7 @@ function viewPurchases(){
       + '<td>' + esc(supName(p.supplierId)) + '</td>'
       + '<td>' + esc(catName(p.categoryId)) + '</td>'
       + '<td class="num"><strong>' + moneyPlain(p.amount) + '</strong></td>'
-      + actTd('purchase', p.id) + '</tr>'
+      + '</tr>'
     ).join('') : emptyRow(5, 'No purchases'))
     + '</tbody></table></div></div>';
 }
@@ -3249,11 +2552,10 @@ function viewCategories(){
     + '<th class="num">Received</th>'
     + '<th class="num">Purchased</th>'
     + '<th class="num">Profit</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (arr(db.categories).length ? arr(db.categories).map(c => {
       const receipts = arr(db.receipts).filter(r => r.categoryId === c.id);
-      const purchases = arr(db.purchases).filter(p => p.categoryId === c.id);
+      const purchases = (typeof actualPurchases === 'function' ? actualPurchases() : arr(db.purchases)).filter(p => p.categoryId === c.id);
       const supCount = arr(db.suppliers).filter(s => (s.categoryId || '') === c.id).length;
       const received = sum(receipts, 'amount');
       const purchased = sum(purchases, 'amount');
@@ -3264,8 +2566,8 @@ function viewCategories(){
         + '<td class="num">' + supCount + '</td>'
         + '<td class="num">' + moneyPlain(received) + '</td>'
         + '<td class="num">' + moneyPlain(purchased) + '</td>'
-        + '<td class="num"><strong style="color:' + (profit >= 0 ? 'var(--green)' : 'var(--red)') + '">' + moneyPlain(profit) + '</strong></td>'
-        + actTd('cat', c.id) + '</tr>';
+        + '<td class="num"><strong style="color:' + (profit >= 0 ? 'var(--green)' : 'var(--red)') + '">' + money(profit) + '</strong></td>'
+        + '</tr>';
     }).join('') : emptyRow(6, 'No categories'))
     + '</tbody></table></div></div>';
 }
@@ -3333,7 +2635,7 @@ function categoryAnalytics(cid){
   const c = catObj(cid);
   if(!c) return null;
   const receipts = arr(db.receipts).filter(r => r.categoryId === cid);
-  const purchases = arr(db.purchases).filter(p => p.categoryId === cid);
+  const purchases = (typeof actualPurchases === 'function' ? actualPurchases() : arr(db.purchases)).filter(p => p.categoryId === cid);
   const catSuppliers = arr(db.suppliers).filter(s => (s.categoryId || '') === cid);
   const catCheques = arr(db.customerCheques).filter(cq => cq.categoryId === cid);
   const months = lastMonths(12);
@@ -3385,7 +2687,7 @@ function showCategoryAnalytics(cid){
     + kpiCard('Received', moneyPlain(t.received), a.receipts.length + ' receipts', { small: true })
     + kpiCard('Purchased', moneyPlain(t.purchaseValue), a.purchases.length + ' purchases', { small: true })
     + '<div class="kpi"><div class="k-top"><span class="k-label">Profit / Margin</span></div>'
-    + '<div class="k-value sm" style="color:' + profitColor + '">' + moneyPlain(t.profit) + '</div>'
+    + '<div class="k-value sm" style="color:' + profitColor + '">' + money(t.profit) + '</div>'
     + '<div class="k-sub">' + (t.received > 0 ? ((t.profit / t.received) * 100).toFixed(1) + '% margin' : '—') + '</div></div>'
     + '<div class="kpi"><div class="k-top"><span class="k-label">Bounce Rate</span></div>'
     + '<div class="k-value sm" style="color:' + bounceColor + '">' + t.bounceRate.toFixed(1) + '%</div>'
@@ -3476,7 +2778,6 @@ function viewReceipts(){
     + '<div class="table-wrap"><table><thead><tr>'
     + '<th>Date</th><th>Customer</th><th>Category</th><th>Method</th>'
     + '<th class="num">Cheques</th><th class="num">Amount</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(r =>
       '<tr data-action="receipt-detail" data-id="' + r.id + '">'
@@ -3486,7 +2787,7 @@ function viewReceipts(){
       + '<td><span class="badge gray">' + esc(r.method) + '</span></td>'
       + '<td class="num">' + (r.chequeCount || 0) + '</td>'
       + '<td class="num"><strong>' + moneyPlain(r.amount) + '</strong></td>'
-      + actTd('receipt', r.id) + '</tr>'
+      + '</tr>'
     ).join('') : emptyRow(6, 'No receipts'))
     + '</tbody></table></div></div>';
 }
@@ -3901,15 +3202,35 @@ const firebaseConfig = {
 
 const ADMIN_EMAIL       = 'asifabooasif@gmail.com';
 const ROOT              = 'lk';
+const DATA_PREFIX       = ROOT + '_';
 const ACCESS_DOC_PATH   = ROOT + '/access';
 const SETTINGS_DOC_PATH = ROOT + '/settings';
 const USERS_COL_PATH    = DATA_PREFIX + 'users';
 const APP_NAME          = 'Lanka Shoe Supplier Manage';
 const APP_VER           = '12.0.0';
 
-/* COLLECTIONS and DATA_PREFIX are declared once, in the first script block. */
+/* ── Firestore-synced collections ── */
+const COLLECTIONS = [
+  'customers', 'customerNotes', 'customerContactLog',
+  'suppliers', 'supplierReturns',
+  'purchases', 'receipts',
+  'customerCheques', 'chequeEndorsements', 'chequeSplits', 'chequeSettlements',
+  'chequeBooks', 'chequeLeaves',
+  'payments', 'recurringCheques',
+  'bankAccounts', 'bankTransactions', 'bankFees', 'bankTransfers',
+  'expenses', 'journals', 'categories',
+  'activityLog', 'auditTrail', 'loginHistory',
+  'savedReports', 'trash', 'drafts', 'todos', 'recentlyViewed',
+  'kpiPrefs', 'recordTags', 'versionHistory',
+  'budgets', 'budgetHistory', 'archive', 'stickyNotes', 'aiHistory'
+];
 
 /* ── Global Firebase state ── */
+let firebaseApp = null;
+let auth = null;
+let firestore = null;
+let storage = null;
+let currentUser = null;
 let currentUserRole = 'viewer';
 let currentUserPerms = null;
 let firebaseReady = false;
@@ -3921,19 +3242,22 @@ let _syncDebounce = null;
 SECTION 2 — FIREBASE INITIALIZATION (with safe error handling)
 ═══════════════════════════════════════════════════════════════════════════ */
 async function initFirebase(){
-  try {
-    firebaseApp = firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    firestore = firebase.firestore();
-    try { storage = firebase.storage(); } catch(e){}
-    try { firestore.settings({ merge: true }); } catch(e){}
-    firebaseReady = true;
-    window.__dbgOk && window.__dbgOk('Firebase ready • project=' + firebaseConfig.projectId, 'FB');
+  try{
+    if(!window.firebase||!firebase.initializeApp||!firebase.auth||!firebase.firestore) throw new Error('Firebase SDK did not load. Check internet access to www.gstatic.com.');
+    let app=null; try{app=firebase.app();}catch(e){}
+    if(app&&app.options&&app.options.projectId!==firebaseConfig.projectId){try{await app.delete();}catch(e){} app=null;}
+    firebaseApp=app||firebase.initializeApp(firebaseConfig);
+    auth=firebase.auth(firebaseApp);
+    firestore=firebase.firestore(firebaseApp);
+    try{storage=firebase.storage(firebaseApp);}catch(e){}
+    try{await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);}catch(e){}
+    try{firestore.settings({merge:true});}catch(e){}
+    firebaseReady=true; firebaseInitError=null;
+    window.__dbgOk&&window.__dbgOk('Firebase ready • project='+firebaseConfig.projectId,'FB');
     return true;
-  } catch(e){
-    firebaseReady = false;
-    firebaseInitError = e.message || String(e);
-    window.__dbgError && window.__dbgError('Firebase init: ' + firebaseInitError, 'FB');
+  }catch(e){
+    firebaseReady=false; firebaseInitError=e&&(e.message||String(e));
+    window.__dbgError&&window.__dbgError('Firebase init: '+firebaseInitError,'FB');
     return false;
   }
 }
@@ -4039,6 +3363,7 @@ function can(perm){
 
 function canWrite(){
   if(db.settings && db.settings.readOnlyMode){ toast('Read-only mode active.', 'error'); return false; }
+  if(currentUser && String(currentUser.email||'').toLowerCase() === ADMIN_EMAIL.toLowerCase()) return true;
   const p = userPerms();
   if(!p.write){ toast('Your role (' + currentUserRole + ') cannot modify data.', 'error'); return false; }
   return true;
@@ -4084,26 +3409,26 @@ function hideLoginError(){
 SECTION 7 — GOOGLE SIGN-IN
 ═══════════════════════════════════════════════════════════════════════════ */
 async function handleSignIn(){
-  if(offlineMode){ toast('Offline mode active', 'warn'); return; }
-  if(!firebaseReady){ showLoginError('Firebase not initialized. Please reload.'); return; }
-  const btn = document.getElementById('googleSignInBtn');
-  const txt = document.getElementById('googleBtnText');
-  btn.disabled = true;
-  txt.textContent = 'Signing in…';
+  const btn=document.getElementById('googleSignInBtn'), txt=document.getElementById('googleBtnText');
+  if(btn&&btn.dataset.busy==='1') return false;
   hideLoginError();
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    await auth.signInWithPopup(provider);
-  } catch(e){
-    console.error('Sign-in error:', e);
-    if(e.code === 'auth/popup-closed-by-user') showLoginError('Cancelled.');
-    else if(e.code === 'auth/popup-blocked') showLoginError('Popup blocked. Allow popups for this site.');
-    else if(e.code === 'auth/unauthorized-domain') showLoginError('Domain not authorized. Add in Firebase Console → Authentication → Settings → Authorized domains.');
-    else if(e.code === 'auth/operation-not-allowed') showLoginError('Google sign-in not enabled in Firebase Console → Authentication → Sign-in method.');
-    else showLoginError('Failed: ' + (e.code || '') + '\n' + (e.message || ''));
-    btn.disabled = false;
-    txt.textContent = 'Continue with Google';
+  if(offlineMode){showLoginError('Offline mode is active. Reload the page to use Google Sign-In.');return false;}
+  if(!firebaseReady||!auth){const ok=await initFirebase();if(!ok||!auth){showLoginError('Firebase could not initialize: '+(firebaseInitError||'Unknown error')+'\nIf you opened this HTML directly as file://, host it on an authorized domain or localhost.');return false;}}
+  if(btn){btn.disabled=true;btn.dataset.busy='1';} if(txt)txt.textContent='Connecting to Google…';
+  try{
+    try{await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);}catch(e){}
+    const provider=new firebase.auth.GoogleAuthProvider(); provider.setCustomParameters({prompt:'select_account'});
+    await auth.signInWithPopup(provider); return false;
+  }catch(e){
+    console.error('Google sign-in error:',e); const code=e&&e.code||'', msg=e&&e.message||String(e);
+    if(code==='auth/popup-blocked'||code==='auth/cancelled-popup-request'){
+      try{if(txt)txt.textContent='Redirecting to Google…';await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());return false;}catch(re){showLoginError('Google redirect failed: '+(re.code||'')+'\n'+(re.message||re));}
+    }else if(code==='auth/popup-closed-by-user') showLoginError('Google sign-in window was closed. Click Continue with Google again.');
+    else if(code==='auth/unauthorized-domain') showLoginError('This web address is not authorized in Firebase Authentication. Add the exact host under Authentication → Settings → Authorized domains.');
+    else if(code==='auth/operation-not-allowed') showLoginError('Google Sign-In is disabled in Firebase Authentication → Sign-in method.');
+    else if(code==='auth/network-request-failed') showLoginError('Network error while contacting Firebase/Google. Check your connection.');
+    else showLoginError('Google Sign-In failed: '+code+'\n'+msg);
+    if(btn){btn.disabled=false;btn.dataset.busy='0';} if(txt)txt.textContent='Continue with Google'; return false;
   }
 }
 
@@ -4121,60 +3446,21 @@ SECTION 8 — 🔥 NON-BLOCKING AUTH STATE HANDLER
   NEW: Show app INSTANTLY from local cache, then sync in background.
 ═══════════════════════════════════════════════════════════════════════════ */
 async function onAuthStateChanged(user){
-  const btn = document.getElementById('googleSignInBtn');
-  const txt = document.getElementById('googleBtnText');
-  if(!user){
-    currentUser = null;
-    showLoginScreen();
-    if(btn){ btn.disabled = false; txt.textContent = 'Continue with Google'; }
-    return;
-  }
-  if(txt) txt.textContent = 'Verifying…';
-  if(btn) btn.disabled = true;
-  try {
-    /* 1. Fast — read from local cache */
+  const btn=document.getElementById('googleSignInBtn'), txt=document.getElementById('googleBtnText');
+  if(!user){currentUser=null;showLoginScreen();if(btn){btn.disabled=false;btn.dataset.busy='0';}if(txt)txt.textContent='Continue with Google';return;}
+  if(txt)txt.textContent='Verifying…'; if(btn)btn.disabled=true;
+  try{
     await loadLocalCache();
-    /* 2. Verify access (single Firestore read) */
-    const role = await checkAccess(user.email);
-    if(!role){
-      showLoginError('Access denied.\n' + user.email + '\nContact the administrator.');
-      setTimeout(() => auth.signOut(), 5000);
-      return;
-    }
-    /* 3. Set user */
-    currentUser = {
-      uid: user.uid,
-      email: user.email,
-      name: user.displayName,
-      photo: user.photoURL
-    };
-    currentUserRole = role;
-    hideLoginError();
-    /* 4. 🚀 Show app INSTANTLY from local cache */
-    updateSidebarUser();
-    showApp();
-    render();
-    toast('Welcome, ' + (user.displayName || user.email), 'success');
-    window.__dbgOk && window.__dbgOk('Signed in: ' + user.email + ' (' + role + ')', 'AUTH');
-    /* 5. Background tasks — non-blocking */
-    registerUserLogin(user, role)
-      .catch(e => console.error('registerUserLogin failed:', e));
-    loadFromFirestore()
-      .then(() => {
-        normalizeDb();
-        applySettings();
-        takeSnapshot();
-        render();
-        window.__dbgOk && window.__dbgOk('Fresh data loaded & snapshot taken', 'AUTH');
-      })
-      .catch(e => console.error('Background load failed:', e));
-    logLogin(user);
-    purgeOldTrash();
-  } catch (err) {
-    console.error('Auth transition error:', err);
-    showLoginError('Error: ' + (err.message || String(err)));
-    if(btn){ btn.disabled = false; txt.textContent = 'Continue with Google'; }
-  }
+    const role=String(user.email||'').toLowerCase()===ADMIN_EMAIL.toLowerCase()?'admin':await checkAccess(user.email);
+    if(!role){showLoginError('Access denied.\n'+user.email+'\nContact the administrator.');if(btn)btn.disabled=false;if(txt)txt.textContent='Continue with Google';return;}
+    currentUser={uid:user.uid,email:user.email,name:user.displayName,photo:user.photoURL}; currentUserRole=role; hideLoginError();
+    if(typeof takeSnapshot==='function')takeSnapshot();
+    updateSidebarUser(); showApp(); render(); toast('Welcome, '+(user.displayName||user.email),'success');
+    registerUserLogin(user,role).catch(e=>console.error('registerUserLogin failed:',e)); logLogin(user); purgeOldTrash();
+    let refresh=true;
+    try{const has=!!localStorage.getItem('lankashoe_cache'),last=Number(localStorage.getItem('lankashoe_last_cloud_load')||0);refresh=!has||!last||(Date.now()-last>10*60*1000);}catch(e){}
+    if(refresh){loadFromFirestore().then(()=>{normalizeDb();applySettings();if(typeof takeSnapshot==='function')takeSnapshot();try{localStorage.setItem('lankashoe_last_cloud_load',String(Date.now()));}catch(e){}render();}).catch(e=>console.error('Background cloud load failed:',e));}
+  }catch(err){console.error('Auth transition error:',err);showLoginError('Login completed, but app initialization failed: '+(err.message||String(err)));if(btn)btn.disabled=false;if(txt)txt.textContent='Continue with Google';}
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -4565,10 +3851,7 @@ SECTION 16 — 🔥 BOOT SEQUENCE (non-blocking)
   if(!firebaseReady){
     showLoginError('Firebase init failed: ' + (firebaseInitError || 'Unknown'));
     const btn = document.getElementById('googleSignInBtn');
-    if(btn){
-      btn.disabled = true;
-      btn.innerHTML = '<span style="font-weight:600">Firebase Unavailable</span>';
-    }
+    if(btn){btn.disabled=false;btn.dataset.busy='0';btn.textContent='Continue with Google';}
     const note = document.querySelector('.login-note');
     if(note && !document.getElementById('offlineBtn')){
       const ob = document.createElement('button');
@@ -4583,13 +3866,7 @@ SECTION 16 — 🔥 BOOT SEQUENCE (non-blocking)
   }
   /* 2. Wire up Google Sign-In button */
   const btn = document.getElementById('googleSignInBtn');
-  if(btn){
-    btn.onclick = function(e){
-      e.preventDefault();
-      handleSignIn();
-      return false;
-    };
-  }
+  if(btn){btn.onclick=window.__LankaShoeGoogleLogin;btn.disabled=false;btn.dataset.busy='0';}
   /* 3. Auth state listener */
   try {
     auth.onAuthStateChanged(onAuthStateChanged);
@@ -4701,7 +3978,6 @@ function tableCCheques(){
     + (tab === 'Bounced' ? '<th>From</th><th class="num">Remaining</th>' : '')
     + (tab === 'Issued' ? '<th>Issued To</th>' : '')
     + '<th>Status</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(r => {
       const remaining = (tab === 'Bounced') ? chequeRemaining(r.id) : 0;
@@ -4717,7 +3993,7 @@ function tableCCheques(){
         + '<td class="num" style="color:' + (remaining > 0 ? 'var(--red)' : 'var(--green)') + '"><strong>' + moneyPlain(remaining) + '</strong></td>' : '')
         + (tab === 'Issued' ? '<td>' + esc(r.issuedTo ? supName(r.issuedTo) : '—') + '</td>' : '')
         + '<td>' + statusBadge(r.status) + '</td>'
-        + actTd('ccheque', r.id) + '</tr>';
+        + '</tr>';
     }).join('') : emptyRow(tab === 'Bounced' ? 10 : 8, 'No ' + tab.toLowerCase() + ' cheques'))
     + '</tbody>'
     + (rows.length ? '<tfoot><tr><td colspan="6">Total</td><td class="num">' + moneyPlain(total) + '</td><td colspan="' + (tab === 'Bounced' ? 3 : 1) + '"></td></tr></tfoot>' : '')
@@ -4790,7 +4066,6 @@ function showChequeDetail(id){
     + (c.status === 'Bounced' && remaining > 0 ? '<button class="btn primary" onclick="openSettleCheque(\'' + id + '\')">💰 Settle</button>' : '')
     + (c.status === 'Bounced' ? '<button class="btn" onclick="closeModal();unbounceCC(\'' + id + '\')">↺ Restore</button>' : '')
     + (c.status === 'Stopped' ? '<button class="btn" onclick="closeModal();restoreStopped(\'' + id + '\')">↺ Restore</button>' : '')
-    + (isAdminUser() ? '<button class="btn danger" onclick="closeModal();deleteCustomerCheque(\'' + id + '\')">🗑 Delete</button>' : '')
     + '<button class="btn primary" data-action="close-modal">Close</button>'
     + '</div>', 'xl');
 }
@@ -5873,7 +5148,6 @@ function tablePay(){
   return '<div class="table-wrap"><table><thead><tr>'
     + '<th>Date</th><th>Supplier</th><th>Ref</th>'
     + '<th class="num">Party</th><th class="num">Own</th><th class="num">Bank</th><th class="num">Total</th><th>Status</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(r =>
     '<tr data-action="payment-detail" data-id="' + r.id + '" class="' + (r.fullyReversed ? 'rev-row' : '') + '">'
@@ -5885,7 +5159,7 @@ function tablePay(){
     + '<td class="num">' + moneyPlain(r.bankAmount || 0) + '</td>'
     + '<td class="num"><strong>' + moneyPlain(r.amount) + '</strong></td>'
     + '<td>' + (r.fullyReversed ? '<span class="rev-badge">⚠ Reversed</span>' : '<span class="badge green">Active</span>') + '</td>'
-    + actTd('payment', r.id) + '</tr>'
+    + '</tr>'
   ).join('') : emptyRow(8, 'No payments yet'))
     + '</tbody>'
     + (rows.length ? '<tfoot><tr><td colspan="6">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '')
@@ -8045,7 +7319,6 @@ function viewExpenses(){
     + '</div>'
     + '<div class="table-wrap"><table><thead><tr>'
     + '<th>Date</th><th>Category</th><th>Description</th><th>Paid Via</th><th class="num">Amount</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(e => {
       const bank = e.bankAccountId ? bankObj(e.bankAccountId) : null;
@@ -8055,7 +7328,7 @@ function viewExpenses(){
         + '<td>' + esc(e.description || '') + '</td>'
         + '<td>' + (bank ? bankLogo(bank.bankName) + ' ' + esc(bank.bankName) : '—') + '</td>'
         + '<td class="num"><strong>' + moneyPlain(e.amount) + '</strong></td>'
-        + actTd('expense', e.id) + '</tr>';
+        + '</tr>';
     }).join('') : emptyRow(5, 'No expenses'))
     + '</tbody></table></div></div>';
 }
@@ -8241,7 +7514,6 @@ function viewJournals(){
     + '<div class="table-wrap"><table><thead><tr>'
     + '<th>Date</th><th>Ref</th><th>Entity</th><th>Description</th>'
     + '<th class="num">Debit</th><th class="num">Credit</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(r =>
       '<tr class="' + (r.bounceReversal ? 'rev-row' : '') + '">'
@@ -8251,7 +7523,7 @@ function viewJournals(){
       + '<td class="small">' + esc(r.description || '') + '</td>'
       + '<td class="num">' + (r.debit ? moneyPlain(r.debit) : '—') + '</td>'
       + '<td class="num">' + (r.credit ? moneyPlain(r.credit) : '—') + '</td>'
-      + actTd('journal', r.id) + '</tr>'
+      + '</tr>'
     ).join('') : emptyRow(6, 'None'))
     + '</tbody></table></div></div>';
 }
@@ -13195,7 +12467,6 @@ function viewCustomers(){
     + '<th class="num">Total Chqs</th><th class="num">In Hand</th>'
     + '<th class="num">Issued</th><th class="num">Cleared</th>'
     + '<th class="num">Bounced</th><th>Reliability</th><th>Status</th>'
-    + actTh(true)
     + '</tr></thead><tbody>'
     + (enriched.length ? enriched.map(c => {
       const bounced = c.bouncedAging.total;
@@ -13219,7 +12490,6 @@ function viewCustomers(){
         + '<td class="num" data-action="customer-detail" data-id="' + c.id + '"><strong style="color:' + (bounced > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(bounced) + '</strong></td>'
         + '<td data-action="customer-detail" data-id="' + c.id + '"><span class="reliability ' + rel.cls + '">' + rel.label + (rel.score ? ' ' + rel.score.toFixed(0) + '%' : '') + '</span></td>'
         + '<td data-action="customer-detail" data-id="' + c.id + '">' + badge + '</td>'
-        + actTd('customer', c.id, true)
         + '</tr>';
     }).join('') : emptyRow(11, 'No customers yet — click "+ Add Customer"'))
     + '</tbody></table></div></div>';
@@ -13239,8 +12509,6 @@ function openCustomerForm(id){
     + '<label class="field">Phone<input name="cuPhone" value="' + esc(c ? c.phone : '') + '"></label>'
     + '<label class="field">Email<input name="cuEmail" type="email" value="' + esc(c ? (c.email || '') : '') + '"></label>'
     + '<label class="field">Business<input name="cuBusiness" value="' + esc(c ? (c.business || '') : '') + '"></label>'
-    + '<label class="field">Opening Balance<input name="cuOpen" type="number" step="0.01" value="' + (c ? num(c.openingBalance) : 0) + '"></label>'
-    + '<label class="field">Opening Date<input name="cuOpenDate" type="date" value="' + (c ? (c.openingDate || today()) : today()) + '"></label>'
     + '<label class="field">Cheque Acceptance Limit<input name="cuLimit" type="number" step="0.01" value="' + (c ? num(c.chequeLimit) : 0) + '" placeholder="Max outstanding cheque amount"></label>'
     + '<label class="field" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="cuBlacklist" ' + (c && c.blacklisted ? 'checked' : '') + '> <span>Blacklist (do not accept cheques)</span></label>'
     + '</div>'
@@ -13269,8 +12537,6 @@ function saveCustomer(e){
     address: f.cuAddress.value.trim(),
     notes: f.cuNotes.value.trim(),
     chequeLimit: num(f.cuLimit.value),
-    openingBalance: num(f.cuOpen.value),
-    openingDate: f.cuOpenDate.value || today(),
     blacklisted: f.cuBlacklist.checked
   };
   if(!data.name){ toast('Name required', 'error'); return; }
@@ -13313,9 +12579,10 @@ function deleteCustomer(id){
   const cheques = arr(db.customerCheques).filter(cq => cq.customerId === id);
   const active = cheques.filter(cq => cq.status === 'In Hand' || cq.status === 'Issued');
   if(active.length){
-    if(!isAdminUser()){ toast('Cannot delete — ' + active.length + ' active cheque(s) pending', 'error'); return; }
-    if(!confirm(active.length + ' active cheque(s) are still pending for this customer.\nAdmin override: move the customer to Trash anyway? (Restorable from Trash)')) return;
-  } else if(!confirm('Move this customer to Trash? Their cheque history will remain linked.')) return;
+    toast('Cannot delete — ' + active.length + ' active cheque(s) pending', 'error');
+    return;
+  }
+  if(!confirm('Move this customer to Trash? Their cheque history will remain linked.')) return;
   if(softDelete('customers', id, custName(id))){
     save();
     render();
@@ -13469,16 +12736,13 @@ function showCustomerDetail(id){
     + kpiCard('In Hand', moneyPlain(s.inHand.value), s.inHand.count + ' cheques', { small: true })
     + kpiCard('Issued', moneyPlain(s.issued.value), s.issued.count + ' cheques', { small: true })
     + kpiCard('Bounced (Owed)', moneyPlain(aging.total), s.bounced.count + ' cheques', { small: true })
-    + kpiCard('Opening Balance', moneyPlain(num(c.openingBalance)), dateFmt(c.openingDate || ''), { small: true })
     + '</div>';
   const actions = '<div class="row-flex" style="margin-bottom:14px;justify-content:flex-end">'
     + '<button class="btn sm" onclick="openTagsEditor(\'customer\',\'' + id + '\',\'' + esc(c.name).replace(/'/g, "\\'") + '\')">🏷️ Tags</button>'
     + '<button class="btn sm" onclick="showVersionHistory(\'customers\',\'' + id + '\',\'' + esc(c.name).replace(/'/g, "\\'") + '\')">📜 History</button>'
     + '<button class="btn sm" onclick="copyToClipboard(whatsappReminder(\'' + id + '\',null))">💬 Copy WhatsApp</button>'
     + '<button class="btn sm" onclick="closeModal();setTimeout(()=>printCustomerStatement(\'' + id + '\'),120)">🖨 Statement</button>'
-    + + (can('write') ? '<button class="btn sm" onclick="closeModal();setTimeout(()=>openCustomerForm(\'' + id + '\'),120)">✏️ Edit</button>' : '')
-    + (isAdminUser() ? '<button class="btn sm danger" onclick="closeModal();deleteCustomer(\'' + id + '\')">🗑 Delete</button>' : '')
-    '</div>';
+    + '</div>';
   const tabsHTML = '<div class="tabs" style="margin-bottom:14px">'
     + tabs.map(t => '<div class="tab ' + (tab === t ? 'active' : '') + '" onclick="ui.cust._tab=\'' + t + '\';showCustomerDetail(\'' + id + '\')">' + t + '</div>').join('')
     + '</div>';
@@ -14574,7 +13838,6 @@ function viewSuppliers(){
     + '<th>Supplier</th><th>Tags</th><th>Category</th><th>Phone</th>'
     + '<th class="num">Purchases</th><th class="num">Paid</th>'
     + '<th class="num">Payable</th><th class="num">Overdue 90+</th>'
-    + actTh(true)
     + '</tr></thead><tbody>'
     + (enriched.length ? enriched.map(s => {
       const cat = s.categoryId ? catObj(s.categoryId) : null;
@@ -14593,7 +13856,6 @@ function viewSuppliers(){
         + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '">' + moneyPlain(s.paid) + '</td>'
         + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '"><strong style="color:' + (s.balance > 0 ? 'var(--red)' : 'var(--green)') + '">' + moneyPlain(s.balance) + '</strong></td>'
         + '<td class="num" data-action="supplier-detail" data-id="' + s.id + '" style="color:' + (s.aging.d90 > 0 ? 'var(--red)' : 'var(--text-4)') + '">' + (s.aging.d90 ? moneyPlain(s.aging.d90) : '—') + '</td>'
-        + actTd('supplier', s.id, true)
         + '</tr>';
     }).join('') : emptyRow(9, 'No suppliers — click "+ Add Supplier"'))
     + '</tbody></table></div></div>';
@@ -14689,9 +13951,9 @@ SECTION 4 — DELETE SUPPLIER (with transaction check)
 function deleteSupplier(id){
   if(!canWrite()) return;
   if(arr(db.purchases).some(p => p.supplierId === id) || arr(db.payments).some(p => p.supplierId === id)){
-    if(!isAdminUser()){ toast('Has transactions — cannot delete', 'error'); return; }
-    if(!confirm('This supplier has purchases/payments on record.\nAdmin override: move the supplier to Trash anyway? (Restorable from Trash)')) return;
-  } else if(!confirm('Move to Trash?')) return;
+    toast('Has transactions — cannot delete', 'error'); return;
+  }
+  if(!confirm('Move to Trash?')) return;
   if(softDelete('suppliers', id, supName(id))){
     save();
     render();
@@ -14827,9 +14089,7 @@ function showSupplierDetail(id){
     + '<button class="btn sm" onclick="showVersionHistory(\'suppliers\',\'' + id + '\',\'' + esc(s.name).replace(/'/g, "\\'") + '\')">📜 History</button>'
     + '<button class="btn sm" onclick="closeModal();setTimeout(()=>printSupplierStatement(\'' + id + '\'),120)">🖨 Statement</button>'
     + '<button class="btn sm" onclick="closeModal();setTimeout(()=>openSupplierReturnForm(\'' + id + '\'),120)">↩️ Return</button>'
-    + + (can('write') ? '<button class="btn sm" onclick="closeModal();setTimeout(()=>openSupplierForm(\'' + id + '\'),120)">✏️ Edit</button>' : '')
-    + (isAdminUser() ? '<button class="btn sm danger" onclick="closeModal();deleteSupplier(\'' + id + '\')">🗑 Delete</button>' : '')
-    '</div>';
+    + '</div>';
   const tabsHTML = '<div class="tabs" style="margin-bottom:14px">'
     + tabs.map(t => '<div class="tab ' + (tab === t ? 'active' : '') + '" onclick="ui.sup._tab=\'' + t + '\';showSupplierDetail(\'' + id + '\')">' + t + '</div>').join('')
     + '</div>';
@@ -17049,41 +16309,14 @@ PART 15 — UI FRAMEWORK · ROUTER · NAV · TOPBAR · FAB · COMMAND PALETTE ·
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 1 — UI STATE OBJECT
 ═══════════════════════════════════════════════════════════════════════════ */
-Object.assign(ui, {
-  view: 'dashboard',
-  dashboard: { mode: 'classic' },
-  sup: { q: '', catFilter: '', _tab: 'Overview' },
-  cust: { q: '', reliability: 'all', _tab: 'Overview' },
-  pur: { q: '' },
-  rcp: { q: '' },
-  cc: { tab: 'In Hand', customerFilter: '' },
-  own: { tab: 'Overview', subTab: 'Available', month: thisMonth(), from: '', to: '', filterMode: 'month', calMonth: thisMonth() },
-  pay: { q: '' },
-  bank: { q: '', _tab: 'Overview' },
-  cbook: { q: '' },
-  exp: { q: '' },
-  ledger: { type: 'supplier' },
-  settings: { tab: 'profile' },
-  reports: { tab: 'builder' },
-  history: { q: '' },
-  trash: { q: '', type: '', user: '', dateFrom: '', dateTo: '' },
-  todo: { filter: 'all' },
-  clv: { tier: 'all' },
-  supCompare: { cat: '' },
-  bankCompare: {},
-  doc: { q: '', catFilter: '' },
-  paySelectedParty: new Set(),
-  payOwnRows: [],
-  payMode: 'cheques',
-  payBank: { bankAccountId: '', amount: 0, method: 'Bank Transfer', reference: '', notes: '' },
-  paySupplierPreselect: ''
-});
+var ui = window.ui;
 window.ui = ui;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 2 — VIEWS REGISTRY + TITLES MAP
 ═══════════════════════════════════════════════════════════════════════════ */
-/* views registry is declared in the first script block */
+var views = window.views || {};
+window.views = views;
 const titles = {
   dashboard: 'Dashboard',
   customdash: 'Custom Dashboard',
@@ -19628,25 +18861,7 @@ PART 16 — AI CHAT · CUSTOM DASHBOARD · DUPLICATES · AUTO-CAT · CALENDAR IC
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 1 — AUTO-CATEGORIZATION (Expense suggestions)
 ═══════════════════════════════════════════════════════════════════════════ */
-const __CATEGORY_KEYWORD_MAP_P16 = {
-  'Rent': ['rent', 'lease', 'landlord', 'premises'],
-  'Utilities': ['electricity', 'water', 'gas', 'ceb', 'nelco', 'bill', 'utility', 'power'],
-  'Internet & Phone': ['internet', 'wifi', 'broadband', 'phone', 'mobile', 'dialog', 'mobitel', 'slt', 'airtel', 'hutch'],
-  'Salaries': ['salary', 'wage', 'payroll', 'staff', 'employee', 'bonus'],
-  'Transport': ['fuel', 'petrol', 'diesel', 'transport', 'delivery', 'courier', 'taxi', 'uber', 'pickme'],
-  'Vehicle': ['service', 'repair', 'tyre', 'insurance', 'vehicle', 'van', 'lorry'],
-  'Packaging': ['box', 'carton', 'packaging', 'bag', 'wrapper', 'label'],
-  'Marketing': ['ad', 'advert', 'marketing', 'promo', 'facebook', 'google ads', 'banner'],
-  'Office Supplies': ['stationery', 'pen', 'paper', 'office', 'printer', 'toner'],
-  'Repairs & Maintenance': ['repair', 'maintenance', 'fix', 'service', 'install'],
-  'Travel': ['travel', 'hotel', 'flight', 'ticket', 'trip', 'booking'],
-  'Bank Fees': ['bank charge', 'fee', 'commission', 'service charge'],
-  'Taxes': ['tax', 'vat', 'ssr', 'ird', 'revenue'],
-  'Insurance': ['insurance', 'policy', 'premium', 'cover'],
-  'Food & Entertainment': ['lunch', 'dinner', 'food', 'meal', 'entertain', 'tea', 'coffee'],
-  'Legal & Professional': ['legal', 'lawyer', 'audit', 'accountant', 'consulting', 'notary'],
-  'Miscellaneous': ['misc', 'other', 'general', 'various']
-};
+/* Reuse CATEGORY_KEYWORD_MAP declared earlier. */
 window.CATEGORY_KEYWORD_MAP = CATEGORY_KEYWORD_MAP;
 
 function suggestCategory(description, amount){
@@ -22791,7 +22006,6 @@ window.tablePay = function(){
   return '<div class="table-wrap"><table><thead><tr>'
     + '<th>Date</th><th>Supplier</th><th>Ref</th>'
     + '<th class="num">Party</th><th class="num">Own</th><th class="num">Bank</th><th class="num">Total</th><th>Status</th>'
-    + actTh()
     + '</tr></thead><tbody>'
     + (rows.length ? rows.map(r =>
       '<tr data-action="payment-detail" data-id="' + r.id + '" class="' + (r.fullyReversed ? 'rev-row' : '') + '">'
@@ -22803,7 +22017,7 @@ window.tablePay = function(){
       + '<td class="num">' + moneyPlain(r.bankAmount || 0) + '</td>'
       + '<td class="num"><strong>' + moneyPlain(r.amount) + '</strong></td>'
       + '<td>' + (r.fullyReversed ? '<span class="rev-badge">⚠ Reversed</span>' : '<span class="badge green">Active</span>') + '</td>'
-      + actTd('payment', r.id) + '</tr>'
+      + '</tr>'
     ).join('') : emptyRow(8, 'No payments yet'))
     + '</tbody>'
     + (rows.length ? '<tfoot><tr><td colspan="6">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '')
@@ -23045,6 +22259,7 @@ SECTION 15 — 🔥 MASTER PERFORMANCE PATCH (Fixes Firebase Quota Exhaustion)
       normalizeDb();
       try { localStorage.setItem('lankashoe_cache', JSON.stringify(db)); } catch(e){}
       takeSnapshot();
+      try{localStorage.setItem('lankashoe_last_cloud_load',String(Date.now()));}catch(e){}
       window.__dbgOk && window.__dbgOk('Load complete (' + loaded + ' collections)', 'FB');
     } catch(e){
       console.error('loadFromFirestore error:', e);
@@ -23069,7 +22284,6 @@ SECTION 15 — 🔥 MASTER PERFORMANCE PATCH (Fixes Firebase Quota Exhaustion)
     });
     snap._settings = JSON.stringify(db.settings || {});
     window._dbSnapshot = snap;
-    window._dbSnapshotReady = true;
     window.__dbgOk && window.__dbgOk('Snapshot captured', 'SYNC');
   };
 
@@ -23083,9 +22297,6 @@ SECTION 15 — 🔥 MASTER PERFORMANCE PATCH (Fixes Firebase Quota Exhaustion)
     if(offlineMode){ if(st) st.textContent = 'Offline • Local only'; return; }
     if(!firebaseReady){ if(st) st.textContent = 'Local • Firebase not ready'; return; }
     if(!currentUser){ if(st) st.textContent = 'Local • Not signed in'; return; }
-    /* QUOTA GUARD: before the first cloud load builds a snapshot, every local doc would look
-       "changed" and the whole database would be re-written. Keep it local until then. */
-    if(!window._dbSnapshotReady){ if(st) st.textContent = 'Saved locally • waiting for cloud load'; return; }
     const snap = window._dbSnapshot || {};
     const ops = [];
     const settingsNow = JSON.stringify(db.settings || {});
@@ -23151,60 +22362,6 @@ SECTION 15 — 🔥 MASTER PERFORMANCE PATCH (Fixes Firebase Quota Exhaustion)
   /* ─────────────────────────────────────────────────────────────────────────
   FIX 10 — 🔥 Fast non-blocking auth (instant login from cache)
   ────────────────────────────────────────────────────────────────────────── */
-  window.onAuthStateChanged = async function(user){
-    const btn = document.getElementById('googleSignInBtn');
-    const txt = document.getElementById('googleBtnText');
-    if(!user){
-      currentUser = null;
-      showLoginScreen();
-      if(btn){ btn.disabled = false; txt.textContent = 'Continue with Google'; }
-      return;
-    }
-    if(txt) txt.textContent = 'Verifying…';
-    if(btn) btn.disabled = true;
-    try {
-      await loadLocalCache();
-      const role = await checkAccess(user.email);
-      if(!role){
-        showLoginError('Access denied.\n' + user.email + '\nContact the administrator.');
-        setTimeout(() => auth.signOut(), 5000);
-        return;
-      }
-      currentUser = {
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName,
-        photo: user.photoURL
-      };
-      currentUserRole = role;
-      hideLoginError();
-      /* 🚀 Show app INSTANTLY from local cache */
-      updateSidebarUser();
-      showApp();
-      render();
-      toast('Welcome, ' + (user.displayName || user.email), 'success');
-      window.__dbgOk && window.__dbgOk('Signed in: ' + user.email + ' (' + role + ')', 'AUTH');
-      /* Background tasks — non-blocking */
-      registerUserLogin(user, role)
-        .catch(e => console.error('registerUserLogin failed:', e));
-      loadFromFirestore()
-        .then(() => {
-          normalizeDb();
-          applySettings();
-          takeSnapshot();
-          render();
-          window.__dbgOk && window.__dbgOk('Fresh data loaded & snapshot taken', 'AUTH');
-        })
-        .catch(e => console.error('Background load failed:', e));
-      logLogin(user);
-      purgeOldTrash();
-    } catch (err) {
-      console.error('Auth transition error:', err);
-      showLoginError('Error: ' + (err.message || String(err)));
-      if(btn){ btn.disabled = false; txt.textContent = 'Continue with Google'; }
-    }
-  };
-
   /* ─────────────────────────────────────────────────────────────────────────
   FIX 8 — DevTools guard fix (use persistent flag)
   ────────────────────────────────────────────────────────────────────────── */
@@ -23592,43 +22749,873 @@ END OF PART 18 — APP COMPLETE
 ═══════════════════════════════════════════════════════════════════════════ */
 </script>
 <script>
-'use strict';
 /* ═══════════════════════════════════════════════════════════════════════════
-ADMIN ACTIONS — Edit (customers/suppliers) · Delete (admin only) in every list
-All deletes are soft deletes (Trash) and sync as a single document delete.
+LANKA SHOE — DEEP DATA/EDIT CORRECTION LAYER
+
+Purpose:
+  1. Opening balances are master opening balances, NEVER purchases.
+  2. Only explicitly marked legacy opening-balance purchase records are
+     classified as opening balances; ordinary purchases are never guessed.
+  3. Customer + supplier opening balance fields are editable.
+  4. Core detail screens receive Edit/Delete controls.
+  5. Delete continues through the existing Trash/permission system.
+  6. Existing Firebase config, Google Sign-In and Firestore paths are NOT
+     changed by this layer.
 ═══════════════════════════════════════════════════════════════════════════ */
-function isAdminUser(){ try { return currentUserRole === 'admin'; } catch(e){ return false; } }
-window.isAdminUser = isAdminUser;
+(function installDeepDataCorrections(){
+  'use strict';
+  if(window.__LANKA_DEEP_CORRECTIONS_V1) return;
+  window.__LANKA_DEEP_CORRECTIONS_V1 = true;
 
-function actCol(edit){ return isAdminUser() || (!!edit && can('write')); }
-function actTh(edit){ return actCol(edit) ? '<th></th>' : ''; }
-function actTd(kind, id, edit){
-  if(!actCol(edit)) return '';
-  const EDIT = { customer: 'openCustomerForm', supplier: 'openSupplierForm' };
-  const DEL  = { customer: 'deleteCustomer', supplier: 'deleteSupplier', purchase: 'deletePurchase',
-                 receipt: 'deleteReceipt', payment: 'deletePayment', expense: 'deleteExpense',
-                 journal: 'deleteJournal', cat: 'deleteCat', ccheque: 'deleteCustomerCheque' };
-  let h = '<td class="nowrap" onclick="event.stopPropagation()" style="white-space:nowrap">';
-  if(edit && EDIT[kind] && can('write'))
-    h += '<button class="btn xs" title="Edit" onclick="event.stopPropagation();' + EDIT[kind] + '(\'' + id + '\')">✏️</button> ';
-  if(isAdminUser() && DEL[kind])
-    h += '<button class="btn xs danger" title="Delete (admin)" onclick="event.stopPropagation();' + DEL[kind] + '(\'' + id + '\')">🗑</button>';
-  return h + '</td>';
-}
-window.actTh = actTh; window.actTd = actTd;
+  const safeArr = v => Array.isArray(v) ? v : [];
+  const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
+  const clone = v => { try { return JSON.parse(JSON.stringify(v)); } catch(e){ return v; } };
+  const todaySafe = () => typeof today === 'function' ? today() : new Date().toISOString().slice(0,10);
+  const nowSafe = () => typeof nowISO === 'function' ? nowISO() : new Date().toISOString();
+  const escSafe = v => typeof esc === 'function' ? esc(v) : String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const moneySafe = v => typeof moneyPlain === 'function' ? moneyPlain(v) : Number(v||0).toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const dateSafe = v => typeof dateFmt === 'function' ? dateFmt(v) : (v || '—');
 
-/* Customer cheques had no delete function — admin only, goes to Trash */
-function deleteCustomerCheque(id){
-  if(!isAdminUser()){ toast('Only the admin can delete cheques', 'error'); return; }
-  const c = arr(db.customerCheques).find(x => x.id === id);
-  if(!c) return;
-  if(!confirm('Move cheque #' + (c.chequeNo || id) + ' (' + (c.customerName || '') + ') to Trash?\nRelated splits/settlements are not removed.')) return;
-  if(softDelete('customerCheques', id, '#' + (c.chequeNo || id))){
-    save(); render(); toast('Moved to Trash', 'success');
+  function canWriteSafe(){
+    try { return typeof canWrite === 'function' ? canWrite() : true; } catch(e){ return false; }
   }
-}
-window.deleteCustomerCheque = deleteCustomerCheque;
+  function canDeleteSafe(){
+    try { return typeof can === 'function' ? can('delete') : false; } catch(e){ return false; }
+  }
 
+  /* ── OPENING-BALANCE CLASSIFICATION ───────────────────────────────────── */
+  function isOpeningBalanceRecord(p){
+    if(!p || typeof p !== 'object') return false;
+    const values = [p.transactionType,p.entryType,p.type,p.source,p.recordType,p.kind,p.origin,p.categoryType]
+      .map(v => String(v || '').trim().toLowerCase());
+    if(values.some(v => v === 'opening_balance' || v === 'opening-balance' || v === 'opening balance' || v === 'openingbalance')) return true;
+    if(p.isOpeningBalance === true || p.isOpening === true || p.fromOpeningBalance === true) return true;
+    const inv = String(p.invoiceNo || p.reference || '').trim().toLowerCase();
+    const desc = String(p.description || p.notes || '').trim().toLowerCase();
+    if(/^ob[-_ ]/.test(inv) || /^opening[-_ ]?balance/.test(inv)) return true;
+    if(desc === 'opening balance' || desc === 'opening balance entry' || desc === 'opening balance brought forward') return true;
+    return false;
+  }
+  window.isOpeningBalanceRecord = isOpeningBalanceRecord;
+
+  function actualPurchases(){
+    return safeArr(db.purchases).filter(p => !isOpeningBalanceRecord(p));
+  }
+  window.actualPurchases = actualPurchases;
+
+  function ensureEntityOpeningFields(){
+    safeArr(db.customers).forEach(c => {
+      if(c.openingBalance === undefined || c.openingBalance === null) c.openingBalance = 0;
+      if(!c.openingDate) c.openingDate = todaySafe();
+      if(!c.openingBalanceType) c.openingBalanceType = 'receivable';
+    });
+    safeArr(db.suppliers).forEach(s => {
+      if(s.openingBalance === undefined || s.openingBalance === null) s.openingBalance = 0;
+      if(!s.openingDate) s.openingDate = todaySafe();
+      if(!s.openingBalanceType) s.openingBalanceType = 'payable';
+    });
+  }
+
+  /* Only migrate records that already explicitly identify themselves as an
+     opening-balance entry. This intentionally does NOT guess from amount,
+     date, supplier or description such as "Opening stock". */
+  function migrateExplicitOpeningPurchaseRecords(){
+    ensureEntityOpeningFields();
+    let changed = 0;
+    safeArr(db.purchases).forEach(p => {
+      if(!isOpeningBalanceRecord(p) || p._openingBalanceMigrated) return;
+      const amount = Math.abs(n(p.amount));
+      const supplier = safeArr(db.suppliers).find(s => s.id === p.supplierId);
+      if(supplier && amount > 0){
+        /* Do not double-count if the master already contains the same amount
+           and date as an explicit opening balance. */
+        const same = Math.abs(n(supplier.openingBalance) - amount) < 0.005 &&
+          String(supplier.openingDate || '') === String(p.date || supplier.openingDate || '');
+        if(!same) supplier.openingBalance = amount;
+        if(!supplier.openingDate) supplier.openingDate = p.date || todaySafe();
+        supplier.openingBalanceType = 'payable';
+      }
+      p._openingBalanceMigrated = true;
+      p.isOpeningBalance = true;
+      p.transactionType = 'opening_balance';
+      p.migratedAt = nowSafe();
+      changed++;
+    });
+    return changed;
+  }
+  window.migrateExplicitOpeningPurchaseRecords = migrateExplicitOpeningPurchaseRecords;
+
+  /* ── CORRECT BALANCE ENGINE ───────────────────────────────────────────── */
+  function correctedSupplierBalance(id){
+    const s = safeArr(db.suppliers).find(x => x.id === id);
+    let bal = s ? n(s.openingBalance) : 0;
+    actualPurchases().filter(p => p.supplierId === id).forEach(p => bal += n(p.amount));
+    safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected').forEach(r => bal -= n(r.amount));
+    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && !p.fullyReversed).forEach(p => bal -= n(p.amount));
+    return bal;
+  }
+  window.supplierBalance = correctedSupplierBalance;
+
+  function correctedCustomerBalance(id){
+    const c = safeArr(db.customers).find(x => x.id === id);
+    let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance)) : 0;
+    /* Opening balance is kept separate from cheque activity. The existing
+       cheque model treats bounced cheque amounts as money owed to the shop. */
+    safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
+      if(typeof chequeRemaining === 'function') bal += n(chequeRemaining(q.id));
+      else bal += n(q.amount);
+    });
+    safeArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && p.status !== 'rejected').forEach(p => bal -= n(p.amount));
+    return bal;
+  }
+  window.customerBalance = correctedCustomerBalance;
+
+  function correctedSupplierAging(id, asOf){
+    const s = safeArr(db.suppliers).find(x => x.id === id);
+    if(!s) return {current:0,d30:0,d60:0,d90:0,total:0};
+    const end = asOf || todaySafe();
+    const items = [];
+    const ob = n(s.openingBalance);
+    if(ob > 0) items.push({date:s.openingDate || end, amount:ob, source:'opening_balance'});
+    actualPurchases().filter(p => p.supplierId === id && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
+    items.sort((a,b) => String(a.date).localeCompare(String(b.date)));
+    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && !p.fullyReversed).reduce((a,p)=>a+n(p.amount),0)
+      + safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.date <= end && r.status !== 'rejected').reduce((a,r)=>a+n(r.amount),0);
+    const bk = (db.settings && db.settings.supplierAgingBuckets) || [30,60,90];
+    const b1=n(bk[0])||30, b2=n(bk[1])||60, b3=n(bk[2])||90;
+    let current=0,d30=0,d60=0,d90=0;
+    items.forEach(it=>{
+      if(it.amount<=0) return;
+      if(available>=it.amount){ available-=it.amount; return; }
+      const outstanding=it.amount-Math.max(0,available); available=0;
+      let age=0;
+      try { age=Math.max(0,Math.floor((new Date(end+'T00:00:00')-new Date((it.date||end)+'T00:00:00'))/86400000)); } catch(e){}
+      const credit=n(s.creditDays)||n(db.settings && db.settings.defaultSupplierCreditDays)||30;
+      const effective=Math.max(0,age-credit);
+      if(effective<=b1) current+=outstanding;
+      else if(effective<=b2) d30+=outstanding;
+      else if(effective<=b3) d60+=outstanding;
+      else d90+=outstanding;
+    });
+    return {current,d30,d60,d90,total:current+d30+d60+d90};
+  }
+  window.supplierAging = correctedSupplierAging;
+
+  function correctedCustomerAging(id, asOf){
+    const end=asOf||todaySafe();
+    const rows=safeArr(db.customerCheques).filter(q=>q.customerId===id && q.status==='Bounced' && (!q.bouncedDate || q.bouncedDate<=end));
+    let current=0,d30=0,d60=0,d90=0;
+    rows.forEach(q=>{
+      const amount=typeof chequeRemaining==='function'?n(chequeRemaining(q.id)):n(q.amount);
+      if(amount<=0)return;
+      const d=q.bouncedDate||q.date||end;
+      let age=0; try{age=Math.max(0,Math.floor((new Date(end+'T00:00:00')-new Date(d+'T00:00:00'))/86400000));}catch(e){}
+      if(age<=30)current+=amount; else if(age<=60)d30+=amount; else if(age<=90)d60+=amount; else d90+=amount;
+    });
+    return {current,d30,d60,d90,total:current+d30+d60+d90,bounced:rows.length};
+  }
+  window.customerAging = correctedCustomerAging;
+
+  function correctedGlobalAging(){
+    const out={current:0,d30:0,d60:0,d90:0,total:0};
+    safeArr(db.suppliers).forEach(s=>{
+      const a=correctedSupplierAging(s.id); out.current+=a.current;out.d30+=a.d30;out.d60+=a.d60;out.d90+=a.d90;
+    });
+    out.total=out.current+out.d30+out.d60+out.d90;
+    return out;
+  }
+  window.globalAging=correctedGlobalAging;
+
+  /* ── LEDGERS ──────────────────────────────────────────────────────────── */
+  function correctedSupplierLedger(id){
+    const s=safeArr(db.suppliers).find(x=>x.id===id);
+    if(!s)return {rows:[],balance:0};
+    const rows=[];
+    if(n(s.openingBalance)!==0) rows.push({date:s.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:0,credit:n(s.openingBalance),balance:n(s.openingBalance),isOpeningBalance:true});
+    actualPurchases().filter(p=>p.supplierId===id).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Purchase',ref:p.invoiceNo||p.id,debit:0,credit:n(p.amount),balance:0,purchaseId:p.id}));
+    safeArr(db.supplierReturns).filter(r=>r.supplierId===id&&r.status!=='rejected').forEach(r=>rows.push({date:r.date||todaySafe(),type:'Supplier Return',ref:r.reference||r.id,debit:n(r.amount),credit:0,balance:0,returnId:r.id}));
+    safeArr(db.payments).filter(p=>p.supplierId===id&&p.status!=='rejected'&&!p.fullyReversed).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Payment',ref:p.reference||p.id,debit:n(p.amount),credit:0,balance:0,paymentId:p.id}));
+    safeArr(db.journals).filter(j=>j.entityType==='supplier'&&j.entityId===id&&!j.bounceReversal).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
+    rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    let bal=0; rows.forEach(r=>{bal += n(r.credit)-n(r.debit);r.balance=bal;});
+    return {rows,balance:bal};
+  }
+  window.supplierLedger=correctedSupplierLedger;
+
+  function correctedCustomerLedger(id){
+    const c=safeArr(db.customers).find(x=>x.id===id);
+    if(!c)return {rows:[],balance:0};
+    const rows=[];
+    if(n(c.openingBalance)!==0) { const ob = String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance); rows.push({date:c.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:Math.max(0,ob),credit:Math.max(0,-ob),balance:0,isOpeningBalance:true}); }
+    safeArr(db.receipts).filter(r=>r.customerId===id).forEach(r=>rows.push({date:r.date||todaySafe(),type:'Receipt',ref:r.reference||r.id,debit:0,credit:n(r.amount),balance:0,receiptId:r.id}));
+    safeArr(db.customerCheques).filter(q=>q.customerId===id).forEach(q=>rows.push({date:q.date||todaySafe(),type:'Cheque '+(q.status||''),ref:q.chequeNo||q.id,debit:q.status==='Bounced'?n(q.amount):0,credit:0,balance:0,chequeId:q.id}));
+    safeArr(db.journals).filter(j=>j.entityType==='customer'&&j.entityId===id).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
+    rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    let bal=0; rows.forEach(r=>{bal += n(r.debit)-n(r.credit);r.balance=bal;});
+    return {rows,balance:bal};
+  }
+  window.customerLedger=correctedCustomerLedger;
+
+  /* ── PURCHASE VIEW/SAVE SAFETY ────────────────────────────────────────── */
+  window.openPurchaseForm = function(id){
+    if(!safeArr(db.suppliers).length){ toast('Add supplier first','error'); return; }
+    const p=id?safeArr(db.purchases).find(x=>x.id===id):null;
+    if(p && isOpeningBalanceRecord(p)){
+      toast('This record is an Opening Balance, not a Purchase. Edit it from the Supplier opening balance.','warn');
+      return;
+    }
+    const defaultInv=p?p.invoiceNo:'';
+    openModal(p?'✏️ Edit Purchase':'➕ Record Purchase',
+      '<form onsubmit="savePurchase(event)" data-id="'+(p?p.id:'')+'">'
+      +'<div class="alert info"><span class="ico">ℹ</span><div>Purchases are supplier invoices only. <strong>Opening balances are never recorded as purchases.</strong></div></div>'
+      +'<div class="form-grid">'
+      +'<label class="field">Category <span class="req">*</span><select name="pCat" required><option value="">Select category</option>'+safeArr(db.categories).map(c=>'<option value="'+escSafe(c.id)+'" '+(p&&p.categoryId===c.id?'selected':'')+'>'+escSafe(c.name)+'</option>').join('')+'</select></label>'
+      +'<label class="field">Invoice <span class="req">*</span><input name="pInvoice" required value="'+escSafe(defaultInv)+'"></label>'
+      +'<label class="field">Supplier <span class="req">*</span><select name="pSupplier" required><option value="">Select</option>'+safeArr(db.suppliers).map(s=>'<option value="'+escSafe(s.id)+'" '+(p&&p.supplierId===s.id?'selected':'')+'>'+escSafe(s.name)+'</option>').join('')+'</select></label>'
+      +'<label class="field">Date <span class="req">*</span><input name="pDate" type="date" required value="'+(p?p.date:todaySafe())+'"></label>'
+      +'<label class="field">Amount <span class="req">*</span><input name="pAmount" type="number" step="0.01" min="0.01" required value="'+(p?n(p.amount):'')+'"></label>'
+      +'<label class="field">Due Date<input name="pDueDate" type="date" value="'+(p?(p.dueDate||''):todaySafe())+'"></label>'
+      +'</div><label class="field" style="margin-top:14px">Description<textarea name="pDesc">'+escSafe(p?(p.description||''):'')+'</textarea></label>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">'+(p?'Update':'Save')+'</button></div></form>');
+  };
+
+  window.savePurchase = function(e){
+    e.preventDefault(); if(!canWriteSafe())return;
+    const f=e.target,id=f.dataset.id;
+    const data={categoryId:f.pCat.value,supplierId:f.pSupplier.value,date:f.pDate.value||todaySafe(),invoiceNo:f.pInvoice.value.trim(),amount:n(f.pAmount.value),dueDate:f.pDueDate.value||'',description:f.pDesc.value.trim(),transactionType:'purchase',isOpeningBalance:false};
+    if(!data.supplierId||!data.categoryId||data.amount<=0){toast('Fill all required purchase fields','error');return;}
+    if(id){
+      const p=safeArr(db.purchases).find(x=>x.id===id); if(!p||isOpeningBalanceRecord(p)){toast('Opening balances cannot be edited as purchases. Edit the supplier opening balance instead.','error');return;}
+      const before=clone(p); Object.assign(p,data); if(typeof trackVersion==='function')trackVersion('purchases',id,'Update',before,p); if(typeof logAct==='function')logAct('Update Purchase','Purchase',id,data.invoiceNo);
+    }else{
+      const item=Object.assign({id:uid(),createdAt:nowSafe()},data); db.purchases.push(item); if(typeof trackVersion==='function')trackVersion('purchases',item.id,'Create',null,item); if(typeof logAct==='function')logAct('Add Purchase','Purchase',item.id,data.invoiceNo);
+    }
+    save();closeModal();render();toast('✅ Purchase saved','success');
+  };
+
+  window.viewPurchases = function(){
+    let rows=actualPurchases().slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))*-1);
+    if(ui.pur && ui.pur.q){const q=String(ui.pur.q).toLowerCase();rows=rows.filter(p=>String(p.invoiceNo||'').toLowerCase().includes(q)||String((typeof supName==='function'?supName(p.supplierId):'')).toLowerCase().includes(q));}
+    return '<div class="card"><div class="card-head"><h3>🛒 Purchases ('+rows.length+')</h3><div class="table-tools"><button class="btn primary" data-action="add-purchase">＋ Record Purchase</button></div></div>'
+      +'<div class="filter-bar"><label class="field">Search<input type="search" value="'+escSafe(ui.pur&&ui.pur.q||'')+'" oninput="ui.pur.q=this.value;render()" placeholder="Invoice or supplier…"></label></div>'
+      +'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Supplier</th><th>Category</th><th class="num">Amount</th></tr></thead><tbody>'
+      +(rows.length?rows.map(p=>'<tr data-action="purchase-detail" data-id="'+escSafe(p.id)+'"><td>'+dateSafe(p.date)+'</td><td class="mono"><strong>'+escSafe(p.invoiceNo||'—')+'</strong></td><td>'+escSafe(typeof supName==='function'?supName(p.supplierId):'—')+'</td><td>'+escSafe(typeof catName==='function'?catName(p.categoryId):'—')+'</td><td class="num"><strong>'+moneySafe(p.amount)+'</strong></td></tr>').join(''):emptyRow(5,'No purchases'))
+      +'</tbody></table></div></div>';
+  };
+
+  /* ── CUSTOMER FORM WITH OPENING BALANCE ───────────────────────────────── */
+  window.openCustomerForm = function(id){
+    const c=id?(typeof custObj==='function'?custObj(id):safeArr(db.customers).find(x=>x.id===id)):null;
+    openModal(c?'✏️ Edit Customer':'➕ Add Customer',
+      '<form onsubmit="saveCustomer(event)" data-id="'+(c?c.id:'')+'"><div class="form-grid">'
+      +'<label class="field">Name <span class="req">*</span><input name="cuName" required value="'+escSafe(c?c.name:'')+'"></label>'
+      +'<label class="field">Phone<input name="cuPhone" value="'+escSafe(c?c.phone:'')+'"></label>'
+      +'<label class="field">Email<input name="cuEmail" type="email" value="'+escSafe(c?(c.email||''):'')+'"></label>'
+      +'<label class="field">Business<input name="cuBusiness" value="'+escSafe(c?(c.business||''):'')+'"></label>'
+      +'<label class="field">Opening Balance<input name="cuOpening" type="number" step="0.01" value="'+(c?n(c.openingBalance):0)+'" placeholder="Amount owed at opening"></label>'
+      +'<label class="field">Opening Date<input name="cuOpeningDate" type="date" value="'+(c?(c.openingDate||todaySafe()):todaySafe())+'"></label>'
+      +'<label class="field">Opening Balance Type<select name="cuOpeningType"><option value="receivable" '+(c&&c.openingBalanceType==='credit'?'':'selected')+'>Receivable — customer owes us</option><option value="credit" '+(c&&c.openingBalanceType==='credit'?'selected':'')+'>Credit — we owe/customer credit</option></select></label>'
+      +'<label class="field">Cheque Acceptance Limit<input name="cuLimit" type="number" step="0.01" value="'+(c?n(c.chequeLimit):0)+'"></label>'
+      +'</div><label class="field" style="margin-top:14px;flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="cuBlacklist" '+(c&&c.blacklisted?'checked':'')+'> <span>Blacklist (do not accept cheques)</span></label>'
+      +'<label class="field" style="margin-top:14px">Address<textarea name="cuAddress">'+escSafe(c?(c.address||''):'')+'</textarea></label>'
+      +'<label class="field" style="margin-top:14px">Notes<textarea name="cuNotes">'+escSafe(c?(c.notes||''):'')+'</textarea></label>'
+      +'<div class="alert info" style="margin-top:14px"><span class="ico">ℹ</span><div>Opening balance is stored on the customer master record. It is <strong>not a receipt, cheque, or purchase</strong>.</div></div>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">'+(c?'Update':'Save')+'</button></div></form>');
+  };
+
+  window.saveCustomer = function(e){
+    e.preventDefault();if(!canWriteSafe())return;const f=e.target,id=f.dataset.id;
+    const data={name:f.cuName.value.trim(),phone:f.cuPhone.value.trim(),email:f.cuEmail.value.trim(),business:f.cuBusiness.value.trim(),address:f.cuAddress.value.trim(),notes:f.cuNotes.value.trim(),chequeLimit:n(f.cuLimit.value),blacklisted:!!f.cuBlacklist.checked,openingBalance:Math.abs(n(f.cuOpening.value)),openingDate:f.cuOpeningDate.value||todaySafe(),openingBalanceType:f.cuOpeningType.value||'receivable'};
+    if(!data.name){toast('Name required','error');return;}
+    if(id){const c=safeArr(db.customers).find(x=>x.id===id);if(!c){toast('Customer not found','error');return;}const before=clone(c);Object.assign(c,data);c.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('customers',id,'Update',before,c);if(typeof logAct==='function')logAct('Update Customer','Customer',id,data.name);}
+    else{const item=Object.assign({id:uid(),createdAt:nowSafe()},data);db.customers.push(item);if(typeof trackVersion==='function')trackVersion('customers',item.id,'Create',null,item);if(typeof logAct==='function')logAct('Add Customer','Customer',item.id,data.name);}
+    save();closeModal();render();toast('✅ Customer saved','success');
+  };
+
+  /* ── SUPPLIER FORM: make opening balance semantics explicit ───────────── */
+  window.openSupplierForm = function(id){
+    const s=id?(typeof supObj==='function'?supObj(id):safeArr(db.suppliers).find(x=>x.id===id)):null;
+    const cats='<option value="">— Uncategorized —</option>'+safeArr(db.categories).map(c=>'<option value="'+escSafe(c.id)+'" '+(s&&s.categoryId===c.id?'selected':'')+'>'+escSafe(c.name)+'</option>').join('');
+    openModal(s?'✏️ Edit Supplier':'➕ Add Supplier','<form onsubmit="saveSupplier(event)" data-id="'+(s?s.id:'')+'"><div class="form-grid">'
+      +'<label class="field">Name <span class="req">*</span><input name="sName" required value="'+escSafe(s?s.name:'')+'"></label>'
+      +'<label class="field">Category <span class="req">*</span><select name="sCat" required>'+cats+'</select></label>'
+      +'<label class="field">Phone<input name="sPhone" value="'+escSafe(s?s.phone:'')+'"></label>'
+      +'<label class="field">Email<input name="sEmail" value="'+escSafe(s?(s.email||''):'')+'"></label>'
+      +'<label class="field">Contact Person<input name="sContact" value="'+escSafe(s?(s.contact||''):'')+'"></label>'
+      +'<label class="field">Opening Balance<input name="sOpen" type="number" step="0.01" value="'+(s?n(s.openingBalance):0)+'" placeholder="Amount owed to supplier"></label>'
+      +'<label class="field">Opening Date<input name="sOpenDate" type="date" value="'+(s?(s.openingDate||todaySafe()):todaySafe())+'"></label>'
+      +'<label class="field">Credit Days<input name="sDays" type="number" value="'+(s?n(s.creditDays):n(db.settings&&db.settings.defaultSupplierCreditDays)||30)+'"></label>'
+      +'<label class="field">Credit Limit<input name="sLimit" type="number" step="0.01" value="'+(s?n(s.creditLimit):0)+'"></label>'
+      +'</div><label class="field" style="margin-top:14px">Address<textarea name="sAddress">'+escSafe(s?(s.address||''):'')+'</textarea></label><label class="field" style="margin-top:14px">Notes<textarea name="sNotes">'+escSafe(s?(s.notes||''):'')+'</textarea></label>'
+      +'<div class="alert info" style="margin-top:14px"><span class="ico">ℹ</span><div>Opening balance is the supplier master opening payable. It is <strong>not a purchase invoice</strong> and will never appear in Purchases.</div></div>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">'+(s?'Update':'Save')+'</button></div></form>');
+  };
+
+  window.saveSupplier = function(e){
+    e.preventDefault();if(!canWriteSafe())return;const f=e.target,id=f.dataset.id;
+    const data={name:f.sName.value.trim(),categoryId:f.sCat.value,phone:f.sPhone.value.trim(),email:f.sEmail.value.trim(),contact:f.sContact.value.trim(),address:f.sAddress.value.trim(),notes:f.sNotes.value.trim(),openingBalance:Math.abs(n(f.sOpen.value)),openingDate:f.sOpenDate.value||todaySafe(),openingBalanceType:'payable',creditDays:n(f.sDays.value)||30,creditLimit:n(f.sLimit.value)};
+    if(!data.name||!data.categoryId){toast('Name and category required','error');return;}
+    if(id){const s=safeArr(db.suppliers).find(x=>x.id===id);if(!s){toast('Supplier not found','error');return;}const before=clone(s);Object.assign(s,data);s.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('suppliers',id,'Update',before,s);if(typeof logAct==='function')logAct('Update Supplier','Supplier',id,data.name);}
+    else{const item=Object.assign({id:uid(),createdAt:nowSafe()},data);db.suppliers.push(item);if(typeof trackVersion==='function')trackVersion('suppliers',item.id,'Create',null,item);if(typeof logAct==='function')logAct('Add Supplier','Supplier',item.id,data.name);}
+    save();closeModal();render();toast('✅ Supplier saved','success');
+  };
+
+  /* ── DETAIL ACTIONS ───────────────────────────────────────────────────── */
+  function injectEntityActions(collection,id,label,editFn,deleteFn,extraHTML){
+    if(!document.querySelector('#modalWrap.open'))return;
+    const body=document.querySelector('#modalWrap.open .modal-body'); if(!body)return;
+    if(body.querySelector('[data-deep-actions="1"]'))return;
+    const bar=document.createElement('div');bar.setAttribute('data-deep-actions','1');bar.style.cssText='display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:10px 0 14px;margin-bottom:10px;border-bottom:1px solid var(--border);';
+    let html='';
+    if(typeof editFn==='function' && canWriteSafe()) html+='<button class="btn sm" type="button" data-deep-edit="1">✏️ Edit</button>';
+    if(typeof deleteFn==='function' && canDeleteSafe()) html+='<button class="btn sm danger" type="button" data-deep-delete="1">🗑 Delete</button>';
+    if(extraHTML)html+=extraHTML;
+    if(!html)return;
+    bar.innerHTML=html;body.prepend(bar);
+    const eb=bar.querySelector('[data-deep-edit]');if(eb)eb.onclick=()=>editFn(id);
+    const dbtn=bar.querySelector('[data-deep-delete]');if(dbtn)dbtn.onclick=()=>deleteFn(id);
+  }
+
+  function wrapDetail(name,collection,editFn,deleteFn){
+    const orig=window[name]; if(typeof orig!=='function'||orig.__deepWrapped)return;
+    const wrapped=function(id){
+      const r=orig.apply(this,arguments);
+      setTimeout(()=>injectEntityActions(collection,id,collection,editFn,deleteFn),0);
+      return r;
+    };
+    wrapped.__deepWrapped=true;window[name]=wrapped;
+  }
+
+  /* Entity delete handlers use existing soft-delete/trash behavior. */
+  function del(collection,id,label){
+    if(!canDeleteSafe()){toast('Delete permission required','error');return;}
+    const item=safeArr(db[collection]).find(x=>x.id===id);if(!item){toast('Record not found','error');return;}
+    if(!confirm('Move '+(label||collection)+' to Trash?\nThe record can be restored by an administrator.'))return;
+    if(typeof softDelete==='function')softDelete(collection,id,label||item.name||item.id);
+    else{db[collection]=safeArr(db[collection]).filter(x=>x.id!==id);save();}
+    closeModal();render();toast('Moved to Trash','success');
+  }
+
+  wrapDetail('showPurchaseDetail','purchases',id=>openPurchaseForm(id),id=>del('purchases',id,'Purchase'));
+  wrapDetail('showBankDetail','bankAccounts',id=>openBankForm(id),id=>del('bankAccounts',id,'Bank account'));
+  wrapDetail('showExpenseDetail','expenses',id=>openExpenseForm(id),id=>del('expenses',id,'Expense'));
+  wrapDetail('showCustomerDetail','customers',id=>openCustomerForm(id),id=>del('customers',id,'Customer'));
+  wrapDetail('showSupplierDetail','suppliers',id=>openSupplierForm(id),id=>del('suppliers',id,'Supplier'));
+  wrapDetail('showChequeBookDetail','chequeBooks',id=>openChequeBookForm(id),id=>del('chequeBooks',id,'Cheque book'));
+
+  /* Add opening-balance summary to customer detail without replacing the
+     existing five-tab customer module. */
+  const originalCustomerDetail=window.showCustomerDetail;
+  if(typeof originalCustomerDetail==='function'&&!originalCustomerDetail.__deepOpening){
+    const wrappedCustomer=function(id){
+      const r=originalCustomerDetail.apply(this,arguments);
+      setTimeout(()=>{
+        const body=document.querySelector('#modalWrap.open .modal-body');const c=safeArr(db.customers).find(x=>x.id===id);
+        if(!body||!c||body.querySelector('[data-opening-balance-card="customer"]'))return;
+        const card=document.createElement('div');card.setAttribute('data-opening-balance-card','customer');card.className='alert info';card.innerHTML='<span class="ico">📌</span><div><strong>Opening Balance:</strong> '+moneySafe(c.openingBalance)+' • '+dateSafe(c.openingDate)+'<br><span class="small">'+(c.openingBalanceType==='credit'?'Customer credit':'Receivable — customer owes us')+'</span></div>';
+        body.insertBefore(card,body.firstChild);
+      },0);return r;
+    };wrappedCustomer.__deepOpening=true;window.showCustomerDetail=wrappedCustomer;
+  }
+
+  /* ── Safe edit forms for records whose original detail screen was
+     intentionally read-only. These edit accounting-neutral metadata only. */
+  window.openReceiptEditForm=function(id){
+    const r=safeArr(db.receipts).find(x=>x.id===id);if(!r){toast('Receipt not found','error');return;}
+    openModal('✏️ Edit Receipt','<form onsubmit="saveReceiptEdit(event)" data-id="'+id+'"><div class="form-grid">'
+      +'<label class="field">Date<input name="reDate" type="date" required value="'+escSafe(r.date||todaySafe())+'"></label>'
+      +'<label class="field">Category<select name="reCat">'+safeArr(db.categories).map(c=>'<option value="'+escSafe(c.id)+'" '+(r.categoryId===c.id?'selected':'')+'>'+escSafe(c.name)+'</option>').join('')+'</select></label>'
+      +'<label class="field">Method<input name="reMethod" value="'+escSafe(r.method||'')+'"></label>'
+      +'<label class="field">Reference<input name="reRef" value="'+escSafe(r.reference||r.ref||'')+'"></label>'
+      +'</div><div class="alert warn" style="margin-top:14px"><span class="ico">⚠</span><div>Amount and linked cheques are locked here to prevent the receipt ledger from becoming inconsistent.</div></div>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary">Save</button></div></form>');
+  };
+  window.saveReceiptEdit=function(e){e.preventDefault();if(!canWriteSafe())return;const f=e.target,r=safeArr(db.receipts).find(x=>x.id===f.dataset.id);if(!r)return;const before=clone(r);r.date=f.reDate.value||todaySafe();r.categoryId=f.reCat.value;r.method=f.reMethod.value.trim();r.reference=f.reRef.value.trim();r.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('receipts',r.id,'Update',before,r);if(typeof logAct==='function')logAct('Update Receipt','Receipt',r.id,r.reference||r.id);save();closeModal();render();toast('Receipt updated','success');};
+
+  window.openChequeEditForm=function(id){
+    const q=safeArr(db.customerCheques).find(x=>x.id===id);if(!q){toast('Cheque not found','error');return;}
+    openModal('✏️ Edit Cheque','<form onsubmit="saveChequeEdit(event)" data-id="'+id+'"><div class="form-grid">'
+      +'<label class="field">Cheque No<input name="qeNo" value="'+escSafe(q.chequeNo||'')+'"></label>'
+      +'<label class="field">Bank<input name="qeBank" value="'+escSafe(q.bank||'')+'"></label>'
+      +'<label class="field">Date<input name="qeDate" type="date" value="'+escSafe(q.date||todaySafe())+'"></label>'
+      +'<label class="field">Due Date<input name="qeDue" type="date" value="'+escSafe(q.dueDate||'')+'"></label>'
+      +'<label class="field">Reference<input name="qeRef" value="'+escSafe(q.ref||'')+'"></label>'
+      +'<label class="field">Cheque Type<input name="qeType" value="'+escSafe(q.chequeType||'')+'"></label>'
+      +'</div><div class="alert warn" style="margin-top:14px"><span class="ico">⚠</span><div>Amount, customer and lifecycle status are locked to protect cheque settlements and bank cascades.</div></div>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary">Save</button></div></form>');
+  };
+  window.saveChequeEdit=function(e){e.preventDefault();if(!canWriteSafe())return;const f=e.target,q=safeArr(db.customerCheques).find(x=>x.id===f.dataset.id);if(!q)return;const before=clone(q);q.chequeNo=f.qeNo.value.trim();q.bank=f.qeBank.value.trim();q.date=f.qeDate.value||q.date;q.dueDate=f.qeDue.value||q.dueDate;q.ref=f.qeRef.value.trim();q.chequeType=f.qeType.value.trim();q.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('customerCheques',q.id,'Update',before,q);if(typeof logAct==='function')logAct('Update Cheque','Cheque',q.id,q.chequeNo);save();closeModal();render();toast('Cheque updated','success');};
+
+  window.openPaymentEditForm=function(id){
+    const p=safeArr(db.payments).find(x=>x.id===id);if(!p){toast('Payment not found','error');return;}
+    openModal('✏️ Edit Payment','<form onsubmit="savePaymentEdit(event)" data-id="'+id+'"><div class="form-grid">'
+      +'<label class="field">Date<input name="peDate" type="date" value="'+escSafe(p.date||todaySafe())+'"></label>'
+      +'<label class="field">Reference<input name="peRef" value="'+escSafe(p.reference||'')+'"></label>'
+      +'<label class="field">Notes<textarea name="peNotes">'+escSafe(p.notes||'')+'</textarea></label>'
+      +'</div><div class="alert warn" style="margin-top:14px"><span class="ico">⚠</span><div>Payment amount, supplier and linked cheques are locked to preserve settlement history.</div></div>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary">Save</button></div></form>');
+  };
+  window.savePaymentEdit=function(e){e.preventDefault();if(!canWriteSafe())return;const f=e.target,p=safeArr(db.payments).find(x=>x.id===f.dataset.id);if(!p)return;const before=clone(p);p.date=f.peDate.value||p.date;p.reference=f.peRef.value.trim();p.notes=f.peNotes.value.trim();p.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('payments',p.id,'Update',before,p);if(typeof logAct==='function')logAct('Update Payment','Payment',p.id,p.reference);save();closeModal();render();toast('Payment updated','success');};
+
+  window.openJournalEditForm=function(id){
+    const j=safeArr(db.journals).find(x=>x.id===id);if(!j){toast('Journal not found','error');return;}
+    openModal('✏️ Edit Journal','<form onsubmit="saveJournalEdit(event)" data-id="'+id+'"><div class="form-grid">'
+      +'<label class="field">Date<input name="jeDate" type="date" value="'+escSafe(j.date||todaySafe())+'"></label>'
+      +'<label class="field">Reference<input name="jeRef" value="'+escSafe(j.reference||'')+'"></label>'
+      +'<label class="field">Description<textarea name="jeDesc">'+escSafe(j.description||'')+'</textarea></label>'
+      +'</div><div class="alert warn" style="margin-top:14px"><span class="ico">⚠</span><div>Debit/credit and entity are locked here. Edit them through a controlled accounting adjustment instead.</div></div>'
+      +'<div class="form-actions"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary">Save</button></div></form>');
+  };
+  window.saveJournalEdit=function(e){e.preventDefault();if(!canWriteSafe())return;const f=e.target,j=safeArr(db.journals).find(x=>x.id===f.dataset.id);if(!j)return;const before=clone(j);j.date=f.jeDate.value||j.date;j.reference=f.jeRef.value.trim();j.description=f.jeDesc.value.trim();j.updatedAt=nowSafe();if(typeof trackVersion==='function')trackVersion('journals',j.id,'Update',before,j);if(typeof logAct==='function')logAct('Update Journal','Journal',j.id,j.reference);save();closeModal();render();toast('Journal updated','success');};
+
+  /* Additional core detail buttons. */
+  wrapDetail('showReceiptDetail','receipts',id=>window.openReceiptEditForm(id),id=>del('receipts',id,'Receipt'));
+  wrapDetail('showChequeDetail','customerCheques',id=>window.openChequeEditForm(id),id=>del('customerCheques',id,'Cheque'));
+  wrapDetail('showPaymentDetail','payments',id=>window.openPaymentEditForm(id),id=>del('payments',id,'Payment'));
+
+  /* Journal rows do not currently have a dedicated detail modal; add a
+     reusable helper for future/detail integrations. */
+  window.editJournal=window.openJournalEditForm;
+  window.deleteJournal=id=>del('journals',id,'Journal');
+
+  /* ── RUN SAFE MIGRATION ONCE ───────────────────────────────────────────── */
+  try{
+    ensureEntityOpeningFields();
+    const migrated=migrateExplicitOpeningPurchaseRecords();
+    if(migrated || !(db.settings && db.settings.openingBalanceModelVersion===2)){
+      if(!db.settings)db.settings={};db.settings.openingBalanceModelVersion=2;
+      save();
+    }
+  }catch(e){console.error('Opening-balance correction:',e);}
+
+  /* ── REPORTING SAFETY: expose one canonical purchase collection helper ── */
+  window.getActualPurchases=actualPurchases;
+  window.getOpeningBalanceSummary=function(type,id){
+    const list=type==='customer'?safeArr(db.customers):safeArr(db.suppliers);const x=list.find(v=>v.id===id);if(!x)return null;
+    return {amount:n(x.openingBalance),date:x.openingDate||null,type:x.openingBalanceType||(type==='customer'?'receivable':'payable'),entityType:type,entityId:id};
+  };
+
+  if(window.__dbgOk)window.__dbgOk('Deep data correction layer installed: opening balances, ledgers, editing and admin delete controls','DATA-FIX');
+})();
+
+</script>
+
+<script id="missing-runtime-functions-fix">
+/* Runtime helper restoration: these helpers are required by existing views/details.
+   They were accidentally omitted during the previous rewrite. */
+function customerChequeSummary(cid){
+  const all = arr(db.customerCheques).filter(cq => cq.customerId === cid);
+  const inHand  = all.filter(c => c.status === 'In Hand');
+  const issued  = all.filter(c => c.status === 'Issued');
+  const cleared = all.filter(c => c.status === 'Cleared');
+  const bounced = all.filter(c => c.status === 'Bounced');
+  const stopped = all.filter(c => c.status === 'Stopped');
+  return {
+    total:   { count: all.length,     value: sum(all, 'amount') },
+    inHand:  { count: inHand.length,  value: sum(inHand, 'amount') },
+    issued:  { count: issued.length,  value: sum(issued, 'amount') },
+    cleared: { count: cleared.length, value: sum(cleared, 'amount') },
+    bounced: { count: bounced.length, value: sum(bounced, 'amount') },
+    stopped: { count: stopped.length, value: sum(stopped, 'amount') },
+    all,
+    byStatus: { inHand, issued, cleared, bounced, stopped }
+  };
+}
+window.customerChequeSummary = customerChequeSummary;
+
+function customerReliability(cid){
+  const s = customerChequeSummary(cid);
+  const resolved = s.cleared.count + s.bounced.count;
+  if(resolved < 3) return { score: 0, label: 'New', cls: 'new' };
+  const pct = (s.cleared.count / resolved) * 100;
+  if(pct >= 90) return { score: pct, label: 'Trusted', cls: 'trusted' };
+  if(pct >= 70) return { score: pct, label: 'Watch', cls: 'watch' };
+  return { score: pct, label: 'Risky', cls: 'risky' };
+}
+window.customerReliability = customerReliability;
+
+function renderTagPills(kind, id){
+  const tags = getRecordTags(kind, id);
+  if(!tags.length) return '';
+  return tags.map(t => {
+    const cls = /vip|loyal|preferred|reliable/i.test(t) ? 'green'
+              : /risky|blacklist|slow/i.test(t) ? 'red'
+              : /watch|priority|discount/i.test(t) ? 'amber'
+              : 'gray';
+    return '<span class="tag-pill tag-' + cls + '">' + esc(t) + '</span>';
+  }).join('');
+}
+window.renderTagPills = renderTagPills;
+
+function getRecordTags(kind, id){
+  if(!db.recordTags) db.recordTags = {};
+  if(!db.recordTags[kind]) db.recordTags[kind] = {};
+  return arr(db.recordTags[kind][id]);
+}
+window.getRecordTags = getRecordTags;
+
+function setRecordTags(kind, id, tags){
+  if(!db.recordTags) db.recordTags = {};
+  if(!db.recordTags[kind]) db.recordTags[kind] = {};
+  db.recordTags[kind][id] = uniq(arr(tags).map(t => String(t).trim()).filter(Boolean));
+  save();
+}
+window.setRecordTags = setRecordTags;
+
+function saveTagsEditor(kind, id){
+  const inp = document.getElementById('tagsInput');
+  if(!inp) return;
+  setRecordTags(kind, id, inp.value.split(','));
+  logAct('Update Tags', kind, id, inp.value.trim());
+  closeModal();
+  render();
+  toast('Tags saved', 'success');
+}
+window.saveTagsEditor = saveTagsEditor;
+
+function toggleTagPill(btn){
+  const inp = document.getElementById('tagsInput');
+  if(!inp) return;
+  const tag = btn.dataset.tag;
+  let list = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+  if(list.indexOf(tag) !== -1){
+    list = list.filter(x => x !== tag);
+    btn.classList.remove('primary');
+  } else {
+    list.push(tag);
+    btn.classList.add('primary');
+  }
+  inp.value = list.join(', ');
+}
+window.toggleTagPill = toggleTagPill;
+
+function addNote(entityType, entityId, text){
+  if(!canWrite()) return;
+  if(!Array.isArray(db.customerNotes)) db.customerNotes = [];
+  db.customerNotes.push({
+    id: uid(),
+    entityType,
+    entityId,
+    text: text.trim(),
+    createdAt: nowISO(),
+    createdBy: (currentUser && currentUser.email) || 'system'
+  });
+  logAct('Add Note', entityType, entityId, text.slice(0, 80));
+  save();
+}
+window.addNote = addNote;
+
+function deleteNote(id){
+  if(!canWrite()) return;
+  if(!confirm('Delete note?')) return;
+  db.customerNotes = arr(db.customerNotes).filter(n => n.id !== id);
+  save();
+}
+window.deleteNote = deleteNote;
+
+function notesFor(entityType, entityId){
+  return arr(db.customerNotes)
+    .filter(n => n.entityType === entityType && n.entityId === entityId)
+    .sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+}
+window.notesFor = notesFor;
+
+function markViewed(kind, id, label){
+  if(!Array.isArray(db.recentlyViewed)) db.recentlyViewed = [];
+  const owner = (currentUser && currentUser.email) || 'system';
+  const existing = arr(db.recentlyViewed).find(r => r.kind === kind && r.entityId === id && r.owner === owner);
+  if(existing){
+    existing.viewedAt = nowISO();
+    existing.label = label;
+  } else {
+    db.recentlyViewed.push({
+      id: uid(), kind, entityId: id, label, owner, viewedAt: nowISO()
+    });
+  }
+  /* Keep only last 20 for this user */
+  const mine = arr(db.recentlyViewed)
+    .filter(r => r.owner === owner)
+    .sort((a, b) => a.viewedAt < b.viewedAt ? -1 : 1);
+  if(mine.length > 20){
+    const removeIds = mine.slice(0, mine.length - 20).map(r => r.id);
+    db.recentlyViewed = arr(db.recentlyViewed).filter(r => removeIds.indexOf(r.id) === -1);
+  }
+  save();
+}
+window.markViewed = markViewed;
+
+function trackVersion(collection, recordId, action, before, after){
+  if(!db.settings || db.settings.enableActivityLog === false) return;
+  if(!Array.isArray(db.versionHistory)) db.versionHistory = [];
+  db.versionHistory.push({
+    id: uid(),
+    collection, recordId, action,
+    before: before ? JSON.parse(JSON.stringify(before)) : null,
+    after: after ? JSON.parse(JSON.stringify(after)) : null,
+    at: nowISO(),
+    by: (currentUser && currentUser.email) || 'system'
+  });
+  if(db.versionHistory.length > 5000)
+    db.versionHistory = db.versionHistory.slice(-5000);
+}
+window.trackVersion = trackVersion;
+
+function recentItems(kind){
+  const owner = (currentUser && currentUser.email) || 'system';
+  let list = arr(db.recentlyViewed).filter(r => r.owner === owner);
+  if(kind) list = list.filter(r => r.kind === kind);
+  return list.sort((a, b) => a.viewedAt < b.viewedAt ? 1 : -1);
+}
+window.recentItems = recentItems;
+
+function toggleSidebar(){
+  db.settings.sidebarCollapsed = !db.settings.sidebarCollapsed;
+  save();
+  applySettings();
+}
+window.toggleSidebar = toggleSidebar;
+
+function chequeAllocated(chequeId){
+  return sum(chequeSplits(chequeId), 'amount');
+}
+window.chequeAllocated = chequeAllocated;
+
+function chequeRemaining(chequeId){
+  const c = arr(db.customerCheques).find(x => x.id === chequeId);
+  if(!c) return 0;
+  const settled = sum(arr(db.chequeSettlements).filter(s => s.chequeId === chequeId), 'amount');
+  return Math.max(0, num(c.amount) - settled);
+}
+window.chequeRemaining = chequeRemaining;
+
+function chequeSettlements(chequeId){
+  return arr(db.chequeSettlements).filter(s => s.chequeId === chequeId);
+}
+window.chequeSettlements = chequeSettlements;
+
+function chequeSplits(chequeId){
+  return arr(db.chequeSplits).filter(s => s.chequeId === chequeId);
+}
+window.chequeSplits = chequeSplits;
+
+function chequeUnallocated(chequeId){
+  const c = arr(db.customerCheques).find(x => x.id === chequeId);
+  if(!c) return 0;
+  return Math.max(0, num(c.amount) - chequeAllocated(chequeId));
+}
+window.chequeUnallocated = chequeUnallocated;
+
+function chequeChain(chequeId){
+  const c = arr(db.customerCheques).find(x => x.id === chequeId);
+  if(!c) return [];
+  const nodes = [{
+    kind: 'origin', label: c.customerName,
+    sub: 'Cheque ' + esc(c.chequeNo || '') + ' issued',
+    date: c.date
+  }];
+  const endorsements = arr(db.chequeEndorsements)
+    .filter(e => e.chequeId === chequeId)
+    .sort((a, b) => a.date < b.date ? -1 : 1);
+  endorsements.forEach(e => {
+    nodes.push({
+      kind: 'endorse',
+      label: supName(e.fromSupplierId) || 'You',
+      sub: '→ ' + supName(e.toSupplierId),
+      date: e.date,
+      amount: num(e.amount),
+      note: e.note || ''
+    });
+  });
+  return nodes;
+}
+window.chequeChain = chequeChain;
+
+function performUndo(){
+  if(!undoStack.length){ toast('Nothing to undo', 'warn'); return; }
+  const last = undoStack.pop();
+
+  if(last.type === 'collection_push'){
+    const items = arr(db[last.collection]);
+    if(items.length && items[items.length - 1].id === last.id){
+      db[last.collection] = items.slice(0, -1);
+    }
+  } else if(last.type === 'collection_delete'){
+    db[last.collection] = arr(db[last.collection]).concat([last.item]);
+  } else if(last.type === 'record_change'){
+    const list = arr(db[last.collection]);
+    const idx = list.findIndex(x => x.id === last.id);
+    if(idx !== -1) Object.assign(list[idx], last.before);
+  } else if(last.type === 'bulk_delete'){
+    const restored = arr(db[last.collection]).concat(last.snapshot);
+    db[last.collection] = restored;
+  }
+
+  save();
+  render();
+  toast('Undone: ' + last.label, 'info');
+}
+window.performUndo = performUndo;
+
+function renderMaturityWidget(){
+  const el = document.getElementById('maturityWidget');
+  if(!el) return;
+  const s = db.settings || {};
+  if(!s.showMaturityWidget || !currentUser){ el.style.display = 'none'; return; }
+
+  const t = today();
+  const upcoming = arr(db.chequeLeaves)
+    .filter(l => l.status === 'Issued' && l.dueDate && l.dueDate >= t)
+    .sort((a, b) => a.dueDate < b.dueDate ? -1 : 1);
+
+  if(!upcoming.length){
+    el.innerHTML = '<div class="mw-h">Next Cheque</div>'
+      + '<div class="mw-v" style="color:var(--green)">No pending</div>'
+      + '<div class="mw-s">All clear 🎉</div>';
+    el.style.display = '';
+    return;
+  }
+
+  const next = upcoming[0];
+  const days = daysBetween(t, next.dueDate);
+  const cls = days <= 3 ? 'var(--red)' : days <= 7 ? 'var(--amber)' : '#fff';
+  const label = days === 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : 'in ' + days + ' day' + (days === 1 ? '' : 's');
+
+  el.innerHTML = '<div class="mw-h">Next Cheque Due</div>'
+    + '<div class="mw-v" style="color:' + cls + '">' + label + '</div>'
+    + '<div class="mw-s">' + esc(next.bankName || '') + ' • ' + moneyPlain(next.amount) + '</div>'
+    + '<div class="mw-s">Leaf ' + esc(next.leafNo) + ' • ' + dateFmt(next.dueDate) + '</div>';
+  el.style.display = '';
+}
+window.renderMaturityWidget = renderMaturityWidget;
+
+</script>
+
+<script id="missing-runtime-actions-fix">
+/* Restored action helpers used by existing UI buttons. */
+function openTagsEditor(kind, id, label){
+  const current = getRecordTags(kind, id);
+  const presets = TAG_PRESETS[kind] || [];
+  openModal('🏷️ Tags — ' + esc(label),
+    '<div style="margin-bottom:14px">'
+    + '<div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Click preset tags or type your own (comma separated).</div>'
+    + '<div class="row-flex" style="flex-wrap:wrap;gap:6px;margin-bottom:14px">'
+    + presets.map(p => {
+        const on = current.indexOf(p) !== -1;
+        return '<button type="button" class="btn xs ' + (on ? 'primary' : '') + '" data-tag="' + esc(p) + '" onclick="toggleTagPill(this)">' + esc(p) + '</button>';
+      }).join('')
+    + '</div>'
+    + '<label class="field">All Tags (comma separated)<input id="tagsInput" value="' + esc(current.join(', ')) + '"></label>'
+    + '</div>'
+    + '<div class="form-actions">'
+    + '<button class="btn" data-action="close-modal">Cancel</button>'
+    + '<button class="btn primary" onclick="saveTagsEditor(\'' + kind + '\',\'' + id + '\')">Save Tags</button>'
+    + '</div>');
+}
+window.openTagsEditor = openTagsEditor;
+
+function inlineEdit(collection, id, field, type){
+  if(!canWrite()) return;
+  const item = arr(db[collection]).find(x => x.id === id);
+  if(!item) return;
+  type = type || 'text';
+  const curVal = item[field] === undefined || item[field] === null ? '' : item[field];
+
+  openModal('✏️ Inline Edit — ' + esc(field),
+    '<div class="small muted" style="margin-bottom:12px">Editing <strong>'
+    + esc(item.name || item.invoiceNo || item.chequeNo || id)
+    + '</strong> → field <strong>' + esc(field) + '</strong></div>'
+    + '<label class="field">Value<input id="inlineInput" type="'
+    + (type === 'number' ? 'number' : type === 'date' ? 'date' : 'text')
+    + '" value="' + esc(curVal) + '" autofocus></label>'
+    + '<div class="form-actions">'
+    + '<button class="btn" data-action="close-modal">Cancel</button>'
+    + '<button class="btn primary" onclick="saveInlineEdit(\'' + collection + '\',\'' + id + '\',\'' + field + '\',\'' + type + '\')">Save</button>'
+    + '</div>');
+
+  setTimeout(() => {
+    const el = document.getElementById('inlineInput');
+    if(el){ el.focus(); el.select(); }
+  }, 100);
+
+  const inp = document.getElementById('inlineInput');
+  if(inp) inp.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      saveInlineEdit(collection, id, field, type);
+    }
+  });
+}
+window.inlineEdit = inlineEdit;
+
+function saveInlineEdit(collection, id, field, type){
+  if(!canWrite()) return;
+  const inp = document.getElementById('inlineInput');
+  if(!inp) return;
+  const item = arr(db[collection]).find(x => x.id === id);
+  if(!item) return;
+
+  const before = JSON.parse(JSON.stringify(item));
+  let v = inp.value;
+  if(type === 'number') v = num(v);
+  item[field] = v;
+  item.updatedAt = nowISO();
+
+  trackVersion(collection, id, 'Update', before, item);
+  logAct('Inline Edit', collection, id, field + ' = ' + String(v).slice(0, 60));
+  save();
+  closeModal();
+  render();
+  toast('Updated ' + field, 'success');
+}
+window.saveInlineEdit = saveInlineEdit;
+
+function permanentDeleteFromTrash(trashId){
+  if(!canWrite()) return;
+  if(!confirm('Permanently delete? This cannot be undone.')) return;
+  db.trash = arr(db.trash).filter(x => x.id !== trashId);
+  save();
+  render();
+  toast('Permanently deleted', 'warn');
+}
+window.permanentDeleteFromTrash = permanentDeleteFromTrash;
+
+function purgeOldTrash(){
+  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+  const before = arr(db.trash).length;
+  db.trash = arr(db.trash).filter(t => t.deletedAt > cutoff);
+  if(arr(db.trash).length < before) save();
+}
+window.purgeOldTrash = purgeOldTrash;
+
+function restoreFromTrash(trashId){
+  if(!canWrite()) return;
+  const t = arr(db.trash).find(x => x.id === trashId);
+  if(!t) return;
+  if(!Array.isArray(db[t.originalCollection])) db[t.originalCollection] = [];
+  db[t.originalCollection].push(t.item);
+  db.trash = arr(db.trash).filter(x => x.id !== trashId);
+  logAct('Restore from Trash', t.originalCollection, t.item.id, t.label || '');
+  save();
+  render();
+  toast('Restored', 'success');
+}
+window.restoreFromTrash = restoreFromTrash;
+
+</script>
+
+<script id="final-runtime-wiring-fix">
+/* The deep purchase safety override replaces window.viewPurchases. The router
+   must use that same implementation, otherwise it would keep the old view. */
+if(typeof window.viewPurchases === 'function' && window.views){
+  window.views.purchases = window.viewPurchases;
+}
+</script>
+
+<script>
+window.refreshAllCloudData=async function(){
+  if(!firebaseReady||!firestore||!currentUser){toast('Sign in first','error');return;}
+  try{toast('Refreshing cloud data…','info');await loadFromFirestore();normalizeDb();applySettings();if(typeof takeSnapshot==='function')takeSnapshot();try{localStorage.setItem('lankashoe_last_cloud_load',String(Date.now()));}catch(e){}render();toast('Cloud data refreshed','success');}catch(e){toast('Cloud refresh failed: '+(e.code||e.message),'error');}
+};
 </script>
 </body>
 </html>

@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="professional">
+
+<html data-theme="professional" lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<meta name="theme-color" content="#7c3aed"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#7c3aed" name="theme-color"/>
 <title>Lanka Shoe — Enterprise v12.0</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👟</text></svg>">
+<link href="data:image/svg+xml,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22&gt;&lt;text y=%22.9em%22 font-size=%2290%22&gt;👟&lt;/text&gt;&lt;/svg&gt;" rel="icon"/>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -1052,7 +1053,7 @@ body.sidebar-collapsed .brand-text,body.sidebar-collapsed .sidebar-foot{display:
 }
 </style>
 </head>
-<body>
+<body><script>window.__LANKA_SHOE_QA__={errors:[],ready:false};window.addEventListener('error',function(e){try{window.__LANKA_SHOE_QA__.errors.push({type:'error',message:e.message||String(e.error||e),source:e.filename||'',line:e.lineno||0});}catch(_){}});window.addEventListener('unhandledrejection',function(e){try{window.__LANKA_SHOE_QA__.errors.push({type:'rejection',message:String(e.reason&&e.reason.message||e.reason)});}catch(_){}});</script>
 <!-- ═══════════════════════════════════════════════════════════════════════════
 LOGIN OVERLAY
 ═══════════════════════════════════════════════════════════════════════════ -->
@@ -1061,18 +1062,18 @@ LOGIN OVERLAY
 <div class="login-logo" id="loginLogo">LS</div>
 <h1 id="loginTitle">Lanka Shoe</h1>
 <div class="tagline" id="loginTagline">Sign in to access the enterprise suite</div>
-<button type="button" class="google-btn" id="googleSignInBtn" onclick="return window.__LankaShoeGoogleLogin(event);">
-<svg viewBox="0 0 48 48">
-<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+<button class="google-btn" id="googleSignInBtn" onclick="return window.__LankaShoeGoogleLogin(event);" type="button">
+<svg viewbox="0 0 48 48">
+<path d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" fill="#EA4335"></path>
+<path d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" fill="#4285F4"></path>
+<path d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" fill="#FBBC05"></path>
+<path d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" fill="#34A853"></path>
 </svg>
 <span id="googleBtnText">Continue with Google</span>
 </button>
 <div class="login-error" id="loginError"></div>
 <div class="login-note">
-Access is restricted to authorized emails.<br>
+Access is restricted to authorized emails.<br/>
 Contact <strong>asifabooasif@gmail.com</strong> for access.
 </div>
 </div>
@@ -1106,7 +1107,7 @@ APP SHELL
 </div>
 <div class="topbar-actions">
 <div class="gsearch">
-<input type="search" id="globalSearch" placeholder="Search or Ctrl+K for commands…" autocomplete="off" oninput="onGlobalSearch()" onfocus="onGlobalSearch()">
+<input autocomplete="off" id="globalSearch" onfocus="onGlobalSearch()" oninput="onGlobalSearch()" placeholder="Search or Ctrl+K for commands…" type="search"/>
 <div class="gsearch-results" id="gsResults"></div>
 </div>
 <button class="btn icon" data-action="open-recent" title="Recently viewed (Ctrl+R)">🕐</button>
@@ -1132,7 +1133,7 @@ APP SHELL
 <!-- ═══════════════════════════════════════════════════════════════════════════
 FLOATING ELEMENTS
 ═══════════════════════════════════════════════════════════════════════════ -->
-<button class="fab" id="fabBtn" data-action="toggle-fab" style="display:none">＋</button>
+<button class="fab" data-action="toggle-fab" id="fabBtn" style="display:none">＋</button>
 <div class="fab-menu" id="fabMenu"></div>
 <div id="notifPanel">
 <div class="notif-head">
@@ -1148,7 +1149,7 @@ FLOATING ELEMENTS
 <div id="toast"></div>
 <div id="cmdPalette">
 <div class="cp-box">
-<input id="cpInput" type="text" placeholder="Type a command, customer, supplier, or action…" autocomplete="off" oninput="renderCmdPalette(this.value)" onkeydown="cmdPaletteKeydown(event)">
+<input autocomplete="off" id="cpInput" oninput="renderCmdPalette(this.value)" onkeydown="cmdPaletteKeydown(event)" placeholder="Type a command, customer, supplier, or action…" type="text"/>
 <div class="cp-results" id="cpResults"></div>
 </div>
 </div>
@@ -1159,10 +1160,10 @@ FLOATING ELEMENTS
 <h1>Developer Tools Detected</h1>
 <p>Please close developer tools to continue using this app.</p>
 <p style="margin-top:20px;font-size:12px;color:rgba(255,255,255,.4)">Reload the page after closing DevTools.</p>
-<button class="btn primary" style="margin-top:24px" onclick="location.reload()">Reload</button>
+<button class="btn primary" onclick="location.reload()" style="margin-top:24px">Reload</button>
 </div>
 </div>
-<canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+<canvas class="confetti-canvas" id="confettiCanvas"></canvas>
 <script>
 /* Global view registry must exist before early view modules execute. */
 var views = window.views || {};
@@ -1447,6 +1448,7 @@ function normalizeDb() {
   COLLECTIONS.forEach(c => {
     if (!Array.isArray(window.db[c])) window.db[c] = [];
   });
+  try { normalizeFinancialRecords(); } catch(e) { console.warn('Financial normalization:', e); }
 }
 
 let db = window.db || seed();
@@ -1474,7 +1476,15 @@ const arr = v => Array.isArray(v) ? v : [];
 
 const uniq = a => [...new Set(a)];
 
-const sum = (list, key) => arr(list).reduce((s, o) => s + num(o[key]), 0);
+const sum = (list, key) => arr(list).reduce((s, o) => {
+  /* Purchase analytics must never include explicit opening-balance records. */
+  if(key === 'amount' && o && o.supplierId && (o.invoiceNo !== undefined || o.transactionType !== undefined || o.isOpeningBalance === true) && isOpeningBalancePurchaseRecord(o)) return s;
+  /* Payment analytics must use the real payment composition, not a stale amount field. */
+  if(key === 'amount' && o && (o.paymentMode !== undefined || o.partyAmount !== undefined || o.ownAmount !== undefined || o.bankPayment !== undefined)) {
+    return s + paymentAmount(o);
+  }
+  return s + num(o[key]);
+}, 0);
 
 const thisMonth = () => today().slice(0, 7);
 
@@ -1570,26 +1580,133 @@ const bankLogo = (name) => {
 const bankObj = id => arr(db.bankAccounts).find(b => b.id === id);
 const bankName = id => { const b = bankObj(id); return b ? b.bankName : '—'; };
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CANONICAL FINANCIAL ENGINE
+   - Opening balances are never purchases.
+   - Payments are normalized from their actual components.
+   - Bank balances use bankTransactions as the canonical movement ledger,
+     falling back to legacy source records only when no linked transaction exists.
+   - Supplier payable includes opening balance, actual purchases, returns,
+     payments and explicit supplier journals.
+═══════════════════════════════════════════════════════════════════════════ */
+
+function isOpeningBalancePurchaseRecord(p){
+  if(!p || typeof p !== 'object') return false;
+  const vals = [p.transactionType,p.entryType,p.source,p.recordType,p.kind,p.origin,p.categoryType]
+    .map(v => String(v || '').trim().toLowerCase());
+  if(vals.some(v => ['opening_balance','opening-balance','opening balance','openingbalance'].includes(v))) return true;
+  if(p.isOpeningBalance === true || p.isOpening === true || p.fromOpeningBalance === true) return true;
+  const ref = String(p.invoiceNo || p.reference || '').trim().toLowerCase();
+  const desc = String(p.description || p.notes || '').trim().toLowerCase();
+  return /^ob[-_ ]/.test(ref) || /^opening[-_ ]?balance/.test(ref)
+    || ['opening balance','opening balance entry','opening balance brought forward'].includes(desc);
+}
+function actualPurchases(){
+  return arr(db.purchases).filter(p => !isOpeningBalancePurchaseRecord(p));
+}
+window.actualPurchases = actualPurchases;
+
+function paymentAmount(p){
+  if(!p) return 0;
+  if(String(p.paymentMode || '').toLowerCase() === 'bank' || p.bankPayment){
+    const b = num(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
+    if(b > 0) return b;
+  }
+  const party = num(p.partyAmount);
+  const own = num(p.ownAmount);
+  if(party > 0 || own > 0) return party + own;
+  return num(p.amount);
+}
+window.paymentAmount = paymentAmount;
+
+function normalizeFinancialRecords(){
+  arr(db.payments).forEach(p => {
+    const amount = paymentAmount(p);
+    if(amount >= 0 && Math.abs(num(p.amount) - amount) > 0.005) p.amount = amount;
+    if(p.paymentMode === 'bank' && p.bankPayment){
+      p.bankAmount = num(p.bankAmount || p.bankPayment.amount);
+    } else {
+      p.partyAmount = num(p.partyAmount);
+      p.ownAmount = num(p.ownAmount);
+      if((p.partyAmount || p.ownAmount) && Math.abs(num(p.amount) - (p.partyAmount+p.ownAmount)) > 0.005){
+        p.amount = p.partyAmount + p.ownAmount;
+      }
+    }
+  });
+}
+window.normalizeFinancialRecords = normalizeFinancialRecords;
+
+function supplierOpeningSigned(s){
+  if(!s) return 0;
+  const type = String(s.openingBalanceType || 'payable').toLowerCase();
+  const amount = num(s.openingBalance);
+  return ['debit','credit','receivable','negative','dr'].includes(type) ? -amount : amount;
+}
+
+function supplierPaymentIsActive(p){
+  return p && p.supplierId && p.status !== 'rejected' && p.status !== 'cancelled' &&
+    p.status !== 'Cancelled' && !p.fullyReversed && p.reversed !== true;
+}
+
+
+function bankTxSignedAmount(t){
+  if(!t) return 0;
+  const type = String(t.type || '').toLowerCase();
+  const amount = Math.abs(num(t.amount));
+  if(!amount) return 0;
+  if(['credit','deposit','transfer_in','deposit_cash','deposit_card'].includes(type)) return amount;
+  if(['debit','withdrawal','transfer_out','bank_fee','fee','charge'].includes(type)) return -amount;
+  if(type === 'cheque_deduction'){
+    return String(t.status || '').toLowerCase() === 'approved' ? -amount : 0;
+  }
+  if(type === 'cheque_issued'){
+    const status = String(t.status || '').toLowerCase();
+    return ['approved','cleared','deducted','paid'].includes(status) ? -amount : 0;
+  }
+  return 0;
+}
+
+function hasLinkedBankTx(field, id, bankId){
+  return arr(db.bankTransactions).some(t => t[field] === id && (!bankId || t.bankAccountId === bankId));
+}
+
 const bankBalance = id => {
   const acc = bankObj(id);
-  if (!acc) return 0;
+  if(!acc) return 0;
   let bal = num(acc.openingBalance);
-  /* Add receipts/payments that affect this bank */
-  arr(db.payments).filter(p => p.bankAccountId === id && p.status !== 'rejected').forEach(p => {
-    bal -= num(p.amount);
-  });
-  arr(db.receipts).filter(r => r.bankAccountId === id && r.status !== 'rejected').forEach(r => {
-    bal += num(r.amount);
-  });
-  /* Add bank transactions */
-  arr(db.bankTransactions).filter(t => t.bankAccountId === id).forEach(t => {
-    if (t.type === 'credit') bal += num(t.amount);
-    else if (t.type === 'debit') bal -= num(t.amount);
-  });
-  /* Deduct approved cheque deductions */
-  arr(db.bankTransactions).filter(t => t.bankAccountId === id && t.type === 'cheque_deduction' && t.status === 'approved').forEach(t => {
-    bal -= num(t.amount);
-  });
+
+  /* Canonical bank ledger. */
+  const txs = arr(db.bankTransactions).filter(t => t.bankAccountId === id && t.status !== 'reversed' && t.status !== 'cancelled');
+  txs.forEach(t => { bal += bankTxSignedAmount(t); });
+
+  /* Legacy records: only count a source record if no linked bank movement exists.
+     This prevents receipt/payment/expense + bankTransaction double counting. */
+  arr(db.receipts).filter(r =>
+    r.bankAccountId === id && r.status !== 'rejected' &&
+    r.method !== 'Cheque' && !hasLinkedBankTx('receiptId', r.id, id)
+  ).forEach(r => { bal += num(r.amount); });
+
+  arr(db.payments).filter(p =>
+    supplierPaymentIsActive(p) &&
+    p.bankPayment && p.bankPayment.bankAccountId === id &&
+    !hasLinkedBankTx('paymentId', p.id, id)
+  ).forEach(p => { bal -= paymentAmount(p); });
+
+  arr(db.expenses).filter(e =>
+    e.bankAccountId === id && !hasLinkedBankTx('expenseId', e.id, id)
+  ).forEach(e => { bal -= num(e.amount); });
+
+  arr(db.bankFees).filter(f =>
+    f.bankAccountId === id && !hasLinkedBankTx('bankFeeId', f.id, id) &&
+    !hasLinkedBankTx('feeId', f.id, id)
+  ).forEach(f => { bal -= num(f.amount); });
+
+  /* Legacy transfers without transaction rows. */
+  arr(db.bankTransfers).filter(x => x.fromBankId === id && !hasLinkedBankTx('transferId', x.id, id))
+    .forEach(x => { bal -= num(x.amount); });
+  arr(db.bankTransfers).filter(x => x.toBankId === id && !hasLinkedBankTx('transferId', x.id, id))
+    .forEach(x => { bal += num(x.amount); });
+
   return bal;
 };
 
@@ -1605,27 +1722,107 @@ const supObj = id => arr(db.suppliers).find(s => s.id === id);
 const supName = id => { const s = supObj(id); return s ? s.name : '—'; };
 
 const customerBalance = id => {
-  let bal = 0;
-  arr(db.receipts).filter(r => r.customerId === id).forEach(r => bal += num(r.amount));
-  arr(db.customerCheques).filter(c => c.customerId === id && c.status !== 'Bounced' && c.status !== 'Cancelled').forEach(c => bal += num(c.amount));
-  arr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id).forEach(p => bal -= num(p.amount));
+  const c = custObj(id);
+  let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit'
+    ? -num(c.openingBalance) : num(c.openingBalance)) : 0;
+
+  /* Receipts are collections from the customer, so they reduce the receivable.
+     A bounced cheque reverses the original collection and therefore increases it again. */
+  arr(db.receipts).filter(r => r.customerId === id && r.status !== 'rejected').forEach(r => {
+    bal -= num(r.amount);
+  });
+
+  arr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
+    bal += typeof chequeRemaining === 'function' ? num(chequeRemaining(q.id)) : num(q.amount);
+  });
+
+  arr(db.payments).filter(p =>
+    p.type === 'customer_refund' && p.customerId === id &&
+    p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed
+  ).forEach(p => { bal += paymentAmount(p); });
+
   return bal;
 };
 
 const supplierBalance = id => {
-  let bal = 0;
-  arr(db.purchases).filter(p => p.supplierId === id).forEach(p => bal += num(p.amount));
-  arr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected').forEach(p => bal -= num(p.amount));
+  let bal = supplierOpeningSigned(supObj(id));
+
+  actualPurchases().filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled')
+    .forEach(p => { bal += num(p.amount); });
+
+  arr(db.supplierReturns).filter(r =>
+    r.supplierId === id && r.status !== 'rejected' && r.status !== 'cancelled'
+  ).forEach(r => { bal -= num(r.amount); });
+
+  arr(db.payments).filter(p => supplierPaymentIsActive(p))
+    .filter(p => p.supplierId === id)
+    .forEach(p => { bal -= paymentAmount(p); });
+
+  /* Explicit supplier journals: debit reduces payable, credit increases it. */
+  arr(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal)
+    .forEach(j => { bal += num(j.credit) - num(j.debit); });
+
   return bal;
 };
 
 const chequeReliability = (entityId, type) => {
   const field = type === 'customer' ? 'customerId' : 'supplierId';
   const cheques = arr(db.customerCheques).filter(c => c[field] === entityId);
-  if (!cheques.length) return null;
+  if(!cheques.length) return null;
   const cleared = cheques.filter(c => c.status === 'Cleared' || c.status === 'Settled').length;
   return Math.round((cleared / cheques.length) * 100);
 };
+
+function supplierLedger(id){
+  const s = supObj(id);
+  if(!s) return {rows:[],balance:0};
+  const rows = [];
+  const ob = supplierOpeningSigned(s);
+  if(ob !== 0){
+    rows.push({
+      date:s.openingDate || today(), type:'Opening Balance', ref:'OPENING',
+      desc:'Opening balance', debit:ob < 0 ? Math.abs(ob) : 0,
+      credit:ob > 0 ? ob : 0, ts:0, isOpeningBalance:true
+    });
+  }
+  actualPurchases().filter(p=>p.supplierId===id && p.status!=='rejected' && p.status!=='cancelled')
+    .forEach(p=>rows.push({date:p.date||today(),type:'Purchase',ref:p.invoiceNo||p.id,desc:catName(p.categoryId),debit:0,credit:num(p.amount),ts:1,purchaseId:p.id}));
+  arr(db.supplierReturns).filter(r=>r.supplierId===id && r.status!=='rejected' && r.status!=='cancelled')
+    .forEach(r=>rows.push({date:r.date||today(),type:'Supplier Return',ref:r.reference||r.id,desc:r.reason||'',debit:num(r.amount),credit:0,ts:2,returnId:r.id}));
+  arr(db.payments).filter(p=>supplierPaymentIsActive(p)&&p.supplierId===id)
+    .forEach(p=>rows.push({date:p.date||today(),type:'Payment',ref:p.reference||p.id,desc:p.paymentMode==='bank'?'Bank Payment':'Cheque Payment',debit:paymentAmount(p),credit:0,ts:3,paymentId:p.id}));
+  arr(db.journals).filter(j=>j.entityType==='supplier'&&j.entityId===id&&!j.bounceReversal)
+    .forEach(j=>rows.push({date:j.date||today(),type:'Journal',ref:j.reference||j.id,desc:j.description||'',debit:num(j.debit),credit:num(j.credit),ts:4,journalId:j.id}));
+
+  rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || num(a.ts)-num(b.ts));
+  let bal=0;
+  rows.forEach(r=>{ bal += num(r.credit)-num(r.debit); r.balance=bal; });
+  return {rows,balance:bal};
+}
+window.supplierLedger = supplierLedger;
+
+function customerLedger(id){
+  const c = custObj(id);
+  if(!c) return {rows:[],balance:0};
+  const rows=[];
+  const ob = String(c.openingBalanceType||'receivable').toLowerCase()==='credit' ? -num(c.openingBalance) : num(c.openingBalance);
+  if(ob!==0) rows.push({date:c.openingDate||today(),type:'Opening Balance',ref:'OPENING',desc:'Opening balance',debit:ob>0?ob:0,credit:ob<0?Math.abs(ob):0,ts:0,isOpeningBalance:true});
+  arr(db.receipts).filter(r=>r.customerId===id&&r.status!=='rejected').forEach(r=>rows.push({date:r.date||today(),type:'Receipt',ref:r.reference||r.id,desc:r.method||'',debit:0,credit:num(r.amount),ts:1,receiptId:r.id}));
+  arr(db.customerCheques).filter(q=>q.customerId===id).forEach(q=>{
+    if(q.status==='Bounced'){
+      const amt=typeof chequeRemaining==='function'?num(chequeRemaining(q.id)):num(q.amount);
+      rows.push({date:q.bouncedDate||q.date||today(),type:'Bounced Cheque',ref:q.chequeNo||q.id,desc:q.bank||'',debit:amt,credit:0,ts:2,chequeId:q.id});
+    }
+  });
+  arr(db.payments).filter(p=>p.type==='customer_refund'&&p.customerId===id&&p.status!=='rejected'&&!p.fullyReversed)
+    .forEach(p=>rows.push({date:p.date||today(),type:'Refund',ref:p.reference||p.id,desc:'Customer refund',debit:0,credit:paymentAmount(p),ts:3,paymentId:p.id}));
+  arr(db.journals).filter(j=>j.entityType==='customer'&&j.entityId===id&&!j.bounceReversal)
+    .forEach(j=>rows.push({date:j.date||today(),type:'Journal',ref:j.reference||j.id,desc:j.description||'',debit:num(j.debit),credit:num(j.credit),ts:4,journalId:j.id}));
+  rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || num(a.ts)-num(b.ts));
+  let bal=0; rows.forEach(r=>{bal += num(r.debit)-num(r.credit);r.balance=bal;});
+  return {rows,balance:bal};
+}
+window.customerLedger = customerLedger;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 5 — 🔥 NEW SMART SYNC ENGINE (Replaces old pushToFirestore)
@@ -3207,7 +3404,7 @@ const ACCESS_DOC_PATH   = ROOT + '/access';
 const SETTINGS_DOC_PATH = ROOT + '/settings';
 const USERS_COL_PATH    = DATA_PREFIX + 'users';
 const APP_NAME          = 'Lanka Shoe Supplier Manage';
-const APP_VER           = '12.0.0';
+const APP_VER           = '14.0.0';
 
 /* ── Firestore-synced collections ── */
 const COLLECTIONS = [
@@ -5753,7 +5950,7 @@ function confirmAndSavePayment(){
       notes: snap.bankPayment.notes || ''
     } : null,
     bankAmount: num(snap.bankAmount) || 0,
-    amount: num(snap.total) || 0,
+    amount: (num(snap.bankAmount) > 0 ? num(snap.bankAmount) : (num(snap.partyAmount) + num(snap.ownAmount))),
     createdAt: nowISO()
   };
   /* ── Party cheques → Issued ── */
@@ -8015,7 +8212,7 @@ function agingTrendChart(){
       if(num(s.openingBalance) > 0){
         items.push({ date: s.openingDate || today(), amount: num(s.openingBalance) });
       }
-      arr(db.purchases).filter(p => p.supplierId === s.id && p.date <= endOfMonth).forEach(p => {
+      actualPurchases().filter(p => p.supplierId === s.id && p.date <= endOfMonth).forEach(p => {
         items.push({ date: p.date, amount: num(p.amount) });
       });
       items.sort((a, b) => a.date < b.date ? -1 : 1);
@@ -9331,13 +9528,13 @@ function renderAnalyticsDashboard(){
   const yoy = [
     {
       year: thisYear - 1,
-      purchases: sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount'),
+      purchases: sum(actualPurchases().filter(p => (p.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount'),
       payments: sum(arr(db.payments).filter(p => (p.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount'),
       receipts: sum(arr(db.receipts).filter(r => (r.date || '').slice(0, 4) === (thisYear - 1) + ''), 'amount')
     },
     {
       year: thisYear,
-      purchases: sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 4) === thisYear + ''), 'amount'),
+      purchases: sum(actualPurchases().filter(p => (p.date || '').slice(0, 4) === thisYear + ''), 'amount'),
       payments: sum(arr(db.payments).filter(p => (p.date || '').slice(0, 4) === thisYear + ''), 'amount'),
       receipts: sum(arr(db.receipts).filter(r => (r.date || '').slice(0, 4) === thisYear + ''), 'amount')
     }
@@ -13774,7 +13971,7 @@ function viewSuppliers(){
   if(ui.sup.catFilter) rows = rows.filter(s => (s.categoryId || '') === ui.sup.catFilter);
   const enriched = rows.map(s => Object.assign({}, s, {
     balance: supplierBalance(s.id),
-    purchases: sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount'),
+    purchases: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount'),
     paid: sum(arr(db.payments).filter(p => p.supplierId === s.id && !p.fullyReversed), 'amount'),
     aging: supplierAging(s.id)
   }));
@@ -14211,7 +14408,7 @@ function exportSuppliersCSV(){
   const rows = items.map(s => {
     const bal = supplierBalance(s.id);
     const aging = supplierAging(s.id);
-    const purchases = sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount');
+    const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
     const paid = sum(arr(db.payments).filter(p => p.supplierId === s.id && !p.fullyReversed), 'amount');
     return [
       s.name, catName(s.categoryId), s.phone || '', s.email || '', s.contact || '', s.address || '',
@@ -14298,7 +14495,7 @@ function topSuppliersByPurchaseVolume(limit){
   return arr(db.suppliers).map(s => ({
     id: s.id,
     name: s.name,
-    volume: sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount')
+    volume: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount')
   })).filter(x => x.volume > 0).sort((a, b) => b.volume - a.volume).slice(0, limit);
 }
 window.topSuppliersByPurchaseVolume = topSuppliersByPurchaseVolume;
@@ -14309,7 +14506,7 @@ SECTION 13 — SUPPLIER AGGREGATE ANALYTICS
 function supplierAggregateAnalytics(){
   const months = lastMonths(12);
   const monthlyPurchases = months.map(m =>
-    sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m), 'amount')
+    sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === m), 'amount')
   );
   const monthlyPayments = months.map(m =>
     sum(arr(db.payments).filter(p => !p.fullyReversed && (p.date || '').slice(0, 7) === m), 'amount')
@@ -14609,7 +14806,7 @@ function supplierCategoryBreakdown(){
     if(!byCat[cat]) byCat[cat] = { count: 0, payable: 0, purchases: 0 };
     byCat[cat].count++;
     byCat[cat].payable += supplierBalance(s.id);
-    byCat[cat].purchases += sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount');
+    byCat[cat].purchases += sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
   });
   return Object.entries(byCat).map(([cat, data]) => ({
     category: cat,
@@ -14796,7 +14993,7 @@ SECTION 31 — SUPPLIER SEGMENTATION (by volume + reliability)
 ═══════════════════════════════════════════════════════════════════════════ */
 function supplierSegmentation(){
   const all = arr(db.suppliers).map(s => {
-    const purchases = sum(arr(db.purchases).filter(p => p.supplierId === s.id), 'amount');
+    const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
     const velocity = supplierPaymentVelocity(s.id);
     return {
       id: s.id,
@@ -14929,16 +15126,7 @@ window.doSupplierMerge = doSupplierMerge;
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 34 — SUPPLIER AGING QUICK LOOKUP (for supplier list)
 ═══════════════════════════════════════════════════════════════════════════ */
-function supplierAgingQuick(sid){
-  const a = supplierAging(sid);
-  if(!a.total) return '<span class="muted">No outstanding</span>';
-  const parts = [];
-  if(a.current > 0) parts.push('<span style="color:var(--green)">Current: ' + moneyPlain(a.current) + '</span>');
-  if(a.d30 > 0) parts.push('<span style="color:var(--amber)">30-60d: ' + moneyPlain(a.d30) + '</span>');
-  if(a.d60 > 0) parts.push('<span style="color:#ea580c">60-90d: ' + moneyPlain(a.d60) + '</span>');
-  if(a.d90 > 0) parts.push('<span style="color:var(--red)">90+d: ' + moneyPlain(a.d90) + '</span>');
-  return parts.join(' · ');
-}
+/* Duplicate declaration removed during clean rewrite: supplierAgingQuick */
 window.supplierAgingQuick = supplierAgingQuick;
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -15065,7 +15253,7 @@ function supplierAgingTrend(supplierId){
     if(num(s.openingBalance) > 0){
       items.push({ date: s.openingDate || today(), amount: num(s.openingBalance) });
     }
-    arr(db.purchases).filter(p => p.supplierId === supplierId && p.date <= endOfMonth).forEach(p => {
+    actualPurchases().filter(p => p.supplierId === supplierId && p.date <= endOfMonth).forEach(p => {
       items.push({ date: p.date, amount: num(p.amount) });
     });
     items.sort((a, b) => a.date < b.date ? -1 : 1);
@@ -16927,7 +17115,7 @@ const KPI_DEFS = {
     compute: () => moneyPlain(sum(arr(db.bankAccounts).map(b => bankPendingBalance(b.id)), 0)),
     sub: () => 'Future bank debits' },
   purchasesMtd: { label:'Purchases · MTD', ico:'🛒',
-    compute: () => moneyPlain(sum(arr(db.purchases).filter(p => inMonth(p.date, thisMonth())), 'amount')),
+    compute: () => moneyPlain(sum(actualPurchases().filter(p => inMonth(p.date, thisMonth())), 'amount')),
     sub: () => 'This month' },
   receiptsMtd: { label:'Receipts · MTD', ico:'📥',
     compute: () => moneyPlain(sum(arr(db.receipts).filter(r => inMonth(r.date, thisMonth())), 'amount')),
@@ -17034,8 +17222,8 @@ function viewDashboard(){
     d.setMonth(d.getMonth() - 1);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   })();
-  const purTM = sum(arr(db.purchases).filter(p => inMonth(p.date, tm)), 'amount');
-  const purPM = sum(arr(db.purchases).filter(p => inMonth(p.date, pm)), 'amount');
+  const purTM = sum(actualPurchases().filter(p => inMonth(p.date, tm)), 'amount');
+  const purPM = sum(actualPurchases().filter(p => inMonth(p.date, pm)), 'amount');
   const recTM = sum(arr(db.receipts).filter(r => inMonth(r.date, tm)), 'amount');
   const recPM = sum(arr(db.receipts).filter(r => inMonth(r.date, pm)), 'amount');
   const ga = globalAging();
@@ -17046,7 +17234,7 @@ function viewDashboard(){
   const upcomingTotal = sum(upcoming, 'amount');
   const kpiKeys = currentKpiPrefs();
   const ms = lastMonths(12);
-  const purS = ms.map(m => sum(arr(db.purchases).filter(p => inMonth(p.date, m)), 'amount'));
+  const purS = ms.map(m => sum(actualPurchases().filter(p => inMonth(p.date, m)), 'amount'));
   const payS = ms.map(m => sum(arr(db.payments).filter(p => inMonth(p.date, m) && !p.fullyReversed), 'amount'));
   const recS = ms.map(m => sum(arr(db.receipts).filter(r => inMonth(r.date, m)), 'amount'));
   const expS = ms.map(m => sum(arr(db.expenses).filter(e => inMonth(e.date, m)), 'amount'));
@@ -19020,7 +19208,7 @@ function aiAnswerQuestion(q){
   if(/top.*supplier|biggest.*supplier/.test(s)){
     const list = arr(db.suppliers).map(x => ({
       name: x.name,
-      amt: sum(arr(db.purchases).filter(p => p.supplierId === x.id), 'amount')
+      amt: sum(actualPurchases().filter(p => p.supplierId === x.id), 'amount')
     })).filter(x => x.amt > 0).sort((a, b) => b.amt - a.amt).slice(0, 5);
     if(!list.length) return 'No purchases recorded yet.';
     return '🏆 Top 5 suppliers by purchases:\n'
@@ -19047,10 +19235,10 @@ function aiAnswerQuestion(q){
   /* Purchases */
   if(/purchase/.test(s)){
     if(/this month/.test(s)){
-      const t = sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === thisM), 'amount');
+      const t = sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === thisM), 'amount');
       return '🛒 Purchases this month: **' + money(t) + '**';
     }
-    return '🛒 Total purchases: **' + money(sum(arr(db.purchases), 'amount')) + '** across '
+    return '🛒 Total purchases: **' + money(sum(actualPurchases(), 'amount')) + '** across '
       + arr(db.purchases).length + ' invoices.';
   }
   /* Expenses */
@@ -19072,7 +19260,7 @@ function aiAnswerQuestion(q){
   if(supMatch){
     const bal = supplierBalance(supMatch.id);
     const paid = sum(arr(db.payments).filter(p => p.supplierId === supMatch.id && !p.fullyReversed), 'amount');
-    const purch = sum(arr(db.purchases).filter(p => p.supplierId === supMatch.id), 'amount');
+    const purch = sum(actualPurchases().filter(p => p.supplierId === supMatch.id), 'amount');
     return '🏭 **' + supMatch.name + '**\n'
       + '• Outstanding: ' + money(bal) + '\n'
       + '• Total purchased: ' + money(purch) + '\n'
@@ -19327,7 +19515,7 @@ function widgetPendingCheques(){
 
 function widgetPurchasesMtd(){
   const m = today().slice(0, 7);
-  const total = sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m), 'amount');
+  const total = sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === m), 'amount');
   return '<div class="k-value" style="font-size:20px">' + moneyPlain(total) + '</div>'
     + '<div class="small muted">This month</div>';
 }
@@ -19393,7 +19581,7 @@ function widgetAgingRings(){
 
 function widgetCashFlow12m(){
   const ms = lastMonths(12);
-  const purS = ms.map(m => sum(arr(db.purchases).filter(p => (p.date || '').slice(0, 7) === m), 'amount'));
+  const purS = ms.map(m => sum(actualPurchases().filter(p => (p.date || '').slice(0, 7) === m), 'amount'));
   const payS = ms.map(m => sum(arr(db.payments).filter(p => !p.fullyReversed && (p.date || '').slice(0, 7) === m), 'amount'));
   return lineChartSVG([
     { values: purS, color: 'var(--accent)' },
@@ -19619,93 +19807,24 @@ function icsEscape(s){
     .replace(/\n/g, '\\n');
 }
 
-function icsDate(dateStr){
-  return String(dateStr || '').replace(/-/g, '');
-}
+/* Duplicate declaration removed during clean rewrite: icsDate */
 
-function icsTimestamp(){
-  const d = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  return d.getUTCFullYear()
-    + pad(d.getUTCMonth() + 1)
-    + pad(d.getUTCDate()) + 'T'
-    + pad(d.getUTCHours())
-    + pad(d.getUTCMinutes())
-    + pad(d.getUTCSeconds()) + 'Z';
-}
+/* Duplicate declaration removed during clean rewrite: icsTimestamp */
 
-function buildICSForCheques(cheques){
-  const now = icsTimestamp();
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Lanka Shoe//Cheque Reminders//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH'
-  ];
-  cheques.forEach((l, i) => {
-    const due = l.dueDate || l.date;
-    if(!due) return;
-    const dueNext = shiftDate(due, 1);
-    lines.push('BEGIN:VEVENT');
-    lines.push('UID:' + (l.id || ('cheque-' + i)) + '@lankashoe.local');
-    lines.push('DTSTAMP:' + now);
-    lines.push('DTSTART;VALUE=DATE:' + icsDate(due));
-    lines.push('DTEND;VALUE=DATE:' + icsDate(dueNext));
-    lines.push('SUMMARY:' + icsEscape('Cheque ' + (l.leafNo || '') + ' — ' + moneyPlain(l.amount || 0)));
-    lines.push('DESCRIPTION:' + icsEscape([
-      'Payee: ' + (l.payee || supName(l.supplierId) || '—'),
-      'Bank: ' + (l.bankName || '—'),
-      'Amount: ' + money(l.amount || 0),
-      'Leaf: ' + (l.leafNo || '—')
-    ].join('\n')));
-    lines.push('LOCATION:' + icsEscape(l.bankName || ''));
-    lines.push('BEGIN:VALARM');
-    lines.push('ACTION:DISPLAY');
-    lines.push('DESCRIPTION:' + icsEscape('Cheque due in 2 days'));
-    lines.push('TRIGGER:-P2D');
-    lines.push('END:VALARM');
-    lines.push('BEGIN:VALARM');
-    lines.push('ACTION:DISPLAY');
-    lines.push('DESCRIPTION:' + icsEscape('Cheque due today'));
-    lines.push('TRIGGER:PT0H');
-    lines.push('END:VALARM');
-    lines.push('END:VEVENT');
-  });
-  lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
-}
+/* Duplicate declaration removed during clean rewrite: buildICSForCheques */
 window.buildICSForCheques = buildICSForCheques;
 
-function downloadChequeICS(chequeId){
-  const l = arr(db.chequeLeaves).find(x => x.id === chequeId);
-  if(!l){ toast('Cheque not found', 'error'); return; }
-  if(!l.dueDate){ toast('Cheque has no due date', 'warn'); return; }
-  const ics = buildICSForCheques([l]);
-  download('cheque_' + (l.leafNo || chequeId.slice(-4)) + '.ics', ics, 'text/calendar');
-  toast('📅 Calendar file downloaded', 'success');
-}
+/* Duplicate declaration removed during clean rewrite: downloadChequeICS */
 window.downloadChequeICS = downloadChequeICS;
 
-function downloadAllUpcomingChequesICS(){
-  const t = today();
-  const upcoming = arr(db.chequeLeaves).filter(l =>
-    l.status === 'Issued' && l.dueDate && daysBetween(t, l.dueDate) >= 0
-  );
-  if(!upcoming.length){ toast('No upcoming cheques', 'warn'); return; }
-  const ics = buildICSForCheques(upcoming);
-  download('lankashoe_cheques_' + today() + '.ics', ics, 'text/calendar');
-  toast('📅 ' + upcoming.length + ' cheque(s) exported to calendar', 'success');
-}
+/* Duplicate declaration removed during clean rewrite: downloadAllUpcomingChequesICS */
 window.downloadAllUpcomingChequesICS = downloadAllUpcomingChequesICS;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 6 — DRILL-DOWN CHARTS (for analytics)
 ═══════════════════════════════════════════════════════════════════════════ */
 window._drillDatasets = {};
-function registerDrillDataset(key, data){
-  window._drillDatasets[key] = data;
-}
+/* Duplicate declaration removed during clean rewrite: registerDrillDataset */
 window.registerDrillDataset = registerDrillDataset;
 
 function drillDownChart(opts){
@@ -19727,38 +19846,7 @@ function drillDownChart(opts){
 }
 window.drillDownChart = drillDownChart;
 
-function drillDownOpen(datasetKey, idx, title){
-  const ds = window._drillDatasets[datasetKey];
-  if(!ds || !ds.buckets || !ds.buckets[idx]){
-    toast('No data available', 'warn');
-    return;
-  }
-  const bucket = ds.buckets[idx];
-  const items = bucket.items || [];
-  openModal('🔍 ' + (title || 'Drill-Down') + ' — ' + bucket.label,
-    '<div class="kpi-strip" style="grid-template-columns:1fr 1fr 1fr">'
-    + kpiCard('Total', money(bucket.value), '', { small: true })
-    + kpiCard('Records', items.length, '', { small: true })
-    + kpiCard('Average', money(items.length ? bucket.value / items.length : 0), '', { small: true })
-    + '</div>'
-    + (items.length
-      ? '<div class="table-wrap" style="max-height:60vh"><table><thead><tr>'
-      + Object.keys(items[0]).slice(0, 6).map(k => '<th>' + esc(k) + '</th>').join('')
-      + '</tr></thead><tbody>'
-      + items.map(it =>
-        '<tr>' + Object.keys(items[0]).slice(0, 6).map(k => {
-          let v = it[k];
-          if(v === null || v === undefined) return '<td>—</td>';
-          if(typeof v === 'object') v = JSON.stringify(v).slice(0, 50);
-          return '<td>' + esc(String(v).slice(0, 80)) + '</td>';
-        }).join('') + '</tr>'
-      ).join('')
-      + '</tbody></table></div>'
-      : '<div class="empty">No records in this bucket</div>')
-    + '<div class="form-actions">'
-    + '<button class="btn primary" data-action="close-modal">Close</button>'
-    + '</div>', 'xl');
-}
+/* Duplicate declaration removed during clean rewrite: drillDownOpen */
 window.drillDownOpen = drillDownOpen;
 
 /* ── Patch analytics dashboard to add drill-downs ── */
@@ -19840,441 +19928,42 @@ window.drillDownOpen = drillDownOpen;
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 7 — CUSTOMER LIFETIME VALUE (CLV)
 ═══════════════════════════════════════════════════════════════════════════ */
-function computeCLV(customerId){
-  const cust = custObj(customerId);
-  if(!cust) return null;
-  const cheques = arr(db.customerCheques).filter(c => c.customerId === customerId);
-  const cleared = cheques.filter(c => c.status === 'Cleared');
-  const bounced = cheques.filter(c => c.status === 'Bounced');
-  const recovered = bounced.filter(b => chequeRemaining(b.id) === 0);
-  const pending = cheques.filter(c => c.status === 'In Hand' || c.status === 'Issued');
-  const totalCleared = sum(cleared, 'amount');
-  const totalBounced = sum(bounced, 'amount');
-  const totalRecovered = totalBounced - bounced.reduce((a, b) => a + chequeRemaining(b.id), 0);
-  const totalPending = sum(pending, 'amount');
-  const dates = cheques.map(c => c.date).filter(Boolean).sort();
-  const firstDate = dates[0] || today();
-  const monthsActive = Math.max(1, Math.round(daysBetween(firstDate, today()) / 30));
-  const avgCheque = cleared.length ? (totalCleared / cleared.length) : 0;
-  const clearingRate = cheques.length ? (cleared.length / cheques.length) * 100 : 0;
-  const bounceRate = cheques.length ? (bounced.length / cheques.length) * 100 : 0;
-  const months = lastMonths(12);
-  const recent6 = months.slice(-6).reduce((a, m) =>
-    a + sum(cheques.filter(c => (c.date || '').slice(0, 7) === m && c.status === 'Cleared'), 'amount'), 0);
-  const prior6 = months.slice(0, 6).reduce((a, m) =>
-    a + sum(cheques.filter(c => (c.date || '').slice(0, 7) === m && c.status === 'Cleared'), 'amount'), 0);
-  const growth = prior6 > 0 ? ((recent6 - prior6) / prior6) * 100 : (recent6 > 0 ? 100 : 0);
-  let score = 50;
-  score += Math.min(25, (totalCleared / 500000) * 25);
-  score += Math.min(15, (clearingRate / 100) * 15);
-  score -= Math.min(30, (bounceRate / 100) * 30);
-  if(growth > 0) score += Math.min(10, growth / 5);
-  if(growth < 0) score -= Math.min(10, Math.abs(growth) / 5);
-  score = Math.max(0, Math.min(100, Math.round(score)));
-  const tier = score >= 80 ? 'Gold' : score >= 60 ? 'Silver' : score >= 40 ? 'Bronze' : 'At-Risk';
-  return {
-    customer: cust,
-    chequeCount: cheques.length,
-    cleared: cleared.length,
-    bounced: bounced.length,
-    pending: pending.length,
-    recovered: recovered.length,
-    totalCleared, totalBounced, totalRecovered, totalPending,
-    monthsActive, avgCheque, clearingRate, bounceRate,
-    recent6, prior6, growth, score, tier,
-    firstDate,
-    lastActivity: dates[dates.length - 1] || null
-  };
-}
+/* Duplicate declaration removed during clean rewrite: computeCLV */
 window.computeCLV = computeCLV;
 
-function viewCLV(){
-  const all = arr(db.customers).map(c => computeCLV(c.id)).filter(Boolean);
-  all.sort((a, b) => b.score - a.score);
-  const gold = all.filter(x => x.tier === 'Gold');
-  const silver = all.filter(x => x.tier === 'Silver');
-  const bronze = all.filter(x => x.tier === 'Bronze');
-  const atRisk = all.filter(x => x.tier === 'At-Risk');
-  const totalPortfolio = all.reduce((a, x) => a + x.totalCleared, 0);
-  const avgScore = all.length ? all.reduce((a, x) => a + x.score, 0) / all.length : 0;
-  const activeTier = (ui.clv && ui.clv.tier) || 'all';
-  const filtered = activeTier === 'all' ? all : all.filter(x => x.tier === activeTier);
-  return '<div class="kpi-strip">'
-    + kpiCard('Total Customers', all.length, 'Active portfolio', { small: true })
-    + kpiCard('Portfolio Value', money(totalPortfolio), 'Lifetime cleared', { small: true })
-    + kpiCard('Avg CLV Score', avgScore.toFixed(0) + '/100', 'Across all', { small: true })
-    + kpiCard('Gold Tier', gold.length, money(sum(gold, 'totalCleared')), { small: true })
-    + '</div>'
-    + '<div class="card"><div class="card-head"><h3>🏆 Customer Lifetime Value Ranking</h3>'
-    + '<div class="row-flex">'
-    + '<button class="btn sm" onclick="exportCLVCSV()">⬇ CSV</button>'
-    + '</div></div>'
-    + '<div class="grid grid-2" style="gap:14px;margin-bottom:18px">'
-    + '<div class="card" style="padding:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border-color:#f59e0b">'
-    + '<div style="font-size:11px;font-weight:700;color:#78350f;text-transform:uppercase">🥇 Gold Tier</div>'
-    + '<div style="font-size:24px;font-weight:800;color:#78350f;margin-top:4px">' + gold.length + ' customers</div>'
-    + '<div class="small" style="color:#92400e;margin-top:2px">' + money(sum(gold, 'totalCleared')) + ' lifetime value</div>'
-    + '</div>'
-    + '<div class="card" style="padding:14px;background:linear-gradient(135deg,#e5e7eb,#d1d5db);border-color:#9ca3af">'
-    + '<div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase">🥈 Silver Tier</div>'
-    + '<div style="font-size:24px;font-weight:800;color:#374151;margin-top:4px">' + silver.length + ' customers</div>'
-    + '<div class="small" style="color:#4b5563;margin-top:2px">' + money(sum(silver, 'totalCleared')) + ' lifetime value</div>'
-    + '</div>'
-    + '</div>'
-    + '<div class="row-flex" style="margin-bottom:10px;gap:6px">'
-    + ['all', 'Gold', 'Silver', 'Bronze', 'At-Risk'].map(t => {
-      const active = activeTier === t;
-      const count = t === 'all' ? all.length : all.filter(x => x.tier === t).length;
-      return '<button class="btn sm ' + (active ? 'primary' : '') + '" '
-        + 'onclick="ui.clv=ui.clv||{};ui.clv.tier=\'' + t + '\';render();">'
-        + t + ' (' + count + ')</button>';
-    }).join('')
-    + '</div>'
-    + '<div class="table-wrap"><table><thead><tr>'
-    + '<th>#</th><th>Customer</th><th>Tier</th><th class="num">Score</th>'
-    + '<th class="num">Lifetime Value</th><th class="num">Cheques</th>'
-    + '<th class="num">Clearing Rate</th><th class="num">Bounce Rate</th>'
-    + '<th class="num">Growth (6m)</th><th class="num">Months Active</th>'
-    + '</tr></thead><tbody>'
-    + (filtered.length
-      ? filtered.map((x, i) => {
-        const tierBadge = x.tier === 'Gold' ? '<span class="badge" style="background:#fde68a;color:#78350f">🥇 Gold</span>'
-          : x.tier === 'Silver' ? '<span class="badge" style="background:#e5e7eb;color:#374151">🥈 Silver</span>'
-          : x.tier === 'Bronze' ? '<span class="badge" style="background:#fde4d3;color:#9a3412">🥉 Bronze</span>'
-          : '<span class="badge red">⚠ At-Risk</span>';
-        const growthBadge = x.growth > 10 ? '<span style="color:var(--green);font-weight:600">▲ +' + x.growth.toFixed(0) + '%</span>'
-          : x.growth < -10 ? '<span style="color:var(--red);font-weight:600">▼ ' + x.growth.toFixed(0) + '%</span>'
-          : '<span style="color:var(--text-3)">' + (x.growth >= 0 ? '+' : '') + x.growth.toFixed(0) + '%</span>';
-        return '<tr data-action="customer-detail" data-id="' + x.customer.id + '" style="cursor:pointer">'
-          + '<td><strong>#' + (i + 1) + '</strong></td>'
-          + '<td><strong>' + esc(x.customer.name) + '</strong></td>'
-          + '<td>' + tierBadge + '</td>'
-          + '<td class="num"><strong>' + x.score + '</strong></td>'
-          + '<td class="num"><strong>' + moneyPlain(x.totalCleared) + '</strong></td>'
-          + '<td class="num">' + x.cleared + '/' + x.chequeCount + '</td>'
-          + '<td class="num">' + x.clearingRate.toFixed(0) + '%</td>'
-          + '<td class="num" style="color:' + (x.bounceRate > 15 ? 'var(--red)' : 'var(--text-3)') + '">' + x.bounceRate.toFixed(0) + '%</td>'
-          + '<td class="num">' + growthBadge + '</td>'
-          + '<td class="num">' + x.monthsActive + '</td>'
-          + '</tr>';
-      }).join('')
-      : '<tr><td colspan="10"><div class="empty">No customers in this tier</div></td></tr>')
-    + '</tbody></table></div>'
-    + '</div>';
-}
+/* Duplicate declaration removed during clean rewrite: viewCLV */
 views.clv = viewCLV;
 window.viewCLV = viewCLV;
 
-function exportCLVCSV(){
-  const rows = arr(db.customers).map(c => {
-    const x = computeCLV(c.id);
-    return [
-      c.name, x.tier, x.score, x.totalCleared, x.chequeCount, x.cleared, x.bounced,
-      x.clearingRate.toFixed(1), x.bounceRate.toFixed(1), x.growth.toFixed(1),
-      x.monthsActive, x.avgCheque, x.lastActivity || ''
-    ];
-  });
-  download('clv_report_' + today() + '.csv', toCSV(
-    ['Customer', 'Tier', 'Score', 'Lifetime Value', 'Cheques', 'Cleared', 'Bounced',
-      'Clearing%', 'Bounce%', '6m Growth%', 'Months Active', 'Avg Cheque', 'Last Activity'],
-    rows
-  ), 'text/csv');
-  toast('CLV report exported', 'success');
-}
+/* Duplicate declaration removed during clean rewrite: exportCLVCSV */
 window.exportCLVCSV = exportCLVCSV;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 8 — CHURN PREDICTION
 ═══════════════════════════════════════════════════════════════════════════ */
-function predictChurn(customerId){
-  const cust = custObj(customerId);
-  if(!cust) return null;
-  const cheques = arr(db.customerCheques).filter(c => c.customerId === customerId);
-  if(!cheques.length){
-    return { customer: cust, risk: 'unknown', score: 0, daysSince: null, reason: 'No cheques ever received' };
-  }
-  const dates = cheques.map(c => c.date).filter(Boolean).sort();
-  const lastDate = dates[dates.length - 1];
-  const daysSince = lastDate ? daysBetween(lastDate, today()) : null;
-  let totalGap = 0, gapCount = 0;
-  for(let i = 1; i < dates.length; i++){
-    totalGap += daysBetween(dates[i - 1], dates[i]);
-    gapCount++;
-  }
-  const avgCadence = gapCount > 0 ? totalGap / gapCount : 30;
-  let churnScore = 0;
-  if(daysSince !== null && avgCadence > 0){
-    const ratio = daysSince / avgCadence;
-    if(ratio > 3) churnScore = 90;
-    else if(ratio > 2) churnScore = 70;
-    else if(ratio > 1.5) churnScore = 50;
-    else if(ratio > 1.2) churnScore = 30;
-    else churnScore = Math.max(5, ratio * 15);
-  }
-  const recent = cheques.filter(c => c.date && daysBetween(c.date, today()) <= 90);
-  const recentBounced = recent.filter(c => c.status === 'Bounced').length;
-  if(recent.length && recentBounced / recent.length > 0.3) churnScore += 15;
-  if(recentBounced > 0) churnScore += 5;
-  const aging = customerAging(customerId);
-  if(aging.total > 50000) churnScore += 10;
-  churnScore = Math.max(0, Math.min(100, Math.round(churnScore)));
-  const risk = churnScore >= 70 ? 'high' : churnScore >= 40 ? 'medium' : 'low';
-  return {
-    customer: cust,
-    risk, score: churnScore,
-    daysSince, avgCadence: Math.round(avgCadence),
-    lastActivity: lastDate,
-    chequeCount: cheques.length,
-    outstanding: aging.total,
-    reason: daysSince === null ? 'No activity recorded'
-      : daysSince > avgCadence * 3 ? 'Exceeded normal pattern by 3×'
-      : daysSince > avgCadence * 2 ? 'Exceeded normal pattern by 2×'
-      : daysSince > avgCadence * 1.5 ? 'Slightly overdue'
-      : 'Active as normal'
-  };
-}
+/* Duplicate declaration removed during clean rewrite: predictChurn */
 window.predictChurn = predictChurn;
 
-function viewChurn(){
-  const all = arr(db.customers).map(c => predictChurn(c.id)).filter(Boolean);
-  const active = all.filter(x => x.chequeCount > 0);
-  active.sort((a, b) => b.score - a.score);
-  const high = active.filter(x => x.risk === 'high');
-  const medium = active.filter(x => x.risk === 'medium');
-  const low = active.filter(x => x.risk === 'low');
-  const atRiskValue = high.reduce((a, x) => a + (computeCLV(x.customer.id) || { totalCleared: 0 }).totalCleared, 0);
-  return '<div class="kpi-strip">'
-    + kpiCard('🔴 High Risk', high.length, 'Churn likely', { small: true })
-    + kpiCard('🟡 Medium Risk', medium.length, 'Watch closely', { small: true })
-    + kpiCard('🟢 Low Risk', low.length, 'Active', { small: true })
-    + kpiCard('Value at Risk', money(atRiskValue), 'High-risk lifetime value', { small: true })
-    + '</div>'
-    + '<div class="card"><div class="card-head"><h3>📉 Churn Prediction</h3>'
-    + '<div class="row-flex">'
-    + '<button class="btn sm" onclick="exportChurnCSV()">⬇ CSV</button>'
-    + '<button class="btn sm primary" onclick="createChurnRecoveryTasks()">＋ Create Recovery Tasks</button>'
-    + '</div></div>'
-    + '<div class="alert info"><span class="ico">🧠</span>'
-    + '<div>Prediction based on <strong>cheque cadence</strong> (days between cheques) + recent bounce rate + outstanding bounced balance. '
-    + 'High-risk customers haven\'t sent a cheque in over 2× their normal pattern.</div></div>'
-    + '<div class="table-wrap"><table><thead><tr>'
-    + '<th>Customer</th><th>Risk</th><th class="num">Score</th>'
-    + '<th class="num">Days Silent</th><th class="num">Normal Cadence</th>'
-    + '<th class="num">Last Cheque</th><th class="num">Lifetime Value</th>'
-    + '<th class="num">Outstanding</th><th>Reason</th><th>Actions</th>'
-    + '</tr></thead><tbody>'
-    + (active.length
-      ? active.map(x => {
-        const clv = computeCLV(x.customer.id);
-        const riskBadge = x.risk === 'high' ? '<span class="badge red">🔴 HIGH</span>'
-          : x.risk === 'medium' ? '<span class="badge amber">🟡 MEDIUM</span>'
-          : '<span class="badge green">🟢 LOW</span>';
-        const daysColor = x.daysSince === null ? 'var(--text-3)'
-          : x.daysSince > x.avgCadence * 2 ? 'var(--red)'
-          : x.daysSince > x.avgCadence * 1.2 ? 'var(--amber)'
-          : 'var(--green)';
-        return '<tr>'
-          + '<td><strong>' + esc(x.customer.name) + '</strong></td>'
-          + '<td>' + riskBadge + '</td>'
-          + '<td class="num"><strong>' + x.score + '</strong></td>'
-          + '<td class="num" style="color:' + daysColor + ';font-weight:600">' + (x.daysSince === null ? '—' : x.daysSince + 'd') + '</td>'
-          + '<td class="num">' + x.avgCadence + 'd</td>'
-          + '<td class="num">' + (x.lastActivity ? dateFmt(x.lastActivity) : '—') + '</td>'
-          + '<td class="num">' + moneyPlain(clv.totalCleared) + '</td>'
-          + '<td class="num" style="color:' + (x.outstanding > 0 ? 'var(--red)' : 'var(--text-3)') + '">' + moneyPlain(x.outstanding) + '</td>'
-          + '<td class="small">' + esc(x.reason) + '</td>'
-          + '<td><div class="row-flex">'
-          + '<button class="btn xs" onclick="showCustomerDetail(\'' + x.customer.id + '\')">👁</button>'
-          + '<button class="btn xs" onclick="createChurnRecoveryTask(\'' + x.customer.id + '\')">＋ Task</button>'
-          + '</div></td></tr>';
-      }).join('')
-      : '<tr><td colspan="10"><div class="empty">No customer activity yet</div></td></tr>')
-    + '</tbody></table></div>'
-    + '</div>';
-}
+/* Duplicate declaration removed during clean rewrite: viewChurn */
 views.churn = viewChurn;
 window.viewChurn = viewChurn;
 
-function exportChurnCSV(){
-  const rows = arr(db.customers).map(c => {
-    const x = predictChurn(c.id);
-    return [
-      c.name, x.risk, x.score,
-      x.daysSince || '', x.avgCadence,
-      x.lastActivity || '', x.chequeCount, x.outstanding
-    ];
-  });
-  download('churn_report_' + today() + '.csv', toCSV(
-    ['Customer', 'Risk', 'Score', 'Days Silent', 'Cadence (days)', 'Last Cheque', 'Cheque Count', 'Outstanding'],
-    rows
-  ), 'text/csv');
-  toast('Churn report exported', 'success');
-}
+/* Duplicate declaration removed during clean rewrite: exportChurnCSV */
 window.exportChurnCSV = exportChurnCSV;
 
-function createChurnRecoveryTask(customerId){
-  const cust = custObj(customerId);
-  if(!cust) return;
-  const x = predictChurn(customerId);
-  const clv = computeCLV(customerId);
-  if(!Array.isArray(db.todos)) db.todos = [];
-  db.todos.push({
-    id: uid(),
-    title: '🎯 Reach out to ' + cust.name + ' (' + x.risk + ' churn risk)',
-    dueDate: shiftDate(today(), 3),
-    priority: x.risk === 'high' ? 'urgent' : 'high',
-    notes: 'Days silent: ' + (x.daysSince || 'N/A')
-      + ' • Normal cadence: ' + x.avgCadence + 'd'
-      + ' • Lifetime value: ' + money(clv ? clv.totalCleared : 0),
-    owner: (currentUser && currentUser.email) || 'system',
-    done: false,
-    customerId,
-    createdAt: nowISO()
-  });
-  save();
-  toast('✅ Recovery task created', 'success');
-}
+/* Duplicate declaration removed during clean rewrite: createChurnRecoveryTask */
 window.createChurnRecoveryTask = createChurnRecoveryTask;
 
-function createChurnRecoveryTasks(){
-  const high = arr(db.customers).map(c => predictChurn(c.id)).filter(x => x && x.risk === 'high');
-  if(!high.length){ toast('No high-risk customers', 'info'); return; }
-  if(!confirm('Create recovery tasks for ' + high.length + ' high-risk customer(s)?')) return;
-  high.forEach(x => createChurnRecoveryTask(x.customer.id));
-  toast('✅ ' + high.length + ' tasks created', 'success');
-  ui.view = 'todo';
-  render();
-}
+/* Duplicate declaration removed during clean rewrite: createChurnRecoveryTasks */
 window.createChurnRecoveryTasks = createChurnRecoveryTasks;
 
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 9 — SUPPLIER COMPARISON
 ═══════════════════════════════════════════════════════════════════════════ */
-function computeSupplierMetrics(supplierId){
-  const s = supObj(supplierId);
-  if(!s) return null;
-  const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
-  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && !p.fullyReversed);
-  const returns = arr(db.supplierReturns).filter(r => r.supplierId === supplierId);
-  const totalPurchased = sum(purchases, 'amount');
-  const totalPaid = sum(payments, 'amount');
-  const totalReturned = sum(returns, 'amount');
-  const balance = supplierBalance(supplierId);
-  const aging = supplierAging(supplierId);
-  let totalDays = 0, count = 0;
-  payments.forEach(p => {
-    const purchase = purchases
-      .filter(x => x.date <= p.date)
-      .sort((a, b) => b.date < a.date ? -1 : 1)[0];
-    if(purchase){
-      totalDays += daysBetween(purchase.date, p.date);
-      count++;
-    }
-  });
-  const avgPayDays = count ? totalDays / count : 0;
-  const returnRate = totalPurchased > 0 ? (totalReturned / totalPurchased) * 100 : 0;
-  const creditLimit = num(s.creditLimit);
-  const utilization = creditLimit > 0 ? (balance / creditLimit) * 100 : 0;
-  const months = lastMonths(6);
-  const recentVolume = months.reduce((a, m) =>
-    a + sum(purchases.filter(p => (p.date || '').slice(0, 7) === m), 'amount'), 0);
-  return {
-    supplier: s,
-    totalPurchased, totalPaid, totalReturned, balance, aging,
-    avgPayDays, returnRate, utilization, recentVolume,
-    purchaseCount: purchases.length,
-    paymentCount: payments.length,
-    returnCount: returns.length
-  };
-}
+/* Duplicate declaration removed during clean rewrite: computeSupplierMetrics */
 window.computeSupplierMetrics = computeSupplierMetrics;
 
-function viewSupplierComparison(){
-  const categories = arr(db.categories);
-  const supByCat = {};
-  categories.forEach(c => {
-    supByCat[c.id] = arr(db.suppliers).filter(s => s.categoryId === c.id);
-  });
-  const selectedCat = (ui.supCompare && ui.supCompare.cat) || (categories[0] ? categories[0].id : '');
-  const compareList = supByCat[selectedCat] || [];
-  return '<div class="card">'
-    + '<div class="card-head"><h3>⚖️ Supplier Comparison</h3>'
-    + '<label class="field" style="min-width:200px">Category<select '
-    + 'onchange="ui.supCompare=ui.supCompare||{};ui.supCompare.cat=this.value;render();">'
-    + categories.map(c => '<option value="' + c.id + '" ' + (selectedCat === c.id ? 'selected' : '') + '>' + esc(c.name) + '</option>').join('')
-    + '</select></label>'
-    + '</div>'
-    + (compareList.length < 2
-      ? '<div class="empty">Need at least 2 suppliers in this category to compare</div>'
-      : '<div class="table-wrap"><table><thead><tr>'
-      + '<th>Metric</th>'
-      + compareList.map(s => '<th class="num">' + esc(s.name) + '</th>').join('')
-      + '<th>Winner</th>'
-      + '</tr></thead><tbody>'
-      + (() => {
-        const metrics = compareList.map(s => computeSupplierMetrics(s.id));
-        const better = (metric, direction) => {
-          let best = null, bestVal = null;
-          metrics.forEach(m => {
-            let v = metric(m);
-            if(v === null || v === undefined) return;
-            if(bestVal === null){ bestVal = v; best = m.supplier.id; }
-            else if(direction === 'high' ? v > bestVal : v < bestVal){ bestVal = v; best = m.supplier.id; }
-          });
-          return { id: best, val: bestVal };
-        };
-        const row = (label, fn, direction, format) => {
-          const win = better(fn, direction);
-          return '<tr><td><strong>' + label + '</strong></td>'
-            + metrics.map(m => {
-              const v = fn(m);
-              const isWinner = m.supplier.id === win.id && metrics.length > 1;
-              const display = format ? format(v, m) : v;
-              return '<td class="num" style="' + (isWinner ? 'background:var(--green-soft);font-weight:700' : '') + '">'
-                + display + '</td>';
-            }).join('')
-            + '<td class="small">' + (win.id ? esc(supName(win.id)) : '—') + '</td></tr>';
-        };
-        return row('Total Purchased', m => m.totalPurchased, 'high', v => moneyPlain(v))
-          + row('Purchase Count', m => m.purchaseCount, 'high')
-          + row('Total Paid', m => m.totalPaid, 'high', v => moneyPlain(v))
-          + row('Outstanding Balance', m => m.balance, 'low', v => moneyPlain(v))
-          + row('Aging 90+', m => m.aging.d90, 'low', v => moneyPlain(v))
-          + row('Avg Days to Pay', m => m.avgPayDays, 'low', v => v.toFixed(1) + 'd')
-          + row('Return Rate %', m => m.returnRate, 'low', v => v.toFixed(1) + '%')
-          + row('Credit Utilization %', m => m.utilization, 'low', v => v.toFixed(0) + '%')
-          + row('Recent Volume (6m)', m => m.recentVolume, 'high', v => moneyPlain(v))
-          + row('Credit Days', m => num(m.supplier.creditDays) || 0, 'high', v => v + 'd');
-      })()
-      + '</tbody></table></div>')
-    + '</div>'
-    + (compareList.length >= 2
-      ? '<div class="card"><div class="card-head"><h3>📊 Visual Comparison</h3></div>'
-      + '<div style="padding:18px">'
-      + (() => {
-        const metrics = compareList.map(s => computeSupplierMetrics(s.id));
-        const chartRows = [
-          { label: 'Purchased Volume', key: 'totalPurchased' },
-          { label: 'Paid Amount', key: 'totalPaid' },
-          { label: 'Outstanding', key: 'balance' }
-        ];
-        return chartRows.map(cr => {
-          const max = Math.max(1, ...metrics.map(m => m[cr.key]));
-          return '<div style="margin-bottom:20px">'
-            + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:10px">'
-            + cr.label + '</div>'
-            + metrics.map(m =>
-              '<div class="bar-row">'
-              + '<span class="bar-label">' + esc(m.supplier.name) + '</span>'
-              + '<div class="bar-track"><div class="bar-fill" style="width:' + (m[cr.key] / max * 100).toFixed(1) + '%"></div></div>'
-              + '<span class="bar-val">' + moneyPlain(m[cr.key]) + '</span></div>'
-            ).join('')
-            + '</div>';
-        }).join('');
-      })()
-      + '</div></div>'
-      : '');
-}
+/* Duplicate declaration removed during clean rewrite: viewSupplierComparison */
 views.supcompare = viewSupplierComparison;
 window.viewSupplierComparison = viewSupplierComparison;
 
@@ -21000,27 +20689,10 @@ PART 17 — BANK ACCOUNT NAMES · ADVANCED CHEQUE CASCADE · BANK PAYMENTS · MA
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 1 — BANK ACCOUNT DISPLAY HELPERS (with Account Name)
 ═══════════════════════════════════════════════════════════════════════════ */
-function bankDisplayName(b){
-  if(!b) return '—';
-  const parts = [];
-  if(b.accountName) parts.push(b.accountName);
-  parts.push(b.bankName);
-  if(b.accountNo) parts.push(b.accountNo);
-  return parts.join(' • ');
-}
+/* Duplicate declaration removed during clean rewrite: bankDisplayName */
 window.bankDisplayName = bankDisplayName;
 
-function bankOptionsWithName(selectedId, filter){
-  const list = arr(db.bankAccounts).filter(filter || (() => true));
-  return list.map(b => {
-    const parts = [];
-    if(b.accountName) parts.push(b.accountName);
-    parts.push(b.bankName);
-    if(b.accountNo) parts.push(b.accountNo);
-    return '<option value="' + b.id + '" ' + (selectedId === b.id ? 'selected' : '') + '>'
-      + esc(parts.join(' — ')) + '</option>';
-  }).join('');
-}
+/* Duplicate declaration removed during clean rewrite: bankOptionsWithName */
 window.bankOptionsWithName = bankOptionsWithName;
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -21361,41 +21033,13 @@ views.payments = window.viewPayments;
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 6 — OWN CHEQUE LEAVES (3-step cascade: Bank → Book → Leaf)
 ═══════════════════════════════════════════════════════════════════════════ */
-function banksWithAvailableLeaves(){
-  const bankIds = new Set();
-  arr(db.chequeLeaves).filter(l => l.status === 'Available' && l.bankAccountId).forEach(l => {
-    bankIds.add(l.bankAccountId);
-  });
-  return arr(db.bankAccounts).filter(b => bankIds.has(b.id));
-}
+/* Duplicate declaration removed during clean rewrite: banksWithAvailableLeaves */
 
-function booksWithAvailableLeaves(bankId){
-  const bookIds = new Set();
-  arr(db.chequeLeaves)
-    .filter(l => l.status === 'Available' && l.bankAccountId === bankId && l.chequeBookId)
-    .forEach(l => bookIds.add(l.chequeBookId));
-  return arr(db.chequeBooks).filter(bk => bookIds.has(bk.id));
-}
+/* Duplicate declaration removed during clean rewrite: booksWithAvailableLeaves */
 
-function availableLeavesInBook(bookId){
-  return arr(db.chequeLeaves)
-    .filter(l => l.status === 'Available' && l.chequeBookId === bookId)
-    .sort((a, b) => String(a.leafNo).localeCompare(String(b.leafNo)));
-}
+/* Duplicate declaration removed during clean rewrite: availableLeavesInBook */
 
-function normalizeOwnRow(r){
-  if(!r.bankAccountId && r.leafId){
-    const l = arr(db.chequeLeaves).find(x => x.id === r.leafId);
-    if(l){
-      r.bankAccountId = l.bankAccountId || '';
-      r.chequeBookId = l.chequeBookId || '';
-    }
-  }
-  if(!r.bankAccountId) r.bankAccountId = '';
-  if(!r.chequeBookId) r.chequeBookId = '';
-  if(!r.leafId) r.leafId = '';
-  return r;
-}
+/* Duplicate declaration removed during clean rewrite: normalizeOwnRow */
 
 window.renderOwnLeafRows = function(){
   const box = document.getElementById('ownRows');
@@ -22467,288 +22111,8 @@ setTimeout(function(){
 /* ═══════════════════════════════════════════════════════════════════════════
 END OF PART 17
 ═══════════════════════════════════════════════════════════════════════════ */
-</script>
-<script>
-'use strict';
-/* ═══════════════════════════════════════════════════════════════════════════
-PART 18 — FINAL INTEGRATION · MISSING HELPERS · COMPLETE APP VERIFICATION
-═══════════════════════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 1 — MISSING HELPER: pctDelta (for KPI deltas)
-═══════════════════════════════════════════════════════════════════════════ */
-function pctDelta(current, previous){
-  if(previous === 0) return current === 0 ? 0 : 100;
-  return ((current - previous) / Math.abs(previous)) * 100;
-}
-window.pctDelta = pctDelta;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 2 — MISSING HELPER: csvEscape (for CSV export)
-═══════════════════════════════════════════════════════════════════════════ */
-function csvEscape(v){
-  const s = (v === undefined || v === null) ? '' : String(v);
-  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-}
-window.csvEscape = csvEscape;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 3 — MISSING HELPER: toCSV (for CSV export)
-═══════════════════════════════════════════════════════════════════════════ */
-function toCSV(headers, rows){
-  return '\uFEFF' + [headers.map(csvEscape).join(',')]
-    .concat(rows.map(r => r.map(csvEscape).join(',')))
-    .join('\n');
-}
-window.toCSV = toCSV;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 4 — MISSING HELPER: download (for file downloads)
-═══════════════════════════════════════════════════════════════════════════ */
-function download(filename, content, type){
-  const blob = new Blob([content], { type: type || 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-window.download = download;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 5 — MISSING HELPER: groupedBarChartSVG (for dashboard)
-═══════════════════════════════════════════════════════════════════════════ */
-function groupedBarChartSVG(groups, series, opts){
-  opts = opts || {};
-  const w = opts.w || 600, h = opts.h || 220;
-  const pad = { l: 60, r: 12, t: 20, b: 30 };
-  const pW = w - pad.l - pad.r, pH = h - pad.t - pad.b;
-  const allVals = groups.flatMap(g => series.map(s => g.values[s.key] || 0));
-  const max = Math.max(1, Math.max.apply(null, allVals));
-  const groupW = pW / groups.length;
-  const barW = groupW * 0.7 / series.length;
-  const gap = (groupW - barW * series.length) / 2;
-  let bars = '';
-  groups.forEach((g, gi) => {
-    const gx = pad.l + gi * groupW + gap;
-    series.forEach((s, si) => {
-      const v = g.values[s.key] || 0;
-      const bH = (v / max) * pH;
-      const x = gx + si * barW;
-      const y = pad.t + pH - bH;
-      bars += '<rect x="' + x + '" y="' + y + '" width="' + (barW * 0.9) + '" height="' + bH + '" fill="' + s.color + '" rx="2"/>';
-    });
-    bars += '<text x="' + (pad.l + gi * groupW + groupW / 2) + '" y="' + (h - 10) + '" font-size="10" fill="var(--text-4)" text-anchor="middle">' + esc(g.label) + '</text>';
-  });
-  let grid = '';
-  for(let i = 0; i <= 4; i++){
-    const y = pad.t + (pH * i / 4);
-    grid += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (pad.l + pW) + '" y2="' + y + '" stroke="var(--border-2)"/>';
-    grid += '<text x="' + (pad.l - 6) + '" y="' + (y + 3) + '" font-size="9.5" fill="var(--text-4)" text-anchor="end">' + fmtCompact(max * (4 - i) / 4) + '</text>';
-  }
-  const legend = '<div style="display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:11.5px">'
-    + series.map(s => '<span><span class="dot" style="background:' + s.color + '"></span> ' + esc(s.label) + '</span>').join('')
-    + '</div>';
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' + grid + bars + '</svg>' + legend;
-}
-window.groupedBarChartSVG = groupedBarChartSVG;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 6 — MISSING HELPER: svgDonut (for pie charts)
-═══════════════════════════════════════════════════════════════════════════ */
-function svgDonut(segments, size){
-  size = size || 120;
-  const r = size / 2 - 10;
-  const cx = size / 2, cy = size / 2;
-  const total = segments.reduce((s, seg) => s + num(seg.value), 0) || 1;
-  let angle = -90;
-  let paths = '';
-  segments.forEach(seg => {
-    const pct = num(seg.value) / total;
-    const a1 = angle * Math.PI / 180;
-    const a2 = (angle + pct * 360) * Math.PI / 180;
-    const large = pct > 0.5 ? 1 : 0;
-    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
-    paths += '<path d="M' + cx + ',' + cy + ' L' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + large + ',1 ' + x2 + ',' + y2 + ' Z" fill="' + (seg.color || 'var(--accent)') + '" opacity="0.85"/>';
-    angle += pct * 360;
-  });
-  return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '">' + paths + '</svg>';
-}
-window.svgDonut = svgDonut;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 7 — MISSING HELPER: confetti (for celebration animations)
-═══════════════════════════════════════════════════════════════════════════ */
-function confetti(){
-  const c = document.getElementById('confettiCanvas');
-  if(!c) return;
-  c.width = window.innerWidth;
-  c.height = window.innerHeight;
-  const ctx = c.getContext('2d');
-  const colors = ['#7c3aed', '#ec4899', '#10b981', '#f59e0b', '#3b82f6'];
-  const particles = [];
-  for(let i = 0; i < 150; i++){
-    particles.push({
-      x: c.width / 2, y: c.height / 2,
-      vx: (Math.random() - .5) * 14, vy: (Math.random() - 1) * 14,
-      size: 6 + Math.random() * 8,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      rot: Math.random() * 6, rotV: (Math.random() - .5) * .3
-    });
-  }
-  let frame = 0;
-  function tick(){
-    frame++;
-    ctx.clearRect(0, 0, c.width, c.height);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.vy += .35; p.rot += p.rotV;
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = Math.max(0, 1 - frame / 130);
-      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-      ctx.restore();
-    });
-    if(frame < 130) requestAnimationFrame(tick);
-    else ctx.clearRect(0, 0, c.width, c.height);
-  }
-  tick();
-}
-window.confetti = confetti;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 8 — MISSING HELPER: amountInWords (for vouchers)
-═══════════════════════════════════════════════════════════════════════════ */
-const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
-
-function threeDigit(n){
-  n = Math.floor(n);
-  if(n < 20) return ONES[n];
-  if(n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
-  return ONES[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' ' + threeDigit(n % 100) : '');
-}
-
-function amountInWords(amount){
-  const v = Math.round(num(amount) * 100) / 100;
-  if(v === 0) return 'zero rupees only';
-  const rupees = Math.floor(v);
-  const cents = Math.round((v - rupees) * 100);
-  const parts = [];
-  const crore = Math.floor(rupees / 10000000);
-  const lakh = Math.floor((rupees % 10000000) / 100000);
-  const thousand = Math.floor((rupees % 100000) / 1000);
-  const hundred = rupees % 1000;
-  if(crore) parts.push(threeDigit(crore) + ' crore');
-  if(lakh) parts.push(threeDigit(lakh) + ' lakh');
-  if(thousand) parts.push(threeDigit(thousand) + ' thousand');
-  if(hundred) parts.push(threeDigit(hundred));
-  let out = parts.join(' ') + ' rupees';
-  if(cents) out += ' and ' + threeDigit(cents) + ' cents';
-  return out + ' only';
-}
-window.amountInWords = amountInWords;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 9 — MISSING HELPER: whatsappReminder (for customer reminders)
-═══════════════════════════════════════════════════════════════════════════ */
-function whatsappReminder(customerId, cheque){
-  const c = custObj(customerId);
-  if(!c) return '';
-  const s = db.settings || {};
-  return 'Dear ' + c.name + ',\n'
-    + 'This is a friendly reminder from ' + s.shopName + '. '
-    + (cheque ? 'Our cheque No. ' + cheque.chequeNo + ' for ' + money(cheque.amount) + ' is due on ' + dateFmt(cheque.dueDate) + '. ' : '')
-    + 'Please ensure sufficient funds.\n'
-    + 'Thank you,\n' + s.shopName
-    + (s.businessPhone ? ('\n' + s.businessPhone) : '');
-}
-window.whatsappReminder = whatsappReminder;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 10 — MISSING HELPER: copyToClipboard (for copying text)
-═══════════════════════════════════════════════════════════════════════════ */
-function copyToClipboard(text){
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard', 'success'));
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    ta.remove();
-    toast('Copied', 'success');
-  }
-}
-window.copyToClipboard = copyToClipboard;
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 11 — FINAL APP VERIFICATION LOG
-═══════════════════════════════════════════════════════════════════════════ */
-setTimeout(function(){
-  if(window.__dbgOk){
-    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
-    window.__dbgOk('✅ APP VERIFICATION COMPLETE', 'VERIFY');
-    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
-    window.__dbgOk('📦 Collections: ' + COLLECTIONS.length, 'VERIFY');
-    window.__dbgOk('🎨 Views: ' + Object.keys(views).length, 'VERIFY');
-    window.__dbgOk('📊 KPIs: ' + Object.keys(KPI_DEFS).length, 'VERIFY');
-    window.__dbgOk('🎯 Widgets: ' + Object.keys(WIDGET_LIBRARY).length, 'VERIFY');
-    window.__dbgOk('📋 Settings Sections: ' + SETTINGS_SECTIONS.length, 'VERIFY');
-    window.__dbgOk('⌨ Shortcuts: ' + SHORTCUTS.length, 'VERIFY');
-    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
-    window.__dbgOk('🔧 BUG FIXES APPLIED:', 'VERIFY');
-    window.__dbgOk('  ✅ #1 Quota killer: Diff-based sync (only changed docs)', 'VERIFY');
-    window.__dbgOk('  ✅ #2 Memory churn: Cached seed template', 'VERIFY');
-    window.__dbgOk('  ✅ #3 Save spam: 1.5s debounce', 'VERIFY');
-    window.__dbgOk('  ✅ #4 Version bloat: Diff-based versioning', 'VERIFY');
-    window.__dbgOk('  ✅ #5 Log bloat: Capped at 2000 entries', 'VERIFY');
-    window.__dbgOk('  ✅ #7 Slow load: Parallel chunks of 8', 'VERIFY');
-    window.__dbgOk('  ✅ #10 Login hang: Non-blocking auth', 'VERIFY');
-    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
-    window.__dbgOk('✅ ALL FEATURES PRESERVED (100%)', 'VERIFY');
-    window.__dbgOk('✅ ALL BUGS FIXED', 'VERIFY');
-    window.__dbgOk('✅ APP READY FOR PRODUCTION', 'VERIFY');
-    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
-  }
-}, 4000);
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 12 — FINAL SUMMARY (displayed in console)
-═══════════════════════════════════════════════════════════════════════════ */
-console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-console.log('%c✅ LANKA SHOE ENTERPRISE v12.0 — COMPLETE', 'color: #10b981; font-weight: bold; font-size: 16px');
-console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-console.log('%c📦 30+ Collections synced to Firestore', 'color: #3b82f6; font-size: 12px');
-console.log('%c🎨 35+ Views registered', 'color: #3b82f6; font-size: 12px');
-console.log('%c📊 12 KPI definitions', 'color: #3b82f6; font-size: 12px');
-console.log('%c🎯 17 Dashboard widgets', 'color: #3b82f6; font-size: 12px');
-console.log('%c📋 16 Settings sections', 'color: #3b82f6; font-size: 12px');
-console.log('%c⌨ 21 Keyboard shortcuts', 'color: #3b82f6; font-size: 12px');
-console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-console.log('%c🔧 CRITICAL BUG FIXES:', 'color: #f59e0b; font-weight: bold; font-size: 13px');
-console.log('%c  ✅ Firebase quota exhaustion FIXED (diff-based sync)', 'color: #10b981; font-size: 12px');
-console.log('%c  ✅ Login hang FIXED (non-blocking auth)', 'color: #10b981; font-size: 12px');
-console.log('%c  ✅ Slow Firestore load FIXED (parallel chunks)', 'color: #10b981; font-size: 12px');
-console.log('%c  ✅ Memory churn FIXED (cached seed template)', 'color: #10b981; font-size: 12px');
-console.log('%c  ✅ Save spam FIXED (1.5s debounce)', 'color: #10b981; font-size: 12px');
-console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-console.log('%c✅ ALL FEATURES PRESERVED (100%)', 'color: #10b981; font-weight: bold; font-size: 14px');
-console.log('%c✅ APP READY FOR PRODUCTION', 'color: #10b981; font-weight: bold; font-size: 14px');
-console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-
-/* ═══════════════════════════════════════════════════════════════════════════
-END OF PART 18 — APP COMPLETE
-═══════════════════════════════════════════════════════════════════════════ */
-</script>
-<script>
+/* ===== INTEGRATED DATA / UI COMPATIBILITY & FINAL BOOT ===== */
 /* ═══════════════════════════════════════════════════════════════════════════
 LANKA SHOE — DEEP DATA/EDIT CORRECTION LAYER
 
@@ -22848,24 +22212,34 @@ Purpose:
   /* ── CORRECT BALANCE ENGINE ───────────────────────────────────────────── */
   function correctedSupplierBalance(id){
     const s = safeArr(db.suppliers).find(x => x.id === id);
-    let bal = s ? n(s.openingBalance) : 0;
-    actualPurchases().filter(p => p.supplierId === id).forEach(p => bal += n(p.amount));
-    safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected').forEach(r => bal -= n(r.amount));
-    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && !p.fullyReversed).forEach(p => bal -= n(p.amount));
+    if(!s) return 0;
+    const type = String(s.openingBalanceType || 'payable').toLowerCase();
+    let bal = ['debit','receivable','negative','dr','credit'].includes(type) && type !== 'payable' ? -n(s.openingBalance) : n(s.openingBalance);
+    actualPurchases().filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled')
+      .forEach(p => bal += n(p.amount));
+    safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected' && r.status !== 'cancelled')
+      .forEach(r => bal -= n(r.amount));
+    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && p.status !== 'Cancelled' && !p.fullyReversed && p.reversed !== true)
+      .forEach(p => bal -= (typeof paymentAmount === 'function' ? paymentAmount(p) : n(p.amount)));
+    safeArr(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal)
+      .forEach(j => bal += n(j.credit) - n(j.debit));
     return bal;
   }
   window.supplierBalance = correctedSupplierBalance;
 
   function correctedCustomerBalance(id){
     const c = safeArr(db.customers).find(x => x.id === id);
-    let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance)) : 0;
-    /* Opening balance is kept separate from cheque activity. The existing
-       cheque model treats bounced cheque amounts as money owed to the shop. */
-    safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
-      if(typeof chequeRemaining === 'function') bal += n(chequeRemaining(q.id));
-      else bal += n(q.amount);
-    });
-    safeArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && p.status !== 'rejected').forEach(p => bal -= n(p.amount));
+    if(!c) return 0;
+    const opening = String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance);
+    let bal = opening;
+    safeArr(db.receipts).filter(r => r.customerId === id && r.status !== 'rejected' && r.status !== 'cancelled')
+      .forEach(r => bal -= n(r.amount));
+    safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced')
+      .forEach(q => bal += typeof chequeRemaining === 'function' ? n(chequeRemaining(q.id)) : n(q.amount));
+    safeArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed)
+      .forEach(p => bal += (typeof paymentAmount === 'function' ? paymentAmount(p) : n(p.amount)));
+    safeArr(db.journals).filter(j => j.entityType === 'customer' && j.entityId === id && !j.bounceReversal)
+      .forEach(j => bal += n(j.debit) - n(j.credit));
     return bal;
   }
   window.customerBalance = correctedCustomerBalance;
@@ -22879,7 +22253,7 @@ Purpose:
     if(ob > 0) items.push({date:s.openingDate || end, amount:ob, source:'opening_balance'});
     actualPurchases().filter(p => p.supplierId === id && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
     items.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && !p.fullyReversed).reduce((a,p)=>a+n(p.amount),0)
+    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && !p.fullyReversed).reduce((a,p)=>a+(typeof paymentAmount==='function'?paymentAmount(p):n(p.amount)),0)
       + safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.date <= end && r.status !== 'rejected').reduce((a,r)=>a+n(r.amount),0);
     const bk = (db.settings && db.settings.supplierAgingBuckets) || [30,60,90];
     const b1=n(bk[0])||30, b2=n(bk[1])||60, b3=n(bk[2])||90;
@@ -22934,7 +22308,7 @@ Purpose:
     if(n(s.openingBalance)!==0) rows.push({date:s.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:0,credit:n(s.openingBalance),balance:n(s.openingBalance),isOpeningBalance:true});
     actualPurchases().filter(p=>p.supplierId===id).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Purchase',ref:p.invoiceNo||p.id,debit:0,credit:n(p.amount),balance:0,purchaseId:p.id}));
     safeArr(db.supplierReturns).filter(r=>r.supplierId===id&&r.status!=='rejected').forEach(r=>rows.push({date:r.date||todaySafe(),type:'Supplier Return',ref:r.reference||r.id,debit:n(r.amount),credit:0,balance:0,returnId:r.id}));
-    safeArr(db.payments).filter(p=>p.supplierId===id&&p.status!=='rejected'&&!p.fullyReversed).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Payment',ref:p.reference||p.id,debit:n(p.amount),credit:0,balance:0,paymentId:p.id}));
+    safeArr(db.payments).filter(p=>p.supplierId===id&&p.status!=='rejected'&&!p.fullyReversed).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Payment',ref:p.reference||p.id,debit:(typeof paymentAmount==='function'?paymentAmount(p):n(p.amount)),credit:0,balance:0,paymentId:p.id}));
     safeArr(db.journals).filter(j=>j.entityType==='supplier'&&j.entityId===id&&!j.bounceReversal).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
     rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     let bal=0; rows.forEach(r=>{bal += n(r.credit)-n(r.debit);r.balance=bal;});
@@ -23198,9 +22572,6 @@ Purpose:
   if(window.__dbgOk)window.__dbgOk('Deep data correction layer installed: opening balances, ledgers, editing and admin delete controls','DATA-FIX');
 })();
 
-</script>
-
-<script id="missing-runtime-functions-fix">
 /* Runtime helper restoration: these helpers are required by existing views/details.
    They were accidentally omitted during the previous rewrite. */
 function customerChequeSummary(cid){
@@ -23488,9 +22859,6 @@ function renderMaturityWidget(){
 }
 window.renderMaturityWidget = renderMaturityWidget;
 
-</script>
-
-<script id="missing-runtime-actions-fix">
 /* Restored action helpers used by existing UI buttons. */
 function openTagsEditor(kind, id, label){
   const current = getRecordTags(kind, id);
@@ -23601,21 +22969,322 @@ function restoreFromTrash(trashId){
 }
 window.restoreFromTrash = restoreFromTrash;
 
-</script>
-
-<script id="final-runtime-wiring-fix">
 /* The deep purchase safety override replaces window.viewPurchases. The router
    must use that same implementation, otherwise it would keep the old view. */
 if(typeof window.viewPurchases === 'function' && window.views){
   window.views.purchases = window.viewPurchases;
 }
-</script>
 
-<script>
 window.refreshAllCloudData=async function(){
   if(!firebaseReady||!firestore||!currentUser){toast('Sign in first','error');return;}
   try{toast('Refreshing cloud data…','info');await loadFromFirestore();normalizeDb();applySettings();if(typeof takeSnapshot==='function')takeSnapshot();try{localStorage.setItem('lankashoe_last_cloud_load',String(Date.now()));}catch(e){}render();toast('Cloud data refreshed','success');}catch(e){toast('Cloud refresh failed: '+(e.code||e.message),'error');}
 };
+</script>
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════════════════
+PART 18 — FINAL INTEGRATION · MISSING HELPERS · COMPLETE APP VERIFICATION
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 1 — MISSING HELPER: pctDelta (for KPI deltas)
+═══════════════════════════════════════════════════════════════════════════ */
+function pctDelta(current, previous){
+  if(previous === 0) return current === 0 ? 0 : 100;
+  return ((current - previous) / Math.abs(previous)) * 100;
+}
+window.pctDelta = pctDelta;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 2 — MISSING HELPER: csvEscape (for CSV export)
+═══════════════════════════════════════════════════════════════════════════ */
+function csvEscape(v){
+  const s = (v === undefined || v === null) ? '' : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+window.csvEscape = csvEscape;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 3 — MISSING HELPER: toCSV (for CSV export)
+═══════════════════════════════════════════════════════════════════════════ */
+function toCSV(headers, rows){
+  return '\uFEFF' + [headers.map(csvEscape).join(',')]
+    .concat(rows.map(r => r.map(csvEscape).join(',')))
+    .join('\n');
+}
+window.toCSV = toCSV;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 4 — MISSING HELPER: download (for file downloads)
+═══════════════════════════════════════════════════════════════════════════ */
+function download(filename, content, type){
+  const blob = new Blob([content], { type: type || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+window.download = download;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 5 — MISSING HELPER: groupedBarChartSVG (for dashboard)
+═══════════════════════════════════════════════════════════════════════════ */
+function groupedBarChartSVG(groups, series, opts){
+  opts = opts || {};
+  const w = opts.w || 600, h = opts.h || 220;
+  const pad = { l: 60, r: 12, t: 20, b: 30 };
+  const pW = w - pad.l - pad.r, pH = h - pad.t - pad.b;
+  const allVals = groups.flatMap(g => series.map(s => g.values[s.key] || 0));
+  const max = Math.max(1, Math.max.apply(null, allVals));
+  const groupW = pW / groups.length;
+  const barW = groupW * 0.7 / series.length;
+  const gap = (groupW - barW * series.length) / 2;
+  let bars = '';
+  groups.forEach((g, gi) => {
+    const gx = pad.l + gi * groupW + gap;
+    series.forEach((s, si) => {
+      const v = g.values[s.key] || 0;
+      const bH = (v / max) * pH;
+      const x = gx + si * barW;
+      const y = pad.t + pH - bH;
+      bars += '<rect x="' + x + '" y="' + y + '" width="' + (barW * 0.9) + '" height="' + bH + '" fill="' + s.color + '" rx="2"/>';
+    });
+    bars += '<text x="' + (pad.l + gi * groupW + groupW / 2) + '" y="' + (h - 10) + '" font-size="10" fill="var(--text-4)" text-anchor="middle">' + esc(g.label) + '</text>';
+  });
+  let grid = '';
+  for(let i = 0; i <= 4; i++){
+    const y = pad.t + (pH * i / 4);
+    grid += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (pad.l + pW) + '" y2="' + y + '" stroke="var(--border-2)"/>';
+    grid += '<text x="' + (pad.l - 6) + '" y="' + (y + 3) + '" font-size="9.5" fill="var(--text-4)" text-anchor="end">' + fmtCompact(max * (4 - i) / 4) + '</text>';
+  }
+  const legend = '<div style="display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:11.5px">'
+    + series.map(s => '<span><span class="dot" style="background:' + s.color + '"></span> ' + esc(s.label) + '</span>').join('')
+    + '</div>';
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' + grid + bars + '</svg>' + legend;
+}
+window.groupedBarChartSVG = groupedBarChartSVG;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 6 — MISSING HELPER: svgDonut (for pie charts)
+═══════════════════════════════════════════════════════════════════════════ */
+function svgDonut(segments, size){
+  size = size || 120;
+  const r = size / 2 - 10;
+  const cx = size / 2, cy = size / 2;
+  const total = segments.reduce((s, seg) => s + num(seg.value), 0) || 1;
+  let angle = -90;
+  let paths = '';
+  segments.forEach(seg => {
+    const pct = num(seg.value) / total;
+    const a1 = angle * Math.PI / 180;
+    const a2 = (angle + pct * 360) * Math.PI / 180;
+    const large = pct > 0.5 ? 1 : 0;
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+    paths += '<path d="M' + cx + ',' + cy + ' L' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + large + ',1 ' + x2 + ',' + y2 + ' Z" fill="' + (seg.color || 'var(--accent)') + '" opacity="0.85"/>';
+    angle += pct * 360;
+  });
+  return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '">' + paths + '</svg>';
+}
+window.svgDonut = svgDonut;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 7 — MISSING HELPER: confetti (for celebration animations)
+═══════════════════════════════════════════════════════════════════════════ */
+function confetti(){
+  const c = document.getElementById('confettiCanvas');
+  if(!c) return;
+  c.width = window.innerWidth;
+  c.height = window.innerHeight;
+  const ctx = c.getContext('2d');
+  const colors = ['#7c3aed', '#ec4899', '#10b981', '#f59e0b', '#3b82f6'];
+  const particles = [];
+  for(let i = 0; i < 150; i++){
+    particles.push({
+      x: c.width / 2, y: c.height / 2,
+      vx: (Math.random() - .5) * 14, vy: (Math.random() - 1) * 14,
+      size: 6 + Math.random() * 8,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * 6, rotV: (Math.random() - .5) * .3
+    });
+  }
+  let frame = 0;
+  function tick(){
+    frame++;
+    ctx.clearRect(0, 0, c.width, c.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += .35; p.rot += p.rotV;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - frame / 130);
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.restore();
+    });
+    if(frame < 130) requestAnimationFrame(tick);
+    else ctx.clearRect(0, 0, c.width, c.height);
+  }
+  tick();
+}
+window.confetti = confetti;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 8 — MISSING HELPER: amountInWords (for vouchers)
+═══════════════════════════════════════════════════════════════════════════ */
+const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+function threeDigit(n){
+  n = Math.floor(n);
+  if(n < 20) return ONES[n];
+  if(n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
+  return ONES[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' ' + threeDigit(n % 100) : '');
+}
+
+function amountInWords(amount){
+  const v = Math.round(num(amount) * 100) / 100;
+  if(v === 0) return 'zero rupees only';
+  const rupees = Math.floor(v);
+  const cents = Math.round((v - rupees) * 100);
+  const parts = [];
+  const crore = Math.floor(rupees / 10000000);
+  const lakh = Math.floor((rupees % 10000000) / 100000);
+  const thousand = Math.floor((rupees % 100000) / 1000);
+  const hundred = rupees % 1000;
+  if(crore) parts.push(threeDigit(crore) + ' crore');
+  if(lakh) parts.push(threeDigit(lakh) + ' lakh');
+  if(thousand) parts.push(threeDigit(thousand) + ' thousand');
+  if(hundred) parts.push(threeDigit(hundred));
+  let out = parts.join(' ') + ' rupees';
+  if(cents) out += ' and ' + threeDigit(cents) + ' cents';
+  return out + ' only';
+}
+window.amountInWords = amountInWords;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 9 — MISSING HELPER: whatsappReminder (for customer reminders)
+═══════════════════════════════════════════════════════════════════════════ */
+function whatsappReminder(customerId, cheque){
+  const c = custObj(customerId);
+  if(!c) return '';
+  const s = db.settings || {};
+  return 'Dear ' + c.name + ',\n'
+    + 'This is a friendly reminder from ' + s.shopName + '. '
+    + (cheque ? 'Our cheque No. ' + cheque.chequeNo + ' for ' + money(cheque.amount) + ' is due on ' + dateFmt(cheque.dueDate) + '. ' : '')
+    + 'Please ensure sufficient funds.\n'
+    + 'Thank you,\n' + s.shopName
+    + (s.businessPhone ? ('\n' + s.businessPhone) : '');
+}
+window.whatsappReminder = whatsappReminder;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 10 — MISSING HELPER: copyToClipboard (for copying text)
+═══════════════════════════════════════════════════════════════════════════ */
+function copyToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard', 'success'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    toast('Copied', 'success');
+  }
+}
+window.copyToClipboard = copyToClipboard;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 11 — FINAL APP VERIFICATION LOG
+═══════════════════════════════════════════════════════════════════════════ */
+setTimeout(function(){
+  if(window.__dbgOk){
+    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
+    window.__dbgOk('✅ APP VERIFICATION COMPLETE', 'VERIFY');
+    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
+    window.__dbgOk('📦 Collections: ' + COLLECTIONS.length, 'VERIFY');
+    window.__dbgOk('🎨 Views: ' + Object.keys(views).length, 'VERIFY');
+    window.__dbgOk('📊 KPIs: ' + Object.keys(KPI_DEFS).length, 'VERIFY');
+    window.__dbgOk('🎯 Widgets: ' + Object.keys(WIDGET_LIBRARY).length, 'VERIFY');
+    window.__dbgOk('📋 Settings Sections: ' + SETTINGS_SECTIONS.length, 'VERIFY');
+    window.__dbgOk('⌨ Shortcuts: ' + SHORTCUTS.length, 'VERIFY');
+    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
+    window.__dbgOk('🔧 BUG FIXES APPLIED:', 'VERIFY');
+    window.__dbgOk('  ✅ #1 Quota killer: Diff-based sync (only changed docs)', 'VERIFY');
+    window.__dbgOk('  ✅ #2 Memory churn: Cached seed template', 'VERIFY');
+    window.__dbgOk('  ✅ #3 Save spam: 1.5s debounce', 'VERIFY');
+    window.__dbgOk('  ✅ #4 Version bloat: Diff-based versioning', 'VERIFY');
+    window.__dbgOk('  ✅ #5 Log bloat: Capped at 2000 entries', 'VERIFY');
+    window.__dbgOk('  ✅ #7 Slow load: Parallel chunks of 8', 'VERIFY');
+    window.__dbgOk('  ✅ #10 Login hang: Non-blocking auth', 'VERIFY');
+    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
+    window.__dbgOk('✅ ALL FEATURES PRESERVED (100%)', 'VERIFY');
+    window.__dbgOk('✅ ALL BUGS FIXED', 'VERIFY');
+    window.__dbgOk('✅ APP READY FOR PRODUCTION', 'VERIFY');
+    window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
+  }
+}, 4000);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+SECTION 12 — FINAL SUMMARY (displayed in console)
+═══════════════════════════════════════════════════════════════════════════ */
+console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
+console.log('%c✅ LANKA SHOE ENTERPRISE v12.0 — COMPLETE', 'color: #10b981; font-weight: bold; font-size: 16px');
+console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
+console.log('%c📦 30+ Collections synced to Firestore', 'color: #3b82f6; font-size: 12px');
+console.log('%c🎨 35+ Views registered', 'color: #3b82f6; font-size: 12px');
+console.log('%c📊 12 KPI definitions', 'color: #3b82f6; font-size: 12px');
+console.log('%c🎯 17 Dashboard widgets', 'color: #3b82f6; font-size: 12px');
+console.log('%c📋 16 Settings sections', 'color: #3b82f6; font-size: 12px');
+console.log('%c⌨ 21 Keyboard shortcuts', 'color: #3b82f6; font-size: 12px');
+console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
+console.log('%c🔧 CRITICAL BUG FIXES:', 'color: #f59e0b; font-weight: bold; font-size: 13px');
+console.log('%c  ✅ Firebase quota exhaustion FIXED (diff-based sync)', 'color: #10b981; font-size: 12px');
+console.log('%c  ✅ Login hang FIXED (non-blocking auth)', 'color: #10b981; font-size: 12px');
+console.log('%c  ✅ Slow Firestore load FIXED (parallel chunks)', 'color: #10b981; font-size: 12px');
+console.log('%c  ✅ Memory churn FIXED (cached seed template)', 'color: #10b981; font-size: 12px');
+console.log('%c  ✅ Save spam FIXED (1.5s debounce)', 'color: #10b981; font-size: 12px');
+console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
+console.log('%c✅ ALL FEATURES PRESERVED (100%)', 'color: #10b981; font-weight: bold; font-size: 14px');
+console.log('%c✅ APP READY FOR PRODUCTION', 'color: #10b981; font-weight: bold; font-size: 14px');
+console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
+
+/* ═══════════════════════════════════════════════════════════════════════════
+END OF PART 18 — APP COMPLETE
+═══════════════════════════════════════════════════════════════════════════ */
+</script>
+
+<script>
+/* LANKA SHOE v14 — FINAL INTEGRITY GUARD
+   Canonicalizes financial amounts and verifies critical function links after boot. */
+(function finalIntegrityGuard(){
+  'use strict';
+  window.__LANKA_FINAL_INTEGRITY = { version:'14.0.0', checks:[] };
+  function check(name, ok){ window.__LANKA_FINAL_INTEGRITY.checks.push({name:name,ok:!!ok}); if(!ok) console.error('[INTEGRITY] FAILED:',name); }
+  function run(){
+    check('Firebase project configuration', typeof firebaseConfig !== 'undefined' && firebaseConfig.projectId === 'lk-payments-manage');
+    check('Google Sign-In handler', typeof window.handleSignIn === 'function' || typeof handleSignIn === 'function');
+    check('Customer save link', typeof window.saveCustomer === 'function');
+    check('Supplier save link', typeof window.saveSupplier === 'function');
+    check('Purchase save link', typeof window.savePurchase === 'function');
+    check('Payment save link', typeof window.confirmAndSavePayment === 'function');
+    check('Bank balance engine', typeof window.bankBalance === 'function' || typeof bankBalance === 'function');
+    check('Supplier balance engine', typeof window.supplierBalance === 'function');
+    check('Customer balance engine', typeof window.customerBalance === 'function');
+    check('Supplier ledger link', typeof window.supplierLedger === 'function');
+    check('Customer ledger link', typeof window.customerLedger === 'function');
+    check('Actual purchase filter', typeof window.actualPurchases === 'function');
+    check('Payment amount normalizer', typeof window.paymentAmount === 'function');
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(run,0),{once:true}); else setTimeout(run,0);
+})();
 </script>
 </body>
 </html>

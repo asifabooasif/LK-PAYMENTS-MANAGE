@@ -1663,6 +1663,30 @@ function supplierPaymentIsActive(p){
     p.status !== 'Cancelled' && !p.fullyReversed && p.reversed !== true;
 }
 
+/* Canonical supplier journal filter.
+   Opening balances live on the supplier master. Older data can also contain
+   an opening-balance journal for the same opening amount; counting both
+   doubles the payable. Payment-linked journals likewise must never turn a
+   payment into an additional payable. Unrelated supplier journals remain. */
+function supplierJournalEntries(id){
+  const s = supObj(id);
+  const masterOpening = s ? Math.abs(num(s.openingBalance)) : 0;
+  const paymentIds = new Set(arr(db.payments).filter(p => p.supplierId === id).map(p => String(p.id || '')));
+  const paymentRefs = new Set(arr(db.payments).filter(p => p.supplierId === id).map(p => String(p.reference || '').trim().toLowerCase()).filter(Boolean));
+  return arr(db.journals).filter(j => {
+    if(!j || j.entityType !== 'supplier' || j.entityId !== id || j.bounceReversal) return false;
+    if(j.relatedPaymentId && paymentIds.has(String(j.relatedPaymentId))) return false;
+    if(j.paymentId && paymentIds.has(String(j.paymentId))) return false;
+    const ref = String(j.reference || '').trim().toLowerCase();
+    const desc = String(j.description || '').trim().toLowerCase();
+    if(masterOpening > 0 && (j.isOpeningBalance === true || /opening[- ]?balance/.test(ref) || /opening[- ]?balance/.test(desc))) return false;
+    if(ref && paymentRefs.has(ref)) return false;
+    return true;
+  });
+}
+window.supplierJournalEntries = supplierJournalEntries;
+
+
 
 function bankTxSignedAmount(t){
   if(!t) return 0;
@@ -1773,8 +1797,9 @@ const supplierBalance = id => {
     .filter(p => p.supplierId === id)
     .forEach(p => { bal -= supplierPaymentAmount(p); });
 
-  /* Explicit supplier journals: debit reduces payable, credit increases it. */
-  arr(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal)
+  /* Explicit supplier journals: debit reduces payable, credit increases it.
+     Duplicate opening/payment journals are filtered centrally. */
+  supplierJournalEntries(id)
     .forEach(j => { bal += num(j.credit) - num(j.debit); });
 
   return bal;
@@ -1806,7 +1831,7 @@ function supplierLedger(id){
     .forEach(r=>rows.push({date:r.date||today(),type:'Supplier Return',ref:r.reference||r.id,desc:r.reason||'',debit:num(r.amount),credit:0,ts:2,returnId:r.id}));
   arr(db.payments).filter(p=>supplierPaymentIsActive(p)&&p.supplierId===id)
     .forEach(p=>rows.push({date:p.date||today(),type:'Payment',ref:p.reference||p.id,desc:p.paymentMode==='bank'?'Bank Payment':'Cheque Payment',debit:paymentAmount(p),credit:0,ts:3,paymentId:p.id}));
-  arr(db.journals).filter(j=>j.entityType==='supplier'&&j.entityId===id&&!j.bounceReversal)
+  supplierJournalEntries(id)
     .forEach(j=>rows.push({date:j.date||today(),type:'Journal',ref:j.reference||j.id,desc:j.description||'',debit:num(j.debit),credit:num(j.credit),ts:4,journalId:j.id}));
 
   rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || num(a.ts)-num(b.ts));
@@ -13984,10 +14009,11 @@ function viewSuppliers(){
     );
   }
   if(ui.sup.catFilter) rows = rows.filter(s => (s.categoryId || '') === ui.sup.catFilter);
+  /* Supplier table invariant: Payable = Opening + Purchases - Returns - Active Payments + Legitimate Journals. */
   const enriched = rows.map(s => Object.assign({}, s, {
     balance: supplierBalance(s.id),
     purchases: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount'),
-    paid: sum(arr(db.payments).filter(p => p.supplierId === s.id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true), 'amount'),
+    paid: arr(db.payments).filter(p => p.supplierId === s.id && supplierPaymentIsActive(p)).reduce((a, p) => a + supplierPaymentAmount(p), 0),
     aging: supplierAging(s.id)
   }));
   /* Priority queue — suppliers with overdue payables, ranked by urgency */
@@ -21984,7 +22010,8 @@ Purpose:
     let bal = s ? n(s.openingBalance) : 0;
     actualPurchases().filter(p => p.supplierId === id).forEach(p => bal += n(p.amount));
     safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected').forEach(r => bal -= n(r.amount));
-    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).forEach(p => bal -= n(paymentAmount(p)));
+    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).forEach(p => bal -= n(supplierPaymentAmount(p)));
+    supplierJournalEntries(id).forEach(j => bal += n(j.credit) - n(j.debit));
     return bal;
   }
   window.supplierBalance = supplierBalance;
@@ -22012,7 +22039,7 @@ Purpose:
     if(ob > 0) items.push({date:s.openingDate || end, amount:ob, source:'opening_balance'});
     actualPurchases().filter(p => p.supplierId === id && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
     items.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).reduce((a,p)=>a+n(paymentAmount(p)),0)
+    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).reduce((a,p)=>a+n(supplierPaymentAmount(p)),0)
       + safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.date <= end && r.status !== 'rejected').reduce((a,r)=>a+n(r.amount),0);
     const bk = (db.settings && db.settings.supplierAgingBuckets) || [30,60,90];
     const b1=n(bk[0])||30, b2=n(bk[1])||60, b3=n(bk[2])||90;

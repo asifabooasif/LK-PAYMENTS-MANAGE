@@ -1634,7 +1634,22 @@ function normalizeFinancialRecords(){
     }
   });
 }
+
 window.normalizeFinancialRecords = normalizeFinancialRecords;
+
+/* Canonical supplier-payment invariant: every active payment amount is exactly
+   the sum of its persisted components. This prevents paid amounts from being
+   accidentally interpreted as additional payable/purchase value. */
+function supplierPaymentAmount(p){
+  if(!p) return 0;
+  const party = num(p.partyAmount);
+  const own = num(p.ownAmount);
+  const bank = num(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
+  if(party || own || bank) return party + own + bank;
+  return num(p.amount);
+}
+window.supplierPaymentAmount = supplierPaymentAmount;
+
 
 function supplierOpeningSigned(s){
   if(!s) return 0;
@@ -1738,8 +1753,8 @@ const customerBalance = id => {
 
   arr(db.payments).filter(p =>
     p.type === 'customer_refund' && p.customerId === id &&
-    p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed
-  ).forEach(p => { bal += paymentAmount(p); });
+    p.status !== 'rejected' && !p.fullyReversed
+  ).forEach(p => { bal -= paymentAmount(p); });
 
   return bal;
 };
@@ -1756,7 +1771,7 @@ const supplierBalance = id => {
 
   arr(db.payments).filter(p => supplierPaymentIsActive(p))
     .filter(p => p.supplierId === id)
-    .forEach(p => { bal -= paymentAmount(p); });
+    .forEach(p => { bal -= supplierPaymentAmount(p); });
 
   /* Explicit supplier journals: debit reduces payable, credit increases it. */
   arr(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal)
@@ -3404,7 +3419,7 @@ const ACCESS_DOC_PATH   = ROOT + '/access';
 const SETTINGS_DOC_PATH = ROOT + '/settings';
 const USERS_COL_PATH    = DATA_PREFIX + 'users';
 const APP_NAME          = 'Lanka Shoe Supplier Manage';
-const APP_VER           = '14.0.0';
+const APP_VER           = '13.0.0';
 
 /* ── Firestore-synced collections ── */
 const COLLECTIONS = [
@@ -5950,7 +5965,7 @@ function confirmAndSavePayment(){
       notes: snap.bankPayment.notes || ''
     } : null,
     bankAmount: num(snap.bankAmount) || 0,
-    amount: (num(snap.bankAmount) > 0 ? num(snap.bankAmount) : (num(snap.partyAmount) + num(snap.ownAmount))),
+    amount: (num(snap.partyAmount) + num(snap.ownAmount) + num(snap.bankAmount)),
     createdAt: nowISO()
   };
   /* ── Party cheques → Issued ── */
@@ -11144,7 +11159,7 @@ function computeSupplierMetrics(supplierId){
   const s = supObj(supplierId);
   if(!s) return null;
   const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
-  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && !p.fullyReversed);
+  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true);
   const returns = arr(db.supplierReturns).filter(r => r.supplierId === supplierId);
   const totalPurchased = sum(purchases, 'amount');
   const totalPaid = sum(payments, 'amount');
@@ -13972,7 +13987,7 @@ function viewSuppliers(){
   const enriched = rows.map(s => Object.assign({}, s, {
     balance: supplierBalance(s.id),
     purchases: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount'),
-    paid: sum(arr(db.payments).filter(p => p.supplierId === s.id && !p.fullyReversed), 'amount'),
+    paid: sum(arr(db.payments).filter(p => p.supplierId === s.id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true), 'amount'),
     aging: supplierAging(s.id)
   }));
   /* Priority queue — suppliers with overdue payables, ranked by urgency */
@@ -14409,7 +14424,7 @@ function exportSuppliersCSV(){
     const bal = supplierBalance(s.id);
     const aging = supplierAging(s.id);
     const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
-    const paid = sum(arr(db.payments).filter(p => p.supplierId === s.id && !p.fullyReversed), 'amount');
+    const paid = sum(arr(db.payments).filter(p => p.supplierId === s.id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true), 'amount');
     return [
       s.name, catName(s.categoryId), s.phone || '', s.email || '', s.contact || '', s.address || '',
       num(s.creditDays || 30), num(s.creditLimit), num(s.openingBalance), s.openingDate || '',
@@ -14776,7 +14791,7 @@ SECTION 23 — SUPPLIER PAYMENT VELOCITY (avg days to pay)
 ═══════════════════════════════════════════════════════════════════════════ */
 function supplierPaymentVelocity(supplierId){
   const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
-  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && !p.fullyReversed);
+  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true);
   if(!payments.length) return { avgDays: 0, count: 0, lastDate: null };
   let totalDays = 0, count = 0;
   payments.forEach(p => {
@@ -21423,252 +21438,6 @@ window.previewPayment = function(e){
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-SECTION 9 — CONFIRM AND SAVE PAYMENT (handles both modes)
-═══════════════════════════════════════════════════════════════════════════ */
-window.confirmAndSavePayment = function(){
-  if(!canWrite()) return;
-  const snap = _pendingPaymentSnapshot;
-  if(!snap){ toast('Nothing to save (snapshot missing). Please try again.', 'error'); return; }
-  const supplier = supObj(snap.supplierId);
-  if(!supplier){ toast('Supplier not found', 'error'); return; }
-  const payment = {
-    id: uid(),
-    supplierId: snap.supplierId,
-    date: snap.date,
-    reference: snap.reference,
-    paymentMode: snap.paymentMode || 'cheques',
-    partyChequeIds: (snap.partyCheques || []).map(c => c.id),
-    partyAmount: num(snap.partyAmount) || 0,
-    ownChequeIds: (snap.ownCheques || []).map(o => o.leafId),
-    ownAmount: num(snap.ownAmount) || 0,
-    bankPayment: snap.bankPayment ? {
-      bankAccountId: snap.bankPayment.bankAccountId,
-      amount: num(snap.bankPayment.amount),
-      method: snap.bankPayment.method || 'Bank Transfer',
-      reference: snap.bankPayment.reference || '',
-      notes: snap.bankPayment.notes || ''
-    } : null,
-    bankAmount: num(snap.bankAmount) || 0,
-    amount: num(snap.total) || 0,
-    createdAt: nowISO()
-  };
-  (snap.partyCheques || []).forEach(cp => {
-    const c = arr(db.customerCheques).find(x => x.id === cp.id);
-    if(c){
-      c.status = 'Issued';
-      c.paymentId = payment.id;
-      c.issuedTo = snap.supplierId;
-      c.issuedDate = snap.date;
-    }
-  });
-  if(!Array.isArray(db.bankTransactions)) db.bankTransactions = [];
-  (snap.ownCheques || []).forEach(o => {
-    const leaf = arr(db.chequeLeaves).find(l => l.id === o.leafId);
-    if(!leaf) return;
-    leaf.status = 'Issued';
-    leaf.paymentId = payment.id;
-    leaf.date = snap.date;
-    leaf.dueDate = o.dueDate;
-    leaf.amount = o.amount;
-    leaf.payee = o.payee;
-    leaf.supplierId = snap.supplierId;
-    db.bankTransactions.push({
-      id: uid(),
-      bankAccountId: leaf.bankAccountId,
-      date: o.dueDate,
-      type: 'cheque_issued',
-      amount: o.amount,
-      reference: leaf.leafNo,
-      chequeId: leaf.id,
-      paymentId: payment.id,
-      description: 'Cheque to ' + supplier.name,
-      status: 'pending',
-      requiresApproval: true,
-      createdAt: nowISO()
-    });
-  });
-  if(payment.paymentMode === 'bank' && payment.bankPayment){
-    const bp = payment.bankPayment;
-    db.bankTransactions.push({
-      id: uid(),
-      bankAccountId: bp.bankAccountId,
-      date: snap.date,
-      type: 'withdrawal',
-      amount: num(bp.amount),
-      reference: bp.reference || payment.reference || ('PAY-' + payment.id.slice(-4)),
-      paymentId: payment.id,
-      description: 'Supplier payment to ' + supplier.name + ' (' + bp.method + ')',
-      notes: bp.notes || '',
-      createdAt: nowISO()
-    });
-  }
-  if(!Array.isArray(db.payments)) db.payments = [];
-  db.payments.push(payment);
-  db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo) || 1) + 1;
-  pushUndo({ type: 'collection_push', collection: 'payments', id: payment.id, label: 'Add payment ' + supplier.name });
-  trackVersion('payments', payment.id, 'Create', null, payment);
-  const summary = payment.paymentMode === 'bank'
-    ? 'Bank: ' + money(payment.bankAmount) + ' — ' + bankDisplayName(bankObj(payment.bankPayment.bankAccountId))
-    : ('Party: ' + money(payment.partyAmount) + ' + Own: ' + money(payment.ownAmount));
-  logAct('Add Payment', 'Payment', payment.id, snap.supplierName + ' • ' + money(payment.amount) + ' • ' + summary);
-  ui.paySelectedParty = new Set();
-  ui.payOwnRows = [];
-  ui.payBank = { bankAccountId:'', amount:0, method:'Bank Transfer', reference:'', notes:'' };
-  ui.paySupplierPreselect = '';
-  _pendingPaymentSnapshot = null;
-  save();
-  closeModal();
-  render();
-  toast('✅ Payment saved • ' + money(payment.amount), 'success');
-  if(payment.amount >= 100000) confetti();
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 10 — PAYMENT DETAIL MODAL (with bank section)
-═══════════════════════════════════════════════════════════════════════════ */
-window.showPaymentDetail = function(id){
-  const p = arr(db.payments).find(x => x.id === id);
-  if(!p) return;
-  const party = (p.partyChequeIds || []).map(cid => arr(db.customerCheques).find(c => c.id === cid)).filter(Boolean);
-  const own = (p.ownChequeIds || []).map(lid => arr(db.chequeLeaves).find(l => l.id === lid)).filter(Boolean);
-  const reversals = arr(db.journals).filter(j => j.relatedPaymentId === id && j.bounceReversal);
-  const isBank = p.paymentMode === 'bank' && p.bankPayment;
-  let body = '<div class="kpi-strip" style="margin-bottom:20px">'
-    + kpiCard('Total', moneyPlain(p.amount), '', { small: true })
-    + kpiCard('Party', moneyPlain(p.partyAmount), party.length + ' cheques', { small: true })
-    + kpiCard('Own', moneyPlain(p.ownAmount), own.length + ' leaves', { small: true })
-    + kpiCard('Bank', moneyPlain(p.bankAmount || 0), isBank ? 'Direct payment' : '—', { small: true })
-    + '</div>';
-  body += '<div class="detail-row"><span class="dr-l">Supplier</span><span class="dr-v">' + esc(supName(p.supplierId)) + '</span></div>'
-    + '<div class="detail-row"><span class="dr-l">Date</span><span class="dr-v">' + dateFmt(p.date) + '</span></div>'
-    + '<div class="detail-row"><span class="dr-l">Payment Mode</span><span class="dr-v">'
-    + (isBank ? '🏦 Direct Bank Transfer' : '🧾 Cheques') + '</span></div>'
-    + '<div class="detail-row"><span class="dr-l">Amount in Words</span><span class="dr-v" style="font-size:12px">' + esc(amountInWords(p.amount)) + '</span></div>'
-    + '<div class="detail-row"><span class="dr-l">Created</span><span class="dr-v">' + dateTimeFmt(p.createdAt) + '</span></div>';
-  if(isBank){
-    const bp = p.bankPayment;
-    const bankAcc = bankObj(bp.bankAccountId);
-    body += '<div class="section-title">🏦 Bank Payment Details</div>'
-      + '<div style="padding:14px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)">'
-      + '<div class="detail-row"><span class="dr-l">Bank Account</span><span class="dr-v">' + bankLogo(bankAcc ? bankAcc.bankName : '') + ' ' + esc(bankDisplayName(bankAcc)) + '</span></div>'
-      + '<div class="detail-row"><span class="dr-l">Method</span><span class="dr-v">' + esc(bp.method || '—') + '</span></div>'
-      + '<div class="detail-row"><span class="dr-l">Reference</span><span class="dr-v mono">' + esc(bp.reference || '—') + '</span></div>'
-      + '<div class="detail-row"><span class="dr-l">Amount</span><span class="dr-v"><strong>' + moneyPlain(bp.amount) + '</strong></span></div>'
-      + (bp.notes ? '<div class="detail-row"><span class="dr-l">Notes</span><span class="dr-v">' + esc(bp.notes) + '</span></div>' : '')
-      + '</div>';
-  }
-  if(party.length){
-    body += '<div class="section-title">Party Cheques</div>'
-      + '<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr>'
-      + '<th>Cheque</th><th>Customer</th><th class="num">Amount</th><th>Status</th>'
-      + '</tr></thead><tbody>'
-      + party.map(c =>
-        '<tr data-action="cheque-detail" data-id="' + c.id + '">'
-        + '<td class="mono">' + esc(c.chequeNo) + '</td>'
-        + '<td>' + esc(c.customerName) + '</td>'
-        + '<td class="num">' + moneyPlain(c.amount) + '</td>'
-        + '<td>' + statusBadge(c.status) + '</td></tr>'
-      ).join('')
-      + '</tbody></table></div>';
-  }
-  if(own.length){
-    body += '<div class="section-title">Own Cheques</div>'
-      + '<div class="table-wrap" style="margin-bottom:14px"><table><thead><tr>'
-      + '<th>Leaf</th><th>Bank</th><th class="num">Amount</th><th>Due</th><th>Status</th>'
-      + '</tr></thead><tbody>'
-      + own.map(l =>
-        '<tr><td class="mono">' + esc(l.leafNo) + '</td>'
-        + '<td>' + esc(l.bankName) + '</td>'
-        + '<td class="num">' + moneyPlain(l.amount) + '</td>'
-        + '<td>' + dateFmt(l.dueDate) + '</td>'
-        + '<td>' + statusBadge(l.status) + '</td></tr>'
-      ).join('')
-      + '</tbody></table></div>';
-  }
-  if(reversals.length){
-    body += '<div class="section-title">Bounce Reversals</div>'
-      + reversals.map(r =>
-        '<div class="hist-item" style="background:linear-gradient(90deg,rgba(245,158,11,.08),transparent)">'
-        + '<div class="hist-icon bounce">🚫</div>'
-        + '<div class="hist-body"><div class="hist-title">' + esc(r.reference) + ' <span class="rev-badge">' + moneyPlain(r.reversalAmount) + '</span></div>'
-        + '<div class="hist-desc">' + esc(r.description) + '</div></div></div>'
-      ).join('');
-  }
-  openModal('💸 Payment — ' + esc(p.reference || ''),
-    body
-    + '<div class="form-actions">'
-    + '<button class="btn" onclick="closeModal();setTimeout(()=>showPaymentVoucher(\'' + id + '\'),120)">👁 Payment Voucher</button>'
-    + '<button class="btn" onclick="showVersionHistory(\'payments\',\'' + id + '\',\'' + esc(p.reference || '').replace(/'/g, "\\'") + '\')">📜 History</button>'
-    + (can('delete') ? '<button class="btn danger" onclick="closeModal();deletePayment(\'' + id + '\')">🗑 Delete</button>' : '')
-    + '<button class="btn primary" data-action="close-modal">Close</button>'
-    + '</div>', 'wide');
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 11 — DELETE PAYMENT (also removes bank txns)
-═══════════════════════════════════════════════════════════════════════════ */
-window.deletePayment = function(id){
-  if(!canWrite()) return;
-  if(!confirm('Move payment to Trash? Party cheques return to In Hand, own leaves become Available, bank deductions are reversed.')) return;
-  const p = arr(db.payments).find(x => x.id === id);
-  if(!p) return;
-  (p.partyChequeIds || []).forEach(cid => {
-    const c = arr(db.customerCheques).find(x => x.id === cid);
-    if(c){
-      c.status = 'In Hand';
-      delete c.paymentId;
-      delete c.issuedTo;
-      delete c.issuedDate;
-    }
-  });
-  (p.ownChequeIds || []).forEach(lid => {
-    const l = arr(db.chequeLeaves).find(x => x.id === lid);
-    if(l){
-      l.status = 'Available';
-      l.paymentId = null;
-      l.date = null;
-      l.dueDate = null;
-      l.amount = 0;
-      l.payee = '';
-      l.supplierId = null;
-    }
-  });
-  db.bankTransactions = arr(db.bankTransactions).filter(t => t.paymentId !== id);
-  if(softDelete('payments', id, supName(p.supplierId))){
-    save();
-    render();
-    toast('Moved to Trash — bank balance updated', 'success');
-  }
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 12 — PAYMENT TABLE (with Bank column)
-═══════════════════════════════════════════════════════════════════════════ */
-window.tablePay = function(){
-  const rows = arr(db.payments).sort((a, b) => a.date < b.date ? 1 : -1);
-  const total = sum(rows, 'amount');
-  return '<div class="table-wrap"><table><thead><tr>'
-    + '<th>Date</th><th>Supplier</th><th>Ref</th>'
-    + '<th class="num">Party</th><th class="num">Own</th><th class="num">Bank</th><th class="num">Total</th><th>Status</th>'
-    + '</tr></thead><tbody>'
-    + (rows.length ? rows.map(r =>
-      '<tr data-action="payment-detail" data-id="' + r.id + '" class="' + (r.fullyReversed ? 'rev-row' : '') + '">'
-      + '<td>' + dateFmt(r.date) + '</td>'
-      + '<td><strong>' + esc(supName(r.supplierId)) + '</strong></td>'
-      + '<td class="mono">' + esc(r.reference || '—') + '</td>'
-      + '<td class="num">' + moneyPlain(r.partyAmount) + '</td>'
-      + '<td class="num">' + moneyPlain(r.ownAmount) + '</td>'
-      + '<td class="num">' + moneyPlain(r.bankAmount || 0) + '</td>'
-      + '<td class="num"><strong>' + moneyPlain(r.amount) + '</strong></td>'
-      + '<td>' + (r.fullyReversed ? '<span class="rev-badge">⚠ Reversed</span>' : '<span class="badge green">Active</span>') + '</td>'
-      + '</tr>'
-    ).join('') : emptyRow(8, 'No payments yet'))
-    + '</tbody>'
-    + (rows.length ? '<tfoot><tr><td colspan="6">Total</td><td class="num">' + moneyPlain(total) + '</td><td></td></tr></tfoot>' : '')
-    + '</table></div>';
-};
-
-/* ═══════════════════════════════════════════════════════════════════════════
 SECTION 13 — GLOBAL SEARCH PATCH (include account name)
 ═══════════════════════════════════════════════════════════════════════════ */
 (function patchGlobalSearchForAccountName(){
@@ -22212,48 +21981,38 @@ Purpose:
   /* ── CORRECT BALANCE ENGINE ───────────────────────────────────────────── */
   function correctedSupplierBalance(id){
     const s = safeArr(db.suppliers).find(x => x.id === id);
-    if(!s) return 0;
-    const type = String(s.openingBalanceType || 'payable').toLowerCase();
-    let bal = ['debit','receivable','negative','dr','credit'].includes(type) && type !== 'payable' ? -n(s.openingBalance) : n(s.openingBalance);
-    actualPurchases().filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled')
-      .forEach(p => bal += n(p.amount));
-    safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected' && r.status !== 'cancelled')
-      .forEach(r => bal -= n(r.amount));
-    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && p.status !== 'Cancelled' && !p.fullyReversed && p.reversed !== true)
-      .forEach(p => bal -= (typeof paymentAmount === 'function' ? paymentAmount(p) : n(p.amount)));
-    safeArr(db.journals).filter(j => j.entityType === 'supplier' && j.entityId === id && !j.bounceReversal)
-      .forEach(j => bal += n(j.credit) - n(j.debit));
+    let bal = s ? n(s.openingBalance) : 0;
+    actualPurchases().filter(p => p.supplierId === id).forEach(p => bal += n(p.amount));
+    safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected').forEach(r => bal -= n(r.amount));
+    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).forEach(p => bal -= n(paymentAmount(p)));
     return bal;
   }
-  window.supplierBalance = correctedSupplierBalance;
+  window.supplierBalance = supplierBalance;
 
   function correctedCustomerBalance(id){
     const c = safeArr(db.customers).find(x => x.id === id);
-    if(!c) return 0;
-    const opening = String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance);
-    let bal = opening;
-    safeArr(db.receipts).filter(r => r.customerId === id && r.status !== 'rejected' && r.status !== 'cancelled')
-      .forEach(r => bal -= n(r.amount));
-    safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced')
-      .forEach(q => bal += typeof chequeRemaining === 'function' ? n(chequeRemaining(q.id)) : n(q.amount));
-    safeArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed)
-      .forEach(p => bal += (typeof paymentAmount === 'function' ? paymentAmount(p) : n(p.amount)));
-    safeArr(db.journals).filter(j => j.entityType === 'customer' && j.entityId === id && !j.bounceReversal)
-      .forEach(j => bal += n(j.debit) - n(j.credit));
+    let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance)) : 0;
+    /* Opening balance is kept separate from cheque activity. The existing
+       cheque model treats bounced cheque amounts as money owed to the shop. */
+    safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
+      if(typeof chequeRemaining === 'function') bal += n(chequeRemaining(q.id));
+      else bal += n(q.amount);
+    });
+    safeArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && p.status !== 'rejected').forEach(p => bal -= n(p.amount));
     return bal;
   }
-  window.customerBalance = correctedCustomerBalance;
+  window.customerBalance = customerBalance;
 
   function correctedSupplierAging(id, asOf){
     const s = safeArr(db.suppliers).find(x => x.id === id);
     if(!s) return {current:0,d30:0,d60:0,d90:0,total:0};
     const end = asOf || todaySafe();
     const items = [];
-    const ob = n(s.openingBalance);
+    const ob = String(s.openingBalanceType || 'payable').toLowerCase() === 'payable' ? n(s.openingBalance) : -n(s.openingBalance);
     if(ob > 0) items.push({date:s.openingDate || end, amount:ob, source:'opening_balance'});
     actualPurchases().filter(p => p.supplierId === id && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
     items.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && !p.fullyReversed).reduce((a,p)=>a+(typeof paymentAmount==='function'?paymentAmount(p):n(p.amount)),0)
+    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).reduce((a,p)=>a+n(paymentAmount(p)),0)
       + safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.date <= end && r.status !== 'rejected').reduce((a,r)=>a+n(r.amount),0);
     const bk = (db.settings && db.settings.supplierAgingBuckets) || [30,60,90];
     const b1=n(bk[0])||30, b2=n(bk[1])||60, b3=n(bk[2])||90;
@@ -22308,7 +22067,7 @@ Purpose:
     if(n(s.openingBalance)!==0) rows.push({date:s.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:0,credit:n(s.openingBalance),balance:n(s.openingBalance),isOpeningBalance:true});
     actualPurchases().filter(p=>p.supplierId===id).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Purchase',ref:p.invoiceNo||p.id,debit:0,credit:n(p.amount),balance:0,purchaseId:p.id}));
     safeArr(db.supplierReturns).filter(r=>r.supplierId===id&&r.status!=='rejected').forEach(r=>rows.push({date:r.date||todaySafe(),type:'Supplier Return',ref:r.reference||r.id,debit:n(r.amount),credit:0,balance:0,returnId:r.id}));
-    safeArr(db.payments).filter(p=>p.supplierId===id&&p.status!=='rejected'&&!p.fullyReversed).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Payment',ref:p.reference||p.id,debit:(typeof paymentAmount==='function'?paymentAmount(p):n(p.amount)),credit:0,balance:0,paymentId:p.id}));
+    safeArr(db.payments).filter(p=>p.supplierId===id&&p.status!=='rejected'&&!p.fullyReversed).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Payment',ref:p.reference||p.id,debit:n(paymentAmount(p)),credit:0,balance:0,paymentId:p.id}));
     safeArr(db.journals).filter(j=>j.entityType==='supplier'&&j.entityId===id&&!j.bounceReversal).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
     rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
     let bal=0; rows.forEach(r=>{bal += n(r.credit)-n(r.debit);r.balance=bal;});
@@ -23259,32 +23018,6 @@ console.log('%c═════════════════════�
 /* ═══════════════════════════════════════════════════════════════════════════
 END OF PART 18 — APP COMPLETE
 ═══════════════════════════════════════════════════════════════════════════ */
-</script>
-
-<script>
-/* LANKA SHOE v14 — FINAL INTEGRITY GUARD
-   Canonicalizes financial amounts and verifies critical function links after boot. */
-(function finalIntegrityGuard(){
-  'use strict';
-  window.__LANKA_FINAL_INTEGRITY = { version:'14.0.0', checks:[] };
-  function check(name, ok){ window.__LANKA_FINAL_INTEGRITY.checks.push({name:name,ok:!!ok}); if(!ok) console.error('[INTEGRITY] FAILED:',name); }
-  function run(){
-    check('Firebase project configuration', typeof firebaseConfig !== 'undefined' && firebaseConfig.projectId === 'lk-payments-manage');
-    check('Google Sign-In handler', typeof window.handleSignIn === 'function' || typeof handleSignIn === 'function');
-    check('Customer save link', typeof window.saveCustomer === 'function');
-    check('Supplier save link', typeof window.saveSupplier === 'function');
-    check('Purchase save link', typeof window.savePurchase === 'function');
-    check('Payment save link', typeof window.confirmAndSavePayment === 'function');
-    check('Bank balance engine', typeof window.bankBalance === 'function' || typeof bankBalance === 'function');
-    check('Supplier balance engine', typeof window.supplierBalance === 'function');
-    check('Customer balance engine', typeof window.customerBalance === 'function');
-    check('Supplier ledger link', typeof window.supplierLedger === 'function');
-    check('Customer ledger link', typeof window.customerLedger === 'function');
-    check('Actual purchase filter', typeof window.actualPurchases === 'function');
-    check('Payment amount normalizer', typeof window.paymentAmount === 'function');
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(run,0),{once:true}); else setTimeout(run,0);
-})();
 </script>
 </body>
 </html>

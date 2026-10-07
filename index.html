@@ -3911,7 +3911,7 @@ function runQA() {
   assert('CONFIG loaded', CONFIG.adminEmail === 'asifabooasif@gmail.com');
   assert('COLLECTIONS > 40', COLLECTIONS.length > 40);
   assert('esc escapes quote', esc("O'Brien") === 'O&#39;Brien');
-  assert('esc escapes slash', esc('</script>') === '&lt;&#47;script&gt;');
+  assert('esc escapes slash', esc('<\/script>') === '&lt;&#47;script&gt;');
   assert('num parses', num('12.34') === 12.34);
   assert('num handles NaN', num('x') === 0);
 

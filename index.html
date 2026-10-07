@@ -469,6 +469,130 @@ tfoot td { padding: 11px 14px; font-weight: 700; background: var(--surface-2); b
   .acct-row .acct-type, .acct-row .acct-bal { display: none; }
   .acct-row.head { display: none; }
 }
+/* ════════════════════════════════════════════════════════════════════
+   PHASE 3 — MASTER DATA
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Customer rating badges */
+.rating-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: var(--r-full);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .03em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.rating-badge.platinum {
+  background: linear-gradient(135deg, #e5e4e2 0%, #b8b8b8 100%);
+  color: #1a1a1a; border: 1px solid #a0a0a0;
+}
+.rating-badge.gold {
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
+  color: #78350f; border: 1px solid #d97706;
+}
+.rating-badge.silver {
+  background: linear-gradient(135deg, #f0f0f0 0%, #c0c0c0 100%);
+  color: #374151; border: 1px solid #9ca3af;
+}
+.rating-badge.bronze {
+  background: linear-gradient(135deg, #fed7aa 0%, #c2410c 100%);
+  color: #7c2d12; border: 1px solid #9a3412;
+}
+.rating-badge.new {
+  background: var(--surface-3); color: var(--text-3);
+  border: 1px solid var(--border);
+}
+
+/* Reliability pill (kept from v15 behaviour) */
+.reliability {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: var(--r-full);
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.reliability.trusted { background: var(--green-soft); color: var(--green); }
+.reliability.watch   { background: var(--amber-soft); color: var(--amber); }
+.reliability.risky   { background: var(--red-soft);   color: var(--red); }
+.reliability.new     { background: var(--surface-3);  color: var(--text-3); }
+
+/* Master data list table */
+.md-table tbody tr { cursor: pointer; }
+.md-table .actions-cell { white-space: nowrap; text-align: right; }
+.md-table .actions-cell .btn { padding: 3px 7px; font-size: 11px; }
+
+/* Master data filter bar (consistent across all master views) */
+.md-filter {
+  display: grid; grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 10px; padding: 14px; margin-bottom: 14px;
+  background: var(--surface-2); border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+}
+@media (max-width: 840px) { .md-filter { grid-template-columns: 1fr; } }
+
+/* Category colour dot */
+.cat-dot {
+  display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* Bulk selection bar */
+.bulk-bar {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--text); color: var(--surface);
+  padding: 10px 18px; border-radius: var(--r-full);
+  box-shadow: var(--shadow-lg); display: none;
+  align-items: center; gap: 12px; font-size: 12.5px;
+  z-index: 80;
+}
+.bulk-bar.on { display: flex; }
+.bulk-bar .btn {
+  background: rgba(255,255,255,.12); color: #fff;
+  border-color: transparent; padding: 5px 12px; font-size: 11.5px;
+}
+.bulk-bar .btn:hover { background: rgba(255,255,255,.22); }
+.bulk-bar .btn.danger { background: var(--red); color: #fff; }
+
+/* Detail modal tab strip (used by customer & supplier detail) */
+.detail-tabs {
+  display: flex; gap: 4px; border-bottom: 1px solid var(--border);
+  margin-bottom: 18px; overflow-x: auto;
+}
+.detail-tab {
+  padding: 10px 16px; font-size: 12.5px; font-weight: 500;
+  color: var(--text-3); cursor: pointer; white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.detail-tab.active {
+  color: var(--accent); border-bottom-color: var(--accent); font-weight: 600;
+}
+.detail-tab:hover:not(.active) { color: var(--text); }
+
+/* Info rows inside detail modal */
+.info-row {
+  display: grid; grid-template-columns: 130px 1fr; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border-2);
+  font-size: 12.5px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--text-3); font-weight: 500; }
+.info-value { color: var(--text); word-break: break-word; }
+
+/* KPI mini-grid for customer detail */
+.kpi-mini-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin-bottom: 16px;
+}
+.kpi-mini {
+  padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--surface-2);
+}
+.kpi-mini .lbl {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-3); font-weight: 700;
+}
+.kpi-mini .val {
+  font-size: 17px; font-weight: 700; margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
 </style>
 </head>
 <body>
@@ -577,25 +701,34 @@ const CONFIG = {
 };
 
 /* All Firestore collections. Phase 2 adds 4 accounting collections at the top. */
-const COLLECTIONS = [
+= [
   /* ── Accounting (new in Phase 2) ── */
   'accounts','journalEntries','periods','numberSequences',
 
-  /* ── Existing (preserved from Phase 1) ── */
+  const COLLECTIONS = [
+  /* ── Accounting ── */
+  'accounts','journalEntries','periods','numberSequences',
+
+  /* ── Master data ── */
   'customers','customerNotes','customerContactLog',
   'suppliers','supplierReturns',
+  'categories',
+  'warehouses','salespersons','priceLists',
+
+  /* ── Transactions ── */
   'purchases','receipts',
   'customerCheques','chequeEndorsements','chequeSplits','chequeSettlements',
   'chequeBooks','chequeLeaves',
   'payments','recurringCheques',
   'bankAccounts','bankTransactions','bankFees','bankTransfers',
-  'expenses','journals','categories',
+  'expenses','journals',
+
+  /* ── System ── */
   'activityLog','auditTrail','loginHistory',
   'savedReports','trash','drafts','todos','recentlyViewed',
   'kpiPrefs','recordTags','versionHistory',
   'budgets','budgetHistory','archive','stickyNotes','aiHistory'
 ];
-
 /* Accounting constants used across §9–§12. */
 const ACCOUNT_TYPES = ['asset', 'liability', 'equity', 'income', 'expense'];
 
@@ -1531,12 +1664,471 @@ async function seedChartOfAccountsIfEmpty() {
 
   dbg.ok('Chart of Accounts seeded (' + created.length + ' accounts)');
 }
-
 function ensureStateShape() {
   if (!state.settings) state.settings = defaultSettings();
   COLLECTIONS.forEach(c => {
     if (!Array.isArray(state.data[c])) state.data[c] = [];
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE 3 — MASTER DATA ENGINES
+   Pure functions. No DOM. No side effects.
+   These are the single source of truth for customer/supplier data shape.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Entity lookup helpers
+─────────────────────────────────────────────────────────────────────────── */
+function allCustomers()    { return arr(state.data.customers); }
+function allSuppliers()    { return arr(state.data.suppliers); }
+function allCategories()   { return arr(state.data.categories); }
+function allWarehouses()   { return arr(state.data.warehouses); }
+function allSalespersons() { return arr(state.data.salespersons); }
+
+function custObj(id)     { return allCustomers().find(c => c.id === id) || null; }
+function supObj(id)      { return allSuppliers().find(s => s.id === id) || null; }
+function catObj(id)      { return allCategories().find(c => c.id === id) || null; }
+function warehouseObj(id){ return allWarehouses().find(w => w.id === id) || null; }
+function salespersonObj(id){ return allSalespersons().find(p => p.id === id) || null; }
+
+function custName(id)      { const c = custObj(id); return c ? c.name : '—'; }
+function supName(id)       { const s = supObj(id); return s ? s.name : '—'; }
+function catName(id)       { const c = catObj(id); return c ? c.name : '—'; }
+function warehouseName(id) { const w = warehouseObj(id); return w ? w.name : '—'; }
+function salespersonName(id){ const p = salespersonObj(id); return p ? p.name : '—'; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Factory functions — canonical document shape
+   Missing fields fall back to safe defaults so v15 data migrates cleanly.
+─────────────────────────────────────────────────────────────────────────── */
+function makeCustomer(seed) {
+  seed = seed || {};
+  return {
+    id: seed.id || uid(),
+    name: String(seed.name || ''),
+    phone: String(seed.phone || ''),
+    email: String(seed.email || ''),
+    business: String(seed.business || ''),
+    address: String(seed.address || ''),
+    notes: String(seed.notes || ''),
+
+    /* Financial */
+    chequeLimit: num(seed.chequeLimit),
+    openingBalance: num(seed.openingBalance),
+    openingDate: seed.openingDate || null,
+    openingBalanceType: seed.openingBalanceType || 'receivable', /* 'receivable' | 'credit' */
+
+    /* Risk */
+    blacklisted: !!seed.blacklisted,
+    blacklistedAt: seed.blacklistedAt || null,
+    blacklistedBy: seed.blacklistedBy || null,
+    blacklistReason: seed.blacklistReason || '',
+
+    /* Defaults */
+    salespersonId: seed.salespersonId || null,
+    priceListId: seed.priceListId || null,
+    defaultWarehouseId: seed.defaultWarehouseId || null,
+
+    /* Envelope */
+    createdAt: seed.createdAt || nowISO(),
+    createdBy: seed.createdBy || (state.user?.email || 'system'),
+    updatedAt: seed.updatedAt || nowISO(),
+    updatedBy: seed.updatedBy || (state.user?.email || 'system')
+  };
+}
+
+function makeSupplier(seed) {
+  seed = seed || {};
+  return {
+    id: seed.id || uid(),
+    name: String(seed.name || ''),
+    categoryId: seed.categoryId || null,
+    phone: String(seed.phone || ''),
+    email: String(seed.email || ''),
+    contact: String(seed.contact || ''),
+    address: String(seed.address || ''),
+    notes: String(seed.notes || ''),
+
+    /* Financial */
+    creditDays: num(seed.creditDays) || num(state.settings?.defaults?.supplierCreditDays) || 30,
+    creditLimit: num(seed.creditLimit),
+    openingBalance: num(seed.openingBalance),
+    openingDate: seed.openingDate || null,
+    openingBalanceType: seed.openingBalanceType || 'payable', /* 'payable' | 'advance' */
+
+    /* Defaults */
+    priceListId: seed.priceListId || null,
+    defaultWarehouseId: seed.defaultWarehouseId || null,
+
+    /* Tax */
+    whtApplicable: !!seed.whtApplicable,
+    whtRate: num(seed.whtRate),
+
+    /* Envelope */
+    createdAt: seed.createdAt || nowISO(),
+    createdBy: seed.createdBy || (state.user?.email || 'system'),
+    updatedAt: seed.updatedAt || nowISO(),
+    updatedBy: seed.updatedBy || (state.user?.email || 'system')
+  };
+}
+
+function makeCategory(seed) {
+  seed = seed || {};
+  return {
+    id: seed.id || uid(),
+    name: String(seed.name || ''),
+    color: seed.color || '#7c3aed',
+    prefix: String(seed.prefix || '').toUpperCase().slice(0, 6),
+    description: String(seed.description || ''),
+    active: seed.active !== false,
+    createdAt: seed.createdAt || nowISO(),
+    createdBy: seed.createdBy || (state.user?.email || 'system'),
+    updatedAt: seed.updatedAt || nowISO(),
+    updatedBy: seed.updatedBy || (state.user?.email || 'system')
+  };
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Cheque summary — used by customer views and rating engine
+─────────────────────────────────────────────────────────────────────────── */
+function customerChequeSummary(customerId) {
+  const all = arr(state.data.customerCheques).filter(c => c.customerId === customerId);
+  const inHand  = all.filter(c => c.status === 'In Hand');
+  const issued  = all.filter(c => c.status === 'Issued');
+  const cleared = all.filter(c => c.status === 'Cleared');
+  const bounced = all.filter(c => c.status === 'Bounced');
+  const stopped = all.filter(c => c.status === 'Stopped');
+
+  const v = list => sum(list, 'amount');
+
+  return {
+    total:   { count: all.length,     value: v(all) },
+    inHand:  { count: inHand.length,  value: v(inHand) },
+    issued:  { count: issued.length,  value: v(issued) },
+    cleared: { count: cleared.length, value: v(cleared) },
+    bounced: { count: bounced.length, value: v(bounced) },
+    stopped: { count: stopped.length, value: v(stopped) },
+    all,
+    byStatus: { inHand, issued, cleared, bounced, stopped }
+  };
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Reliability — v15 badge preserved
+─────────────────────────────────────────────────────────────────────────── */
+function customerReliability(customerId) {
+  const s = customerChequeSummary(customerId);
+  const resolved = s.cleared.count + s.bounced.count;
+  if (resolved < 3) return { score: 0, label: 'New', cls: 'new' };
+  const pct = (s.cleared.count / resolved) * 100;
+  if (pct >= 90) return { score: pct, label: 'Trusted', cls: 'trusted' };
+  if (pct >= 70) return { score: pct, label: 'Watch', cls: 'watch' };
+  return { score: pct, label: 'Risky', cls: 'risky' };
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Rating engine — Platinum / Gold / Silver / Bronze / New
+   Weighted score: 60% clear rate + 20% volume + 20% tenure.
+─────────────────────────────────────────────────────────────────────────── */
+function computeCustomerRating(customerId) {
+  const cheques = arr(state.data.customerCheques).filter(q => q.customerId === customerId);
+  const total = cheques.length;
+
+  if (total < 3) {
+    return {
+      tier: 'new', score: 0, label: 'New',
+      clearRate: 0, cheques: total, cleared: 0, bounced: 0,
+      totalCleared: 0, monthsActive: 0,
+      reason: 'Fewer than 3 cheques — rating not yet available'
+    };
+  }
+
+  const clearedList = cheques.filter(q => q.status === 'Cleared');
+  const bouncedList = cheques.filter(q => q.status === 'Bounced');
+  const cleared = clearedList.length;
+  const bounced = bouncedList.length;
+  const resolved = cleared + bounced;
+
+  if (resolved === 0) {
+    return {
+      tier: 'new', score: 0, label: 'New',
+      clearRate: 0, cheques: total, cleared: 0, bounced: 0,
+      totalCleared: 0, monthsActive: 0,
+      reason: 'No resolved cheques yet'
+    };
+  }
+
+  const clearRate = (cleared / resolved) * 100;
+  const totalCleared = sum(clearedList, 'amount');
+
+  const dates = cheques.map(q => q.date).filter(Boolean).sort();
+  const firstDate = dates[0];
+  const monthsActive = firstDate
+    ? Math.max(1, Math.round(diffDays(firstDate, today()) / 30))
+    : 1;
+
+  /* Weighted score */
+  const rateComponent   = clearRate;                                     /* 0–100 */
+  const volumeComponent = Math.min(100, (totalCleared / 500000) * 100);  /* cap 500k */
+  const tenureComponent = Math.min(100, (monthsActive / 12) * 100);      /* cap 12 mo */
+  const score = Math.round(
+    rateComponent * 0.6 + volumeComponent * 0.2 + tenureComponent * 0.2
+  );
+
+  /* Tier assignment — clear-rate gates + volume/tenure gates */
+  let tier, label;
+  if (clearRate >= 95 && total >= 20 && monthsActive >= 12) {
+    tier = 'platinum'; label = 'Platinum';
+  } else if (clearRate >= 85 && total >= 10 && monthsActive >= 6) {
+    tier = 'gold'; label = 'Gold';
+  } else if (clearRate >= 70 && total >= 5) {
+    tier = 'silver'; label = 'Silver';
+  } else {
+    tier = 'bronze'; label = 'Bronze';
+  }
+
+  return {
+    tier, score, label,
+    clearRate: Math.round(clearRate * 10) / 10,
+    cheques: total,
+    cleared, bounced,
+    totalCleared,
+    monthsActive,
+    reason: clearRate.toFixed(1) + '% cleared • ' +
+            money0(totalCleared) + ' lifetime • ' +
+            monthsActive + ' months active'
+  };
+}
+
+function ratingBadge(rating) {
+  if (!rating) return '';
+  const ico = {
+    platinum: '💎', gold: '🥇', silver: '🥈', bronze: '🥉', new: '•'
+  }[rating.tier] || '';
+  return '<span class="rating-badge ' + rating.tier + '">' +
+    ico + ' ' + esc(rating.label) +
+  '</span>';
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Aging engines — v15 logic preserved, works from raw collections
+─────────────────────────────────────────────────────────────────────────── */
+function customerAging(customerId, asOf) {
+  asOf = asOf || today();
+
+  let current = 0, d30 = 0, d60 = 0, d90 = 0, count = 0;
+
+  arr(state.data.customerCheques)
+    .filter(q => q.customerId === customerId)
+    .filter(q => q.status === 'Bounced')
+    .filter(q => !q.bouncedDate || q.bouncedDate <= asOf)
+    .forEach(q => {
+      const settled = sum(
+        arr(state.data.chequeSettlements).filter(s => s.chequeId === q.id),
+        'amount'
+      );
+      const remaining = Math.max(0, num(q.amount) - settled);
+      if (remaining <= 0.005) return;
+
+      count++;
+      const bounceDate = q.bouncedDate || q.date || asOf;
+      const age = Math.max(0, Math.round(diffDays(bounceDate, asOf)));
+
+      if (age <= 30)      current += remaining;
+      else if (age <= 60) d30 += remaining;
+      else if (age <= 90) d60 += remaining;
+      else                d90 += remaining;
+    });
+
+  return {
+    current, d30, d60, d90,
+    total: current + d30 + d60 + d90,
+    bounced: count
+  };
+}
+
+function supplierAging(supplierId, asOf) {
+  asOf = asOf || today();
+  const s = supObj(supplierId);
+  if (!s) return { current: 0, d30: 0, d60: 0, d90: 0, total: 0 };
+
+  /* Build a list of debits (what we owe) */
+  const debits = [];
+
+  const ob = num(s.openingBalance);
+  if (ob > 0) {
+    debits.push({
+      date: s.openingDate || asOf,
+      amount: ob,
+      source: 'opening'
+    });
+  }
+
+  arr(state.data.purchases)
+    .filter(p => p.supplierId === supplierId)
+    .filter(p => !['rejected','cancelled'].includes(String(p.status || '').toLowerCase()))
+    .filter(p => !p.isOpeningBalance && p.transactionType !== 'opening_balance')
+    .filter(p => !p.date || p.date <= asOf)
+    .forEach(p => {
+      debits.push({
+        date: p.date || asOf,
+        amount: num(p.amount),
+        source: 'purchase',
+        id: p.id
+      });
+    });
+
+  /* Credits = what we've paid or returned */
+  let credits = 0;
+
+  arr(state.data.supplierReturns)
+    .filter(r => r.supplierId === supplierId)
+    .filter(r => !['rejected','cancelled'].includes(String(r.status || '').toLowerCase()))
+    .filter(r => !r.date || r.date <= asOf)
+    .forEach(r => { credits += num(r.amount); });
+
+  arr(state.data.payments)
+    .filter(p => p.supplierId === supplierId)
+    .filter(p => !p.fullyReversed)
+    .filter(p => !['rejected','cancelled','void'].includes(String(p.status || '').toLowerCase()))
+    .filter(p => !p.date || p.date <= asOf)
+    .forEach(p => { credits += num(p.amount); });
+
+  /* Apply credits oldest-first (FIFO) */
+  debits.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  const bk = state.settings?.defaults?.agingBuckets || [30, 60, 90];
+  const b1 = Math.max(1, num(bk[0]) || 30);
+  const b2 = Math.max(b1, num(bk[1]) || 60);
+  const b3 = Math.max(b2, num(bk[2]) || 90);
+  const creditDays = num(s.creditDays) || 30;
+
+  let current = 0, d30 = 0, d60 = 0, d90 = 0;
+
+  debits.forEach(item => {
+    if (item.amount <= 0) return;
+    if (credits > 0) {
+      const used = Math.min(credits, item.amount);
+      item.amount -= used;
+      credits -= used;
+    }
+    if (item.amount <= 0.005) return;
+
+    const age = Math.max(0, Math.round(diffDays(item.date, asOf)));
+    const effectiveAge = Math.max(0, age - creditDays);
+
+    if (effectiveAge <= b1)      current += item.amount;
+    else if (effectiveAge <= b2) d30 += item.amount;
+    else if (effectiveAge <= b3) d60 += item.amount;
+    else                         d90 += item.amount;
+  });
+
+  return {
+    current, d30, d60, d90,
+    total: current + d30 + d60 + d90
+  };
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Balance engines — v15 logic preserved
+─────────────────────────────────────────────────────────────────────────── */
+function customerBalance(customerId) {
+  const c = custObj(customerId);
+  if (!c) return 0;
+
+  let bal = 0;
+
+  /* Opening balance */
+  const ob = Math.abs(num(c.openingBalance));
+  if (c.openingBalanceType === 'credit' || c.openingBalanceType === 'negative') {
+    bal -= ob;
+  } else {
+    bal += ob;
+  }
+
+  /* Receipts reduce debt */
+  arr(state.data.receipts)
+    .filter(r => r.customerId === customerId)
+    .filter(r => !['rejected','cancelled'].includes(String(r.status || '').toLowerCase()))
+    .forEach(r => { bal -= num(r.amount); });
+
+  /* Bounced cheques add back */
+  arr(state.data.customerCheques)
+    .filter(q => q.customerId === customerId)
+    .filter(q => q.status === 'Bounced')
+    .forEach(q => {
+      const settled = sum(
+        arr(state.data.chequeSettlements).filter(s => s.chequeId === q.id),
+        'amount'
+      );
+      bal += Math.max(0, num(q.amount) - settled);
+    });
+
+  /* Customer refunds (payments of type customer_refund) */
+  arr(state.data.payments)
+    .filter(p => p.type === 'customer_refund' && p.customerId === customerId)
+    .filter(p => !['rejected','cancelled','void'].includes(String(p.status || '').toLowerCase()))
+    .forEach(p => { bal -= num(p.amount); });
+
+  return bal;
+}
+
+function supplierBalance(supplierId) {
+  const s = supObj(supplierId);
+  if (!s) return 0;
+
+  let bal = 0;
+
+  /* Opening */
+  const ob = Math.abs(num(s.openingBalance));
+  if (s.openingBalanceType === 'advance' || s.openingBalanceType === 'debit') {
+    bal -= ob;
+  } else {
+    bal += ob;
+  }
+
+  /* Purchases add */
+  arr(state.data.purchases)
+    .filter(p => p.supplierId === supplierId)
+    .filter(p => !['rejected','cancelled'].includes(String(p.status || '').toLowerCase()))
+    .filter(p => !p.isOpeningBalance && p.transactionType !== 'opening_balance')
+    .forEach(p => { bal += num(p.amount); });
+
+  /* Returns reduce */
+  arr(state.data.supplierReturns)
+    .filter(r => r.supplierId === supplierId)
+    .filter(r => !['rejected','cancelled'].includes(String(r.status || '').toLowerCase()))
+    .forEach(r => { bal -= num(r.amount); });
+
+  /* Payments reduce */
+  arr(state.data.payments)
+    .filter(p => p.supplierId === supplierId)
+    .filter(p => !p.fullyReversed)
+    .filter(p => !['rejected','cancelled','void'].includes(String(p.status || '').toLowerCase()))
+    .forEach(p => { bal -= num(p.amount); });
+
+  return bal;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Global rollups (used by dashboards)
+─────────────────────────────────────────────────────────────────────────── */
+function totalPayable() {
+  return allSuppliers().reduce((a, s) => a + Math.max(0, supplierBalance(s.id)), 0);
+}
+
+function totalReceivable() {
+  return allCustomers().reduce((a, c) => a + Math.max(0, customerBalance(c.id)), 0);
+}
+
+function customerRatingDistribution() {
+  const dist = { platinum: 0, gold: 0, silver: 0, bronze: 0, new: 0 };
+  allCustomers().forEach(c => {
+    const r = computeCustomerRating(c.id);
+    dist[r.tier] = (dist[r.tier] || 0) + 1;
+  });
+  return dist;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2106,6 +2698,185 @@ function journalStatusBadge(s) {
    Registered in the VIEWS object so the router can dispatch.
 ═══════════════════════════════════════════════════════════════════════════ */
 const VIEWS = {};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE 3 — CUSTOMERS VIEW
+   List, search, filter, bulk select, edit, delete.
+═══════════════════════════════════════════════════════════════════════════ */
+VIEWS.customers = function () {
+  ensureStateShape();
+
+  const filter = state.views.customers || {};
+  const q = (filter.q || '').toLowerCase();
+  const tier = filter.tier || 'all';
+  const sortBy = filter.sortBy || 'name';
+  const showBlacklisted = filter.showBlacklisted !== false;
+
+  /* Load, enrich, filter */
+  let list = allCustomers().map(c => {
+    const rating = computeCustomerRating(c.id);
+    const summary = customerChequeSummary(c.id);
+    const aging = customerAging(c.id);
+    const balance = customerBalance(c.id);
+    return { cust: c, rating, summary, aging, balance };
+  });
+
+  if (q) {
+    list = list.filter(row =>
+      row.cust.name.toLowerCase().includes(q) ||
+      (row.cust.phone || '').toLowerCase().includes(q) ||
+      (row.cust.email || '').toLowerCase().includes(q) ||
+      (row.cust.business || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (tier !== 'all') {
+    list = list.filter(row => row.rating.tier === tier);
+  }
+
+  if (!showBlacklisted) {
+    list = list.filter(row => !row.cust.blacklisted);
+  }
+
+  /* Sort */
+  const sortFns = {
+    name:    (a, b) => a.cust.name.localeCompare(b.cust.name),
+    rating:  (a, b) => b.rating.score - a.rating.score,
+    balance: (a, b) => b.balance - a.balance,
+    bounce:  (a, b) => b.aging.total - a.aging.total,
+    volume:  (a, b) => b.rating.totalCleared - a.rating.totalCleared
+  };
+  list.sort(sortFns[sortBy] || sortFns.name);
+
+  /* KPIs */
+  const distribution = customerRatingDistribution();
+  const totalOutstanding = list.reduce((a, r) => a + Math.max(0, r.balance), 0);
+  const totalBounced = list.reduce((a, r) => a + r.aging.total, 0);
+  const totalVolume = list.reduce((a, r) => a + r.rating.totalCleared, 0);
+
+  return '' +
+    '<div class="kpi-strip">' +
+      kpi('Total Customers', allCustomers().length, distribution.new + ' new') +
+      kpi('💎 Platinum', distribution.platinum, 'Top tier') +
+      kpi('🥇 Gold', distribution.gold, 'High value') +
+      kpi('🥈 Silver', distribution.silver, 'Reliable') +
+      kpi('🥉 Bronze', distribution.bronze, 'Watch') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-head">' +
+        '<h3>👥 Customers (' + list.length + ')</h3>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+          '<button class="btn" data-action="customers-export">⬇ Export CSV</button>' +
+          '<button class="btn primary" data-action="customer-new">＋ New Customer</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="md-filter">' +
+        '<label class="field">Search' +
+          '<input type="search" id="custSearch" value="' + esc(filter.q || '') + '" ' +
+            'placeholder="Name, phone, email, business…">' +
+        '</label>' +
+        '<label class="field">Tier' +
+          '<select id="custTier">' +
+            ['all','platinum','gold','silver','bronze','new'].map(t =>
+              '<option value="' + t + '"' + (tier === t ? ' selected' : '') + '>' +
+                (t === 'all' ? 'All Tiers' : t.charAt(0).toUpperCase() + t.slice(1)) +
+              '</option>'
+            ).join('') +
+          '</select>' +
+        '</label>' +
+        '<label class="field">Sort by' +
+          '<select id="custSort">' +
+            '<option value="name"' + (sortBy === 'name' ? ' selected' : '') + '>Name A→Z</option>' +
+            '<option value="rating"' + (sortBy === 'rating' ? ' selected' : '') + '>Rating (best first)</option>' +
+            '<option value="balance"' + (sortBy === 'balance' ? ' selected' : '') + '>Balance (highest)</option>' +
+            '<option value="bounce"' + (sortBy === 'bounce' ? ' selected' : '') + '>Bounced (highest)</option>' +
+            '<option value="volume"' + (sortBy === 'volume' ? ' selected' : '') + '>Lifetime Volume</option>' +
+          '</select>' +
+        '</label>' +
+        '<label class="field" style="flex-direction:row;align-items:center;gap:8px;padding-top:22px;font-size:12.5px">' +
+          '<input type="checkbox" id="custShowBlack" ' + (showBlacklisted ? 'checked' : '') + '> Include blacklisted' +
+        '</label>' +
+      '</div>' +
+
+      (list.length
+        ? '<div class="table-wrap"><table class="md-table">' +
+            '<thead><tr>' +
+              '<th style="width:32px"><input type="checkbox" id="custSelectAll"></th>' +
+              '<th>Name</th>' +
+              '<th>Rating</th>' +
+              '<th>Phone</th>' +
+              '<th class="num">Balance</th>' +
+              '<th class="num">Cheques</th>' +
+              '<th class="num">Bounced</th>' +
+              '<th class="num">Lifetime</th>' +
+              '<th>Reliability</th>' +
+              '<th class="actions-cell"></th>' +
+            '</tr></thead><tbody>' +
+            list.map(row => {
+              const c = row.cust;
+              const rel = customerReliability(c.id);
+              const badgeColor = row.balance > 0
+                ? 'var(--red)'
+                : (row.balance < 0 ? 'var(--green)' : 'var(--text-4)');
+              return '<tr data-action="customer-open" data-id="' + esc(c.id) + '">' +
+                '<td onclick="event.stopPropagation()">' +
+                  '<input type="checkbox" data-bulk-id="' + esc(c.id) + '" class="cust-check">' +
+                '</td>' +
+                '<td>' +
+                  '<strong>' + esc(c.name) + '</strong>' +
+                  (c.blacklisted ? ' <span class="badge red">⛔</span>' : '') +
+                  (c.business ? '<div class="small muted" style="margin-top:2px">' + esc(c.business) + '</div>' : '') +
+                '</td>' +
+                '<td>' + ratingBadge(row.rating) + '</td>' +
+                '<td>' + esc(c.phone || '—') + '</td>' +
+                '<td class="num" style="color:' + badgeColor + ';font-weight:600">' +
+                  money(row.balance) + '</td>' +
+                '<td class="num">' + row.summary.total.count + '</td>' +
+                '<td class="num" style="color:' + (row.summary.bounced.count > 0 ? 'var(--red)' : 'var(--text-4)') + '">' +
+                  (row.summary.bounced.count || '—') + '</td>' +
+                '<td class="num">' + money0(row.rating.totalCleared) + '</td>' +
+                '<td><span class="reliability ' + rel.cls + '">' + esc(rel.label) +
+                  (rel.score ? ' ' + rel.score.toFixed(0) + '%' : '') +
+                '</span></td>' +
+                '<td class="actions-cell" onclick="event.stopPropagation()">' +
+                  '<button class="btn xs" data-action="customer-edit" data-id="' + esc(c.id) + '" title="Edit">✏️</button>' +
+                  (state.perms.delete
+                    ? ' <button class="btn xs danger" data-action="customer-delete" data-id="' + esc(c.id) + '" title="Delete">🗑</button>'
+                    : '') +
+                '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody></table></div>'
+        : '<div class="empty"><span class="big">👥</span>' +
+          (allCustomers().length
+            ? 'No customers match your filters.'
+            : 'No customers yet. Click <strong>New Customer</strong> to add the first one.') +
+          '</div>') +
+
+      /* Summary footer */
+      (list.length
+        ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px;' +
+          'padding:14px 16px;background:var(--surface-2);border-radius:var(--r-md);font-size:12.5px">' +
+            '<div><div class="k-label">Total Balance</div>' +
+              '<strong style="font-size:15px">' + money(totalOutstanding) + '</strong></div>' +
+            '<div><div class="k-label">Total Bounced</div>' +
+              '<strong style="font-size:15px;color:var(--red)">' + money(totalBounced) + '</strong></div>' +
+            '<div><div class="k-label">Lifetime Volume</div>' +
+              '<strong style="font-size:15px">' + money(totalVolume) + '</strong></div>' +
+          '</div>'
+        : '') +
+    '</div>' +
+
+    /* Bulk action bar */
+    '<div class="bulk-bar" id="custBulkBar">' +
+      '<span><strong id="custBulkCount">0</strong> selected</span>' +
+      '<button class="btn" data-action="customers-bulk-export">⬇ Export</button>' +
+      '<button class="btn danger" data-action="customers-bulk-delete">🗑 Delete</button>' +
+      '<button class="btn" data-action="customers-bulk-clear">✕ Clear</button>' +
+    '</div>';
+};
 
 /* ───────────────────────────────────────────────────────────────────────────
    Dashboard
@@ -3416,6 +4187,9 @@ const NAV_ITEMS = [
   { group: 'Main', items: [
     { id: 'dashboard', ico: '▦', label: 'Dashboard' }
   ]},
+  { group: 'Master Data', items: [
+    { id: 'customers', ico: '👥', label: 'Customers' }
+  ]},
   { group: 'Accounting', items: [
     { id: 'accounts',      ico: '📒', label: 'Chart of Accounts' },
     { id: 'journals',      ico: '📝', label: 'Journal Entries' },
@@ -3435,6 +4209,7 @@ const NAV_ITEMS = [
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
+  customers: 'Customers',
   accounts: 'Chart of Accounts',
   journals: 'Journal Entries',
   ledger: 'General Ledger',
@@ -3525,6 +4300,49 @@ function bindViewFields() {
       state.views.ledger = Object.assign({}, state.views.ledger, { to: to.value });
       renderApp();
     };
+  /* ── Phase 3: Customer filters ── */
+  const custSearch = document.getElementById('custSearch');
+  if (custSearch) {
+    custSearch.oninput = () => {
+      clearTimeout(custSearch._t);
+      custSearch._t = setTimeout(() => {
+        state.views.customers = Object.assign({}, state.views.customers, { q: custSearch.value });
+        renderApp();
+      }, 250);
+    };
+  }
+  const custTier = document.getElementById('custTier');
+  if (custTier) custTier.onchange = () => {
+    state.views.customers = Object.assign({}, state.views.customers, { tier: custTier.value });
+    renderApp();
+  };
+  const custSort = document.getElementById('custSort');
+  if (custSort) custSort.onchange = () => {
+    state.views.customers = Object.assign({}, state.views.customers, { sortBy: custSort.value });
+    renderApp();
+  };
+  const custShowBlack = document.getElementById('custShowBlack');
+  if (custShowBlack) custShowBlack.onchange = () => {
+    state.views.customers = Object.assign({}, state.views.customers, { showBlacklisted: custShowBlack.checked });
+    renderApp();
+  };
+  const custSelectAll = document.getElementById('custSelectAll');
+  if (custSelectAll) {
+    custSelectAll.onchange = () => {
+      document.querySelectorAll('.cust-check').forEach(c => { c.checked = custSelectAll.checked; });
+      updateCustomerBulkBar();
+    };
+  }
+  document.querySelectorAll('.cust-check').forEach(c => {
+    c.onchange = () => {
+      /* Sync master checkbox */
+      const all = document.querySelectorAll('.cust-check');
+      const checked = document.querySelectorAll('.cust-check:checked');
+      const master = document.getElementById('custSelectAll');
+      if (master) master.checked = all.length > 0 && all.length === checked.length;
+      updateCustomerBulkBar();
+    };
+  });
   }
 
   /* Trial balance */
@@ -3762,6 +4580,23 @@ document.addEventListener('click', e => {
     },
     'dbg-snapshot': () => { takeSnapshot(); toast('Snapshot taken', 'success'); },
     'dbg-qa': () => runQA()
+    /* ── Phase 3: Customers ── */
+    'customer-new': () => openCustomerForm(null),
+    'customer-open': () => openCustomerDetail(id),
+    'customer-edit': (ev) => { ev.stopPropagation(); openCustomerForm(id); },
+    'customer-delete': (ev) => {
+      ev.stopPropagation();
+      if (document.getElementById('modalWrap').classList.contains('open')) closeModal();
+      deleteCustomerById(id);
+/* Temporary — replaced by full detail modal in Part 3 */
+function openCustomerDetail(id) {
+  toast('Customer detail view arrives in Part 3', 'info');
+}
+    },
+    'customers-export': () => exportAllCustomersCSV(),
+    'customers-bulk-export': () => customerBulkExport(),
+    'customers-bulk-delete': () => customerBulkDelete(),
+    'customers-bulk-clear': () => customerBulkClear(),
   };
 
   if (handlers[a]) { e.preventDefault(); handlers[a](e); }
@@ -3969,6 +4804,389 @@ window.__ls = {
 /* ═══════════════════════════════════════════════════════════════════════════
    GO
 ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE 3 — CUSTOMER FORM (create / edit)
+═══════════════════════════════════════════════════════════════════════════ */
+function openCustomerForm(id) {
+  if (!state.perms.write) { toast('Read-only role — cannot edit', 'error'); return; }
+
+  const c = id ? custObj(id) : null;
+
+  const body =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
+      field('Name', 'cName', c?.name || '', { required: true, placeholder: 'Full name or business name' }) +
+      field('Phone', 'cPhone', c?.phone || '', { placeholder: '07X XXX XXXX' }) +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">' +
+      field('Email', 'cEmail', c?.email || '', { type: 'email', placeholder: 'name@example.com' }) +
+      field('Business Name', 'cBusiness', c?.business || '', { placeholder: 'If different from Name' }) +
+    '</div>' +
+    '<div style="margin-top:14px">' +
+      field('Address', 'cAddress', c?.address || '', { type: 'textarea' }) +
+    '</div>' +
+
+    '<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">' +
+      '<strong style="font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)">' +
+        'Financial' +
+      '</strong>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:12px">' +
+        field('Opening Balance', 'cOpening', c ? num(c.openingBalance).toFixed(2) : '0.00', { type: 'number', step: '0.01' }) +
+        field('Opening Date', 'cOpeningDate', c?.openingDate || today(), { type: 'date' }) +
+        selectField('Opening Type', 'cOpeningType', [
+          { value: 'receivable', label: 'Receivable — customer owes us' },
+          { value: 'credit',     label: 'Credit — we owe customer' }
+        ], c?.openingBalanceType || 'receivable') +
+      '</div>' +
+      '<div style="margin-top:14px">' +
+        field('Cheque Acceptance Limit', 'cLimit', c ? num(c.chequeLimit).toFixed(2) : '0.00',
+          { type: 'number', step: '0.01', placeholder: '0 = unlimited' }) +
+      '</div>' +
+    '</div>' +
+
+    '<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">' +
+      '<strong style="font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)">' +
+        'Defaults' +
+      '</strong>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">' +
+        selectField('Salesperson', 'cSalesperson',
+          allSalespersons().map(p => ({ value: p.id, label: p.name })),
+          c?.salespersonId || '',
+          { placeholder: '— None —' }) +
+        selectField('Price List', 'cPriceList',
+          arr(state.data.priceLists).filter(p => p.type === 'customer').map(p => ({ value: p.id, label: p.name })),
+          c?.priceListId || '',
+          { placeholder: '— None —' }) +
+      '</div>' +
+    '</div>' +
+
+    '<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">' +
+      '<strong style="font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)">' +
+        'Risk' +
+      '</strong>' +
+      '<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">' +
+        '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px">' +
+          '<input type="checkbox" id="cBlacklist" ' + (c?.blacklisted ? 'checked' : '') + '> ' +
+          'Blacklist (do not accept cheques from this customer)' +
+        '</label>' +
+        '<label class="field" id="cBlacklistReasonWrap" ' +
+          'style="' + (c?.blacklisted ? '' : 'display:none') + '">' +
+          'Blacklist Reason' +
+          '<input id="cBlacklistReason" value="' + esc(c?.blacklistReason || '') + '" ' +
+            'placeholder="e.g. Cheque bounced repeatedly">' +
+        '</label>' +
+      '</div>' +
+    '</div>' +
+
+    '<div style="margin-top:22px">' +
+      field('Notes', 'cNotes', c?.notes || '', { type: 'textarea' }) +
+    '</div>';
+
+  openModal(c ? '✏️ Edit Customer' : '➕ New Customer', body, {
+    width: 780,
+    footer:
+      (c && state.perms.delete
+        ? '<button class="btn danger" data-action="customer-delete" data-id="' + esc(c.id) + '">Delete</button>'
+        : '') +
+      '<button class="btn" data-close-modal>Cancel</button>' +
+      '<button class="btn primary" id="cSaveBtn">' + (c ? 'Update' : 'Create') + '</button>'
+  });
+
+  /* Toggle blacklist reason field visibility */
+  const blCheck = document.getElementById('cBlacklist');
+  if (blCheck) {
+    blCheck.onchange = () => {
+      const wrap = document.getElementById('cBlacklistReasonWrap');
+      if (wrap) wrap.style.display = blCheck.checked ? '' : 'none';
+    };
+  }
+
+  document.getElementById('cSaveBtn').onclick = () => saveCustomer(c);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Save customer
+─────────────────────────────────────────────────────────────────────────── */
+function saveCustomer(existing) {
+  if (!state.perms.write) { toast('Read-only role', 'error'); return; }
+
+  const data = {
+    name: document.getElementById('cName').value.trim(),
+    phone: document.getElementById('cPhone').value.trim(),
+    email: document.getElementById('cEmail').value.trim(),
+    business: document.getElementById('cBusiness').value.trim(),
+    address: document.getElementById('cAddress').value.trim(),
+    notes: document.getElementById('cNotes').value.trim(),
+
+    openingBalance: num(document.getElementById('cOpening').value),
+    openingDate: document.getElementById('cOpeningDate').value || null,
+    openingBalanceType: document.getElementById('cOpeningType').value || 'receivable',
+    chequeLimit: num(document.getElementById('cLimit').value),
+
+    salespersonId: document.getElementById('cSalesperson').value || null,
+    priceListId: document.getElementById('cPriceList').value || null,
+
+    blacklisted: document.getElementById('cBlacklist').checked,
+    blacklistReason: document.getElementById('cBlacklistReason').value.trim()
+  };
+
+  if (!data.name) { toast('Name is required', 'error'); return; }
+
+  /* Duplicate name check on create */
+  if (!existing) {
+    const dupe = allCustomers().find(c =>
+      c.name.toLowerCase().trim() === data.name.toLowerCase()
+    );
+    if (dupe) {
+      if (!confirm('A customer named "' + data.name + '" already exists.\nProceed anyway?')) return;
+    }
+  }
+
+  if (existing) {
+    /* Preserve IDs, timestamps, and blacklist metadata if toggle unchanged */
+    const wasBlacklisted = existing.blacklisted;
+    const before = JSON.parse(JSON.stringify(existing));
+
+    Object.assign(existing, data);
+    existing.updatedAt = nowISO();
+    existing.updatedBy = state.user?.email || 'system';
+
+    if (data.blacklisted && !wasBlacklisted) {
+      existing.blacklistedAt = nowISO();
+      existing.blacklistedBy = state.user?.email || 'system';
+    } else if (!data.blacklisted && wasBlacklisted) {
+      existing.blacklistedAt = null;
+      existing.blacklistedBy = null;
+    }
+
+    markDirty('customers', existing.id);
+
+    /* Also log a version history entry */
+    recordVersion('customers', existing.id, 'update', before, existing);
+  } else {
+    const created = makeCustomer(data);
+    created.blacklistedAt = data.blacklisted ? nowISO() : null;
+    created.blacklistedBy = data.blacklisted ? (state.user?.email || 'system') : null;
+    state.data.customers.push(created);
+    markDirty('customers', created.id);
+    recordVersion('customers', created.id, 'create', null, created);
+  }
+
+  closeModal();
+  toast(existing ? 'Customer updated' : 'Customer created', 'success');
+  renderApp();
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Delete customer
+─────────────────────────────────────────────────────────────────────────── */
+function deleteCustomerById(id) {
+  if (!state.perms.delete) { toast('No delete permission', 'error'); return; }
+
+  const c = custObj(id);
+  if (!c) return;
+
+  /* Block if customer has active cheques */
+  const activeCheques = arr(state.data.customerCheques).filter(q =>
+    q.customerId === id && (q.status === 'In Hand' || q.status === 'Issued')
+  );
+  if (activeCheques.length) {
+    toast('Cannot delete — ' + activeCheques.length +
+      ' active cheque(s). Clear or void them first.', 'error', 5000);
+    return;
+  }
+
+  if (!confirm('Move "' + c.name + '" to Trash?\nTheir cheque history will stay intact.')) return;
+
+  /* Soft delete: push to trash, remove from live list */
+  const trashEntry = {
+    id: uid(),
+    collection: 'customers',
+    item: JSON.parse(JSON.stringify(c)),
+    label: c.name,
+    deletedBy: state.user?.email || 'system',
+    deletedAt: nowISO()
+  };
+
+  if (!Array.isArray(state.data.trash)) state.data.trash = [];
+  state.data.trash.unshift(trashEntry);
+  markDirty('trash', trashEntry.id);
+
+  state.data.customers = state.data.customers.filter(x => x.id !== id);
+  _dirty.add('customers:' + id);
+  delete _snapshot['customers:' + id];
+  state.sync.dirty = true;
+  scheduleSync();
+
+  closeModal();
+  toast('Moved to Trash', 'success');
+  renderApp();
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Record version (simple — Phase 13 will expand this)
+─────────────────────────────────────────────────────────────────────────── */
+function recordVersion(collection, id, action, before, after) {
+  if (!Array.isArray(state.data.versionHistory)) state.data.versionHistory = [];
+
+  state.data.versionHistory.unshift({
+    id: uid(),
+    collection: collection,
+    recordId: id,
+    action: action,
+    before: before,
+    after: after,
+    at: nowISO(),
+    by: state.user?.email || 'system'
+  });
+
+  /* Cap at 3000 entries to keep Firestore doc sizes small */
+  if (state.data.versionHistory.length > 3000) {
+    state.data.versionHistory = state.data.versionHistory.slice(0, 3000);
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Bulk actions
+─────────────────────────────────────────────────────────────────────────── */
+function updateCustomerBulkBar() {
+  const checks = document.querySelectorAll('.cust-check:checked');
+  const bar = document.getElementById('custBulkBar');
+  const count = document.getElementById('custBulkCount');
+  if (!bar || !count) return;
+  count.textContent = checks.length;
+  bar.classList.toggle('on', checks.length > 0);
+}
+
+function customerBulkClear() {
+  document.querySelectorAll('.cust-check').forEach(c => { c.checked = false; });
+  const master = document.getElementById('custSelectAll');
+  if (master) master.checked = false;
+  updateCustomerBulkBar();
+}
+
+function customerBulkExport() {
+  const ids = Array.from(document.querySelectorAll('.cust-check:checked')).map(c => c.dataset.bulkId);
+  if (!ids.length) { toast('Nothing selected', 'warn'); return; }
+
+  const rows = [['Name','Phone','Email','Business','Balance','Rating','Cheques','Bounced','Lifetime']];
+  ids.forEach(id => {
+    const c = custObj(id);
+    if (!c) return;
+    const r = computeCustomerRating(id);
+    const summary = customerChequeSummary(id);
+    rows.push([
+      c.name,
+      c.phone || '',
+      c.email || '',
+      c.business || '',
+      customerBalance(id),
+      r.label,
+      summary.total.count,
+      summary.bounced.count,
+      r.totalCleared
+    ]);
+  });
+
+  const csv = rows.map(r => r.map(csvEsc).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'customers_selected_' + today() + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Exported ' + ids.length + ' customers', 'success');
+}
+
+function customerBulkDelete() {
+  if (!state.perms.delete) { toast('No delete permission', 'error'); return; }
+
+  const ids = Array.from(document.querySelectorAll('.cust-check:checked')).map(c => c.dataset.bulkId);
+  if (!ids.length) { toast('Nothing selected', 'warn'); return; }
+
+  /* Check for active cheques */
+  let blocked = 0;
+  ids.forEach(id => {
+    const active = arr(state.data.customerCheques).filter(q =>
+      q.customerId === id && (q.status === 'In Hand' || q.status === 'Issued')
+    );
+    if (active.length) blocked++;
+  });
+
+  if (blocked > 0) {
+    toast(blocked + ' customer(s) have active cheques — cannot delete', 'error', 5000);
+    return;
+  }
+
+  if (!confirm('Move ' + ids.length + ' customer(s) to Trash?')) return;
+
+  ids.forEach(id => {
+    const c = custObj(id);
+    if (!c) return;
+    const trashEntry = {
+      id: uid(),
+      collection: 'customers',
+      item: JSON.parse(JSON.stringify(c)),
+      label: c.name,
+      deletedBy: state.user?.email || 'system',
+      deletedAt: nowISO()
+    };
+    state.data.trash.unshift(trashEntry);
+    markDirty('trash', trashEntry.id);
+    _dirty.add('customers:' + id);
+    delete _snapshot['customers:' + id];
+  });
+
+  state.data.customers = state.data.customers.filter(c => !ids.includes(c.id));
+  state.sync.dirty = true;
+  scheduleSync();
+
+  customerBulkClear();
+  toast('Moved ' + ids.length + ' to Trash', 'success');
+  renderApp();
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Export all customers
+─────────────────────────────────────────────────────────────────────────── */
+function exportAllCustomersCSV() {
+  if (!allCustomers().length) { toast('No customers to export', 'warn'); return; }
+
+  const rows = [['Name','Phone','Email','Business','Address','Balance','Rating','Score',
+    'Cheques','Cleared','Bounced','Lifetime','Cheque Limit','Blacklisted']];
+
+  allCustomers().forEach(c => {
+    const r = computeCustomerRating(c.id);
+    const summary = customerChequeSummary(c.id);
+    rows.push([
+      c.name,
+      c.phone || '',
+      c.email || '',
+      c.business || '',
+      c.address || '',
+      customerBalance(c.id),
+      r.label,
+      r.score,
+      summary.total.count,
+      summary.cleared.count,
+      summary.bounced.count,
+      r.totalCleared,
+      num(c.chequeLimit),
+      c.blacklisted ? 'Yes' : 'No'
+    ]);
+  });
+
+  const csv = rows.map(r => r.map(csvEsc).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'customers_' + today() + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Exported ' + allCustomers().length + ' customers', 'success');
+}
 boot().catch(e => {
   dbg.err('Boot threw: ' + (e.message || e));
   loginMsg('Boot error: ' + e.message, 'err');

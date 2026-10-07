@@ -1607,14 +1607,14 @@ function actualPurchases(){
 window.actualPurchases = actualPurchases;
 
 function paymentAmount(p){
+  /* FIX: single source of truth for money actually paid. Previously
+     paymentAmount() and supplierPaymentAmount() used different formulas,
+     so Paid, Ledger and Payable disagreed. */
   if(!p) return 0;
-  if(String(p.paymentMode || '').toLowerCase() === 'bank' || p.bankPayment){
-    const b = num(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
-    if(b > 0) return b;
-  }
   const party = num(p.partyAmount);
   const own = num(p.ownAmount);
-  if(party > 0 || own > 0) return party + own;
+  const bank = num(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
+  if(party || own || bank) return party + own + bank;
   return num(p.amount);
 }
 window.paymentAmount = paymentAmount;
@@ -14450,7 +14450,7 @@ function exportSuppliersCSV(){
     const bal = supplierBalance(s.id);
     const aging = supplierAging(s.id);
     const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
-    const paid = sum(arr(db.payments).filter(p => p.supplierId === s.id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true), 'amount');
+    const paid = arr(db.payments).filter(p => supplierPaymentIsActive(p) && p.supplierId === s.id).reduce((a, p) => a + supplierPaymentAmount(p), 0);
     return [
       s.name, catName(s.categoryId), s.phone || '', s.email || '', s.contact || '', s.address || '',
       num(s.creditDays || 30), num(s.creditLimit), num(s.openingBalance), s.openingDate || '',
@@ -22006,6 +22006,7 @@ Purpose:
 
   /* ── CORRECT BALANCE ENGINE ───────────────────────────────────────────── */
   function correctedSupplierBalance(id){
+    return supplierBalance(id); /* FIX: one canonical balance engine */
     const s = safeArr(db.suppliers).find(x => x.id === id);
     let bal = s ? n(s.openingBalance) : 0;
     actualPurchases().filter(p => p.supplierId === id).forEach(p => bal += n(p.amount));
@@ -22037,10 +22038,16 @@ Purpose:
     const items = [];
     const ob = String(s.openingBalanceType || 'payable').toLowerCase() === 'payable' ? n(s.openingBalance) : -n(s.openingBalance);
     if(ob > 0) items.push({date:s.openingDate || end, amount:ob, source:'opening_balance'});
-    actualPurchases().filter(p => p.supplierId === id && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
+    actualPurchases().filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
+    let journalCredit = 0;
+    supplierJournalEntries(id).filter(j => !j.date || j.date <= end).forEach(j => {
+      const net = n(j.credit) - n(j.debit);
+      if(net > 0) items.push({date:j.date || end, amount:net, source:'journal'}); else journalCredit += -net;
+    });
     items.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-    let available = safeArr(db.payments).filter(p => p.supplierId === id && p.date <= end && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).reduce((a,p)=>a+n(supplierPaymentAmount(p)),0)
-      + safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.date <= end && r.status !== 'rejected').reduce((a,r)=>a+n(r.amount),0);
+    let available = safeArr(db.payments).filter(p => p.supplierId === id && (!p.date || p.date <= end) && supplierPaymentIsActive(p)).reduce((a,p)=>a+n(supplierPaymentAmount(p)),0)
+      + safeArr(db.supplierReturns).filter(r => r.supplierId === id && (!r.date || r.date <= end) && r.status !== 'rejected' && r.status !== 'cancelled').reduce((a,r)=>a+n(r.amount),0)
+      + journalCredit;
     const bk = (db.settings && db.settings.supplierAgingBuckets) || [30,60,90];
     const b1=n(bk[0])||30, b2=n(bk[1])||60, b3=n(bk[2])||90;
     let current=0,d30=0,d60=0,d90=0;
@@ -22100,7 +22107,7 @@ Purpose:
     let bal=0; rows.forEach(r=>{bal += n(r.credit)-n(r.debit);r.balance=bal;});
     return {rows,balance:bal};
   }
-  window.supplierLedger=correctedSupplierLedger;
+  /* FIX: original supplierLedger kept (honours journal de-dup, statuses, opening sign) */
 
   function correctedCustomerLedger(id){
     const c=safeArr(db.customers).find(x=>x.id===id);
@@ -22114,7 +22121,7 @@ Purpose:
     let bal=0; rows.forEach(r=>{bal += n(r.debit)-n(r.credit);r.balance=bal;});
     return {rows,balance:bal};
   }
-  window.customerLedger=correctedCustomerLedger;
+  /* FIX: original customerLedger kept (handles bounced cheque remaining + refunds) */
 
   /* ── PURCHASE VIEW/SAVE SAFETY ────────────────────────────────────────── */
   window.openPurchaseForm = function(id){

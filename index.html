@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <meta content="#7c3aed" name="theme-color"/>
-<title>Lanka Shoe — Enterprise v12.0</title>
+<title>Lanka Shoe — Enterprise v15.0</title>
 <link href="data:image/svg+xml,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22&gt;&lt;text y=%22.9em%22 font-size=%2290%22&gt;👟&lt;/text&gt;&lt;/svg&gt;" rel="icon"/>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -1581,262 +1581,285 @@ const bankObj = id => arr(db.bankAccounts).find(b => b.id === id);
 const bankName = id => { const b = bankObj(id); return b ? b.bankName : '—'; };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CANONICAL FINANCIAL ENGINE
-   - Opening balances are never purchases.
-   - Payments are normalized from their actual components.
-   - Bank balances use bankTransactions as the canonical movement ledger,
-     falling back to legacy source records only when no linked transaction exists.
-   - Supplier payable includes opening balance, actual purchases, returns,
-     payments and explicit supplier journals.
+   LANKA SHOE v15 — AUTHORITATIVE ACCOUNTING CORE
+
+   Design rules:
+   1. Supplier opening balances are master data, never purchases.
+   2. Purchase records are purchases only when they are explicitly classified
+      as purchase records. Explicit opening-balance records are excluded.
+   3. Supplier payable = opening + purchases - returns - active payments
+      + legitimate supplier adjustments.
+   4. Paid = only active supplier-payment records, using the amount actually
+      represented by the payment mode/components.
+   5. Customer receivable = opening + bounced cheque exposure - receipts
+      - customer refunds + legitimate customer adjustments.
+   6. Bank balance uses bankTransactions as the primary movement ledger and
+      falls back to legacy source records only when no linked transaction exists.
+   7. Aging and ledgers are generated from the same accounting source data so
+      table totals cannot drift from detail totals.
 ═══════════════════════════════════════════════════════════════════════════ */
+
+function finiteNumber(v){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
 
 function isOpeningBalancePurchaseRecord(p){
   if(!p || typeof p !== 'object') return false;
-  const vals = [p.transactionType,p.entryType,p.source,p.recordType,p.kind,p.origin,p.categoryType]
+  const vals = [p.transactionType,p.entryType,p.type,p.source,p.recordType,p.kind,p.origin,p.categoryType]
     .map(v => String(v || '').trim().toLowerCase());
   if(vals.some(v => ['opening_balance','opening-balance','opening balance','openingbalance'].includes(v))) return true;
   if(p.isOpeningBalance === true || p.isOpening === true || p.fromOpeningBalance === true) return true;
   const ref = String(p.invoiceNo || p.reference || '').trim().toLowerCase();
   const desc = String(p.description || p.notes || '').trim().toLowerCase();
-  return /^ob[-_ ]/.test(ref) || /^opening[-_ ]?balance/.test(ref)
-    || ['opening balance','opening balance entry','opening balance brought forward'].includes(desc);
+  return /^ob[-_ ]/.test(ref) || /^opening[-_ ]?balance/.test(ref) ||
+    ['opening balance','opening balance entry','opening balance brought forward'].includes(desc);
 }
+window.isOpeningBalancePurchaseRecord = isOpeningBalancePurchaseRecord;
+
 function actualPurchases(){
   return arr(db.purchases).filter(p => !isOpeningBalancePurchaseRecord(p));
 }
 window.actualPurchases = actualPurchases;
 
-function paymentAmount(p){
-  /* FIX: single source of truth for money actually paid. Previously
-     paymentAmount() and supplierPaymentAmount() used different formulas,
-     so Paid, Ledger and Payable disagreed. */
-  if(!p) return 0;
-  const party = num(p.partyAmount);
-  const own = num(p.ownAmount);
-  const bank = num(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
-  if(party || own || bank) return party + own + bank;
-  return num(p.amount);
+/* Normalize payment mode/components once, then use this exact amount everywhere. */
+function paymentParts(p){
+  if(!p) return {party:0, own:0, bank:0};
+  const mode = String(p.paymentMode || '').trim().toLowerCase();
+  const party = Math.max(0, finiteNumber(p.partyAmount));
+  const own = Math.max(0, finiteNumber(p.ownAmount));
+  const bank = Math.max(0, finiteNumber(p.bankAmount || (p.bankPayment && p.bankPayment.amount)));
+  if(mode === 'bank' || p.bankPayment){
+    return { party:0, own:0, bank };
+  }
+  if(mode === 'cheques' || mode === 'cheque' || mode === ''){
+    return { party, own, bank:0 };
+  }
+  return {party, own, bank};
 }
+
+function supplierPaymentAmount(p){
+  const x = paymentParts(p);
+  const componentTotal = x.party + x.own + x.bank;
+  return componentTotal > 0 ? componentTotal : Math.max(0, finiteNumber(p && p.amount));
+}
+window.supplierPaymentAmount = supplierPaymentAmount;
+window.paymentParts = paymentParts;
+
+function paymentAmount(p){ return supplierPaymentAmount(p); }
 window.paymentAmount = paymentAmount;
+
+function supplierPaymentIsActive(p){
+  if(!p || !p.supplierId) return false;
+  const status = String(p.status || '').trim().toLowerCase();
+  if(['rejected','cancelled','canceled','void','reversed'].includes(status)) return false;
+  if(p.fullyReversed === true || p.reversed === true) return false;
+  return true;
+}
+window.supplierPaymentIsActive = supplierPaymentIsActive;
 
 function normalizeFinancialRecords(){
   arr(db.payments).forEach(p => {
-    const amount = paymentAmount(p);
-    if(amount >= 0 && Math.abs(num(p.amount) - amount) > 0.005) p.amount = amount;
-    if(p.paymentMode === 'bank' && p.bankPayment){
-      p.bankAmount = num(p.bankAmount || p.bankPayment.amount);
-    } else {
-      p.partyAmount = num(p.partyAmount);
-      p.ownAmount = num(p.ownAmount);
-      if((p.partyAmount || p.ownAmount) && Math.abs(num(p.amount) - (p.partyAmount+p.ownAmount)) > 0.005){
-        p.amount = p.partyAmount + p.ownAmount;
-      }
+    if(!p || typeof p !== 'object') return;
+    const parts = paymentParts(p);
+    const total = parts.party + parts.own + parts.bank;
+    const mode = String(p.paymentMode || '').trim().toLowerCase();
+    if(mode === 'bank' || p.bankPayment){
+      p.partyAmount = 0;
+      p.ownAmount = 0;
+      p.bankAmount = parts.bank;
+      if(p.bankPayment) p.bankPayment.amount = parts.bank;
+    }else{
+      p.partyAmount = parts.party;
+      p.ownAmount = parts.own;
+      p.bankAmount = 0;
     }
+    if(total > 0) p.amount = total;
   });
 }
-
 window.normalizeFinancialRecords = normalizeFinancialRecords;
-
-/* Canonical supplier-payment invariant: every active payment amount is exactly
-   the sum of its persisted components. This prevents paid amounts from being
-   accidentally interpreted as additional payable/purchase value. */
-function supplierPaymentAmount(p){
-  if(!p) return 0;
-  const party = num(p.partyAmount);
-  const own = num(p.ownAmount);
-  const bank = num(p.bankAmount || (p.bankPayment && p.bankPayment.amount));
-  if(party || own || bank) return party + own + bank;
-  return num(p.amount);
-}
-window.supplierPaymentAmount = supplierPaymentAmount;
-
 
 function supplierOpeningSigned(s){
   if(!s) return 0;
-  const type = String(s.openingBalanceType || 'payable').toLowerCase();
-  const amount = num(s.openingBalance);
-  return ['debit','credit','receivable','negative','dr'].includes(type) ? -amount : amount;
+  const amount = Math.abs(finiteNumber(s.openingBalance));
+  const type = String(s.openingBalanceType || 'payable').trim().toLowerCase();
+  return ['payable','credit','cr'].includes(type) ? amount : -amount;
+}
+window.supplierOpeningSigned = supplierOpeningSigned;
+
+function customerOpeningSigned(c){
+  if(!c) return 0;
+  const amount = Math.abs(finiteNumber(c.openingBalance));
+  const type = String(c.openingBalanceType || 'receivable').trim().toLowerCase();
+  return ['credit','cr','payable','negative'].includes(type) ? -amount : amount;
+}
+window.customerOpeningSigned = customerOpeningSigned;
+
+function journalLooksLikeOpening(j){
+  const ref = String(j && j.reference || '').trim().toLowerCase();
+  const desc = String(j && j.description || '').trim().toLowerCase();
+  return j && j.isOpeningBalance === true || /opening[- ]?balance/.test(ref) || /opening[- ]?balance/.test(desc);
 }
 
-function supplierPaymentIsActive(p){
-  return p && p.supplierId && p.status !== 'rejected' && p.status !== 'cancelled' &&
-    p.status !== 'Cancelled' && !p.fullyReversed && p.reversed !== true;
+function journalLooksLikePayment(j){
+  const ref = String(j && j.reference || '').trim().toLowerCase();
+  const desc = String(j && j.description || '').trim().toLowerCase();
+  const text = ref + ' ' + desc;
+  return /supplier\s*payment|payment\s*(to|for)?\s*supplier|supplier\s*paid|paid\s*to|pay[- ]?sup|payment\s*voucher|bank\s*payment|cheque\s*(payment|to)|own\s*cheque|party\s*cheque/.test(text);
 }
 
-/* Canonical supplier journal filter.
-   Opening balances live on the supplier master. Older data can also contain
-   an opening-balance journal for the same opening amount; counting both
-   doubles the payable. Payment-linked journals likewise must never turn a
-   payment into an additional payable. Unrelated supplier journals remain. */
+function journalMatchesPayment(j,p){
+  if(!j || !p) return false;
+  if(j.relatedPaymentId && String(j.relatedPaymentId) === String(p.id)) return true;
+  if(j.paymentId && String(j.paymentId) === String(p.id)) return true;
+  const jref = String(j.reference || '').trim().toLowerCase();
+  const pref = String(p.reference || '').trim().toLowerCase();
+  if(jref && pref && jref === pref) return true;
+  const ja = Math.abs(finiteNumber(j.credit)) + Math.abs(finiteNumber(j.debit));
+  const pa = supplierPaymentAmount(p);
+  if(ja <= 0 || pa <= 0 || Math.abs(ja-pa) > 0.005) return false;
+  const jc = Date.parse(j.createdAt || '');
+  const pc = Date.parse(p.createdAt || '');
+  if(Number.isFinite(jc) && Number.isFinite(pc) && Math.abs(jc-pc) <= 10*60*1000) return true;
+  const jd = String(j.date || '');
+  const pd = String(p.date || '');
+  return jd && pd && jd === pd && journalLooksLikePayment(j);
+}
+
+/* Only unambiguously separate accounting adjustments may alter AP/AR. Legacy
+   unmarked rows are retained unless they clearly represent opening/payment
+   system postings. This keeps the old journal feature usable while preventing
+   a payment's bookkeeping duplicate from becoming payable again. */
 function supplierJournalEntries(id){
-  const s = supObj(id);
-  const masterOpening = s ? Math.abs(num(s.openingBalance)) : 0;
-  const paymentIds = new Set(arr(db.payments).filter(p => p.supplierId === id).map(p => String(p.id || '')));
-  const paymentRefs = new Set(arr(db.payments).filter(p => p.supplierId === id).map(p => String(p.reference || '').trim().toLowerCase()).filter(Boolean));
+  const payments = arr(db.payments).filter(p => p.supplierId === id && supplierPaymentIsActive(p));
   return arr(db.journals).filter(j => {
     if(!j || j.entityType !== 'supplier' || j.entityId !== id || j.bounceReversal) return false;
-    if(j.relatedPaymentId && paymentIds.has(String(j.relatedPaymentId))) return false;
-    if(j.paymentId && paymentIds.has(String(j.paymentId))) return false;
-    const ref = String(j.reference || '').trim().toLowerCase();
-    const desc = String(j.description || '').trim().toLowerCase();
-    if(masterOpening > 0 && (j.isOpeningBalance === true || /opening[- ]?balance/.test(ref) || /opening[- ]?balance/.test(desc))) return false;
-    if(ref && paymentRefs.has(ref)) return false;
-    return true;
+    if(journalLooksLikeOpening(j)) return false;
+    if(journalLooksLikePayment(j)) return false;
+    if(payments.some(p => journalMatchesPayment(j,p))) return false;
+    return finiteNumber(j.credit) !== 0 || finiteNumber(j.debit) !== 0;
   });
 }
 window.supplierJournalEntries = supplierJournalEntries;
 
-
+function customerJournalEntries(id){
+  return arr(db.journals).filter(j => {
+    if(!j || j.entityType !== 'customer' || j.entityId !== id || j.bounceReversal) return false;
+    if(journalLooksLikeOpening(j)) return false;
+    return finiteNumber(j.credit) !== 0 || finiteNumber(j.debit) !== 0;
+  });
+}
+window.customerJournalEntries = customerJournalEntries;
 
 function bankTxSignedAmount(t){
   if(!t) return 0;
-  const type = String(t.type || '').toLowerCase();
-  const amount = Math.abs(num(t.amount));
-  if(!amount) return 0;
-  if(['credit','deposit','transfer_in','deposit_cash','deposit_card'].includes(type)) return amount;
-  if(['debit','withdrawal','transfer_out','bank_fee','fee','charge'].includes(type)) return -amount;
+  const type = String(t.type || '').trim().toLowerCase();
+  const a = Math.abs(finiteNumber(t.amount));
+  if(a === 0) return 0;
+  if(['credit','deposit','transfer_in','deposit_cash','deposit_card'].includes(type)) return a;
+  if(['debit','withdrawal','transfer_out','bank_fee','fee','charge'].includes(type)) return -a;
   if(type === 'cheque_deduction'){
-    return String(t.status || '').toLowerCase() === 'approved' ? -amount : 0;
+    return ['approved','cleared','deducted','paid'].includes(String(t.status || '').toLowerCase()) ? -a : 0;
   }
   if(type === 'cheque_issued'){
-    const status = String(t.status || '').toLowerCase();
-    return ['approved','cleared','deducted','paid'].includes(status) ? -amount : 0;
+    return ['approved','cleared','deducted','paid'].includes(String(t.status || '').toLowerCase()) ? -a : 0;
   }
   return 0;
 }
+window.bankTxSignedAmount = bankTxSignedAmount;
 
-function hasLinkedBankTx(field, id, bankId){
-  return arr(db.bankTransactions).some(t => t[field] === id && (!bankId || t.bankAccountId === bankId));
+function hasLinkedBankTx(field,id,bankId){
+  return arr(db.bankTransactions).some(t => t && t[field] === id && (!bankId || t.bankAccountId === bankId));
 }
+window.hasLinkedBankTx = hasLinkedBankTx;
 
-const bankBalance = id => {
+function bankBalance(id){
   const acc = bankObj(id);
   if(!acc) return 0;
-  let bal = num(acc.openingBalance);
-
-  /* Canonical bank ledger. */
-  const txs = arr(db.bankTransactions).filter(t => t.bankAccountId === id && t.status !== 'reversed' && t.status !== 'cancelled');
-  txs.forEach(t => { bal += bankTxSignedAmount(t); });
-
-  /* Legacy records: only count a source record if no linked bank movement exists.
-     This prevents receipt/payment/expense + bankTransaction double counting. */
-  arr(db.receipts).filter(r =>
-    r.bankAccountId === id && r.status !== 'rejected' &&
-    r.method !== 'Cheque' && !hasLinkedBankTx('receiptId', r.id, id)
-  ).forEach(r => { bal += num(r.amount); });
-
-  arr(db.payments).filter(p =>
-    supplierPaymentIsActive(p) &&
-    p.bankPayment && p.bankPayment.bankAccountId === id &&
-    !hasLinkedBankTx('paymentId', p.id, id)
-  ).forEach(p => { bal -= paymentAmount(p); });
-
-  arr(db.expenses).filter(e =>
-    e.bankAccountId === id && !hasLinkedBankTx('expenseId', e.id, id)
-  ).forEach(e => { bal -= num(e.amount); });
-
-  arr(db.bankFees).filter(f =>
-    f.bankAccountId === id && !hasLinkedBankTx('bankFeeId', f.id, id) &&
-    !hasLinkedBankTx('feeId', f.id, id)
-  ).forEach(f => { bal -= num(f.amount); });
-
-  /* Legacy transfers without transaction rows. */
-  arr(db.bankTransfers).filter(x => x.fromBankId === id && !hasLinkedBankTx('transferId', x.id, id))
-    .forEach(x => { bal -= num(x.amount); });
-  arr(db.bankTransfers).filter(x => x.toBankId === id && !hasLinkedBankTx('transferId', x.id, id))
-    .forEach(x => { bal += num(x.amount); });
-
+  let bal = finiteNumber(acc.openingBalance);
+  arr(db.bankTransactions)
+    .filter(t => t && t.bankAccountId === id && !['reversed','cancelled','canceled'].includes(String(t.status || '').toLowerCase()))
+    .forEach(t => { bal += bankTxSignedAmount(t); });
+  /* Legacy source records count only when no corresponding bank movement exists. */
+  arr(db.receipts).filter(r => r && r.bankAccountId === id && r.status !== 'rejected' && r.method !== 'Cheque' && !hasLinkedBankTx('receiptId',r.id,id))
+    .forEach(r => { bal += finiteNumber(r.amount); });
+  arr(db.payments).filter(p => supplierPaymentIsActive(p) && p.bankPayment && p.bankPayment.bankAccountId === id && !hasLinkedBankTx('paymentId',p.id,id))
+    .forEach(p => { bal -= supplierPaymentAmount(p); });
+  arr(db.expenses).filter(e => e && e.bankAccountId === id && !hasLinkedBankTx('expenseId',e.id,id))
+    .forEach(e => { bal -= Math.abs(finiteNumber(e.amount)); });
+  arr(db.bankFees).filter(f => f && f.bankAccountId === id && !hasLinkedBankTx('bankFeeId',f.id,id) && !hasLinkedBankTx('feeId',f.id,id))
+    .forEach(f => { bal -= Math.abs(finiteNumber(f.amount)); });
+  arr(db.bankTransfers).filter(x => x && x.fromBankId === id && !hasLinkedBankTx('transferId',x.id,id))
+    .forEach(x => { bal -= Math.abs(finiteNumber(x.amount)); });
+  arr(db.bankTransfers).filter(x => x && x.toBankId === id && !hasLinkedBankTx('transferId',x.id,id))
+    .forEach(x => { bal += Math.abs(finiteNumber(x.amount)); });
   return bal;
-};
+}
+window.bankBalance = bankBalance;
 
 const bankAccountsByBankName = name => arr(db.bankAccounts).filter(b => b.bankName === name);
-
 const catObj = id => arr(db.categories).find(c => c.id === id);
 const catName = id => { const c = catObj(id); return c ? c.name : '—'; };
-
 const custObj = id => arr(db.customers).find(c => c.id === id);
 const custName = id => { const c = custObj(id); return c ? c.name : '—'; };
-
 const supObj = id => arr(db.suppliers).find(s => s.id === id);
 const supName = id => { const s = supObj(id); return s ? s.name : '—'; };
 
-const customerBalance = id => {
-  const c = custObj(id);
-  let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit'
-    ? -num(c.openingBalance) : num(c.openingBalance)) : 0;
-
-  /* Receipts are collections from the customer, so they reduce the receivable.
-     A bounced cheque reverses the original collection and therefore increases it again. */
-  arr(db.receipts).filter(r => r.customerId === id && r.status !== 'rejected').forEach(r => {
-    bal -= num(r.amount);
-  });
-
+function customerBalance(id){
+  let bal = customerOpeningSigned(custObj(id));
+  arr(db.receipts).filter(r => r.customerId === id && r.status !== 'rejected' && r.status !== 'cancelled').forEach(r => { bal -= Math.abs(finiteNumber(r.amount)); });
   arr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
-    bal += typeof chequeRemaining === 'function' ? num(chequeRemaining(q.id)) : num(q.amount);
+    bal += Math.max(0, finiteNumber(typeof chequeRemaining === 'function' ? chequeRemaining(q.id) : q.amount));
   });
-
-  arr(db.payments).filter(p =>
-    p.type === 'customer_refund' && p.customerId === id &&
-    p.status !== 'rejected' && !p.fullyReversed
-  ).forEach(p => { bal -= paymentAmount(p); });
-
+  arr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && !['rejected','cancelled','void'].includes(String(p.status || '').toLowerCase()) && !p.fullyReversed).forEach(p => { bal -= supplierPaymentAmount(p); });
+  customerJournalEntries(id).forEach(j => { bal += finiteNumber(j.debit) - finiteNumber(j.credit); });
   return bal;
-};
+}
+window.customerBalance = customerBalance;
 
-const supplierBalance = id => {
-  let bal = supplierOpeningSigned(supObj(id));
+function supplierBalance(id){
+  return supplierAccountSummary(id).payableSigned;
+}
+window.supplierBalance = supplierBalance;
 
-  actualPurchases().filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled')
-    .forEach(p => { bal += num(p.amount); });
+function supplierAccountSummary(id){
+  const s = supObj(id);
+  if(!s) return {opening:0,purchases:0,returns:0,paid:0,adjustments:0,payableSigned:0,payable:0};
+  const opening = supplierOpeningSigned(s);
+  const purchases = actualPurchases().filter(p => p.supplierId === id && !['rejected','cancelled','canceled'].includes(String(p.status || '').toLowerCase())).reduce((a,p) => a + Math.max(0,finiteNumber(p.amount)),0);
+  const returns = arr(db.supplierReturns).filter(r => r.supplierId === id && !['rejected','cancelled','canceled'].includes(String(r.status || '').toLowerCase())).reduce((a,r) => a + Math.max(0,finiteNumber(r.amount)),0);
+  const paid = arr(db.payments).filter(p => p.supplierId === id && supplierPaymentIsActive(p)).reduce((a,p) => a + supplierPaymentAmount(p),0);
+  const adjustments = supplierJournalEntries(id).reduce((a,j) => a + finiteNumber(j.credit) - finiteNumber(j.debit),0);
+  const payableSigned = opening + purchases - returns - paid + adjustments;
+  return {opening,purchases,returns,paid,adjustments,payableSigned,payable:Math.max(0,payableSigned)};
+}
+window.supplierAccountSummary = supplierAccountSummary;
 
-  arr(db.supplierReturns).filter(r =>
-    r.supplierId === id && r.status !== 'rejected' && r.status !== 'cancelled'
-  ).forEach(r => { bal -= num(r.amount); });
-
-  arr(db.payments).filter(p => supplierPaymentIsActive(p))
-    .filter(p => p.supplierId === id)
-    .forEach(p => { bal -= supplierPaymentAmount(p); });
-
-  /* Explicit supplier journals: debit reduces payable, credit increases it.
-     Duplicate opening/payment journals are filtered centrally. */
-  supplierJournalEntries(id)
-    .forEach(j => { bal += num(j.credit) - num(j.debit); });
-
-  return bal;
-};
-
-const chequeReliability = (entityId, type) => {
+function chequeReliability(entityId,type){
   const field = type === 'customer' ? 'customerId' : 'supplierId';
   const cheques = arr(db.customerCheques).filter(c => c[field] === entityId);
   if(!cheques.length) return null;
-  const cleared = cheques.filter(c => c.status === 'Cleared' || c.status === 'Settled').length;
+  const cleared = cheques.filter(c => ['Cleared','Settled'].includes(c.status)).length;
   return Math.round((cleared / cheques.length) * 100);
-};
+}
+window.chequeReliability = chequeReliability;
 
 function supplierLedger(id){
   const s = supObj(id);
   if(!s) return {rows:[],balance:0};
   const rows = [];
   const ob = supplierOpeningSigned(s);
-  if(ob !== 0){
-    rows.push({
-      date:s.openingDate || today(), type:'Opening Balance', ref:'OPENING',
-      desc:'Opening balance', debit:ob < 0 ? Math.abs(ob) : 0,
-      credit:ob > 0 ? ob : 0, ts:0, isOpeningBalance:true
-    });
-  }
-  actualPurchases().filter(p=>p.supplierId===id && p.status!=='rejected' && p.status!=='cancelled')
-    .forEach(p=>rows.push({date:p.date||today(),type:'Purchase',ref:p.invoiceNo||p.id,desc:catName(p.categoryId),debit:0,credit:num(p.amount),ts:1,purchaseId:p.id}));
-  arr(db.supplierReturns).filter(r=>r.supplierId===id && r.status!=='rejected' && r.status!=='cancelled')
-    .forEach(r=>rows.push({date:r.date||today(),type:'Supplier Return',ref:r.reference||r.id,desc:r.reason||'',debit:num(r.amount),credit:0,ts:2,returnId:r.id}));
-  arr(db.payments).filter(p=>supplierPaymentIsActive(p)&&p.supplierId===id)
-    .forEach(p=>rows.push({date:p.date||today(),type:'Payment',ref:p.reference||p.id,desc:p.paymentMode==='bank'?'Bank Payment':'Cheque Payment',debit:paymentAmount(p),credit:0,ts:3,paymentId:p.id}));
-  supplierJournalEntries(id)
-    .forEach(j=>rows.push({date:j.date||today(),type:'Journal',ref:j.reference||j.id,desc:j.description||'',debit:num(j.debit),credit:num(j.credit),ts:4,journalId:j.id}));
-
-  rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || num(a.ts)-num(b.ts));
-  let bal=0;
-  rows.forEach(r=>{ bal += num(r.credit)-num(r.debit); r.balance=bal; });
+  if(ob !== 0) rows.push({date:s.openingDate || today(),type:'Opening Balance',ref:'OPENING',desc:'Opening balance',debit:ob<0?Math.abs(ob):0,credit:ob>0?ob:0,ts:0,isOpeningBalance:true});
+  actualPurchases().filter(p=>p.supplierId===id&&!['rejected','cancelled','canceled'].includes(String(p.status||'').toLowerCase()))
+    .forEach(p=>rows.push({date:p.date||today(),type:'Purchase',ref:p.invoiceNo||p.id,desc:catName(p.categoryId),debit:0,credit:Math.max(0,finiteNumber(p.amount)),ts:1,purchaseId:p.id}));
+  arr(db.supplierReturns).filter(r=>r.supplierId===id&&!['rejected','cancelled','canceled'].includes(String(r.status||'').toLowerCase()))
+    .forEach(r=>rows.push({date:r.date||today(),type:'Supplier Return',ref:r.reference||r.id,desc:r.reason||'',debit:Math.max(0,finiteNumber(r.amount)),credit:0,ts:2,returnId:r.id}));
+  arr(db.payments).filter(p=>p.supplierId===id&&supplierPaymentIsActive(p))
+    .forEach(p=>rows.push({date:p.date||today(),type:'Payment',ref:p.reference||p.id,desc:String(p.paymentMode||'cheques').toLowerCase()==='bank'?'Bank Payment':'Cheque Payment',debit:supplierPaymentAmount(p),credit:0,ts:3,paymentId:p.id}));
+  supplierJournalEntries(id).forEach(j=>rows.push({date:j.date||today(),type:'Journal Adjustment',ref:j.reference||j.id,desc:j.description||'',debit:Math.max(0,finiteNumber(j.debit)),credit:Math.max(0,finiteNumber(j.credit)),ts:4,journalId:j.id}));
+  rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || finiteNumber(a.ts)-finiteNumber(b.ts));
+  let bal = 0;
+  rows.forEach(r=>{bal += finiteNumber(r.credit)-finiteNumber(r.debit);r.balance=bal;});
   return {rows,balance:bal};
 }
 window.supplierLedger = supplierLedger;
@@ -1845,76 +1868,78 @@ function customerLedger(id){
   const c = custObj(id);
   if(!c) return {rows:[],balance:0};
   const rows=[];
-  const ob = String(c.openingBalanceType||'receivable').toLowerCase()==='credit' ? -num(c.openingBalance) : num(c.openingBalance);
+  const ob=customerOpeningSigned(c);
   if(ob!==0) rows.push({date:c.openingDate||today(),type:'Opening Balance',ref:'OPENING',desc:'Opening balance',debit:ob>0?ob:0,credit:ob<0?Math.abs(ob):0,ts:0,isOpeningBalance:true});
-  arr(db.receipts).filter(r=>r.customerId===id&&r.status!=='rejected').forEach(r=>rows.push({date:r.date||today(),type:'Receipt',ref:r.reference||r.id,desc:r.method||'',debit:0,credit:num(r.amount),ts:1,receiptId:r.id}));
-  arr(db.customerCheques).filter(q=>q.customerId===id).forEach(q=>{
-    if(q.status==='Bounced'){
-      const amt=typeof chequeRemaining==='function'?num(chequeRemaining(q.id)):num(q.amount);
-      rows.push({date:q.bouncedDate||q.date||today(),type:'Bounced Cheque',ref:q.chequeNo||q.id,desc:q.bank||'',debit:amt,credit:0,ts:2,chequeId:q.id});
-    }
+  arr(db.receipts).filter(r=>r.customerId===id&&r.status!=='rejected'&&r.status!=='cancelled').forEach(r=>rows.push({date:r.date||today(),type:'Receipt',ref:r.reference||r.id,desc:r.method||'',debit:0,credit:Math.abs(finiteNumber(r.amount)),ts:1,receiptId:r.id}));
+  arr(db.customerCheques).filter(q=>q.customerId===id&&q.status==='Bounced').forEach(q=>{
+    const amt=Math.max(0,finiteNumber(typeof chequeRemaining==='function'?chequeRemaining(q.id):q.amount));
+    if(amt>0) rows.push({date:q.bouncedDate||q.date||today(),type:'Bounced Cheque',ref:q.chequeNo||q.id,desc:q.bank||'',debit:amt,credit:0,ts:2,chequeId:q.id});
   });
-  arr(db.payments).filter(p=>p.type==='customer_refund'&&p.customerId===id&&p.status!=='rejected'&&!p.fullyReversed)
-    .forEach(p=>rows.push({date:p.date||today(),type:'Refund',ref:p.reference||p.id,desc:'Customer refund',debit:0,credit:paymentAmount(p),ts:3,paymentId:p.id}));
-  arr(db.journals).filter(j=>j.entityType==='customer'&&j.entityId===id&&!j.bounceReversal)
-    .forEach(j=>rows.push({date:j.date||today(),type:'Journal',ref:j.reference||j.id,desc:j.description||'',debit:num(j.debit),credit:num(j.credit),ts:4,journalId:j.id}));
-  rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || num(a.ts)-num(b.ts));
-  let bal=0; rows.forEach(r=>{bal += num(r.debit)-num(r.credit);r.balance=bal;});
+  arr(db.payments).filter(p=>p.type==='customer_refund'&&p.customerId===id&&!['rejected','cancelled','void'].includes(String(p.status||'').toLowerCase())&&!p.fullyReversed)
+    .forEach(p=>rows.push({date:p.date||today(),type:'Refund',ref:p.reference||p.id,desc:p.notes||'',debit:0,credit:supplierPaymentAmount(p),ts:3,paymentId:p.id}));
+  customerJournalEntries(id).forEach(j=>rows.push({date:j.date||today(),type:'Journal Adjustment',ref:j.reference||j.id,desc:j.description||'',debit:Math.max(0,finiteNumber(j.debit)),credit:Math.max(0,finiteNumber(j.credit)),ts:4,journalId:j.id}));
+  rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)) || finiteNumber(a.ts)-finiteNumber(b.ts));
+  let bal=0;rows.forEach(r=>{bal+=finiteNumber(r.debit)-finiteNumber(r.credit);r.balance=bal;});
   return {rows,balance:bal};
 }
 window.customerLedger = customerLedger;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 5 — 🔥 NEW SMART SYNC ENGINE (Replaces old pushToFirestore)
-
-  🔧 BUG FIX #1: The old pushToFirestore() read ALL docs from ALL
-     collections, deleted them ALL, then re-wrote them ALL on every
-     single save(). One tiny edit = thousands of Firestore ops = quota 💥
-
-  🔧 BUG FIX #3: save() fired on every keystroke with no debouncing.
-
-  NEW approach:
-  • Track which collections are dirty (changed)
-  • Only sync changed collections
-  • Use WriteBatch for atomic, efficient writes
-  • Debounce saves (1.5s) to batch rapid edits
-  • Track individual doc changes for granular sync
-  • Fallback to full sync only when needed
-═══════════════════════════════════════════════════════════════════════════ */
-
-const _syncState = {
-  dirtyCollections: new Set(),
-  pendingSave: false,
-  lastSyncTime: null,
-  syncInProgress: false,
-  fullSyncNeeded: false,
-  docChanges: {},  /* { collection: { docId: 'upsert'|'delete' } } */
-  debounceTimer: null,
-  DEBOUNCE_MS: 1500,
-  MAX_BATCH_SIZE: 400,
-  initialized: false
-};
-
-/* Mark a collection as dirty */
-function markDirty(collection, docId, action) {
-  _syncState.dirtyCollections.add(collection);
-  if (docId) {
-    if (!_syncState.docChanges[collection]) _syncState.docChanges[collection] = {};
-    _syncState.docChanges[collection][docId] = action || 'upsert';
-  }
-}
-
-/* ── Debounced save with automatic granular change detection ─────────── */
-function detectDirtyFromSnapshot(){
-  const snap=window._dbSnapshot||{};
-  COLLECTIONS.forEach(col=>{
-    const before=snap[col]||{}, current=arr(db[col]), seen=new Set();
-    current.forEach(item=>{if(!item||!item.id)return;seen.add(item.id);let now='';try{now=JSON.stringify(item);}catch(e){return;}if(before[item.id]!==now)markDirty(col,item.id,'upsert');});
-    Object.keys(before).forEach(id=>{if(!seen.has(id))markDirty(col,id,'delete');});
+function supplierAging(id,asOf){
+  const s=supObj(id); if(!s) return {current:0,d30:0,d60:0,d90:0,total:0};
+  const end=asOf||today();
+  const debt=[]; let available=0;
+  const ob=supplierOpeningSigned(s);
+  if(ob>0) debt.push({date:s.openingDate||end,amount:ob,source:'opening_balance'}); else available += Math.abs(ob);
+  actualPurchases().filter(p=>p.supplierId===id&&(!p.date||p.date<=end)&&!['rejected','cancelled','canceled'].includes(String(p.status||'').toLowerCase()))
+    .forEach(p=>debt.push({date:p.date||end,amount:Math.max(0,finiteNumber(p.amount)),source:'purchase',id:p.id}));
+  arr(db.supplierReturns).filter(r=>r.supplierId===id&&(!r.date||r.date<=end)&&!['rejected','cancelled','canceled'].includes(String(r.status||'').toLowerCase()))
+    .forEach(r=>{available += Math.max(0,finiteNumber(r.amount));});
+  arr(db.payments).filter(p=>p.supplierId===id&&(!p.date||p.date<=end)&&supplierPaymentIsActive(p)).forEach(p=>{available += supplierPaymentAmount(p);});
+  supplierJournalEntries(id).filter(j=>!j.date||j.date<=end).forEach(j=>{
+    const credit=Math.max(0,finiteNumber(j.credit)), debit=Math.max(0,finiteNumber(j.debit));
+    if(credit>debit) debt.push({date:j.date||end,amount:credit-debit,source:'journal',id:j.id});
+    else available += debit-credit;
   });
-  const nowSettings=JSON.stringify(db.settings||{});
-  if(snap._settings!==undefined&&snap._settings!==nowSettings)markDirty('settings','main','upsert');
+  debt.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const bk=(db.settings&&db.settings.supplierAgingBuckets)||[30,60,90];
+  const b1=Math.max(1,finiteNumber(bk[0])||30),b2=Math.max(b1,finiteNumber(bk[1])||60),b3=Math.max(b2,finiteNumber(bk[2])||90);
+  const creditDays=Math.max(0,finiteNumber(s.creditDays)||finiteNumber(db.settings&&db.settings.defaultSupplierCreditDays)||30);
+  let current=0,d30=0,d60=0,d90=0;
+  debt.forEach(item=>{
+    if(item.amount<=0)return;
+    if(available>0){const used=Math.min(available,item.amount);item.amount-=used;available-=used;}
+    if(item.amount<=0)return;
+    let age=0;try{age=Math.max(0,Math.floor((Date.parse(end+'T00:00:00')-Date.parse((item.date||end)+'T00:00:00'))/86400000));}catch(e){age=0;}
+    const effective=Math.max(0,age-creditDays);
+    if(effective<=b1)current+=item.amount;else if(effective<=b2)d30+=item.amount;else if(effective<=b3)d60+=item.amount;else d90+=item.amount;
+  });
+  return {current,d30,d60,d90,total:current+d30+d60+d90};
 }
+window.supplierAging = supplierAging;
+
+function customerAging(id,asOf){
+  const end=asOf||today(); let current=0,d30=0,d60=0,d90=0;
+  arr(db.customerCheques).filter(q=>q.customerId===id&&q.status==='Bounced'&&(!q.bouncedDate||q.bouncedDate<=end)).forEach(q=>{
+    const amount=Math.max(0,finiteNumber(typeof chequeRemaining==='function'?chequeRemaining(q.id):q.amount)); if(amount<=0)return;
+    const d=q.bouncedDate||q.date||end;let age=0;try{age=Math.max(0,Math.floor((Date.parse(end+'T00:00:00')-Date.parse(d+'T00:00:00'))/86400000));}catch(e){age=0;}
+    if(age<=30)current+=amount;else if(age<=60)d30+=amount;else if(age<=90)d60+=amount;else d90+=amount;
+  });
+  return {current,d30,d60,d90,total:current+d30+d60+d90,bounced:arr(db.customerCheques).filter(q=>q.customerId===id&&q.status==='Bounced'&&(!q.bouncedDate||q.bouncedDate<=end)).length};
+}
+window.customerAging = customerAging;
+
+function globalAging(){
+  const out={current:0,d30:0,d60:0,d90:0,total:0};
+  arr(db.suppliers).forEach(s=>{const a=supplierAging(s.id);out.current+=a.current;out.d30+=a.d30;out.d60+=a.d60;out.d90+=a.d90;});
+  out.total=out.current+out.d30+out.d60+out.d90; return out;
+}
+window.globalAging = globalAging;
+
+function totalPayable(){
+  return arr(db.suppliers).reduce((a,s)=>a+Math.max(0,supplierBalance(s.id)),0);
+}
+window.totalPayable=totalPayable;
+
 function save(){
   detectDirtyFromSnapshot();
   if(_syncState.debounceTimer)clearTimeout(_syncState.debounceTimer);
@@ -2683,7 +2708,10 @@ function savePurchase(e){
     invoiceNo: f.pInvoice.value.trim(),
     amount: num(f.pAmount.value),
     dueDate: f.pDueDate.value || shiftDate(today(), 30),
-    description: f.pDesc.value.trim()
+    description: f.pDesc.value.trim(),
+    transactionType: 'purchase',
+    entryType: 'purchase',
+    isOpeningBalance: false
   };
   if(!data.supplierId || !data.categoryId || data.amount <= 0){
     toast('Fill all required fields', 'error');
@@ -3444,7 +3472,7 @@ const ACCESS_DOC_PATH   = ROOT + '/access';
 const SETTINGS_DOC_PATH = ROOT + '/settings';
 const USERS_COL_PATH    = DATA_PREFIX + 'users';
 const APP_NAME          = 'Lanka Shoe Supplier Manage';
-const APP_VER           = '13.0.0';
+const APP_VER           = '15.0.0';
 
 /* ── Firestore-synced collections ── */
 const COLLECTIONS = [
@@ -4143,7 +4171,7 @@ SECTION 18 — FINAL BOOT LOG
 setTimeout(function(){
   if(window.__dbgOk){
     window.__dbgOk('═══════════════════════════════════════', 'BOOT');
-    window.__dbgOk('✅ Lanka Shoe Enterprise v' + APP_VER + ' fully loaded', 'BOOT');
+    window.__dbgOk('✅ Lanka Shoe Enterprise v' + APP_VER + ' complete rewrite loaded', 'BOOT');
     window.__dbgOk('📦 ' + COLLECTIONS.length + ' collections synced to Firestore', 'BOOT');
     window.__dbgOk('🔧 Non-blocking auth + diff-based sync + parallel load', 'BOOT');
     window.__dbgOk('🎯 Escape hatch: ?safe=1 in URL to disable DevTools guard', 'BOOT');
@@ -5966,106 +5994,122 @@ window.previewPayment = previewPayment;
 /* ═══════════════════════════════════════════════════════════════════════════
 SECTION 12 — CONFIRM AND SAVE PAYMENT
 ═══════════════════════════════════════════════════════════════════════════ */
-function confirmAndSavePayment(){
+async function confirmAndSavePayment(){
   if(!canWrite()) return;
-  const snap = _pendingPaymentSnapshot;
-  if(!snap){ toast('Nothing to save (snapshot missing). Please try again.', 'error'); return; }
-  const supplier = supObj(snap.supplierId);
-  if(!supplier){ toast('Supplier not found', 'error'); return; }
-  const payment = {
-    id: uid(),
-    supplierId: snap.supplierId,
-    date: snap.date,
-    reference: snap.reference,
-    paymentMode: snap.paymentMode || 'cheques',
-    partyChequeIds: (snap.partyCheques || []).map(c => c.id),
-    partyAmount: num(snap.partyAmount) || 0,
-    ownChequeIds: (snap.ownCheques || []).map(o => o.leafId),
-    ownAmount: num(snap.ownAmount) || 0,
-    bankPayment: snap.bankPayment ? {
-      bankAccountId: snap.bankPayment.bankAccountId,
-      amount: num(snap.bankPayment.amount),
-      method: snap.bankPayment.method || 'Bank Transfer',
-      reference: snap.bankPayment.reference || '',
-      notes: snap.bankPayment.notes || ''
-    } : null,
-    bankAmount: num(snap.bankAmount) || 0,
-    amount: (num(snap.partyAmount) + num(snap.ownAmount) + num(snap.bankAmount)),
-    createdAt: nowISO()
-  };
-  /* ── Party cheques → Issued ── */
-  (snap.partyCheques || []).forEach(cp => {
-    const c = arr(db.customerCheques).find(x => x.id === cp.id);
-    if(c){
-      c.status = 'Issued';
-      c.paymentId = payment.id;
-      c.issuedTo = snap.supplierId;
-      c.issuedDate = snap.date;
-    }
-  });
-  /* ── Own cheques → Issued + PENDING bank txn (deferred) ── */
-  if(!Array.isArray(db.bankTransactions)) db.bankTransactions = [];
-  (snap.ownCheques || []).forEach(o => {
-    const leaf = arr(db.chequeLeaves).find(l => l.id === o.leafId);
-    if(!leaf) return;
-    leaf.status = 'Issued';
-    leaf.paymentId = payment.id;
-    leaf.date = snap.date;
-    leaf.dueDate = o.dueDate;
-    leaf.amount = o.amount;
-    leaf.payee = o.payee;
-    leaf.supplierId = snap.supplierId;
-    db.bankTransactions.push({
-      id: uid(),
-      bankAccountId: leaf.bankAccountId,
-      date: o.dueDate,
-      type: 'cheque_issued',
-      amount: o.amount,
-      reference: leaf.leafNo,
-      chequeId: leaf.id,
-      paymentId: payment.id,
-      description: 'Cheque to ' + supplier.name,
-      status: 'pending',
-      requiresApproval: true,
-      createdAt: nowISO()
+  const snap=_pendingPaymentSnapshot;
+  if(!snap){toast('Nothing to save. Please return to the payment form.','error');return;}
+  const supplier=supObj(snap.supplierId);
+  if(!supplier){toast('Supplier not found.','error');return;}
+  const mode=String(snap.paymentMode||'cheques').toLowerCase();
+  const supplierPayments=arr(db.payments).filter(p=>p&&p.supplierId===snap.supplierId&&supplierPaymentIsActive(p));
+
+  /* Rebuild the amount from live records so stale UI totals can never become
+     a financial posting. */
+  let partyCheques=[], ownCheques=[], bankPayment=null;
+  if(mode==='bank'){
+    const bp=snap.bankPayment||{};
+    const bank=bankObj(bp.bankAccountId);
+    const amount=Math.max(0,finiteNumber(bp.amount||snap.bankAmount));
+    if(!bank){toast('Bank account not found.','error');return;}
+    if(amount<=0){toast('Bank payment amount must be greater than zero.','error');return;}
+    bankPayment={
+      bankAccountId:bank.id,
+      amount,
+      method:bp.method||'Bank Transfer',
+      reference:bp.reference||snap.reference||'',
+      notes:bp.notes||''
+    };
+  }else{
+    const seenParty=new Set();
+    (snap.partyCheques||[]).forEach(cp=>{
+      const id=cp&&cp.id; if(!id||seenParty.has(id)) return;
+      const c=arr(db.customerCheques).find(x=>x.id===id);
+      if(!c) return;
+      if(c.status!=='In Hand' && !c.paymentId) return;
+      seenParty.add(id);
+      partyCheques.push({id:c.id,customerName:c.customerName,chequeNo:c.chequeNo,bank:c.bank,amount:Math.max(0,finiteNumber(c.amount)),dueDate:c.dueDate});
     });
-  });
-  /* ── Direct bank payment → immediate withdrawal ── */
-  if(payment.paymentMode === 'bank' && payment.bankPayment){
-    const bp = payment.bankPayment;
-    db.bankTransactions.push({
-      id: uid(),
-      bankAccountId: bp.bankAccountId,
-      date: snap.date,
-      type: 'withdrawal',
-      amount: num(bp.amount),
-      reference: bp.reference || payment.reference || ('PAY-' + payment.id.slice(-4)),
-      paymentId: payment.id,
-      description: 'Supplier payment to ' + supplier.name + ' (' + bp.method + ')',
-      notes: bp.notes || '',
-      createdAt: nowISO()
+    const seenOwn=new Set();
+    (snap.ownCheques||[]).forEach(orow=>{
+      const leafId=orow&&orow.leafId;if(!leafId||seenOwn.has(leafId))return;
+      const leaf=arr(db.chequeLeaves).find(l=>l.id===leafId);
+      if(!leaf || (leaf.status!=='Available' && !leaf.paymentId)) return;
+      const entered=Math.max(0,finiteNumber(orow.amount));
+      const face=Math.max(0,finiteNumber(leaf.amount));
+      const amount=entered>0 ? Math.min(entered,face||entered) : face;
+      if(amount<=0)return;
+      seenOwn.add(leafId);
+      ownCheques.push({leafId:leaf.id,leafNo:leaf.leafNo,bankName:leaf.bankName,bankAccountId:leaf.bankAccountId,amount,dueDate:orow.dueDate||snap.date,payee:orow.payee||supplier.name});
     });
   }
-  if(!Array.isArray(db.payments)) db.payments = [];
-  db.payments.push(payment);
-  db.settings.nextPaymentNo = (num(db.settings.nextPaymentNo) || 1) + 1;
-  pushUndo({ type: 'collection_push', collection: 'payments', id: payment.id, label: 'Add payment ' + supplier.name });
-  trackVersion('payments', payment.id, 'Create', null, payment);
-  const summary = payment.paymentMode === 'bank'
-    ? 'Bank: ' + money(payment.bankAmount) + ' — ' + bankDisplayName(bankObj(payment.bankPayment.bankAccountId))
-    : ('Party: ' + money(payment.partyAmount) + ' + Own: ' + money(payment.ownAmount));
-  logAct('Add Payment', 'Payment', payment.id, snap.supplierName + ' • ' + money(payment.amount) + ' • ' + summary);
-  ui.paySelectedParty = new Set();
-  ui.payOwnRows = [];
-  ui.payBank = { bankAccountId:'', amount:0, method:'Bank Transfer', reference:'', notes:'' };
-  ui.paySupplierPreselect = '';
-  _pendingPaymentSnapshot = null;
-  save();
-  closeModal();
-  render();
-  toast('✅ Payment saved • ' + money(payment.amount), 'success');
-  if(payment.amount >= 100000) confetti();
+  const partyAmount=partyCheques.reduce((a,c)=>a+c.amount,0);
+  const ownAmount=ownCheques.reduce((a,c)=>a+c.amount,0);
+  const bankAmount=bankPayment?bankPayment.amount:0;
+  const amount=partyAmount+ownAmount+bankAmount;
+  if(amount<=0){toast('Payment total must be greater than zero.','error');return;}
+
+  /* Hard duplicate protection for the exact same transaction. */
+  const sameRef=String(snap.reference||'').trim().toLowerCase();
+  if(sameRef){
+    const duplicate=supplierPayments.some(p=>String(p.reference||'').trim().toLowerCase()===sameRef && Math.abs(supplierPaymentAmount(p)-amount)<0.005 && String(p.date||'')===String(snap.date||''));
+    if(duplicate){toast('A supplier payment with the same reference, date and amount already exists.','error');return;}
+  }
+  if(mode!=='bank'){
+    const duplicateParty=partyCheques.some(c=>supplierPayments.some(p=>Array.isArray(p.partyChequeIds)&&p.partyChequeIds.includes(c.id)));
+    if(duplicateParty){toast('One or more party cheques are already used in a supplier payment.','error');return;}
+    const duplicateOwn=ownCheques.some(c=>supplierPayments.some(p=>Array.isArray(p.ownChequeIds)&&p.ownChequeIds.includes(c.leafId)));
+    if(duplicateOwn){toast('One or more own cheque leaves are already used in a supplier payment.','error');return;}
+  }
+
+  const payment={
+    id:uid(),supplierId:snap.supplierId,date:snap.date||today(),reference:snap.reference||'',
+    paymentMode:mode==='bank'?'bank':'cheques',
+    status:'posted',
+    partyChequeIds:partyCheques.map(c=>c.id),partyAmount,
+    ownChequeIds:ownCheques.map(c=>c.leafId),ownAmount,
+    bankPayment,
+    bankAmount,
+    amount,
+    createdAt:nowISO()
+  };
+
+  const changed=[];
+  try{
+    /* Party cheques -> Issued and linked to exactly this payment. */
+    partyCheques.forEach(cp=>{
+      const c=arr(db.customerCheques).find(x=>x.id===cp.id); if(!c)return;
+      c.status='Issued'; c.paymentId=payment.id; c.issuedTo=snap.supplierId; c.issuedDate=payment.date; changed.push(c);
+    });
+    /* Own leaves -> Issued and deferred bank deduction at due date. */
+    if(!Array.isArray(db.bankTransactions)) db.bankTransactions=[];
+    ownCheques.forEach(o=>{
+      const leaf=arr(db.chequeLeaves).find(l=>l.id===o.leafId); if(!leaf)return;
+      leaf.status='Issued';leaf.paymentId=payment.id;leaf.date=payment.date;leaf.dueDate=o.dueDate;leaf.amount=o.amount;leaf.payee=o.payee;leaf.supplierId=snap.supplierId;
+      db.bankTransactions.push({id:uid(),bankAccountId:leaf.bankAccountId,date:o.dueDate,type:'cheque_issued',amount:o.amount,reference:leaf.leafNo,chequeId:leaf.id,paymentId:payment.id,description:'Cheque to '+supplier.name,status:'pending',requiresApproval:true,createdAt:nowISO()});
+    });
+    /* Direct bank payment -> immediate withdrawal. */
+    if(bankPayment){
+      db.bankTransactions.push({id:uid(),bankAccountId:bankPayment.bankAccountId,date:payment.date,type:'withdrawal',amount:bankPayment.amount,reference:bankPayment.reference||payment.reference||('PAY-'+payment.id.slice(-4)),paymentId:payment.id,description:'Supplier payment to '+supplier.name+' ('+bankPayment.method+')',notes:bankPayment.notes||'',status:'posted',createdAt:nowISO()});
+    }
+    if(!Array.isArray(db.payments)) db.payments=[];
+    db.payments.push(payment);
+    db.settings.nextPaymentNo=(finiteNumber(db.settings.nextPaymentNo)||1)+1;
+    pushUndo({type:'collection_push',collection:'payments',id:payment.id,label:'Add payment '+supplier.name});
+    trackVersion('payments',payment.id,'Create',null,payment);
+    logAct('Add Payment','Payment',payment.id,supplier.name+' • '+money(payment.amount));
+    ui.paySelectedParty=new Set();ui.payOwnRows=[];ui.payBank={bankAccountId:'',amount:0,method:'Bank Transfer',reference:'',notes:''};ui.paySupplierPreselect='';
+    _pendingPaymentSnapshot=null;
+    normalizeFinancialRecords();
+    save();
+    closeModal();render();
+    toast('✅ Payment saved • '+money(payment.amount),'success');
+    if(payment.amount>=100000)confetti();
+  }catch(err){
+    console.error('Payment save failed',err);
+    toast('Payment could not be saved: '+(err.message||String(err)),'error');
+  }
 }
+
 window.confirmAndSavePayment = confirmAndSavePayment;
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -7812,7 +7856,10 @@ function saveJournal(e){
     entityId: supplierId || customerId,
     debit: num(f.jDebit.value),
     credit: num(f.jCredit.value),
-    description: f.jDesc.value.trim()
+    description: f.jDesc.value.trim(),
+    journalSource: 'manual',
+    isSupplierAdjustment: !!supplierId,
+    isCustomerAdjustment: !!customerId
   };
   if(data.debit === 0 && data.credit === 0){ toast('Enter amount', 'error'); return; }
   const jid = uid();
@@ -8198,6 +8245,9 @@ function createAdjustmentJournal(entityType, entityId, amount, reason){
     debit: amount > 0 ? amount : 0,
     credit: amount < 0 ? Math.abs(amount) : 0,
     description: 'Manual adjustment: ' + (reason || ''),
+    journalSource: 'manual-adjustment',
+    isSupplierAdjustment: entityType === 'supplier',
+    isCustomerAdjustment: entityType === 'customer',
     createdAt: nowISO()
   };
   db.journals.push(item);
@@ -8256,7 +8306,7 @@ function agingTrendChart(){
         items.push({ date: p.date, amount: num(p.amount) });
       });
       items.sort((a, b) => a.date < b.date ? -1 : 1);
-      let avail = sum(arr(db.payments).filter(p => p.supplierId === s.id && p.date <= endOfMonth && !p.fullyReversed), 'amount')
+      let avail = arr(db.payments).filter(p => p.supplierId === s.id && p.date <= endOfMonth && supplierPaymentIsActive(p)).reduce((a,p) => a + supplierPaymentAmount(p), 0)
         + sum(arr(db.supplierReturns).filter(r => r.supplierId === s.id && r.date <= endOfMonth), 'amount');
       const bk = db.settings.supplierAgingBuckets || [30, 60, 90];
       const b1 = num(bk[0]), b2 = num(bk[1]), b3 = num(bk[2]);
@@ -11183,11 +11233,11 @@ SECTION 8 — SUPPLIER COMPARISON
 function computeSupplierMetrics(supplierId){
   const s = supObj(supplierId);
   if(!s) return null;
-  const purchases = arr(db.purchases).filter(p => p.supplierId === supplierId);
-  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true);
-  const returns = arr(db.supplierReturns).filter(r => r.supplierId === supplierId);
+  const purchases = actualPurchases().filter(p => p.supplierId === supplierId);
+  const payments = arr(db.payments).filter(p => p.supplierId === supplierId && supplierPaymentIsActive(p));
+  const returns = arr(db.supplierReturns).filter(r => r.supplierId === supplierId && r.status !== 'rejected' && r.status !== 'cancelled');
   const totalPurchased = sum(purchases, 'amount');
-  const totalPaid = sum(payments, 'amount');
+  const totalPaid = payments.reduce((a, p) => a + supplierPaymentAmount(p), 0);
   const totalReturned = sum(returns, 'amount');
   const balance = supplierBalance(supplierId);
   const aging = supplierAging(supplierId);
@@ -14010,12 +14060,18 @@ function viewSuppliers(){
   }
   if(ui.sup.catFilter) rows = rows.filter(s => (s.categoryId || '') === ui.sup.catFilter);
   /* Supplier table invariant: Payable = Opening + Purchases - Returns - Active Payments + Legitimate Journals. */
-  const enriched = rows.map(s => Object.assign({}, s, {
-    balance: supplierBalance(s.id),
-    purchases: sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount'),
-    paid: arr(db.payments).filter(p => p.supplierId === s.id && supplierPaymentIsActive(p)).reduce((a, p) => a + supplierPaymentAmount(p), 0),
-    aging: supplierAging(s.id)
-  }));
+  const enriched = rows.map(s => {
+    const acct = supplierAccountSummary(s.id);
+    return Object.assign({}, s, {
+      balance: acct.payableSigned,
+      purchases: acct.purchases,
+      paid: acct.paid,
+      opening: acct.opening,
+      returns: acct.returns,
+      adjustments: acct.adjustments,
+      aging: supplierAging(s.id)
+    });
+  });
   /* Priority queue — suppliers with overdue payables, ranked by urgency */
   const priority = arr(db.suppliers).map(s => {
     const a = supplierAging(s.id);
@@ -14450,7 +14506,7 @@ function exportSuppliersCSV(){
     const bal = supplierBalance(s.id);
     const aging = supplierAging(s.id);
     const purchases = sum(actualPurchases().filter(p => p.supplierId === s.id), 'amount');
-    const paid = arr(db.payments).filter(p => supplierPaymentIsActive(p) && p.supplierId === s.id).reduce((a, p) => a + supplierPaymentAmount(p), 0);
+    const paid = arr(db.payments).filter(p => p.supplierId === s.id && supplierPaymentIsActive(p)).reduce((a,p) => a + supplierPaymentAmount(p), 0);
     return [
       s.name, catName(s.categoryId), s.phone || '', s.email || '', s.contact || '', s.address || '',
       num(s.creditDays || 30), num(s.creditLimit), num(s.openingBalance), s.openingDate || '',
@@ -15298,7 +15354,7 @@ function supplierAgingTrend(supplierId){
       items.push({ date: p.date, amount: num(p.amount) });
     });
     items.sort((a, b) => a.date < b.date ? -1 : 1);
-    let avail = sum(arr(db.payments).filter(p => p.supplierId === supplierId && p.date <= endOfMonth && !p.fullyReversed), 'amount')
+    let avail = arr(db.payments).filter(p => p.supplierId === supplierId && p.date <= endOfMonth && supplierPaymentIsActive(p)).reduce((a,p) => a + supplierPaymentAmount(p), 0)
       + sum(arr(db.supplierReturns).filter(r => r.supplierId === supplierId && r.date <= endOfMonth), 'amount');
     const bk = db.settings.supplierAgingBuckets || [30, 60, 90];
     const b1 = num(bk[0]), b2 = num(bk[1]), b3 = num(bk[2]);
@@ -16517,14 +16573,7 @@ function pendingDeductions(bankId){
 }
 window.pendingDeductions = pendingDeductions;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-SECTION 42 — TOTAL PAYABLE HELPER
-═══════════════════════════════════════════════════════════════════════════ */
-function totalPayable(){
-  return arr(db.suppliers).reduce((a, s) => a + supplierBalance(s.id), 0);
-}
-window.totalPayable = totalPayable;
-
+/* v15: totalPayable is defined once in the authoritative accounting core. */
 /* ═══════════════════════════════════════════════════════════════════════════
 END OF PART 14
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -19300,7 +19349,7 @@ function aiAnswerQuestion(q){
   const supMatch = arr(db.suppliers).find(x => x.name && s.includes(x.name.toLowerCase()));
   if(supMatch){
     const bal = supplierBalance(supMatch.id);
-    const paid = sum(arr(db.payments).filter(p => p.supplierId === supMatch.id && !p.fullyReversed), 'amount');
+    const paid = arr(db.payments).filter(p => p.supplierId === supMatch.id && supplierPaymentIsActive(p)).reduce((a,p) => a + supplierPaymentAmount(p), 0);
     const purch = sum(actualPurchases().filter(p => p.supplierId === supMatch.id), 'amount');
     return '🏭 **' + supMatch.name + '**\n'
       + '• Outstanding: ' + money(bal) + '\n'
@@ -21942,25 +21991,7 @@ Purpose:
     try { return typeof can === 'function' ? can('delete') : false; } catch(e){ return false; }
   }
 
-  /* ── OPENING-BALANCE CLASSIFICATION ───────────────────────────────────── */
-  function isOpeningBalanceRecord(p){
-    if(!p || typeof p !== 'object') return false;
-    const values = [p.transactionType,p.entryType,p.type,p.source,p.recordType,p.kind,p.origin,p.categoryType]
-      .map(v => String(v || '').trim().toLowerCase());
-    if(values.some(v => v === 'opening_balance' || v === 'opening-balance' || v === 'opening balance' || v === 'openingbalance')) return true;
-    if(p.isOpeningBalance === true || p.isOpening === true || p.fromOpeningBalance === true) return true;
-    const inv = String(p.invoiceNo || p.reference || '').trim().toLowerCase();
-    const desc = String(p.description || p.notes || '').trim().toLowerCase();
-    if(/^ob[-_ ]/.test(inv) || /^opening[-_ ]?balance/.test(inv)) return true;
-    if(desc === 'opening balance' || desc === 'opening balance entry' || desc === 'opening balance brought forward') return true;
-    return false;
-  }
-  window.isOpeningBalanceRecord = isOpeningBalanceRecord;
-
-  function actualPurchases(){
-    return safeArr(db.purchases).filter(p => !isOpeningBalanceRecord(p));
-  }
-  window.actualPurchases = actualPurchases;
+  /* v15: opening-balance classification and actualPurchases are provided by the authoritative accounting core. */
 
   function ensureEntityOpeningFields(){
     safeArr(db.customers).forEach(c => {
@@ -22004,125 +22035,7 @@ Purpose:
   }
   window.migrateExplicitOpeningPurchaseRecords = migrateExplicitOpeningPurchaseRecords;
 
-  /* ── CORRECT BALANCE ENGINE ───────────────────────────────────────────── */
-  function correctedSupplierBalance(id){
-    return supplierBalance(id); /* FIX: one canonical balance engine */
-    const s = safeArr(db.suppliers).find(x => x.id === id);
-    let bal = s ? n(s.openingBalance) : 0;
-    actualPurchases().filter(p => p.supplierId === id).forEach(p => bal += n(p.amount));
-    safeArr(db.supplierReturns).filter(r => r.supplierId === id && r.status !== 'rejected').forEach(r => bal -= n(r.amount));
-    safeArr(db.payments).filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && !p.fullyReversed && p.reversed !== true).forEach(p => bal -= n(supplierPaymentAmount(p)));
-    supplierJournalEntries(id).forEach(j => bal += n(j.credit) - n(j.debit));
-    return bal;
-  }
-  window.supplierBalance = supplierBalance;
-
-  function correctedCustomerBalance(id){
-    const c = safeArr(db.customers).find(x => x.id === id);
-    let bal = c ? (String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance)) : 0;
-    /* Opening balance is kept separate from cheque activity. The existing
-       cheque model treats bounced cheque amounts as money owed to the shop. */
-    safeArr(db.customerCheques).filter(q => q.customerId === id && q.status === 'Bounced').forEach(q => {
-      if(typeof chequeRemaining === 'function') bal += n(chequeRemaining(q.id));
-      else bal += n(q.amount);
-    });
-    safeArr(db.payments).filter(p => p.type === 'customer_refund' && p.customerId === id && p.status !== 'rejected').forEach(p => bal -= n(p.amount));
-    return bal;
-  }
-  window.customerBalance = customerBalance;
-
-  function correctedSupplierAging(id, asOf){
-    const s = safeArr(db.suppliers).find(x => x.id === id);
-    if(!s) return {current:0,d30:0,d60:0,d90:0,total:0};
-    const end = asOf || todaySafe();
-    const items = [];
-    const ob = String(s.openingBalanceType || 'payable').toLowerCase() === 'payable' ? n(s.openingBalance) : -n(s.openingBalance);
-    if(ob > 0) items.push({date:s.openingDate || end, amount:ob, source:'opening_balance'});
-    actualPurchases().filter(p => p.supplierId === id && p.status !== 'rejected' && p.status !== 'cancelled' && (!p.date || p.date <= end)).forEach(p => items.push({date:p.date || end,amount:n(p.amount),source:'purchase',id:p.id}));
-    let journalCredit = 0;
-    supplierJournalEntries(id).filter(j => !j.date || j.date <= end).forEach(j => {
-      const net = n(j.credit) - n(j.debit);
-      if(net > 0) items.push({date:j.date || end, amount:net, source:'journal'}); else journalCredit += -net;
-    });
-    items.sort((a,b) => String(a.date).localeCompare(String(b.date)));
-    let available = safeArr(db.payments).filter(p => p.supplierId === id && (!p.date || p.date <= end) && supplierPaymentIsActive(p)).reduce((a,p)=>a+n(supplierPaymentAmount(p)),0)
-      + safeArr(db.supplierReturns).filter(r => r.supplierId === id && (!r.date || r.date <= end) && r.status !== 'rejected' && r.status !== 'cancelled').reduce((a,r)=>a+n(r.amount),0)
-      + journalCredit;
-    const bk = (db.settings && db.settings.supplierAgingBuckets) || [30,60,90];
-    const b1=n(bk[0])||30, b2=n(bk[1])||60, b3=n(bk[2])||90;
-    let current=0,d30=0,d60=0,d90=0;
-    items.forEach(it=>{
-      if(it.amount<=0) return;
-      if(available>=it.amount){ available-=it.amount; return; }
-      const outstanding=it.amount-Math.max(0,available); available=0;
-      let age=0;
-      try { age=Math.max(0,Math.floor((new Date(end+'T00:00:00')-new Date((it.date||end)+'T00:00:00'))/86400000)); } catch(e){}
-      const credit=n(s.creditDays)||n(db.settings && db.settings.defaultSupplierCreditDays)||30;
-      const effective=Math.max(0,age-credit);
-      if(effective<=b1) current+=outstanding;
-      else if(effective<=b2) d30+=outstanding;
-      else if(effective<=b3) d60+=outstanding;
-      else d90+=outstanding;
-    });
-    return {current,d30,d60,d90,total:current+d30+d60+d90};
-  }
-  window.supplierAging = correctedSupplierAging;
-
-  function correctedCustomerAging(id, asOf){
-    const end=asOf||todaySafe();
-    const rows=safeArr(db.customerCheques).filter(q=>q.customerId===id && q.status==='Bounced' && (!q.bouncedDate || q.bouncedDate<=end));
-    let current=0,d30=0,d60=0,d90=0;
-    rows.forEach(q=>{
-      const amount=typeof chequeRemaining==='function'?n(chequeRemaining(q.id)):n(q.amount);
-      if(amount<=0)return;
-      const d=q.bouncedDate||q.date||end;
-      let age=0; try{age=Math.max(0,Math.floor((new Date(end+'T00:00:00')-new Date(d+'T00:00:00'))/86400000));}catch(e){}
-      if(age<=30)current+=amount; else if(age<=60)d30+=amount; else if(age<=90)d60+=amount; else d90+=amount;
-    });
-    return {current,d30,d60,d90,total:current+d30+d60+d90,bounced:rows.length};
-  }
-  window.customerAging = correctedCustomerAging;
-
-  function correctedGlobalAging(){
-    const out={current:0,d30:0,d60:0,d90:0,total:0};
-    safeArr(db.suppliers).forEach(s=>{
-      const a=correctedSupplierAging(s.id); out.current+=a.current;out.d30+=a.d30;out.d60+=a.d60;out.d90+=a.d90;
-    });
-    out.total=out.current+out.d30+out.d60+out.d90;
-    return out;
-  }
-  window.globalAging=correctedGlobalAging;
-
-  /* ── LEDGERS ──────────────────────────────────────────────────────────── */
-  function correctedSupplierLedger(id){
-    const s=safeArr(db.suppliers).find(x=>x.id===id);
-    if(!s)return {rows:[],balance:0};
-    const rows=[];
-    if(n(s.openingBalance)!==0) rows.push({date:s.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:0,credit:n(s.openingBalance),balance:n(s.openingBalance),isOpeningBalance:true});
-    actualPurchases().filter(p=>p.supplierId===id).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Purchase',ref:p.invoiceNo||p.id,debit:0,credit:n(p.amount),balance:0,purchaseId:p.id}));
-    safeArr(db.supplierReturns).filter(r=>r.supplierId===id&&r.status!=='rejected').forEach(r=>rows.push({date:r.date||todaySafe(),type:'Supplier Return',ref:r.reference||r.id,debit:n(r.amount),credit:0,balance:0,returnId:r.id}));
-    safeArr(db.payments).filter(p=>p.supplierId===id&&p.status!=='rejected'&&!p.fullyReversed).forEach(p=>rows.push({date:p.date||todaySafe(),type:'Payment',ref:p.reference||p.id,debit:n(paymentAmount(p)),credit:0,balance:0,paymentId:p.id}));
-    safeArr(db.journals).filter(j=>j.entityType==='supplier'&&j.entityId===id&&!j.bounceReversal).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
-    rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-    let bal=0; rows.forEach(r=>{bal += n(r.credit)-n(r.debit);r.balance=bal;});
-    return {rows,balance:bal};
-  }
-  /* FIX: original supplierLedger kept (honours journal de-dup, statuses, opening sign) */
-
-  function correctedCustomerLedger(id){
-    const c=safeArr(db.customers).find(x=>x.id===id);
-    if(!c)return {rows:[],balance:0};
-    const rows=[];
-    if(n(c.openingBalance)!==0) { const ob = String(c.openingBalanceType || 'receivable').toLowerCase() === 'credit' ? -n(c.openingBalance) : n(c.openingBalance); rows.push({date:c.openingDate||todaySafe(),type:'Opening Balance',ref:'OPENING',debit:Math.max(0,ob),credit:Math.max(0,-ob),balance:0,isOpeningBalance:true}); }
-    safeArr(db.receipts).filter(r=>r.customerId===id).forEach(r=>rows.push({date:r.date||todaySafe(),type:'Receipt',ref:r.reference||r.id,debit:0,credit:n(r.amount),balance:0,receiptId:r.id}));
-    safeArr(db.customerCheques).filter(q=>q.customerId===id).forEach(q=>rows.push({date:q.date||todaySafe(),type:'Cheque '+(q.status||''),ref:q.chequeNo||q.id,debit:q.status==='Bounced'?n(q.amount):0,credit:0,balance:0,chequeId:q.id}));
-    safeArr(db.journals).filter(j=>j.entityType==='customer'&&j.entityId===id).forEach(j=>rows.push({date:j.date||todaySafe(),type:'Journal',ref:j.reference||j.id,debit:n(j.debit),credit:n(j.credit),balance:0,journalId:j.id}));
-    rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-    let bal=0; rows.forEach(r=>{bal += n(r.debit)-n(r.credit);r.balance=bal;});
-    return {rows,balance:bal};
-  }
-  /* FIX: original customerLedger kept (handles bounced cheque remaining + refunds) */
-
+  /* v15: financial balances/aging/ledgers are authoritative in the Accounting Core above. */
   /* ── PURCHASE VIEW/SAVE SAFETY ────────────────────────────────────────── */
   window.openPurchaseForm = function(id){
     if(!safeArr(db.suppliers).length){ toast('Add supplier first','error'); return; }
@@ -22364,6 +22277,20 @@ Purpose:
 
   if(window.__dbgOk)window.__dbgOk('Deep data correction layer installed: opening balances, ledgers, editing and admin delete controls','DATA-FIX');
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v15 ACCOUNTING INVARIANT CHECKER (read-only)
+═══════════════════════════════════════════════════════════════════════════ */
+function auditSupplierAccounting(id){
+  const a=supplierAccountSummary(id); const l=supplierLedger(id);
+  const ok=Math.abs(a.payableSigned-l.balance)<0.005;
+  return {ok,id,opening:a.opening,purchases:a.purchases,returns:a.returns,paid:a.paid,adjustments:a.adjustments,payable:a.payableSigned,ledgerBalance:l.balance,difference:a.payableSigned-l.balance};
+}
+window.auditSupplierAccounting=auditSupplierAccounting;
+function auditAllSupplierAccounting(){
+  return arr(db.suppliers).map(s=>auditSupplierAccounting(s.id));
+}
+window.auditAllSupplierAccounting=auditAllSupplierAccounting;
 
 /* Runtime helper restoration: these helpers are required by existing views/details.
    They were accidentally omitted during the previous rewrite. */
@@ -23018,9 +22945,9 @@ setTimeout(function(){
     window.__dbgOk('  ✅ #7 Slow load: Parallel chunks of 8', 'VERIFY');
     window.__dbgOk('  ✅ #10 Login hang: Non-blocking auth', 'VERIFY');
     window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
-    window.__dbgOk('✅ ALL FEATURES PRESERVED (100%)', 'VERIFY');
-    window.__dbgOk('✅ ALL BUGS FIXED', 'VERIFY');
-    window.__dbgOk('✅ APP READY FOR PRODUCTION', 'VERIFY');
+    window.__dbgOk('✅ EXISTING FEATURES RETAINED IN THE COMPLETE BUILD', 'VERIFY');
+    window.__dbgOk('✅ ACCOUNTING CORE + SAVE PATH REWRITTEN AND STATIC-AUDITED', 'VERIFY');
+    window.__dbgOk('✅ READY FOR LIVE DATA VALIDATION', 'VERIFY');
     window.__dbgOk('═══════════════════════════════════════════════════════════', 'VERIFY');
   }
 }, 4000);
@@ -23029,7 +22956,7 @@ setTimeout(function(){
 SECTION 12 — FINAL SUMMARY (displayed in console)
 ═══════════════════════════════════════════════════════════════════════════ */
 console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-console.log('%c✅ LANKA SHOE ENTERPRISE v12.0 — COMPLETE', 'color: #10b981; font-weight: bold; font-size: 16px');
+console.log('%c✅ LANKA SHOE ENTERPRISE v15.0 — COMPLETE REWRITE', 'color: #10b981; font-weight: bold; font-size: 16px');
 console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
 console.log('%c📦 30+ Collections synced to Firestore', 'color: #3b82f6; font-size: 12px');
 console.log('%c🎨 35+ Views registered', 'color: #3b82f6; font-size: 12px');
@@ -23045,8 +22972,8 @@ console.log('%c  ✅ Slow Firestore load FIXED (parallel chunks)', 'color: #10b9
 console.log('%c  ✅ Memory churn FIXED (cached seed template)', 'color: #10b981; font-size: 12px');
 console.log('%c  ✅ Save spam FIXED (1.5s debounce)', 'color: #10b981; font-size: 12px');
 console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
-console.log('%c✅ ALL FEATURES PRESERVED (100%)', 'color: #10b981; font-weight: bold; font-size: 14px');
-console.log('%c✅ APP READY FOR PRODUCTION', 'color: #10b981; font-weight: bold; font-size: 14px');
+console.log('%c✅ EXISTING FEATURES RETAINED IN THE COMPLETE BUILD', 'color: #10b981; font-weight: bold; font-size: 14px');
+console.log('%c✅ READY FOR LIVE DATA VALIDATION', 'color: #10b981; font-weight: bold; font-size: 14px');
 console.log('%c═══════════════════════════════════════════════════════════', 'color: #7c3aed; font-weight: bold; font-size: 14px');
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -4578,16 +4578,12 @@ document.addEventListener('click', e => {
     'dbg-qa': () => runQA()
     /* ── Phase 3: Customers ── */
     'customer-new': () => openCustomerForm(null),
-    'customer-open': () => openCustomerDetail(id),
+    'customer-open': () => { toast('Customer detail view coming soon', 'info'); },
     'customer-edit': (ev) => { ev.stopPropagation(); openCustomerForm(id); },
     'customer-delete': (ev) => {
       ev.stopPropagation();
       if (document.getElementById('modalWrap').classList.contains('open')) closeModal();
       deleteCustomerById(id);
-/* Temporary — replaced by full detail modal in Part 3 */
-function openCustomerDetail(id) {
-  toast('Customer detail view arrives in Part 3', 'info');
-}
     },
     'customers-export': () => exportAllCustomersCSV(),
     'customers-bulk-export': () => customerBulkExport(),
@@ -5218,6 +5214,11 @@ function exportAllCustomersCSV() {
       diffDays: diffDays,
       monthName: monthName,
       lastMonths: lastMonths,
+      today: today,
+      shiftDate: shiftDate,
+      dateFmt: dateFmt,
+      dateTimeFmt: dateTimeFmt,
+      nowISO: nowISO,
 
       /* Sync control (v16 internals) */
       markDirty: markDirty,

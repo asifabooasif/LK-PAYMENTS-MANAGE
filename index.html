@@ -12561,5 +12561,375 @@ esc(
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S10 FIX — Users page renders synchronously
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* Local cache of access doc — populated async, read sync */
+  let _accessCache = { allowedEmails: [], userPerms: {} };
+  let _accessLoaded = false;
+
+  /* Refresh in the background. Once done, re-render so UI updates. */
+  async function refreshAccessCache() {
+    try {
+      const access = await loadAccess(true);
+      _accessCache = access || { allowedEmails: [], userPerms: {} };
+      _accessLoaded = true;
+      /* Re-render only if the user is currently on the Users page */
+      if (state.view === 'users') {
+        renderApp();
+      }
+    } catch (e) {
+      dbg.warn('refreshAccessCache: ' + (e.code || e.message));
+    }
+  }
+
+  /* ─── New sync renderer ─── */
+  function renderUsersFixed() {
+    if (!state.perms.users) {
+      return '<div class="card"><div class="empty"><span class="big">🔒</span>' +
+        'You don\'t have permission to manage users.</div></div>';
+    }
+
+    /* Kick off background refresh, but render immediately with what we have */
+    refreshAccessCache();
+
+    const access = _accessCache;
+    const allowed = access.allowedEmails || [];
+    const perms = access.userPerms || {};
+
+    /* Build row list from cached access + local users */
+    const rows = allowed.map(email => {
+      const role = userRole(email, access);
+      const p = perms[email] || {};
+      const userDoc = arr(state.data.users || []).find(u => (u.email || '').toLowerCase() === email);
+      return {
+        email: email,
+        role: role,
+        customPerms: p.perms || null,
+        name: userDoc?.name || '',
+        photo: userDoc?.photo || '',
+        lastLogin: userDoc?.lastLogin || null
+      };
+    });
+
+    const loginHistory = arr(state.data.loginHistory).slice(0, 10);
+
+    return '' +
+      '<div class="kpi-strip">' +
+        '<div class="kpi"><div class="k-label">Authorized Emails</div>' +
+          '<div class="k-value">' + allowed.length + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Roles In Use</div>' +
+          '<div class="k-value">' + new Set(rows.map(r => r.role)).size + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Your Role</div>' +
+          '<div class="k-value" style="font-size:16px;text-transform:capitalize">' + esc(state.role) + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Your Permissions</div>' +
+          '<div class="k-value" style="font-size:13px;line-height:1.6">' +
+            Object.keys(state.perms).filter(k => state.perms[k]).join(' · ') +
+          '</div></div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>👥 Authorized Users (' + rows.length + ')</h3>' +
+          '<button class="btn primary" data-action="user-add">＋ Add User</button>' +
+        '</div>' +
+        (rows.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr>' +
+                '<th>User</th><th>Email</th><th>Role</th>' +
+                '<th>Custom Perms</th><th>Last Login</th>' +
+                '<th class="actions-cell"></th>' +
+              '</tr></thead><tbody>' +
+              rows.map(r => {
+                const initials = (r.name || r.email || '?').slice(0, 1).toUpperCase();
+                const isAdminUser = r.email === CONFIG.adminEmail.toLowerCase();
+                return '<tr>' +
+                  '<td>' +
+                    '<div style="display:flex;align-items:center;gap:10px">' +
+                      '<div class="user-avatar" style="width:28px;height:28px;font-size:11px">' +
+                        (r.photo ? '<img src="' + esc(r.photo) + '" alt="">' : esc(initials)) +
+                      '</div>' +
+                      '<strong>' + esc(r.name || '—') + '</strong>' +
+                    '</div>' +
+                  '</td>' +
+                  '<td class="small">' + esc(r.email) + '</td>' +
+                  '<td>' +
+                    '<span class="badge ' +
+                      (r.role === 'owner' ? 'purple'
+                        : r.role === 'admin' ? 'blue'
+                        : r.role === 'manager' ? 'green'
+                        : r.role === 'editor' ? 'amber' : 'gray') + '">' +
+                      esc(r.role) +
+                    '</span>' +
+                  '</td>' +
+                  '<td class="small">' +
+                    (r.customPerms
+                      ? Object.keys(r.customPerms).filter(k => r.customPerms[k]).join(', ') || '—'
+                      : '<span class="muted">role default</span>') +
+                  '</td>' +
+                  '<td class="small">' + (r.lastLogin ? dateTimeFmt(r.lastLogin) : '—') + '</td>' +
+                  '<td class="actions-cell">' +
+                    '<button class="btn xs" data-action="user-edit" data-id="' + esc(r.email) + '">Edit</button>' +
+                    (isAdminUser
+                      ? ''
+                      : ' <button class="btn xs danger" data-action="user-remove" data-id="' + esc(r.email) + '">Remove</button>') +
+                  '</td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody></table></div>'
+          : '<div class="empty"><span class="big">👥</span>' +
+            (!_accessLoaded
+              ? 'Loading…'
+              : 'No authorized users yet. Click <strong>Add User</strong>.') +
+            '</div>') +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head"><h3>📌 Role Reference</h3></div>' +
+        '<div class="table-wrap"><table>' +
+          '<thead><tr><th>Role</th><th>Write</th><th>Approve</th><th>Delete</th><th>Users</th><th>Settings</th></tr></thead><tbody>' +
+          Object.keys(ROLES).map(r => {
+            const p = ROLES[r].perms;
+            return '<tr>' +
+              '<td><strong>' + esc(r) + '</strong></td>' +
+              '<td>' + (p.write ? '✓' : '—') + '</td>' +
+              '<td>' + (p.approve ? '✓' : '—') + '</td>' +
+              '<td>' + (p.delete ? '✓' : '—') + '</td>' +
+              '<td>' + (p.users ? '✓' : '—') + '</td>' +
+              '<td>' + (p.settings ? '✓' : '—') + '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody></table></div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head"><h3>🔐 Recent Logins</h3>' +
+          '<button class="btn" data-nav="login-history">View all →</button></div>' +
+        (loginHistory.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr><th>When</th><th>Email</th><th>Role</th><th>User Agent</th></tr></thead><tbody>' +
+              loginHistory.map(h =>
+                '<tr>' +
+                  '<td>' + dateTimeFmt(h.at) + '</td>' +
+                  '<td class="small">' + esc(h.email) + '</td>' +
+                  '<td>' + esc(h.role) + '</td>' +
+                  '<td class="small muted" style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+                    esc((h.userAgent || '').slice(0, 80)) + '</td>' +
+                '</tr>'
+              ).join('') +
+            '</tbody></table></div>'
+          : '<div class="empty">No login history yet.</div>') +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head"><h3>🛡 Firestore Rules Reminder</h3></div>' +
+        '<div class="alert" style="background:var(--surface-2);padding:14px 16px;border-radius:10px;font-size:12.5px;line-height:1.7">' +
+          'Client-side access control can be bypassed by anyone with the API key. ' +
+          'For true security, publish the rules in your Firebase console → Firestore → Rules.' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ─── Replace the broken async route ─── */
+  __LS_addRoute('users', 'Users', renderUsersFixed);
+
+  /* ─── Fix openUserForm — it was also async ─── */
+  function openUserFormFixed(email) {
+    if (!state.perms.users) { toast('No permission', 'error'); return; }
+
+    const isNew = !email;
+    const em = email || '';
+    const access = _accessCache || { allowedEmails: [], userPerms: {} };
+    const existing = !isNew ? (access.userPerms[em] || {}) : {};
+    const curRole = !isNew ? userRole(em, access) : 'viewer';
+
+    const body =
+      (isNew
+        ? '<div style="margin-bottom:14px">' +
+            '<label class="field">Email' +
+              '<input id="uEmail" type="email" placeholder="user@example.com" autocomplete="off">' +
+            '</label>' +
+          '</div>'
+        : '<div style="margin-bottom:14px">' +
+            '<div class="k-label">Email</div>' +
+            '<div style="font-weight:600;font-size:14px">' + esc(em) + '</div>' +
+          '</div>') +
+
+      '<div style="margin-bottom:14px">' +
+        selectField('Role', 'uRole',
+          Object.keys(ROLES).map(r => ({ value: r, label: r.charAt(0).toUpperCase() + r.slice(1) })),
+          curRole,
+          { req: true }) +
+      '</div>' +
+
+      '<div class="k-label" style="margin:18px 0 8px">Custom Permission Overrides (optional)</div>' +
+      '<div class="small muted" style="margin-bottom:10px">' +
+        'Leave blank to use the role default. Toggle to override.' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        ['write', 'approve', 'delete', 'users', 'settings'].map(k => {
+          const roleDefault = ROLES[curRole].perms[k];
+          const current = existing.perms && existing.perms[k] !== undefined
+            ? existing.perms[k]
+            : roleDefault;
+          return '<label style="display:flex;align-items:center;gap:10px;font-size:13px">' +
+            '<input type="checkbox" class="uPerm" data-key="' + k + '" ' + (current ? 'checked' : '') + '>' +
+            '<span style="text-transform:capitalize;font-weight:500">' + k + '</span>' +
+            '<span class="badge gray">' + (roleDefault ? 'role allows' : 'role denies') + '</span>' +
+          '</label>';
+        }).join('') +
+      '</div>' +
+
+      '<div style="margin-top:18px">' +
+        field('Notes', 'uNotes', existing.notes || '', { type: 'textarea' }) +
+      '</div>';
+
+    openModal(isNew ? '＋ Add Authorized User' : '✏️ Edit User', body, {
+      width: 640,
+      footer:
+        '<button class="btn" data-close-modal>Cancel</button>' +
+        '<button class="btn primary" id="uSaveBtn">' + (isNew ? 'Add' : 'Save') + '</button>'
+    });
+
+    document.getElementById('uSaveBtn').onclick = async () => {
+      const role = document.getElementById('uRole').value;
+      const notes = document.getElementById('uNotes').value.trim();
+
+      let targetEmail = em;
+      if (isNew) {
+        targetEmail = (document.getElementById('uEmail').value || '').trim().toLowerCase();
+        if (!targetEmail || targetEmail.indexOf('@') === -1) {
+          toast('Valid email required', 'error');
+          return;
+        }
+        if (targetEmail === CONFIG.adminEmail.toLowerCase()) {
+          toast('Admin is always authorized', 'info');
+          return;
+        }
+      }
+
+      const overrides = {};
+      let anyOverride = false;
+      document.querySelectorAll('.uPerm').forEach(cb => {
+        const k = cb.dataset.key;
+        const roleDefault = ROLES[role].perms[k];
+        if (cb.checked !== roleDefault) {
+          overrides[k] = cb.checked;
+          anyOverride = true;
+        }
+      });
+
+      /* Rebuild access doc */
+      const newAccess = {
+        allowedEmails: (access.allowedEmails || []).slice(),
+        userPerms: Object.assign({}, access.userPerms || {})
+      };
+      if (newAccess.allowedEmails.indexOf(targetEmail) === -1) {
+        newAccess.allowedEmails.push(targetEmail);
+      }
+      newAccess.userPerms[targetEmail] = Object.assign(
+        {},
+        newAccess.userPerms[targetEmail] || {},
+        {
+          role: role,
+          perms: anyOverride ? overrides : null,
+          notes: notes,
+          updatedAt: nowISO(),
+          updatedBy: state.user?.email || 'system'
+        }
+      );
+
+      try {
+        await docRef(CONFIG.accessPath).set({
+          allowedEmails: newAccess.allowedEmails,
+          userPerms: newAccess.userPerms,
+          updatedAt: nowISO(),
+          updatedBy: state.user?.email || 'system'
+        });
+        try { localStorage.removeItem(CONFIG.accessCacheKey); } catch (e) {}
+
+        if (window.logActivity) {
+          window.logActivity({
+            action: isNew ? 'user_add' : 'user_update',
+            collection: 'access',
+            recordId: targetEmail,
+            summary: (isNew ? 'Added' : 'Updated') + ' user ' + targetEmail + ' (role: ' + role + ')'
+          });
+        }
+
+        closeModal();
+        toast(isNew ? 'User added' : 'User updated', 'success');
+        _accessLoaded = false;
+        refreshAccessCache();
+      } catch (e) {
+        dbg.err('Save user failed: ' + (e.code || e.message));
+        toast('Save failed: ' + (e.code || e.message), 'error', 5000);
+      }
+    };
+  }
+  window.openUserForm = openUserFormFixed;
+
+  /* Re-register the action handlers to use the fixed versions */
+  __LS_registerAction('user-add',    () => openUserFormFixed(null));
+  __LS_registerAction('user-edit',   (ev, id) => { ev.stopPropagation(); openUserFormFixed(id); });
+
+  /* ─── Also fix removeUser (it was async) ─── */
+  function removeUserFixed(email) {
+    if (!state.perms.users) { toast('No permission', 'error'); return; }
+    if (!email) return;
+    const em = email.toLowerCase();
+    if (em === CONFIG.adminEmail.toLowerCase()) {
+      toast('Cannot remove the admin', 'error');
+      return;
+    }
+    if (!confirm('Remove ' + em + ' from authorized users?\n\nThey will immediately lose access.')) return;
+
+    /* Use fresh access doc */
+    loadAccess(true).then(async (fresh) => {
+      const newAccess = {
+        allowedEmails: (fresh.allowedEmails || []).filter(x => x !== em),
+        userPerms: Object.assign({}, fresh.userPerms || {})
+      };
+      delete newAccess.userPerms[em];
+
+      try {
+        await docRef(CONFIG.accessPath).set({
+          allowedEmails: newAccess.allowedEmails,
+          userPerms: newAccess.userPerms,
+          updatedAt: nowISO(),
+          updatedBy: state.user?.email || 'system'
+        });
+        try { localStorage.removeItem(CONFIG.accessCacheKey); } catch (e) {}
+
+        if (window.logActivity) {
+          window.logActivity({
+            action: 'user_remove',
+            collection: 'access',
+            recordId: em,
+            summary: 'Removed user ' + em
+          });
+        }
+
+        toast('User removed', 'success');
+        _accessLoaded = false;
+        refreshAccessCache();
+      } catch (e) {
+        dbg.err('Remove user failed: ' + (e.code || e.message));
+        toast('Remove failed: ' + (e.code || e.message), 'error');
+      }
+    }).catch(e => {
+      toast('Could not read access doc: ' + (e.code || e.message), 'error');
+    });
+  }
+  window.removeUser = removeUserFixed;
+  __LS_registerAction('user-remove', (ev, id) => { ev.stopPropagation(); removeUserFixed(id); });
+
+  scriptLoaded('S10-FIX');
+})();
+</script>
 </body>
 </html>

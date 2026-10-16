@@ -11888,5 +11888,678 @@ esc(
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S11 — MULTI-CHEQUE WRITING (BATCH MODE)
+     Drops in before </body>, after S10.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. Constants
+     ═══════════════════════════════════════════════════════════════════════ */
+  const MAX_BATCH = 20;             /* hard cap per batch */
+  const DEFAULT_ROWS = 3;           /* start with 3 rows */
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. Modal open — the batch form
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openBatchChequeForm() {
+    if (!state.perms.write) { toast('Read-only role — cannot write cheques', 'error'); return; }
+
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
+
+    const defaultBankId = banks[0].id;
+
+    const body =
+      /* ── Batch header ── */
+      '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;' +
+        'margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
+        '<strong>ℹ Batch mode</strong> — write up to ' + MAX_BATCH + ' cheques in one go. ' +
+        'All cheques share the same bank. Leaves are assigned in order. ' +
+        'Each cheque date decides its own status (scheduled vs pending approval).' +
+      '</div>' +
+
+      /* ── Shared settings row ── */
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">' +
+        selectField('Bank Account', 'btBank',
+          banks.map(b => ({ value: b.id, label: b.name })),
+          defaultBankId, { req: true }) +
+        '<label class="field">Cheque Book' +
+          '<select id="btBook"><option value="">— Manual / No book —</option></select>' +
+        '</label>' +
+        selectField('Payee Type (default)', 'btPayeeType',
+          Object.keys(PAYEE_TYPES).map(k => ({ value: k, label: PAYEE_TYPES[k].ico + ' ' + PAYEE_TYPES[k].label })),
+          'supplier') +
+      '</div>' +
+
+      /* ── Cheque rows grid ── */
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<strong style="font-size:12.5px">Cheques</strong>' +
+        '<div style="display:flex;gap:6px;align-items:center">' +
+          '<span class="small muted" id="btRowCount">0 rows</span>' +
+          '<button class="btn sm" type="button" id="btAddRow">＋ Add Row</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden">' +
+        '<div style="display:grid;grid-template-columns:38px 32px 1.4fr 1.1fr 1.2fr 1fr 32px;' +
+          'gap:0;background:var(--surface-2);font-size:10.5px;font-weight:700;' +
+          'text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)">' +
+          '<div style="padding:8px 6px;text-align:center">#</div>' +
+          '<div style="padding:8px 6px;text-align:center"></div>' +
+          '<div style="padding:8px 10px">Payee</div>' +
+          '<div style="padding:8px 10px">Cheque #</div>' +
+          '<div style="padding:8px 10px;text-align:right">Amount</div>' +
+          '<div style="padding:8px 10px">Date</div>' +
+          '<div style="padding:8px 6px"></div>' +
+        '</div>' +
+        '<div id="btRows"></div>' +
+      '</div>' +
+
+      /* ── Total bar ── */
+      '<div style="margin-top:14px;padding:12px 16px;background:var(--surface-2);border-radius:var(--r-md);' +
+        'display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center">' +
+        '<div id="btBalanceHint" class="small" style="line-height:1.6"></div>' +
+        '<div style="text-align:right">' +
+          '<div class="k-label">Total</div>' +
+          '<div id="btTotalAmount" style="font-size:18px;font-weight:700;font-variant-numeric:tabular-nums">' +
+            money(0) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<div class="k-label">Cheques</div>' +
+          '<div id="btTotalCount" style="font-size:18px;font-weight:700">0</div>' +
+        '</div>' +
+      '</div>' +
+
+      /* ── Notes ── */
+      '<div style="margin-top:14px">' +
+        field('Batch Notes (applied to every cheque)', 'btBatchNotes', '',
+          { type: 'textarea', placeholder: 'Optional — e.g. "Salary payments Oct 2026"' }) +
+      '</div>' +
+
+      /* ── Result area ── */
+      '<div id="btResult" style="display:none;margin-top:14px"></div>';
+
+    openModal('📝 Write Multiple Cheques', body, {
+      width: 1100,
+      footer:
+        '<button class="btn" data-close-modal>Cancel</button>' +
+        '<button class="btn primary" id="btSaveAllBtn" disabled>Save All Cheques</button>'
+    });
+
+    /* ═══ State for this form ═══ */
+    const rows = [];   /* each: { id, payeeId, payeeName, payeeType, chequeNo, amount, date, leafIdx } */
+    let rowCounter = 0;
+
+    /* ═══ DOM refs ═══ */
+    const bankSel = document.getElementById('btBank');
+    const bookSel = document.getElementById('btBook');
+    const rowsEl  = document.getElementById('btRows');
+    const rowCountEl = document.getElementById('btRowCount');
+    const totalAmountEl = document.getElementById('btTotalAmount');
+    const totalCountEl = document.getElementById('btTotalCount');
+    const balanceHintEl = document.getElementById('btBalanceHint');
+    const resultEl = document.getElementById('btResult');
+    const saveAllBtn = document.getElementById('btSaveAllBtn');
+
+    /* ═══ Refresh books for the selected bank ═══ */
+    function refreshBooks() {
+      const bid = bankSel.value;
+      const books = arr(state.data.chequeBooks).filter(b => b.bankId === bid && b.active !== false);
+      bookSel.innerHTML = '<option value="">— Manual / No book —</option>' +
+        books.map(b =>
+          '<option value="' + esc(b.id) + '">' +
+            esc(b.bookNo) + ' (' + esc(b.serialStart) + '–' + esc(b.serialEnd) + ')' +
+          '</option>'
+        ).join('');
+      /* Auto-pick first book if any */
+      if (books.length && !bookSel.value) bookSel.value = books[0].id;
+      /* Re-assign leaves to all rows */
+      reassignLeaves();
+    }
+
+    /* ═══ Get next N available leaves from the selected book ═══ */
+    function getAvailableLeaves(n) {
+      const bkid = bookSel.value;
+      if (!bkid) return [];
+      const book = bookObj(bkid);
+      if (!book) return [];
+      const avail = [];
+      arr(book.leaves).forEach((leaf, idx) => {
+        if (leaf.status === 'available') avail.push({ idx: idx, serial: leaf.serial });
+      });
+      return avail.slice(0, n);
+    }
+
+    /* ═══ Assign leaves sequentially to non-manual rows ═══ */
+    function reassignLeaves() {
+      const bkid = bookSel.value;
+      if (!bkid) {
+        rows.forEach(r => { r.leafIdx = null; r.chequeNo = r.chequeNo || ''; });
+        renderRows();
+        return;
+      }
+      const leaves = getAvailableLeaves(rows.length);
+      rows.forEach((r, i) => {
+        if (leaves[i]) {
+          r.leafIdx = leaves[i].idx;
+          r.chequeNo = leaves[i].serial;
+        } else {
+          r.leafIdx = null;
+        }
+      });
+      renderRows();
+    }
+
+    /* ═══ Add a row ═══ */
+    function addRow(seed) {
+      if (rows.length >= MAX_BATCH) {
+        toast('Maximum ' + MAX_BATCH + ' rows per batch', 'warn');
+        return;
+      }
+      rowCounter++;
+      rows.push({
+        id: 'r' + rowCounter,
+        payeeId: null,
+        payeeName: (seed && seed.payeeName) || '',
+        payeeType: (seed && seed.payeeType) || 'supplier',
+        chequeNo: '',
+        amount: 0,
+        date: today(),
+        leafIdx: null,
+        memo: (seed && seed.memo) || ''
+      });
+      reassignLeaves();
+    }
+
+    /* ═══ Remove a row ═══ */
+    function removeRow(id) {
+      const idx = rows.findIndex(r => r.id === id);
+      if (idx === -1) return;
+      rows.splice(idx, 1);
+      reassignLeaves();
+    }
+
+    /* ═══ Render all rows ═══ */
+    function renderRows() {
+      if (!rows.length) {
+        rowsEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-4)">' +
+          'No rows yet. Click <strong>Add Row</strong> to begin.</div>';
+      } else {
+        rowsEl.innerHTML = rows.map((r, i) =>
+          '<div class="bt-row" data-row-id="' + esc(r.id) + '" style="' +
+            'display:grid;grid-template-columns:38px 32px 1.4fr 1.1fr 1.2fr 1fr 32px;' +
+            'gap:0;align-items:center;border-top:' + (i === 0 ? 'none' : '1px solid var(--border-2)') + '">' +
+
+            /* Row number */
+            '<div style="padding:8px 6px;text-align:center;font-size:11px;' +
+              'font-weight:700;color:var(--text-3)">' + (i + 1) + '</div>' +
+
+            /* Payee type icon */
+            '<div style="padding:8px 6px;text-align:center;font-size:16px" title="' +
+              esc(PAYEE_TYPES[r.payeeType].label) + '">' +
+              PAYEE_TYPES[r.payeeType].ico +
+            '</div>' +
+
+            /* Payee input */
+            '<div style="padding:8px 10px;position:relative">' +
+              '<input class="bt-payee" data-row-id="' + esc(r.id) + '" ' +
+                'value="' + esc(r.payeeName) + '" ' +
+                'placeholder="Type name to search…" autocomplete="off" ' +
+                'style="width:100%;padding:7px 10px;border:1px solid var(--border);' +
+                'border-radius:6px;background:var(--surface);font-size:12.5px">' +
+              '<div class="bt-suggest" data-row-id="' + esc(r.id) + '" ' +
+                'style="position:absolute;top:100%;left:10px;right:10px;background:var(--surface);' +
+                'border:1px solid var(--border);border-radius:6px;margin-top:4px;max-height:200px;' +
+                'overflow-y:auto;z-index:20;box-shadow:var(--shadow-md);display:none"></div>' +
+            '</div>' +
+
+            /* Cheque # */
+            '<div style="padding:8px 10px">' +
+              '<input class="bt-no" data-row-id="' + esc(r.id) + '" ' +
+                'value="' + esc(r.chequeNo) + '" ' +
+                (r.leafIdx !== null ? 'readonly' : '') +
+                ' placeholder="Manual #" ' +
+                'style="width:100%;padding:7px 10px;border:1px solid var(--border);' +
+                'border-radius:6px;background:' + (r.leafIdx !== null ? 'var(--surface-2)' : 'var(--surface)') + ';' +
+                'font-family:var(--mono);font-size:12.5px;' +
+                (r.leafIdx !== null ? 'color:var(--text-3);' : '') + '">' +
+            '</div>' +
+
+            /* Amount */
+            '<div style="padding:8px 10px">' +
+              '<input class="bt-amount" data-row-id="' + esc(r.id) + '" type="number" step="0.01" min="0" ' +
+                'value="' + (num(r.amount) > 0 ? num(r.amount).toFixed(2) : '') + '" ' +
+                'placeholder="0.00" ' +
+                'style="width:100%;padding:7px 10px;border:1px solid var(--border);' +
+                'border-radius:6px;background:var(--surface);font-size:12.5px;' +
+                'text-align:right;font-variant-numeric:tabular-nums">' +
+            '</div>' +
+
+            /* Date */
+            '<div style="padding:8px 10px">' +
+              '<input class="bt-date" data-row-id="' + esc(r.id) + '" type="date" ' +
+                'value="' + esc(r.date) + '" ' +
+                'style="width:100%;padding:7px 10px;border:1px solid var(--border);' +
+                'border-radius:6px;background:var(--surface);font-size:12.5px">' +
+            '</div>' +
+
+            /* Remove button */
+            '<div style="padding:8px 6px;text-align:center">' +
+              '<button class="bt-remove" data-row-id="' + esc(r.id) + '" ' +
+                'title="Remove row" ' +
+                'style="width:22px;height:22px;border-radius:50%;background:var(--red-soft);' +
+                'color:var(--red);border:none;font-size:13px;cursor:pointer;line-height:1">×</button>' +
+            '</div>' +
+          '</div>'
+        ).join('');
+      }
+
+      wireRowInputs();
+      updateTotals();
+    }
+
+    /* ═══ Wire row inputs ═══ */
+    function wireRowInputs() {
+      /* Payee input — autocomplete + suggestion dropdown */
+      document.querySelectorAll('.bt-payee').forEach(inp => {
+        const rid = inp.dataset.rowId;
+        const sug = document.querySelector('.bt-suggest[data-row-id="' + rid + '"]');
+
+        function showSuggestions() {
+          const q = inp.value.trim().toLowerCase();
+          if (!q) { sug.style.display = 'none'; return; }
+          const matches = arr(state.data.payees)
+            .filter(p => p.active !== false)
+            .filter(p => (p.name || '').toLowerCase().indexOf(q) !== -1)
+            .slice(0, 6);
+          let html = matches.map(p =>
+            '<div class="bt-sug-item" data-payee-id="' + esc(p.id) + '" data-row-id="' + esc(rid) + '" ' +
+              'style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border-2);font-size:12px">' +
+              esc(p.name) +
+              '<span class="small muted" style="margin-left:6px">' +
+                PAYEE_TYPES[p.type].ico + ' ' + esc(PAYEE_TYPES[p.type].label) +
+              '</span>' +
+            '</div>'
+          ).join('');
+          html += '<div class="bt-sug-new" data-row-id="' + esc(rid) + '" ' +
+            'style="padding:8px 12px;cursor:pointer;color:var(--accent);font-size:12px;font-weight:500">' +
+            '＋ Create new: <strong>' + esc(inp.value.trim()) + '</strong>' +
+          '</div>';
+          sug.innerHTML = html;
+          sug.style.display = '';
+
+          /* Wire suggestions */
+          sug.querySelectorAll('.bt-sug-item').forEach(it => {
+            it.onclick = () => {
+              const p = payeeObj(it.dataset.payeeId);
+              if (!p) return;
+              const row = rows.find(x => x.id === rid);
+              if (!row) return;
+              row.payeeId = p.id;
+              row.payeeName = p.name;
+              row.payeeType = p.type;
+              if (num(p.lastChequeAmount) > 0 && !num(row.amount)) row.amount = num(p.lastChequeAmount);
+              sug.style.display = 'none';
+              renderRows();
+            };
+          });
+          sug.querySelectorAll('.bt-sug-new').forEach(it => {
+            it.onclick = () => {
+              const name = inp.value.trim();
+              if (!name) return;
+              sug.style.display = 'none';
+              quickCreatePayeeInline(name, rid);
+            };
+          });
+        }
+
+        inp.oninput = () => {
+          const row = rows.find(x => x.id === rid);
+          if (row) { row.payeeName = inp.value; row.payeeId = null; }
+          showSuggestions();
+          updateTotals();
+        };
+        inp.onfocus = showSuggestions;
+        inp.onblur = () => {
+          /* Delay so clicks register */
+          setTimeout(() => { sug.style.display = 'none'; }, 200);
+        };
+      });
+
+      /* Cheque # */
+      document.querySelectorAll('.bt-no').forEach(inp => {
+        inp.oninput = () => {
+          const row = rows.find(x => x.id === inp.dataset.rowId);
+          if (row && row.leafIdx === null) row.chequeNo = inp.value;
+        };
+      });
+
+      /* Amount */
+      document.querySelectorAll('.bt-amount').forEach(inp => {
+        inp.oninput = () => {
+          const row = rows.find(x => x.id === inp.dataset.rowId);
+          if (row) row.amount = num(inp.value);
+          updateTotals();
+        };
+      });
+
+      /* Date */
+      document.querySelectorAll('.bt-date').forEach(inp => {
+        inp.onchange = () => {
+          const row = rows.find(x => x.id === inp.dataset.rowId);
+          if (row) row.date = inp.value || today();
+        };
+      });
+
+      /* Remove */
+      document.querySelectorAll('.bt-remove').forEach(btn => {
+        btn.onclick = () => removeRow(btn.dataset.rowId);
+      });
+    }
+
+    /* ═══ Update totals + balance hint ═══ */
+    function updateTotals() {
+      const total = rows.reduce((s, r) => s + num(r.amount), 0);
+      const validCount = rows.filter(r =>
+        r.payeeName && num(r.amount) > 0 && r.chequeNo
+      ).length;
+
+      totalAmountEl.textContent = money(total);
+      totalCountEl.textContent = rows.length;
+      rowCountEl.textContent = rows.length + ' row' + (rows.length === 1 ? '' : 's');
+
+      /* Balance hint */
+      const bid = bankSel.value;
+      if (bid) {
+        const bal = bankBalances(bid);
+        const afterBook = bal.book - total;
+        balanceHintEl.innerHTML =
+          'Book now: <strong>' + money(bal.book) + '</strong> · ' +
+          'After: <strong style="color:' + (afterBook < 0 ? 'var(--red)' : 'var(--green)') + '">' +
+          money(afterBook) + '</strong>' +
+          (afterBook < 0
+            ? '<div style="color:var(--red);font-weight:600;margin-top:2px">⚠ Overdraft by ' +
+              money(Math.abs(afterBook)) + '</div>'
+            : '');
+      } else {
+        balanceHintEl.textContent = '';
+      }
+
+      /* Save button state */
+      const canSave = validCount === rows.length && rows.length > 0;
+      saveAllBtn.disabled = !canSave;
+    }
+
+    /* ═══ Quick-create payee (inline) ═══ */
+    function quickCreatePayeeInline(name, rowId) {
+      const row = rows.find(r => r.id === rowId);
+      if (!row) return;
+      const type = row.payeeType || 'supplier';
+      const created = makePayee({
+        type: type,
+        name: name,
+        phone: '',
+        email: ''
+      });
+      state.data.payees.push(created);
+      markDirty('payees', created.id);
+      row.payeeId = created.id;
+      row.payeeName = created.name;
+      row.payeeType = created.type;
+      toast('Payee created', 'success');
+      renderRows();
+    }
+
+    /* ═══ Save ALL cheques ═══ */
+    async function saveAll() {
+      if (!rows.length) { toast('No rows to save', 'warn'); return; }
+
+      /* Validate every row */
+      const problems = [];
+      const seenNos = new Set();
+
+      rows.forEach((r, i) => {
+        const rowNum = i + 1;
+
+        if (!r.payeeName || !r.payeeName.trim()) {
+          problems.push('Row ' + rowNum + ': payee name required');
+        }
+        if (num(r.amount) <= 0) {
+          problems.push('Row ' + rowNum + ': amount must be > 0');
+        }
+        if (!r.chequeNo || !r.chequeNo.trim()) {
+          problems.push('Row ' + rowNum + ': cheque number required');
+        }
+        const key = (r.chequeNo || '').trim();
+        if (key && seenNos.has(key)) {
+          problems.push('Row ' + rowNum + ': duplicate cheque # ' + key);
+        }
+        seenNos.add(key);
+      });
+
+      if (problems.length) {
+        resultEl.style.display = '';
+        resultEl.innerHTML =
+          '<div style="padding:14px 16px;background:var(--red-soft);color:var(--red);' +
+            'border-radius:var(--r-md);font-size:12.5px;line-height:1.7">' +
+            '<strong>Fix these ' + problems.length + ' issue(s) first:</strong><br>' +
+            problems.map(p => '• ' + esc(p)).join('<br>') +
+          '</div>';
+        return;
+      }
+
+      /* Confirm total overdraft */
+      const total = rows.reduce((s, r) => s + num(r.amount), 0);
+      const bid = bankSel.value;
+      const bal = bankBalances(bid);
+      const afterBook = bal.book - total;
+      if (afterBook < 0) {
+        const ok = confirm(
+          '⚠ This batch will push the BOOK balance to ' + money(afterBook) + '\n\n' +
+          'Bank balance:      ' + money(bal.bank) + '\n' +
+          'Book balance now:  ' + money(bal.book) + '\n' +
+          'Batch total:       ' + money(total) + ' (' + rows.length + ' cheques)\n\n' +
+          'Continue anyway?'
+        );
+        if (!ok) return;
+      }
+
+      /* Save each row — collect results */
+      const batchNotes = document.getElementById('btBatchNotes').value.trim();
+      const created = [];
+      const failed = [];
+
+      rows.forEach((r, i) => {
+        try {
+          /* Ensure payee ID is resolved */
+          let pid = r.payeeId;
+          if (!pid && r.payeeName) {
+            const match = arr(state.data.payees).find(p =>
+              p.name.toLowerCase() === r.payeeName.toLowerCase().trim()
+            );
+            if (match) pid = match.id;
+          }
+
+          /* Build the cheque */
+          const data = {
+            chequeNo: r.chequeNo.trim(),
+            bankId: bid,
+            bookId: bookSel.value || '',
+            leafId: r.leafIdx !== null ? r.leafIdx : null,
+            payeeId: pid || null,
+            payeeType: r.payeeType || 'supplier',
+            payeeName: r.payeeName.trim(),
+            amount: num(r.amount),
+            amountWords: numberToWords(num(r.amount)),
+            chequeDate: r.date || today(),
+            writtenDate: today(),
+            memo: r.memo || '',
+            notes: batchNotes
+          };
+
+          /* Status decision */
+          const isFuture = data.chequeDate > today();
+          data.status = isFuture ? 'scheduled' : 'pending_approval';
+
+          /* Create */
+          const cheque = makeCheque(data);
+          state.data.cheques.push(cheque);
+          markDirty('cheques', cheque.id);
+
+          /* Reserve leaf */
+          if (window.reserveLeaf) window.reserveLeaf(cheque);
+
+          /* Update payee memory */
+          if (window.updatePayeeMemory) window.updatePayeeMemory(cheque, true);
+
+          /* Audit */
+          if (window.logActivity) {
+            window.logActivity({
+              action: 'create',
+              collection: 'cheques',
+              recordId: cheque.id,
+              summary: 'Batch-created cheque ' + cheque.chequeNo + ' — ' + money(cheque.amount)
+            });
+          }
+
+          created.push(cheque);
+        } catch (e) {
+          failed.push({ rowIndex: i + 1, row: r, error: e.message || String(e) });
+          dbg.warn('Batch row ' + (i + 1) + ' failed: ' + e.message);
+        }
+      });
+
+      /* Result summary */
+      resultEl.style.display = '';
+      if (failed.length === 0) {
+        resultEl.innerHTML =
+          '<div style="padding:14px 16px;background:var(--green-soft);color:var(--green);' +
+            'border-radius:var(--r-md);font-size:13px;line-height:1.6">' +
+            '<strong>✓ Saved ' + created.length + ' cheque' + (created.length === 1 ? '' : 's') + '</strong><br>' +
+            'Total: ' + money(created.reduce((s, c) => s + num(c.amount), 0)) +
+            ' · ' +
+            created.filter(c => c.status === 'scheduled').length + ' scheduled · ' +
+            created.filter(c => c.status === 'pending_approval').length + ' awaiting approval' +
+          '</div>';
+      } else {
+        resultEl.innerHTML =
+          '<div style="padding:14px 16px;background:var(--amber-soft);color:var(--amber);' +
+            'border-radius:var(--r-md);font-size:12.5px;line-height:1.7">' +
+            '<strong>⚠ Partial save — ' + created.length + ' created, ' + failed.length + ' failed</strong><br>' +
+            failed.map(f => '• Row ' + f.rowIndex + ': ' + esc(f.error)).join('<br>') +
+          '</div>';
+      }
+
+      /* Toast */
+      toast(
+        'Batch saved — ' + created.length + ' cheque' + (created.length === 1 ? '' : 's') +
+        (failed.length ? ' (' + failed.length + ' failed)' : ''),
+        failed.length ? 'warn' : 'success',
+        5000
+      );
+
+      /* Refresh the underlying page */
+      renderApp();
+
+      /* If all succeeded, close the modal after a short delay */
+      if (failed.length === 0) {
+        setTimeout(() => {
+          closeModal();
+          toast('Batch complete', 'success');
+        }, 1500);
+      }
+    }
+
+    /* ═══ Attach header controls ═══ */
+    bankSel.onchange = refreshBooks;
+    bookSel.onchange = reassignLeaves;
+    document.getElementById('btAddRow').onclick = () => addRow();
+    saveAllBtn.onclick = saveAll;
+
+    /* ═══ Keyboard shortcuts ═══ */
+    const modalRoot = document.querySelector('#modalWrap .modal');
+    if (modalRoot) {
+      modalRoot.addEventListener('keydown', (e) => {
+        /* Ctrl/Cmd+Enter — save all */
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          if (!saveAllBtn.disabled) saveAll();
+        }
+        /* Alt+N — new row */
+        if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+          e.preventDefault();
+          addRow();
+        }
+      });
+    }
+
+    /* ═══ Initial rows ═══ */
+    refreshBooks();
+    for (let i = 0; i < DEFAULT_ROWS; i++) addRow();
+
+    /* Focus the first payee input */
+    setTimeout(() => {
+      const first = document.querySelector('.bt-payee');
+      if (first) first.focus();
+    }, 100);
+  }
+  window.openBatchChequeForm = openBatchChequeForm;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. Patch the Cheques page — add "Batch Write" button in the header
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origRenderCheques = REGISTRY.routes.cheques ? REGISTRY.routes.cheques.fn : null;
+
+  function renderChequesWithBatch() {
+    if (!origRenderCheques) return '<div class="empty">Cheques view not loaded.</div>';
+    const html = origRenderCheques();
+
+    /* Insert the "Batch Write" button next to "Write Cheque" */
+    const inject = html.replace(
+      '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>',
+      '<div style="display:flex;gap:6px">' +
+        '<button class="btn" data-action="cheque-batch-new">📋 Batch Write</button>' +
+        '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>' +
+      '</div>'
+    );
+    return inject;
+  }
+
+  __LS_addRoute('cheques', 'Cheques', renderChequesWithBatch);
+
+  /* Also inject on the Dashboard's "Write Cheque" button */
+  const origDashboard = REGISTRY.routes.dashboard ? REGISTRY.routes.dashboard.fn : null;
+  if (origDashboard) {
+    function renderDashboardWithBatch() {
+      const html = origDashboard();
+      return html.replace(
+        '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>',
+        '<div style="display:flex;gap:6px">' +
+          '<button class="btn" data-action="cheque-batch-new">📋 Batch</button>' +
+          '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>' +
+        '</div>'
+      );
+    }
+    __LS_addRoute('dashboard', 'Dashboard', renderDashboardWithBatch);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     4. Action registration
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_registerAction('cheque-batch-new', () => openBatchChequeForm());
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     5. Init
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_register('S11', function () {
+    scriptLoaded('S11');
+  });
+
+})();
+</script>
 </body>
 </html>

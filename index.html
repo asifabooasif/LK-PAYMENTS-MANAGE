@@ -13184,5 +13184,851 @@ esc(
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MASTER FIX — dropdowns, bank statement, orphans, race conditions
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FIX 1 — Scoped getElementById (modal-first lookup)
+     ═══════════════════════════════════════════════════════════════════════ */
+  const _origById = document.getElementById.bind(document);
+  const _origQS   = document.querySelector.bind(document);
+
+  document.getElementById = function (id) {
+    if (!id) return null;
+    const modal = _origById('modalWrap');
+    if (modal && modal.classList.contains('open')) {
+      const insideModal = modal.querySelector('#' + id);
+      if (insideModal) return insideModal;
+    }
+    return _origById(id);
+  };
+
+  document.querySelector = function (sel) {
+    const modal = _origById('modalWrap');
+    if (modal && modal.classList.contains('open') && typeof sel === 'string' && sel.charAt(0) === '#') {
+      const inModal = modal.querySelector(sel);
+      if (inModal) return inModal;
+    }
+    return _origQS(sel);
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FIX 2 — Bulletproof cheque book + leaf cascade
+     Replace window.openChequeForm with a version that always works.
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origOpenChequeForm = window.openChequeForm;
+
+  window.openChequeForm = function (id) {
+    if (!state.perms.write) { toast('Read-only role — cannot edit', 'error'); return; }
+
+    const c = id ? chequeObj(id) : null;
+    if (c && !['draft', 'cancelled', 'pending_approval'].includes(c.status)) {
+      toast('This cheque can no longer be edited (' + c.status + ')', 'error');
+      return;
+    }
+
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) {
+      toast('Add a bank first — go to Banks page', 'warn', 5000);
+      return;
+    }
+
+    const defaultBankId = c?.bankId || banks[0].id;
+
+    const body =
+      /* Payee + type */
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
+        '<label class="field">Payee' +
+          '<div class="payee-input-wrap" style="position:relative">' +
+            '<input id="chqPayeeSearch" placeholder="Type name to search or add new…" autocomplete="off" value="' + esc(c?.payeeName || '') + '">' +
+            '<div class="payee-suggestions" id="chqPayeeSuggestions"></div>' +
+          '</div>' +
+        '</label>' +
+        selectField('Payee Type', 'chqPayeeType',
+          Object.keys(PAYEE_TYPES).map(k => ({ value: k, label: PAYEE_TYPES[k].ico + ' ' + PAYEE_TYPES[k].label })),
+          c?.payeeType || 'supplier') +
+      '</div>' +
+
+      /* Bank + book */
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
+        selectField('Bank Account', 'chqBank', banks.map(b => ({ value: b.id, label: b.name })), defaultBankId, { req: true }) +
+        '<label class="field">Cheque Book<select id="chqBook"><option value="">Loading…</option></select></label>' +
+      '</div>' +
+
+      /* Cheque # + leaf */
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
+        field('Cheque Number', 'chqNo', c?.chequeNo || '', { placeholder: 'Auto from leaf or manual' }) +
+        '<label class="field">Leaf<select id="chqLeaf"><option value="">— Manual —</option></select></label>' +
+      '</div>' +
+
+      /* Amount + date */
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
+        field('Amount', 'chqAmount', c ? num(c.amount).toFixed(2) : '', { type: 'number', step: '0.01', min: 0, req: true, placeholder: '0.00' }) +
+        field('Cheque Date', 'chqDate', c?.chequeDate || today(), { type: 'date', req: true }) +
+      '</div>' +
+
+      '<div style="margin-bottom:14px">' + field('Amount in Words', 'chqWords', c?.amountWords || '') + '</div>' +
+
+      '<div id="chqPreviewWrap"></div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">' +
+        field('Memo / Purpose', 'chqMemo', c?.memo || '', { placeholder: 'e.g. Invoice #123 payment' }) +
+        field('Written Date', 'chqWrittenDate', c?.writtenDate || today(), { type: 'date' }) +
+      '</div>' +
+
+      '<div style="margin-top:14px">' + field('Notes', 'chqNotes', c?.notes || '', { type: 'textarea' }) + '</div>' +
+
+      '<div id="chqBalanceHint" style="margin-top:16px;padding:12px 14px;background:var(--surface-2);border-radius:var(--r-md);font-size:12.5px"></div>';
+
+    openModal(c ? '✏️ Edit Cheque' : '＋ Write New Cheque', body, {
+      width: 780,
+      footer:
+        '<button class="btn" data-close-modal>Cancel</button>' +
+        '<button class="btn primary" id="chqSaveBtn">' + (c ? 'Update' : 'Save Cheque') + '</button>'
+    });
+
+    /* ── Grab scoped refs ── */
+    const _q = (sel) => document.querySelector('#modalWrap ' + sel);
+    const bankSel    = _q('#chqBank');
+    const bookSel    = _q('#chqBook');
+    const leafSel    = _q('#chqLeaf');
+    const noInput    = _q('#chqNo');
+    const amountInp  = _q('#chqAmount');
+    const wordsInp   = _q('#chqWords');
+    const payeeInp   = _q('#chqPayeeSearch');
+    const sugBox     = _q('#chqPayeeSuggestions');
+    let selectedPayeeId = c?.payeeId || null;
+
+    /* ═══════════ Bank → Book → Leaf cascade — BULLETPROOF ═══════════ */
+
+    function refreshBooks() {
+      try {
+        const bid = bankSel.value;
+        const allBooks = arr(state.data.chequeBooks);
+
+        /* Books matching this bank — accept any casing/trim mismatch */
+        const matching = allBooks.filter(b =>
+          String(b.bankId || '').trim() === String(bid).trim()
+        );
+
+        /* Debug log */
+        dbg.info('refreshBooks: bank=' + bid + ' → ' + matching.length + ' book(s) of ' + allBooks.length);
+
+        if (!matching.length) {
+          bookSel.innerHTML =
+            '<option value="">— No books for this bank —</option>' +
+            '<option value="__CREATE__">＋ Create new book</option>';
+        } else {
+          bookSel.innerHTML = '<option value="">— Manual / No book —</option>' +
+            matching.map(b => {
+              const s = bookLeavesSummary(b);
+              return '<option value="' + esc(b.id) + '"' + (c?.bookId === b.id ? ' selected' : '') + '>' +
+                esc(b.bookNo) +
+                ' (' + esc(b.serialStart) + '–' + esc(b.serialEnd) + ')' +
+                ' · ' + s.available + ' left' +
+                (b.active === false ? ' · INACTIVE' : '') +
+              '</option>';
+            }).join('') +
+            '<option value="__CREATE__">＋ Create new book</option>';
+        }
+
+        refreshLeaves();
+        updateBalanceHint();
+      } catch (e) {
+        dbg.err('refreshBooks: ' + e.message);
+      }
+    }
+
+    function refreshLeaves() {
+      try {
+        const bkid = bookSel.value;
+        if (bkid === '__CREATE__') {
+          leafSel.innerHTML = '<option value="">— Pick a book first —</option>';
+          return;
+        }
+        const book = bkid ? bookObj(bkid) : null;
+        if (!book) {
+          leafSel.innerHTML = '<option value="">— Manual —</option>';
+          return;
+        }
+
+        const avail = [];
+        arr(book.leaves).forEach((l, i) => {
+          if (l.status === 'available') avail.push({ idx: i, serial: l.serial });
+        });
+
+        leafSel.innerHTML = '<option value="">— Pick leaf —</option>' +
+          avail.map(l =>
+            '<option value="' + l.idx + '"' + (c?.leafId === l.idx ? ' selected' : '') + '>' +
+              esc(l.serial) +
+            '</option>'
+          ).join('');
+
+        /* Auto-pick first available for new cheques */
+        if (!c && avail.length) {
+          leafSel.value = avail[0].idx;
+          noInput.value = avail[0].serial;
+        }
+      } catch (e) {
+        dbg.err('refreshLeaves: ' + e.message);
+      }
+    }
+
+    function updateBalanceHint() {
+      const hint = _q('#chqBalanceHint');
+      if (!hint) return;
+      const bid = bankSel.value;
+      if (!bid) { hint.innerHTML = ''; return; }
+      const bal = bankBalances(bid);
+      const amt = num(amountInp.value);
+      const afterBook = bal.book - amt;
+      hint.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
+          '<div><div class="k-label">Bank now</div><strong>' + money(bal.bank) + '</strong></div>' +
+          '<div><div class="k-label">Book now</div><strong style="color:var(--accent)">' + money(bal.book) + '</strong></div>' +
+          '<div><div class="k-label">Book after</div>' +
+            '<strong style="color:' + (afterBook < 0 ? 'var(--red)' : 'var(--green)') + '">' + money(afterBook) + '</strong></div>' +
+        '</div>' +
+        (afterBook < 0
+          ? '<div style="margin-top:8px;color:var(--red);font-weight:600">⚠ Overdraft risk of ' + money(Math.abs(afterBook)) + '</div>'
+          : '');
+    }
+
+    /* Wire cascade */
+    bankSel.onchange = () => {
+      /* Reset selected book when bank changes */
+      bookSel.value = '';
+      refreshBooks();
+    };
+
+    bookSel.onchange = () => {
+      if (bookSel.value === '__CREATE__') {
+        /* Open book creation form inline */
+        _origById('modalWrap').classList.remove('open');
+        setTimeout(() => {
+          if (window.openBookForm) window.openBookForm(null);
+          /* After user creates book, reopen cheque form */
+          const check = setInterval(() => {
+            const before = arr(state.data.chequeBooks).length;
+            const modalOpen = _origById('modalWrap').classList.contains('open');
+            if (!modalOpen) return; /* still in book form */
+          }, 500);
+        }, 100);
+        return;
+      }
+      refreshLeaves();
+    };
+
+    leafSel.onchange = () => {
+      const idx = leafSel.value;
+      if (idx === '') return;
+      const book = bookObj(bookSel.value);
+      if (!book) return;
+      const leaf = arr(book.leaves)[parseInt(idx, 10)];
+      if (leaf) noInput.value = leaf.serial;
+    };
+
+    amountInp.oninput = () => {
+      const v = num(amountInp.value);
+      wordsInp.value = v > 0 ? numberToWords(v) : '';
+      renderChequePreview();
+      updateBalanceHint();
+    };
+    _q('#chqDate').oninput = renderChequePreview;
+
+    /* ═══════════ Preview ═══════════ */
+    function renderChequePreview() {
+      const wrap = _q('#chqPreviewWrap');
+      if (!wrap) return;
+      const amt = num(amountInp.value);
+      if (amt <= 0) { wrap.innerHTML = ''; return; }
+      const bank = bankObj(bankSel.value);
+      const payee = payeeInp.value.trim();
+      const words = wordsInp.value;
+      const dateStr = _q('#chqDate').value;
+      const no = noInput.value;
+      wrap.innerHTML =
+        '<div class="cheque-preview">' +
+          '<div class="cp-row"><span class="cp-label">Bank</span><span>' + esc(bank ? (bank.bankName || bank.name) : '—') + '</span></div>' +
+          '<div class="cp-row"><span class="cp-label">Pay to</span><span style="font-weight:600">' + esc(payee || '________________') + '</span></div>' +
+          '<div class="cp-words">' + esc(words || '________________') + '</div>' +
+          '<div class="cp-row"><span class="cp-label">Amount</span><span class="cp-amount-box">' + money(amt, { plain: true }) + '</span></div>' +
+          '<div class="cp-row" style="margin-top:8px"><span class="cp-label">Date</span><span>' + (dateStr ? dateFmt(dateStr) : '____ / ____ / ______') + '</span></div>' +
+          '<div class="cp-row"><span class="cp-label">Cheque #</span><span class="mono">' + esc(no || '—') + '</span></div>' +
+          '<div class="micr-line">‖ ' + esc(no || '000000') + ' ‖ ' + esc(bank?.accountNo || '0000000000') + ' ‖</div>' +
+        '</div>';
+    }
+
+    /* ═══════════ Payee autocomplete — FIXED (no blur race) ═══════════ */
+    let payeeBlurTimer = null;
+
+    function renderPayeeSuggestions() {
+      const q = payeeInp.value.trim().toLowerCase();
+      if (!q) { sugBox.classList.remove('open'); return; }
+      const matches = arr(state.data.payees)
+        .filter(p => p.active !== false)
+        .filter(p => (p.name || '').toLowerCase().indexOf(q) !== -1)
+        .slice(0, 8);
+
+      let html = '';
+      if (matches.length) {
+        html += matches.map(p =>
+          '<div class="payee-suggestion" data-payee-id="' + esc(p.id) + '">' +
+            '<div>' + esc(p.name) +
+              '<span class="type-tag">' + esc((PAYEE_TYPES[p.type] || PAYEE_TYPES.other).label) + '</span>' +
+            '</div>' +
+            (num(p.lastChequeAmount) > 0
+              ? '<div class="last-info">Last: ' + money(p.lastChequeAmount) +
+                (p.lastChequeDate ? ' on ' + dateFmt(p.lastChequeDate) : '') + '</div>'
+              : '') +
+          '</div>'
+        ).join('');
+      }
+      html += '<div class="payee-suggestion" data-action="payee-quick-new">' +
+        '＋ Add new payee: <strong>' + esc(payeeInp.value.trim()) + '</strong>' +
+      '</div>';
+      sugBox.innerHTML = html;
+      sugBox.classList.add('open');
+    }
+
+    sugBox.addEventListener('mousedown', (e) => {
+      /* Use mousedown — fires BEFORE blur */
+      e.preventDefault(); /* prevent blur */
+      const item = e.target.closest('.payee-suggestion');
+      if (!item) return;
+
+      if (item.dataset.action === 'payee-quick-new') {
+        const name = payeeInp.value.trim();
+        if (name) {
+          quickCreatePayeeAndContinue(name, {
+            onCreated: (payee) => {
+              payeeInp.value = payee.name;
+              selectedPayeeId = payee.id;
+              const pt = _q('#chqPayeeType');
+              if (pt) pt.value = payee.type;
+              sugBox.classList.remove('open');
+            }
+          });
+        }
+        return;
+      }
+
+      const p = payeeObj(item.dataset.payeeId);
+      if (!p) return;
+      payeeInp.value = p.name;
+      selectedPayeeId = p.id;
+      const pt = _q('#chqPayeeType');
+      if (pt) pt.value = p.type;
+      if (num(p.lastChequeAmount) > 0 && !num(amountInp.value)) {
+        amountInp.value = num(p.lastChequeAmount).toFixed(2);
+        wordsInp.value = numberToWords(p.lastChequeAmount);
+      }
+      if (p.defaultBankId && banks.find(b => b.id === p.defaultBankId)) {
+        bankSel.value = p.defaultBankId;
+        refreshBooks();
+      }
+      sugBox.classList.remove('open');
+      renderChequePreview();
+      updateBalanceHint();
+    });
+
+    payeeInp.oninput = () => {
+      renderPayeeSuggestions();
+      renderChequePreview();
+      const row = null; /* not a batch */
+      selectedPayeeId = null;
+    };
+    payeeInp.onfocus = () => { if (payeeInp.value.trim()) renderPayeeSuggestions(); };
+    payeeInp.onblur = () => {
+      /* Delay close so mousedown can fire */
+      clearTimeout(payeeBlurTimer);
+      payeeBlurTimer = setTimeout(() => sugBox.classList.remove('open'), 250);
+    };
+
+    /* ═══════════ Initial render ═══════════ */
+    refreshBooks();
+
+    /* If editing, restore book/leaf */
+    if (c?.bookId) {
+      bookSel.value = c.bookId;
+      refreshLeaves();
+      if (c?.leafId !== null && c?.leafId !== undefined) leafSel.value = String(c.leafId);
+    }
+    if (c) renderChequePreview();
+    updateBalanceHint();
+
+    /* Save */
+    _q('#chqSaveBtn').onclick = () => {
+      const payload = {
+        chequeNo: noInput.value.trim(),
+        bankId: bankSel.value,
+        bookId: (bookSel.value && bookSel.value !== '__CREATE__') ? bookSel.value : '',
+        leafId: (leafSel.value !== '' && leafSel.value !== null) ? parseInt(leafSel.value, 10) : null,
+        payeeId: selectedPayeeId,
+        payeeType: _q('#chqPayeeType').value || 'supplier',
+        payeeName: payeeInp.value.trim(),
+        amount: num(amountInp.value),
+        amountWords: wordsInp.value,
+        chequeDate: _q('#chqDate').value || today(),
+        writtenDate: _q('#chqWrittenDate').value || today(),
+        memo: _q('#chqMemo').value.trim(),
+        notes: _q('#chqNotes').value.trim()
+      };
+
+      if (!payload.payeeName)   { toast('Payee name is required', 'error'); return; }
+      if (!payload.bankId)      { toast('Bank is required', 'error'); return; }
+      if (payload.amount <= 0)  { toast('Amount must be > 0', 'error'); return; }
+      if (!payload.chequeDate)  { toast('Cheque date is required', 'error'); return; }
+
+      /* Resolve payee ID */
+      if (!payload.payeeId) {
+        const match = arr(state.data.payees).find(p =>
+          p.name.toLowerCase() === payload.payeeName.toLowerCase()
+        );
+        if (match) payload.payeeId = match.id;
+      }
+
+      /* Overdraft confirm */
+      const bal = bankBalances(payload.bankId);
+      const afterBook = bal.book - payload.amount;
+      if (afterBook < 0) {
+        if (!confirm(
+          '⚠ This cheque pushes BOOK balance to ' + money(afterBook) + '\n\n' +
+          'Continue anyway?'
+        )) return;
+      }
+
+      const isFuture = payload.chequeDate > today();
+      payload.status = isFuture ? 'scheduled' : 'pending_approval';
+
+      if (c) {
+        if (window.releaseLeaf) window.releaseLeaf(c);
+        Object.assign(c, payload);
+        c.amountWords = numberToWords(payload.amount);
+        c.updatedAt = nowISO();
+        c.updatedBy = state.user?.email || 'system';
+        markDirty('cheques', c.id);
+        if (window.reserveLeaf) window.reserveLeaf(c);
+        if (window.updatePayeeMemory) window.updatePayeeMemory(c, false);
+        toast('Cheque updated', 'success');
+      } else {
+        const created = makeCheque(payload);
+        state.data.cheques.push(created);
+        markDirty('cheques', created.id);
+        if (window.reserveLeaf) window.reserveLeaf(created);
+        if (window.updatePayeeMemory) window.updatePayeeMemory(created, true);
+        toast(isFuture ? 'Scheduled for ' + dateFmt(created.chequeDate) : 'Cheque saved — awaiting approval', 'success');
+      }
+
+      closeModal();
+      renderApp();
+    };
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FIX 3 — Orphan adjustment auto-repair (assign to first bank)
+     ═══════════════════════════════════════════════════════════════════════ */
+  function findOrphanAdjustments() {
+    return arr(state.data.bankAdjustments).filter(a => {
+      if (!a.bankId || a.bankId === 'all') return true;
+      return !arr(state.data.banks).some(b => b.id === a.bankId);
+    });
+  }
+  window.findOrphanAdjustments = findOrphanAdjustments;
+
+  function repairOrphanAdjustment(adjId, newBankId) {
+    const a = arr(state.data.bankAdjustments).find(x => x.id === adjId);
+    if (!a) return;
+    if (!arr(state.data.banks).some(b => b.id === newBankId)) {
+      toast('Bank does not exist', 'error'); return;
+    }
+    a.bankId = newBankId;
+    a.updatedAt = nowISO();
+    a.updatedBy = state.user?.email || 'system';
+    markDirty('bankAdjustments', a.id);
+    toast('Repaired', 'success');
+  }
+  window.repairOrphanAdjustment = repairOrphanAdjustment;
+
+  function openOrphanRepairWizard() {
+    const orphans = findOrphanAdjustments();
+    if (!orphans.length) {
+      openModal('✅ No orphans', '<div class="empty">All adjustments assigned correctly.</div>',
+        { width: 480, footer: '<button class="btn" data-close-modal>Close</button>' });
+      return;
+    }
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('No banks to assign to', 'error'); return; }
+
+    const body =
+      '<div class="alert" style="background:var(--amber-soft);color:var(--amber);' +
+        'padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:12.5px">' +
+        '<strong>' + orphans.length + ' adjustment(s)</strong> have a broken bank reference. ' +
+        'Pick a bank for each one below.' +
+      '</div>' +
+      orphans.map(a =>
+        '<div style="margin-bottom:12px;padding:12px 14px;border:1px solid var(--border);' +
+          'border-radius:10px;background:var(--surface-2)">' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px">' +
+            esc(a.reason || 'Adjustment') +
+          '</div>' +
+          '<div class="small muted" style="margin-bottom:8px">' +
+            dateFmt(a.date) + ' · ' +
+            (a.direction === 'credit' ? '+' : '−') + money(a.amount) +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">' +
+            '<select id="orphan-' + esc(a.id) + '" ' +
+              'style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">' +
+              '<option value="">— Pick bank —</option>' +
+              banks.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>').join('') +
+            '</select>' +
+            '<button class="btn primary" data-action="repair-orphan" data-id="' + esc(a.id) + '">Fix</button>' +
+          '</div>' +
+        '</div>'
+      ).join('') +
+      '<div style="margin-top:14px;text-align:right">' +
+        '<button class="btn danger" data-action="repair-orphan-all-to-first">' +
+          '🔧 Assign ALL to first bank' +
+        '</button>' +
+      '</div>';
+
+    openModal('🔧 Repair Orphan Adjustments', body, { width: 720 });
+  }
+  window.openOrphanRepairWizard = openOrphanRepairWizard;
+
+  __LS_registerAction('repair-orphan', (ev, id) => {
+    ev.stopPropagation();
+    const sel = _origById('orphan-' + id);
+    if (!sel || !sel.value) { toast('Pick a bank', 'error'); return; }
+    repairOrphanAdjustment(id, sel.value);
+    setTimeout(() => openOrphanRepairWizard(), 200);
+  });
+
+  __LS_registerAction('repair-orphan-all-to-first', (ev) => {
+    ev.stopPropagation();
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('No banks', 'error'); return; }
+    const firstBank = banks[0];
+    if (!confirm('Assign all orphan adjustments to "' + firstBank.name + '"?\n\n' +
+      'You can edit each one later to correct the bank.')) return;
+    const orphans = findOrphanAdjustments();
+    orphans.forEach(a => repairOrphanAdjustment(a.id, firstBank.id));
+    toast('Assigned ' + orphans.length + ' adjustment(s) to ' + firstBank.name, 'success');
+    closeModal();
+    renderApp();
+  });
+
+  __LS_registerAction('open-orphan-repair', () => openOrphanRepairWizard());
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FIX 4 — Bank statement improvements
+     Replace renderRptBankStatement so it shows:
+     - pending (scheduled/approved) cheques too
+     - unmatched imported transactions
+     - helpful empty state
+     ═══════════════════════════════════════════════════════════════════════ */
+  function renderRptBankStatementFixed() {
+    const f = state.filters.rptBankStatement || {};
+    const bankId = f.bankId || (arr(state.data.banks)[0]?.id || '');
+    const from = f.from || shiftDate(today(), -30);
+    const to = f.to || today();
+
+    const bank = bankId ? bankObj(bankId) : null;
+    if (!bank) {
+      return reportHeader
+        ? reportHeader({ title: '🏦 Bank Statement' }) + '<div class="card"><div class="empty">Select a bank.</div></div>'
+        : '<div class="card"><div class="empty">Select a bank.</div></div>';
+    }
+
+    /* Opening = openingBalance + all adjustments before `from` - all cleared cheques before `from` */
+    let opening = num(bank.openingBalance);
+    arr(state.data.bankAdjustments).forEach(a => {
+      if (String(a.bankId) !== String(bankId)) return;
+      if (a.date >= from) return;
+      opening += num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
+    });
+    arr(state.data.cheques).forEach(c => {
+      if (c.bankId !== bankId) return;
+      if (c.status !== 'cleared') return;
+      const clearedOn = c.clearedAt ? c.clearedAt.slice(0, 10) : c.chequeDate;
+      if (clearedOn >= from) return;
+      opening -= num(c.amount);
+    });
+
+    /* Rows in range */
+    const rows = [];
+
+    /* Cleared cheques */
+    arr(state.data.cheques).forEach(c => {
+      if (c.bankId !== bankId) return;
+      if (c.status !== 'cleared') return;
+      const on = c.clearedAt ? c.clearedAt.slice(0, 10) : c.chequeDate;
+      if (on < from || on > to) return;
+      rows.push({
+        date: on, type: 'Cleared Cheque', ico: '✓',
+        ref: c.chequeNo,
+        desc: 'Cheque cleared — ' + (c.payeeName || ''),
+        debit: num(c.amount), credit: 0,
+        source: 'cheque', sourceId: c.id
+      });
+    });
+
+    /* Pending cheques (scheduled/approved) — show as info */
+    arr(state.data.cheques).forEach(c => {
+      if (c.bankId !== bankId) return;
+      if (c.status !== 'scheduled' && c.status !== 'approved') return;
+      if (c.chequeDate < from || c.chequeDate > to) return;
+      rows.push({
+        date: c.chequeDate, type: c.status === 'approved' ? 'Approved' : 'Scheduled',
+        ico: c.status === 'approved' ? '⏳' : '📅',
+        ref: c.chequeNo,
+        desc: 'Cheque ' + c.status + ' — ' + (c.payeeName || ''),
+        debit: num(c.amount), credit: 0,
+        source: 'cheque', sourceId: c.id,
+        infoOnly: true
+      });
+    });
+
+    /* Adjustments */
+    arr(state.data.bankAdjustments).forEach(a => {
+      if (String(a.bankId) !== String(bankId)) return;
+      if (a.date < from || a.date > to) return;
+      const signed = num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
+      rows.push({
+        date: a.date, type: 'Adjustment', ico: '🔧',
+        ref: a.reference || '',
+        desc: a.reason || 'Adjustment',
+        debit: signed < 0 ? Math.abs(signed) : 0,
+        credit: signed > 0 ? signed : 0,
+        source: 'adjustment', sourceId: a.id
+      });
+    });
+
+    /* Unmatched imported transactions */
+    arr(state.data.bankTransactions).forEach(t => {
+      if (t.bankId !== bankId) return;
+      if (t.date < from || t.date > to) return;
+      if (t.matchState === 'matched') return;
+      rows.push({
+        date: t.date, type: 'Imported', ico: '📥',
+        ref: t.reference || '',
+        desc: t.description || 'Imported',
+        debit: t.direction === 'debit' ? num(t.amount) : 0,
+        credit: t.direction === 'credit' ? num(t.amount) : 0,
+        source: 'transaction', sourceId: t.id,
+        infoOnly: true
+      });
+    });
+
+    rows.sort((a, b) => a.date.localeCompare(b.date));
+
+    let running = opening;
+    rows.forEach(r => {
+      if (r.infoOnly) {
+        r.balance = running;
+      } else {
+        running += r.credit - r.debit;
+        r.balance = running;
+      }
+    });
+
+    const totalDebit  = rows.filter(r => !r.infoOnly).reduce((s, r) => s + r.debit, 0);
+    const totalCredit = rows.filter(r => !r.infoOnly).reduce((s, r) => s + r.credit, 0);
+    const closing = running;
+
+    const header = (typeof reportHeader === 'function')
+      ? reportHeader({
+          title: '🏦 Bank Statement — ' + esc(bank.name),
+          exportAction: 'rpt-statement-export',
+          filters:
+            '<label class="field" style="min-width:160px">Bank' +
+              '<select id="stBank">' +
+                arr(state.data.banks).map(b =>
+                  '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>'
+                ).join('') +
+              '</select>' +
+            '</label>' +
+            '<label class="field" style="min-width:130px">From' +
+              '<input type="date" id="stFrom" value="' + esc(from) + '">' +
+            '</label>' +
+            '<label class="field" style="min-width:130px">To' +
+              '<input type="date" id="stTo" value="' + esc(to) + '">' +
+            '</label>'
+        })
+      : '<div class="card"><div class="card-head"><h3>🏦 Bank Statement — ' + esc(bank.name) + '</h3></div>';
+
+    return header +
+      '<div class="kpi-strip">' +
+        '<div class="kpi"><div class="k-label">Opening</div>' +
+          '<div class="k-value" style="font-size:18px">' + money(opening) + '</div>' +
+          '<div class="k-sub">' + dateFmt(from) + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Debits</div>' +
+          '<div class="k-value" style="font-size:18px;color:var(--red)">' + money(totalDebit) + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Credits</div>' +
+          '<div class="k-value" style="font-size:18px;color:var(--green)">' + money(totalCredit) + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Closing</div>' +
+          '<div class="k-value" style="font-size:18px">' + money(closing) + '</div>' +
+          '<div class="k-sub">' + dateFmt(to) + '</div></div>' +
+      '</div>' +
+
+      (rows.length
+        ? '<div class="card">' +
+            '<div class="table-wrap"><table>' +
+              '<thead><tr>' +
+                '<th>Date</th><th>Type</th><th>Reference</th><th>Description</th>' +
+                '<th class="num">Debit</th><th class="num">Credit</th>' +
+                '<th class="num">Balance</th>' +
+              '</tr></thead><tbody>' +
+              '<tr style="background:var(--surface-2)">' +
+                '<td colspan="6"><strong>Opening Balance</strong></td>' +
+                '<td class="num"><strong>' + money(opening) + '</strong></td>' +
+              '</tr>' +
+              rows.map(r =>
+                '<tr' + (r.infoOnly ? ' style="opacity:.7"' : '') + '>' +
+                  '<td>' + dateFmt(r.date) + '</td>' +
+                  '<td><span class="small">' + r.ico + ' ' + esc(r.type) + '</span>' +
+                    (r.infoOnly ? ' <span class="badge amber">Pending</span>' : '') + '</td>' +
+                  '<td class="mono small">' + esc(r.ref || '—') + '</td>' +
+                  '<td>' + esc(r.desc) + '</td>' +
+                  '<td class="num" style="color:var(--red)">' + (r.debit ? money(r.debit) : '') + '</td>' +
+                  '<td class="num" style="color:var(--green)">' + (r.credit ? money(r.credit) : '') + '</td>' +
+                  '<td class="num"><strong>' + money(r.balance) + '</strong></td>' +
+                '</tr>'
+              ).join('') +
+            '</tbody>' +
+            '<tfoot><tr>' +
+              '<td colspan="4" style="text-align:right">MOVEMENT</td>' +
+              '<td class="num">' + money(totalDebit) + '</td>' +
+              '<td class="num">' + money(totalCredit) + '</td>' +
+              '<td class="num">' + money(closing) + '</td>' +
+            '</tr></tfoot></table></div>' +
+          '</div>'
+        : '<div class="card"><div class="empty">' +
+            '<span class="big">📄</span>' +
+            '<strong>No movements in this range.</strong><br><br>' +
+            'This bank has opening balance ' + money(opening) + '.<br>' +
+            'Cheques appear here once they are <strong>cleared</strong>.<br>' +
+            'Scheduled/approved cheques show as <em>pending</em> rows.' +
+            '<br><br>' +
+            '<button class="btn sm" data-nav="cheques">View cheques →</button> ' +
+            '<button class="btn sm" data-action="cheque-new">＋ Write cheque</button> ' +
+            '<button class="btn sm" data-action="import-open" data-id="' + esc(bankId) + '">📥 Import statement</button>' +
+          '</div></div>');
+  }
+  window.renderRptBankStatement = renderRptBankStatementFixed;
+  __LS_addRoute('rpt-bank-statement', 'Bank Statement', renderRptBankStatementFixed);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FIX 5 — Auto-detect orphans on boot and offer repair
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_register('MASTER-FIX', function () {
+    setTimeout(() => {
+      const orphans = findOrphanAdjustments();
+      if (orphans.length) {
+        const total = orphans.reduce((s, a) => s + Math.abs(num(a.amount)), 0);
+        toast(
+          '⚠ ' + orphans.length + ' adjustment(s) (' + money(total) + ') have broken bank links — ' +
+          'click to repair',
+          'warn', 12000
+        );
+        /* Also inject a card on the dashboard */
+        const dashView = _origById('view');
+        if (state.view === 'dashboard' && dashView) {
+          const banner = document.createElement('div');
+          banner.className = 'card';
+          banner.style.background = 'var(--amber-soft)';
+          banner.style.border = '1px solid var(--amber)';
+          banner.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">' +
+              '<div>' +
+                '<div style="font-weight:600;color:var(--amber)">⚠ ' +
+                  orphans.length + ' bank adjustment(s) need repair</div>' +
+                '<div class="small" style="color:var(--amber);margin-top:4px">' +
+                  'Total ' + money(total) + ' is currently not affecting any bank balance.' +
+                '</div>' +
+              '</div>' +
+              '<button class="btn primary" data-action="open-orphan-repair">🔧 Repair Now</button>' +
+            '</div>';
+          dashView.insertBefore(banner, dashView.firstChild);
+        }
+      }
+      scriptLoaded('MASTER-FIX');
+    }, 1500);
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     FIX 6 — System debug command
+     Open browser console and run: debugSystem()
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.debugSystem = function () {
+    const results = [];
+
+    /* Banks */
+    const banks = arr(state.data.banks);
+    results.push({ check: 'Banks loaded', value: banks.length, ok: banks.length > 0 });
+    banks.forEach(b => {
+      const books = arr(state.data.chequeBooks).filter(x => x.bankId === b.id);
+      const adj = arr(state.data.bankAdjustments).filter(x => x.bankId === b.id);
+      const cheques = arr(state.data.cheques).filter(x => x.bankId === b.id);
+      const bal = bankBalances(b.id);
+      results.push({
+        check: '  → ' + b.name,
+        value: 'opening=' + money(b.openingBalance) +
+               ' | bank=' + money(bal.bank) +
+               ' | book=' + money(bal.book) +
+               ' | books=' + books.length +
+               ' | adj=' + adj.length +
+               ' | cheques=' + cheques.length,
+        ok: true
+      });
+    });
+
+    /* Books */
+    const books = arr(state.data.chequeBooks);
+    results.push({ check: 'Cheque books loaded', value: books.length, ok: books.length > 0 });
+    books.forEach(bk => {
+      const s = bookLeavesSummary(bk);
+      const bankExists = banks.some(b => b.id === bk.bankId);
+      results.push({
+        check: '  → ' + (bk.bookNo || bk.id),
+        value: 'bank=' + bankName(bk.bankId) +
+               ' | leaves=' + s.total + '/' + s.available + ' available' +
+               (bankExists ? '' : ' ⚠ BANK MISSING'),
+        ok: bankExists && bk.active !== false
+      });
+    });
+
+    /* Orphans */
+    const orphans = findOrphanAdjustments();
+    results.push({ check: 'Orphan adjustments', value: orphans.length, ok: orphans.length === 0 });
+
+    /* Payees */
+    results.push({ check: 'Payees loaded', value: arr(state.data.payees).length, ok: true });
+
+    /* Cheques by status */
+    const statusCounts = {};
+    arr(state.data.cheques).forEach(c => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
+    results.push({ check: 'Cheques by status', value: JSON.stringify(statusCounts), ok: true });
+
+    /* Output */
+    console.log('%c═══ SYSTEM DIAGNOSTIC ═══', 'font-weight:bold;font-size:14px;color:#7c3aed');
+    console.table(results);
+    return results;
+  };
+
+  /* Run on boot for instant feedback */
+  __LS_register('DEBUG-RUN', function () {
+    setTimeout(() => {
+      try { console.log('%cTip: run debugSystem() in console for full system health check', 'color:#10b981;font-style:italic'); }
+      catch (e) {}
+    }, 3000);
+  });
+
+})();
+</script>
 </body>
 </html>

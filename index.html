@@ -12931,5 +12931,258 @@ esc(
   scriptLoaded('S10-FIX');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CRITICAL FIX — form IDs prefer modal scope + orphan repair
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════════════════
+     1. SCOPED getElementById
+     When a modal is open, prefer elements inside the modal.
+     ═══════════════════════════════════════════════════════════════ */
+  const _origGetById = document.getElementById.bind(document);
+
+  document.getElementById = function (id) {
+    if (!id) return null;
+
+    const modal = _origGetById('modalWrap');
+    if (modal && modal.classList.contains('open')) {
+      const insideModal = modal.querySelector('#' + id);
+      if (insideModal) return insideModal;
+    }
+
+    return _origGetById(id);
+  };
+
+  /* Same idea for querySelectorAll — scope to modal when open */
+  const _origQS = document.querySelector.bind(document);
+  document.querySelector = function (sel) {
+    const modal = _origGetById('modalWrap');
+    if (modal && modal.classList.contains('open') && typeof sel === 'string' && sel.startsWith('#')) {
+      const inModal = modal.querySelector(sel);
+      if (inModal) return inModal;
+    }
+    return _origQS(sel);
+  };
+
+  /* ═══════════════════════════════════════════════════════════════
+     2. Prevent saving adjustments without a valid bank
+     Wrap the save button of the adjustment form.
+     We do this by intercepting clicks on the save button.
+     ═══════════════════════════════════════════════════════════════ */
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('#adjSaveBtn');
+    if (!btn) return;
+
+    const bankEl = _origQS('#modalWrap #adjBank');
+    const typeEl = _origQS('#modalWrap #adjType');
+    if (!bankEl) return;
+
+    const bid = bankEl.value;
+
+    /* Reject "all" or empty */
+    if (!bid || bid === 'all') {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      toast('Please select a specific bank (not "All")', 'error');
+      return;
+    }
+
+    /* Reject if the bank doesn't exist in state */
+    const exists = arr(state.data.banks).some(b => b.id === bid);
+    if (!exists) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      toast('That bank no longer exists — pick another', 'error');
+      return;
+    }
+
+    /* Also reject type = "all" or empty */
+    if (typeEl && (!typeEl.value || typeEl.value === 'all')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      toast('Please select a specific type', 'error');
+    }
+  }, true);   /* capture phase — runs before the form's own handler */
+
+  /* ═══════════════════════════════════════════════════════════════
+     3. Orphan repair — find adjustments with bad bankId
+     ═══════════════════════════════════════════════════════════════ */
+  function findOrphanAdjustments() {
+    return arr(state.data.bankAdjustments).filter(a => {
+      if (!a.bankId || a.bankId === 'all') return true;
+      return !arr(state.data.banks).some(b => b.id === a.bankId);
+    });
+  }
+  window.findOrphanAdjustments = findOrphanAdjustments;
+
+  function repairOrphanAdjustment(adjId, newBankId) {
+    const a = arr(state.data.bankAdjustments).find(x => x.id === adjId);
+    if (!a) { toast('Adjustment not found', 'error'); return; }
+    if (!newBankId || newBankId === 'all') { toast('Pick a specific bank', 'error'); return; }
+    if (!arr(state.data.banks).some(b => b.id === newBankId)) {
+      toast('Bank does not exist', 'error'); return;
+    }
+    a.bankId = newBankId;
+    a.updatedAt = nowISO();
+    a.updatedBy = state.user?.email || 'system';
+    markDirty('bankAdjustments', a.id);
+    toast('Adjustment repaired', 'success');
+    closeModal();
+    renderApp();
+  }
+  window.repairOrphanAdjustment = repairOrphanAdjustment;
+
+  /* ═══════════════════════════════════════════════════════════════
+     4. Repair wizard — modal that lists orphans
+     ═══════════════════════════════════════════════════════════════ */
+  function openOrphanRepairWizard() {
+    const orphans = findOrphanAdjustments();
+
+    if (!orphans.length) {
+      openModal('✅ No orphans found',
+        '<div class="empty"><span class="big">✓</span>' +
+        'All adjustments are assigned to a valid bank.</div>',
+        { width: 520, footer: '<button class="btn" data-close-modal>Close</button>' });
+      return;
+    }
+
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+
+    const body =
+      '<div class="alert" style="background:var(--amber-soft);color:var(--amber);' +
+        'padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:12.5px">' +
+        '<strong>' + orphans.length + ' adjustment(s) need fixing.</strong><br>' +
+        'These have a broken bank reference (older data or a form bug) and are not ' +
+        'affecting any bank\'s balance. Pick a real bank for each.' +
+      '</div>' +
+
+      orphans.map(a => {
+        const options = banks.map(b =>
+          '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>'
+        ).join('');
+        return '<div style="margin-bottom:16px;padding:14px;border:1px solid var(--border);' +
+          'border-radius:10px;background:var(--surface-2)">' +
+          '<div style="font-size:13px;font-weight:600;margin-bottom:4px">' +
+            esc(a.reason || 'Adjustment') +
+          '</div>' +
+          '<div class="small muted" style="margin-bottom:8px">' +
+            dateFmt(a.date) + ' · ' +
+            (a.direction === 'credit' ? '+' : '−') + money(a.amount) + ' · ' +
+            'type: ' + esc(a.type || '?') + ' · ' +
+            'bankId: ' + esc(a.bankId || '?') +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">' +
+            '<label class="field" style="margin:0">Assign to bank' +
+              '<select id="orphan-' + esc(a.id) + '">' +
+                '<option value="">— Pick a bank —</option>' +
+                options +
+              '</select>' +
+            '</label>' +
+            '<button class="btn primary" data-action="repair-orphan" data-id="' + esc(a.id) + '">Fix</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+
+      '<div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">' +
+        '<button class="btn danger" data-action="repair-delete-all-orphans">' +
+          '🗑 Delete all orphan adjustments' +
+        '</button>' +
+      '</div>';
+
+    openModal('🔧 Repair Orphan Adjustments', body, {
+      width: 720,
+      footer: '<button class="btn" data-close-modal>Close</button>'
+    });
+  }
+  window.openOrphanRepairWizard = openOrphanRepairWizard;
+
+  /* ═══════════════════════════════════════════════════════════════
+     5. Action handlers
+     ═══════════════════════════════════════════════════════════════ */
+  __LS_registerAction('repair-orphan', (ev, id) => {
+    ev.stopPropagation();
+    const sel = _origGetById('orphan-' + id);
+    if (!sel) { toast('Picker not found', 'error'); return; }
+    const bankId = sel.value;
+    if (!bankId) { toast('Pick a bank first', 'error'); return; }
+    repairOrphanAdjustment(id, bankId);
+    /* Re-open the wizard in case there are more */
+    setTimeout(() => openOrphanRepairWizard(), 300);
+  });
+
+  __LS_registerAction('repair-delete-all-orphans', () => {
+    const orphans = findOrphanAdjustments();
+    if (!orphans.length) { toast('No orphans to delete', 'info'); return; }
+    if (!confirm('Delete all ' + orphans.length + ' orphan adjustment(s)?\n\n' +
+      'This cannot be undone.')) return;
+
+    orphans.forEach(a => {
+      state.data.bankAdjustments = state.data.bankAdjustments.filter(x => x.id !== a.id);
+      _dirty.add('bankAdjustments:' + a.id);
+      delete _snapshot['bankAdjustments:' + a.id];
+    });
+    scheduleSync();
+    toast('Deleted ' + orphans.length + ' orphan(s)', 'success');
+    closeModal();
+    renderApp();
+  });
+
+  /* ═══════════════════════════════════════════════════════════════
+     6. Add "Repair orphans" button on the Adjustments page
+     ═══════════════════════════════════════════════════════════════ */
+  const origRenderAdjustments = REGISTRY.routes.adjustments ? REGISTRY.routes.adjustments.fn : null;
+  if (origRenderAdjustments) {
+    function renderAdjustmentsWithRepair() {
+      const html = origRenderAdjustments();
+      const orphans = findOrphanAdjustments();
+      if (!orphans.length) return html;
+
+      /* Inject the repair button + banner at the top */
+      const banner =
+        '<div class="card" style="background:var(--amber-soft);border:1px solid var(--amber)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">' +
+            '<div>' +
+              '<div style="font-weight:600;color:var(--amber)">⚠ ' +
+                orphans.length + ' orphan adjustment(s) need fixing</div>' +
+              '<div class="small" style="color:var(--amber);margin-top:4px">' +
+                'They have an invalid bank reference and are not affecting any balance.' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn primary" data-action="repair-orphans-open">🔧 Repair Now</button>' +
+          '</div>' +
+        '</div>';
+
+      return banner + html;
+    }
+    __LS_addRoute('adjustments', 'Bank Adjustments', renderAdjustmentsWithRepair);
+  }
+
+  __LS_registerAction('repair-orphans-open', () => openOrphanRepairWizard());
+
+  /* ═══════════════════════════════════════════════════════════════
+     7. Auto-run: check for orphans on boot and warn once
+     ═══════════════════════════════════════════════════════════════ */
+  __LS_register('ORPHAN-FIX', function () {
+    setTimeout(() => {
+      const orphans = findOrphanAdjustments();
+      if (orphans.length) {
+        dbg.warn('Found ' + orphans.length + ' orphan adjustment(s)');
+        toast(
+          '⚠ ' + orphans.length + ' adjustment(s) need repair — open Adjustments page',
+          'warn', 8000
+        );
+      }
+      scriptLoaded('ORPHAN-FIX');
+    }, 2000);
+  });
+
+})();
+</script>
 </body>
 </html>

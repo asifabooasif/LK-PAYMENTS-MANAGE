@@ -14698,15 +14698,16 @@ esc(
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     AI IMPORT ENGINE — Supports DeepSeek & Google Gemini (Free)
+     AI IMPORT ENGINE v3 — Updated Gemini Models + Dynamic Selector
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] AI-IMPORT-DUAL loaded', 'color:#10b981;font-weight:bold');
+  console.log('%c[script] AI-IMPORT-v3 loaded', 'color:#10b981;font-weight:bold');
 
-  const API_KEY_STORAGE = 'lankashoe_ai_key_v2';
+  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
   const PROVIDER_STORAGE = 'lankashoe_ai_provider';
+  const MODEL_STORAGE = 'lankashoe_ai_model';
 
   /* Intercept the import button */
   document.addEventListener('click', function(e) {
@@ -14727,14 +14728,15 @@ esc(
     if (!banks.length) { toast('Add a bank first', 'warn'); return; }
 
     const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
-    const savedProvider = localStorage.getItem(PROVIDER_STORAGE) || 'gemini'; // default to free
+    const savedProvider = localStorage.getItem(PROVIDER_STORAGE) || 'gemini';
+    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-2.0-flash';
 
     const body =
       '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
         '<strong>🧠 AI-Powered Parsing</strong> — Upload any CSV or XLSX file. The AI will read the text and extract the transactions.' +
       '</div>' +
 
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
         '<label class="field">Bank' +
           '<select id="impBank">' +
             banks.map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') +
@@ -14744,6 +14746,16 @@ esc(
           '<select id="aiProvider">' +
             '<option value="gemini"' + (savedProvider === 'gemini' ? ' selected' : '') + '>Google Gemini (Free)</option>' +
             '<option value="deepseek"' + (savedProvider === 'deepseek' ? ' selected' : '') + '>DeepSeek (Paid)</option>' +
+          '</select>' +
+        '</label>' +
+      '</div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
+        '<label class="field">Model' +
+          '<select id="aiModel">' +
+            '<option value="gemini-2.0-flash"' + (savedModel === 'gemini-2.0-flash' ? ' selected' : '') + '>gemini-2.0-flash (Fastest)</option>' +
+            '<option value="gemini-2.5-flash"' + (savedModel === 'gemini-2.5-flash' ? ' selected' : '') + '>gemini-2.5-flash (Smarter)</option>' +
+            '<option value="deepseek-chat"' + (savedModel === 'deepseek-chat' ? ' selected' : '') + '>deepseek-chat (DeepSeek only)</option>' +
           '</select>' +
         '</label>' +
         '<label class="field">API Key' +
@@ -14773,11 +14785,14 @@ esc(
       if (!file) return;
 
       const provider = document.getElementById('aiProvider').value;
+      const model = document.getElementById('aiModel').value;
       const apiKey = document.getElementById('aiApiKey').value.trim();
       
-      if (!apiKey) { toast('Please enter your ' + provider + ' API Key', 'error'); return; }
+      if (!apiKey) { toast('Please enter your API Key', 'error'); return; }
+      
       localStorage.setItem(API_KEY_STORAGE, apiKey);
       localStorage.setItem(PROVIDER_STORAGE, provider);
+      localStorage.setItem(MODEL_STORAGE, model);
 
       const statusBox = document.getElementById('aiStatus');
       const statusText = document.getElementById('aiStatusText');
@@ -14798,7 +14813,7 @@ esc(
           throw new Error('File is empty or unreadable.');
         }
 
-        statusText.innerHTML = '🧠 Sending to ' + provider + ' for parsing… (This takes ~5-10 seconds)';
+        statusText.innerHTML = '🧠 Sending to ' + provider + ' (' + model + ') for parsing… (This takes ~5-10 seconds)';
 
         const prompt = `You are a bank statement parser. I will provide the raw text of a bank statement.
 Extract every transaction from the text.
@@ -14821,7 +14836,7 @@ ${rawText.slice(0, 15000)}`;
           apiUrl = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
           headers['Authorization'] = `Bearer ${apiKey}`;
           payload = {
-            model: 'gemini-1.5-flash',
+            model: model, // dynamically selected (default gemini-2.0-flash)
             messages: [
               { role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' },
               { role: 'user', content: prompt }
@@ -14832,7 +14847,7 @@ ${rawText.slice(0, 15000)}`;
           apiUrl = 'https://api.deepseek.com/chat/completions';
           headers['Authorization'] = `Bearer ${apiKey}`;
           payload = {
-            model: 'deepseek-chat',
+            model: model,
             messages: [
               { role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' },
               { role: 'user', content: prompt }
@@ -14910,6 +14925,7 @@ ${rawText.slice(0, 15000)}`;
     };
   }
 
+  /* Helper: Extract raw text from XLSX */
   async function extractTextFromXLSX(file) {
     const buffer = await file.arrayBuffer();
     const view = new DataView(buffer);
@@ -14971,7 +14987,7 @@ ${rawText.slice(0, 15000)}`;
     return text;
   }
 
-  scriptLoaded('AI-IMPORT-DUAL');
+  scriptLoaded('AI-IMPORT-v3');
 })();
 </script>
 </body>

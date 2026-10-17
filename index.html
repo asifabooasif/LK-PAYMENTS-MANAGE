@@ -14698,12 +14698,12 @@ esc(
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     AI IMPORT ENGINE v5 — FIXED XLSX PARSER (Shared Strings)
+     AI IMPORT ENGINE v6 — Updated Gemini 3.8 Models
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] AI-IMPORT-v5 loaded', 'color:#10b981;font-weight:bold');
+  console.log('%c[script] AI-IMPORT-v6 loaded', 'color:#10b981;font-weight:bold');
 
   const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
   const PROVIDER_STORAGE = 'lankashoe_ai_provider';
@@ -14725,7 +14725,8 @@ esc(
 
     const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
     const savedProvider = localStorage.getItem(PROVIDER_STORAGE) || 'gemini';
-    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-2.0-flash';
+    // Default to latest Gemini 3.8 Flash
+    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-3.8-flash';
 
     const body =
       '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
@@ -14736,7 +14737,12 @@ esc(
         '<label class="field">AI Provider<select id="aiProvider"><option value="gemini"' + (savedProvider === 'gemini' ? ' selected' : '') + '>Google Gemini (Free)</option><option value="deepseek"' + (savedProvider === 'deepseek' ? ' selected' : '') + '>DeepSeek (Paid)</option></select></label>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">Model<select id="aiModel"><option value="gemini-2.0-flash"' + (savedModel === 'gemini-2.0-flash' ? ' selected' : '') + '>gemini-2.0-flash (Recommended)</option><option value="gemini-1.5-flash"' + (savedModel === 'gemini-1.5-flash' ? ' selected' : '') + '>gemini-1.5-flash (Older)</option><option value="deepseek-chat"' + (savedModel === 'deepseek-chat' ? ' selected' : '') + '>deepseek-chat</option></select></label>' +
+        '<label class="field">Model<select id="aiModel">' +
+          '<option value="gemini-3.8-flash"' + (savedModel === 'gemini-3.8-flash' ? ' selected' : '') + '>gemini-3.8-flash (Fastest)</option>' +
+          '<option value="gemini-2.5-flash"' + (savedModel === 'gemini-2.5-flash' ? ' selected' : '') + '>gemini-2.5-flash</option>' +
+          '<option value="gemini-3.1-flash-lite"' + (savedModel === 'gemini-3.1-flash-lite' ? ' selected' : '') + '>gemini-3.1-flash-lite</option>' +
+          '<option value="deepseek-chat"' + (savedModel === 'deepseek-chat' ? ' selected' : '') + '>deepseek-chat (DeepSeek only)</option>' +
+        '</select></label>' +
         '<label class="field">API Key<input type="password" id="aiApiKey" value="' + esc(savedKey) + '" placeholder="Paste key here..."></label>' +
       '</div>' +
       '<div class="field" style="margin-bottom:14px">File (.csv, .xlsx, .txt)<input type="file" id="impFile" accept=".csv,.xlsx,.txt" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%"></div>' +
@@ -14777,10 +14783,6 @@ esc(
           statusText.innerHTML = 'Extracting text from Excel…';
           rawText = await extractTextFromXLSX(file);
         }
-
-        // Console log to help debug if it fails again
-        console.log('%c--- RAW TEXT SENT TO AI ---', 'color:#f59e0b;font-weight:bold');
-        console.log(rawText.slice(0, 2000) + (rawText.length > 2000 ? '\n... (truncated)' : ''));
 
         if (!rawText || rawText.trim().length < 10) {
           throw new Error('File is empty or unreadable.');
@@ -14825,15 +14827,10 @@ ${rawText.slice(0, 15000)}`;
 
         const data = await response.json();
         let aiText = data.choices[0].message.content.trim();
-        
-        console.log('%c--- AI RESPONSE ---', 'color:#10b981;font-weight:bold');
-        console.log(aiText);
 
-        // Aggressive markdown cleaning
         if (aiText.startsWith('```json')) aiText = aiText.replace(/^```json/, '').replace(/```$/, '').trim();
         if (aiText.startsWith('```')) aiText = aiText.replace(/^```/, '').replace(/```$/, '').trim();
-        
-        // Extract array if AI added conversational text around it
+
         const arrayMatch = aiText.match(/\[\s*\{[\s\S]*\}\s*\]/);
         if (arrayMatch) aiText = arrayMatch[0];
 
@@ -14886,12 +14883,9 @@ ${rawText.slice(0, 15000)}`;
     };
   }
 
-  /* FIXED: Extract raw text from XLSX with Shared Strings support */
   async function extractTextFromXLSX(file) {
     const buffer = await file.arrayBuffer();
     const view = new DataView(buffer);
-    
-    // Find zip directory
     let eocdOffset = -1;
     for (let i = buffer.byteLength - 22; i >= 0; i--) {
       if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
@@ -14902,7 +14896,6 @@ ${rawText.slice(0, 15000)}`;
     const numEntries = view.getUint16(eocdOffset + 10, true);
     let offset = cdOffset;
     const files = {};
-    
     for (let i = 0; i < numEntries; i++) {
       if (view.getUint32(offset, true) !== 0x02014b50) break;
       const compMethod = view.getUint16(offset + 10, true);
@@ -14933,7 +14926,6 @@ ${rawText.slice(0, 15000)}`;
       return '';
     }
 
-    // Read shared strings (this is what was missing!)
     const sharedStringsXml = await extract('xl/sharedStrings.xml');
     const strings = [];
     if (sharedStringsXml) {
@@ -14947,7 +14939,6 @@ ${rawText.slice(0, 15000)}`;
       }
     }
 
-    // Read sheet data
     const sheetXml = await extract('xl/worksheets/sheet1.xml');
     if (!sheetXml) throw new Error("Could not read sheet1.xml");
 
@@ -14982,7 +14973,7 @@ ${rawText.slice(0, 15000)}`;
     return text;
   }
 
-  scriptLoaded('AI-IMPORT-v5');
+  scriptLoaded('AI-IMPORT-v6');
 })();
 </script>
 </body>

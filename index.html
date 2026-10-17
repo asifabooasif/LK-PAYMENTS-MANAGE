@@ -14697,5 +14697,258 @@ esc(
   scriptLoaded('FINAL-IMPORT');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DEEPSEEK AI IMPORT ENGINE — Handles any bank format automatically
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] DEEPSEEK-AI-IMPORT loaded', 'color:#10b981;font-weight:bold');
+
+  const DEEPSEEK_API_KEY_STORAGE = 'lankashoe_deepseek_key';
+
+  /* Intercept the import button */
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action="import-open"]');
+    if (!btn) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    const bankId = btn.dataset.id || '';
+    openAIImportDialog(bankId);
+  }, true);
+
+  function openAIImportDialog(bankId) {
+    if (!state.perms.write) { toast('Read-only role', 'error'); return; }
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
+
+    const savedKey = localStorage.getItem(DEEPSEEK_API_KEY_STORAGE) || '';
+
+    const body =
+      '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
+        '<strong>🧠 AI-Powered Parsing</strong> — Upload any CSV or XLSX file. DeepSeek will read the text and extract the transactions, bypassing all column mapping issues.' +
+      '</div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
+        '<label class="field">Bank' +
+          '<select id="impBank">' +
+            banks.map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') +
+          '</select>' +
+        '</label>' +
+        '<label class="field">DeepSeek API Key' +
+          '<input type="password" id="aiApiKey" value="' + esc(savedKey) + '" placeholder="sk-...">' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="field" style="margin-bottom:14px">File (.csv, .xlsx, .txt)' +
+        '<input type="file" id="impFile" accept=".csv,.xlsx,.txt" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%">' +
+      '</div>' +
+
+      '<div id="aiStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px;line-height:1.6">' +
+        '<span id="aiStatusText">Processing…</span>' +
+      '</div>' +
+
+      '<div id="impPreview" style="display:none"></div>';
+
+    openModal('🧠 AI Bank Statement Import', body, {
+      width: 900,
+      footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="impConfirmBtn" disabled>Import Transactions</button>'
+    });
+
+    let parsed = null;
+
+    document.getElementById('impFile').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const apiKey = document.getElementById('aiApiKey').value.trim();
+      if (!apiKey) { toast('Please enter your DeepSeek API Key', 'error'); return; }
+      localStorage.setItem(DEEPSEEK_API_KEY_STORAGE, apiKey);
+
+      const statusBox = document.getElementById('aiStatus');
+      const statusText = document.getElementById('aiStatusText');
+      statusBox.style.display = 'block';
+      statusText.innerHTML = 'Reading file…';
+
+      try {
+        let rawText = '';
+
+        if (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt')) {
+          rawText = await file.text();
+        } else {
+          // If it's Excel, we use the native unzip parser from the previous fix to get the XML text
+          statusText.innerHTML = 'Extracting text from Excel…';
+          rawText = await extractTextFromXLSX(file);
+        }
+
+        if (!rawText || rawText.trim().length < 10) {
+          throw new Error('File is empty or unreadable.');
+        }
+
+        statusText.innerHTML = '🧠 Sending to DeepSeek AI for parsing… (This takes ~5-10 seconds)';
+
+        /* Prepare the prompt */
+        const prompt = `You are a bank statement parser. I will provide the raw text of a bank statement.
+Extract every transaction from the text.
+Return ONLY a valid JSON array. No markdown formatting, no explanation.
+Each object must have exactly these keys:
+- "date": string in "YYYY-MM-DD" format
+- "description": string
+- "amount": number (absolute positive value)
+- "type": string, either "credit" or "debit"
+- "balance": number (optional, null if not found)
+
+Here is the statement text:
+${rawText.slice(0, 15000)}`; /* Limit to ~15k chars to be safe */
+
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.1,
+            max_tokens: 4000
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error?.message || 'DeepSeek API Error');
+        }
+
+        const data = await response.json();
+        let aiText = data.choices[0].message.content.trim();
+
+        // Clean up potential markdown formatting from AI
+        if (aiText.startsWith('```json')) aiText = aiText.replace(/^```json/, '').replace(/```$/, '').trim();
+        if (aiText.startsWith('```')) aiText = aiText.replace(/^```/, '').replace(/```$/, '').trim();
+
+        const parsedRows = JSON.parse(aiText);
+
+        if (!Array.isArray(parsedRows) || !parsedRows.length) {
+          throw new Error('AI returned no valid transactions.');
+        }
+
+        parsed = { rows: parsedRows, fileName: file.name, preset: 'generic' };
+        statusBox.style.display = 'none';
+
+        // Render Preview
+        const preview = document.getElementById('impPreview');
+        preview.style.display = '';
+        preview.innerHTML =
+          '<div class="card" style="background:var(--surface-2);border:none;padding:14px">' +
+            '<div style="margin-bottom:10px"><strong>✅ AI Extracted ' + parsedRows.length + ' transaction(s)</strong></div>' +
+            '<div class="table-wrap" style="max-height:300px;overflow:auto">' +
+              '<table style="font-size:12px">' +
+                '<thead><tr><th>Date</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>' +
+                '<tbody>' +
+                  parsedRows.map(r =>
+                    '<tr>' +
+                      '<td>' + esc(r.date) + '</td>' +
+                      '<td>' + esc((r.description || '').slice(0, 50)) + '</td>' +
+                      '<td class="num" style="color:var(--red)">' + (r.type === 'debit' ? money(r.amount) : '') + '</td>' +
+                      '<td class="num" style="color:var(--green)">' + (r.type === 'credit' ? money(r.amount) : '') + '</td>' +
+                      '<td class="num">' + (r.balance ? money(r.balance) : '') + '</td>' +
+                    '</tr>'
+                  ).join('') +
+                '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</div>';
+
+        document.getElementById('impConfirmBtn').disabled = false;
+
+      } catch (err) {
+        console.error(err);
+        statusBox.style.display = 'block';
+        statusText.innerHTML = '<span style="color:var(--red);font-weight:bold">Error: ' + esc(err.message) + '</span>';
+        toast('AI Parse failed: ' + err.message, 'error', 5000);
+      }
+    };
+
+    document.getElementById('impConfirmBtn').onclick = () => {
+      if (!parsed) return;
+      const targetBankId = document.getElementById('impBank').value;
+      if (typeof window.commitImport === 'function') {
+        window.commitImport(targetBankId, parsed);
+      }
+    };
+  }
+
+  /* Helper: Extract raw text from XLSX without external libraries */
+  async function extractTextFromXLSX(file) {
+    const buffer = await file.arrayBuffer();
+    const view = new DataView(buffer);
+    let eocdOffset = -1;
+    for (let i = buffer.byteLength - 22; i >= 0; i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+    }
+    if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
+
+    const cdOffset = view.getUint32(eocdOffset + 16, true);
+    const numEntries = view.getUint16(eocdOffset + 10, true);
+    let offset = cdOffset;
+    const files = {};
+    for (let i = 0; i < numEntries; i++) {
+      if (view.getUint32(offset, true) !== 0x02014b50) break;
+      const compMethod = view.getUint16(offset + 10, true);
+      const compSize = view.getUint32(offset + 20, true);
+      const fnLen = view.getUint16(offset + 28, true);
+      const extraLen = view.getUint16(offset + 30, true);
+      const commentLen = view.getUint16(offset + 32, true);
+      const lhOffset = view.getUint32(offset + 42, true);
+      const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
+      const filename = new TextDecoder().decode(fnBytes);
+      files[filename] = { compMethod, compSize, lhOffset };
+      offset += 46 + fnLen + extraLen + commentLen;
+    }
+
+    async function extract(filename) {
+      const f = files[filename];
+      if (!f) return null;
+      const lhFnLen = view.getUint16(f.lhOffset + 26, true);
+      const lhExtraLen = view.getUint16(f.lhOffset + 28, true);
+      const dataStart = f.lhOffset + 30 + lhFnLen + lhExtraLen;
+      const compData = new Uint8Array(buffer, dataStart, f.compSize);
+      if (f.compMethod === 0) return new TextDecoder().decode(compData);
+      if (f.compMethod === 8) {
+        const ds = new DecompressionStream('deflate-raw');
+        const stream = new Blob([compData]).stream().pipeThrough(ds);
+        return await new Response(stream).text();
+      }
+      return '';
+    }
+
+    const sheetXml = await extract('xl/worksheets/sheet1.xml');
+    if (!sheetXml) throw new Error("Could not read sheet1.xml");
+
+    const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
+    const rowNodes = sDoc.getElementsByTagName('row');
+    let text = '';
+    for (let i = 0; i < rowNodes.length; i++) {
+      const cNodes = rowNodes[i].getElementsByTagName('c');
+      const rowData = [];
+      for (let j = 0; j < cNodes.length; j++) {
+        const vNode = cNodes[j].getElementsByTagName('v')[0];
+        rowData.push(vNode ? vNode.textContent : '');
+      }
+      text += rowData.join(' | ') + '\n';
+    }
+    return text;
+  }
+
+  scriptLoaded('DEEPSEEK-AI-IMPORT');
+})();
+</script>
 </body>
 </html>

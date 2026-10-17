@@ -14698,28 +14698,24 @@ esc(
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     AI IMPORT ENGINE v4 — Updated Gemini 3.8 Models
+     AI IMPORT ENGINE v5 — FIXED XLSX PARSER (Shared Strings)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] AI-IMPORT-v4 loaded', 'color:#10b981;font-weight:bold');
+  console.log('%c[script] AI-IMPORT-v5 loaded', 'color:#10b981;font-weight:bold');
 
   const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
   const PROVIDER_STORAGE = 'lankashoe_ai_provider';
   const MODEL_STORAGE = 'lankashoe_ai_model';
 
-  /* Intercept the import button */
   document.addEventListener('click', function(e) {
     const btn = e.target.closest('[data-action="import-open"]');
     if (!btn) return;
-    
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-
-    const bankId = btn.dataset.id || '';
-    openAIImportDialog(bankId);
+    openAIImportDialog(btn.dataset.id || '');
   }, true);
 
   function openAIImportDialog(bankId) {
@@ -14729,49 +14725,22 @@ esc(
 
     const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
     const savedProvider = localStorage.getItem(PROVIDER_STORAGE) || 'gemini';
-    // Default to the new 3.8 model
-    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-3.8-flash';
+    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-2.0-flash';
 
     const body =
       '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
         '<strong>🧠 AI-Powered Parsing</strong> — Upload any CSV or XLSX file. The AI will read the text and extract the transactions.' +
       '</div>' +
-
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">Bank' +
-          '<select id="impBank">' +
-            banks.map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') +
-          '</select>' +
-        '</label>' +
-        '<label class="field">AI Provider' +
-          '<select id="aiProvider">' +
-            '<option value="gemini"' + (savedProvider === 'gemini' ? ' selected' : '') + '>Google Gemini (Free)</option>' +
-            '<option value="deepseek"' + (savedProvider === 'deepseek' ? ' selected' : '') + '>DeepSeek (Paid)</option>' +
-          '</select>' +
-        '</label>' +
+        '<label class="field">Bank<select id="impBank">' + banks.map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') + '</select></label>' +
+        '<label class="field">AI Provider<select id="aiProvider"><option value="gemini"' + (savedProvider === 'gemini' ? ' selected' : '') + '>Google Gemini (Free)</option><option value="deepseek"' + (savedProvider === 'deepseek' ? ' selected' : '') + '>DeepSeek (Paid)</option></select></label>' +
       '</div>' +
-
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">Model' +
-          '<select id="aiModel">' +
-            '<option value="gemini-3.8-flash"' + (savedModel === 'gemini-3.8-flash' ? ' selected' : '') + '>gemini-3.8-flash (Default)</option>' +
-            '<option value="gemini-3.8-flash-lite"' + (savedModel === 'gemini-3.8-flash-lite' ? ' selected' : '') + '>gemini-3.8-flash-lite</option>' +
-            '<option value="deepseek-chat"' + (savedModel === 'deepseek-chat' ? ' selected' : '') + '>deepseek-chat (DeepSeek only)</option>' +
-          '</select>' +
-        '</label>' +
-        '<label class="field">API Key' +
-          '<input type="password" id="aiApiKey" value="' + esc(savedKey) + '" placeholder="Paste key here...">' +
-        '</label>' +
+        '<label class="field">Model<select id="aiModel"><option value="gemini-2.0-flash"' + (savedModel === 'gemini-2.0-flash' ? ' selected' : '') + '>gemini-2.0-flash (Recommended)</option><option value="gemini-1.5-flash"' + (savedModel === 'gemini-1.5-flash' ? ' selected' : '') + '>gemini-1.5-flash (Older)</option><option value="deepseek-chat"' + (savedModel === 'deepseek-chat' ? ' selected' : '') + '>deepseek-chat</option></select></label>' +
+        '<label class="field">API Key<input type="password" id="aiApiKey" value="' + esc(savedKey) + '" placeholder="Paste key here..."></label>' +
       '</div>' +
-
-      '<div class="field" style="margin-bottom:14px">File (.csv, .xlsx, .txt)' +
-        '<input type="file" id="impFile" accept=".csv,.xlsx,.txt" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%">' +
-      '</div>' +
-
-      '<div id="aiStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px;line-height:1.6">' +
-        '<span id="aiStatusText">Processing…</span>' +
-      '</div>' +
-
+      '<div class="field" style="margin-bottom:14px">File (.csv, .xlsx, .txt)<input type="file" id="impFile" accept=".csv,.xlsx,.txt" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%"></div>' +
+      '<div id="aiStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px;line-height:1.6"><span id="aiStatusText">Processing…</span></div>' +
       '<div id="impPreview" style="display:none"></div>';
 
     openModal('🧠 AI Bank Statement Import', body, {
@@ -14790,7 +14759,6 @@ esc(
       const apiKey = document.getElementById('aiApiKey').value.trim();
       
       if (!apiKey) { toast('Please enter your API Key', 'error'); return; }
-      
       localStorage.setItem(API_KEY_STORAGE, apiKey);
       localStorage.setItem(PROVIDER_STORAGE, provider);
       localStorage.setItem(MODEL_STORAGE, model);
@@ -14809,6 +14777,10 @@ esc(
           statusText.innerHTML = 'Extracting text from Excel…';
           rawText = await extractTextFromXLSX(file);
         }
+
+        // Console log to help debug if it fails again
+        console.log('%c--- RAW TEXT SENT TO AI ---', 'color:#f59e0b;font-weight:bold');
+        console.log(rawText.slice(0, 2000) + (rawText.length > 2000 ? '\n... (truncated)' : ''));
 
         if (!rawText || rawText.trim().length < 10) {
           throw new Error('File is empty or unreadable.');
@@ -14836,48 +14808,34 @@ ${rawText.slice(0, 15000)}`;
         if (provider === 'gemini') {
           apiUrl = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
           headers['Authorization'] = `Bearer ${apiKey}`;
-          payload = {
-            model: model,
-            messages: [
-              { role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.1
-          };
+          payload = { model: model, messages: [{ role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' }, { role: 'user', content: prompt }], temperature: 0.1 };
         } else {
           apiUrl = 'https://api.deepseek.com/chat/completions';
           headers['Authorization'] = `Bearer ${apiKey}`;
-          payload = {
-            model: model,
-            messages: [
-              { role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.1,
-            max_tokens: 4000
-          };
+          payload = { model: model, messages: [{ role: 'system', content: 'You are a financial data extraction AI. Output ONLY valid JSON.' }, { role: 'user', content: prompt }], temperature: 0.1, max_tokens: 4000 };
         }
 
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify(payload)
-        });
+        const response = await fetch(apiUrl, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
 
         if (!response.ok) {
           const err = await response.json();
-          // If it's a 404, give a more specific error message about model names
-          if (response.status === 404) {
-            throw new Error('Model "' + model + '" not found. Google may have retired it. Try a different model from the dropdown.');
-          }
+          if (response.status === 404) throw new Error('Model "' + model + '" not found. Try a different model.');
           throw new Error(err.error?.message || err.message || 'API Error');
         }
 
         const data = await response.json();
         let aiText = data.choices[0].message.content.trim();
+        
+        console.log('%c--- AI RESPONSE ---', 'color:#10b981;font-weight:bold');
+        console.log(aiText);
 
+        // Aggressive markdown cleaning
         if (aiText.startsWith('```json')) aiText = aiText.replace(/^```json/, '').replace(/```$/, '').trim();
         if (aiText.startsWith('```')) aiText = aiText.replace(/^```/, '').replace(/```$/, '').trim();
+        
+        // Extract array if AI added conversational text around it
+        const arrayMatch = aiText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) aiText = arrayMatch[0];
 
         const parsedRows = JSON.parse(aiText);
 
@@ -14924,16 +14882,16 @@ ${rawText.slice(0, 15000)}`;
     document.getElementById('impConfirmBtn').onclick = () => {
       if (!parsed) return;
       const targetBankId = document.getElementById('impBank').value;
-      if (typeof window.commitImport === 'function') {
-        window.commitImport(targetBankId, parsed);
-      }
+      if (typeof window.commitImport === 'function') window.commitImport(targetBankId, parsed);
     };
   }
 
-  /* Helper: Extract raw text from XLSX */
+  /* FIXED: Extract raw text from XLSX with Shared Strings support */
   async function extractTextFromXLSX(file) {
     const buffer = await file.arrayBuffer();
     const view = new DataView(buffer);
+    
+    // Find zip directory
     let eocdOffset = -1;
     for (let i = buffer.byteLength - 22; i >= 0; i--) {
       if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
@@ -14944,6 +14902,7 @@ ${rawText.slice(0, 15000)}`;
     const numEntries = view.getUint16(eocdOffset + 10, true);
     let offset = cdOffset;
     const files = {};
+    
     for (let i = 0; i < numEntries; i++) {
       if (view.getUint32(offset, true) !== 0x02014b50) break;
       const compMethod = view.getUint16(offset + 10, true);
@@ -14974,25 +14933,56 @@ ${rawText.slice(0, 15000)}`;
       return '';
     }
 
+    // Read shared strings (this is what was missing!)
+    const sharedStringsXml = await extract('xl/sharedStrings.xml');
+    const strings = [];
+    if (sharedStringsXml) {
+      const sDoc = new DOMParser().parseFromString(sharedStringsXml, 'text/xml');
+      const siNodes = sDoc.getElementsByTagName('si');
+      for (let i = 0; i < siNodes.length; i++) {
+        let text = '';
+        const tNodes = siNodes[i].getElementsByTagName('t');
+        for (let j = 0; j < tNodes.length; j++) text += tNodes[j].textContent;
+        strings.push(text);
+      }
+    }
+
+    // Read sheet data
     const sheetXml = await extract('xl/worksheets/sheet1.xml');
     if (!sheetXml) throw new Error("Could not read sheet1.xml");
 
     const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
     const rowNodes = sDoc.getElementsByTagName('row');
     let text = '';
+    
     for (let i = 0; i < rowNodes.length; i++) {
       const cNodes = rowNodes[i].getElementsByTagName('c');
       const rowData = [];
       for (let j = 0; j < cNodes.length; j++) {
-        const vNode = cNodes[j].getElementsByTagName('v')[0];
-        rowData.push(vNode ? vNode.textContent : '');
+        const c = cNodes[j];
+        const type = c.getAttribute('t');
+        const vNode = c.getElementsByTagName('v')[0];
+        const isNode = c.getElementsByTagName('is')[0];
+        
+        let val = '';
+        if (type === 's' && vNode) {
+          val = strings[parseInt(vNode.textContent, 10)] || '';
+        } else if (type === 'inlineStr' && isNode) {
+          const tNode = isNode.getElementsByTagName('t')[0];
+          val = tNode ? tNode.textContent : '';
+        } else if (vNode) {
+          val = vNode.textContent;
+        }
+        rowData.push(val);
       }
-      text += rowData.join(' | ') + '\n';
+      if (rowData.some(c => c !== '')) {
+        text += rowData.join(' | ') + '\n';
+      }
     }
     return text;
   }
 
-  scriptLoaded('AI-IMPORT-v4');
+  scriptLoaded('AI-IMPORT-v5');
 })();
 </script>
 </body>

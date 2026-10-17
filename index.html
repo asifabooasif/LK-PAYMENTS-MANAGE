@@ -14455,15 +14455,14 @@ esc(
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     SMART IMPORT FIX — Handles HNB format + Excel (.xlsx) support
+     FINAL EXCEL IMPORT FIX (HNB / Bank Statements)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     1. Load the SheetJS library on-demand for .xlsx files
-     ═══════════════════════════════════════════════════════════════════════ */
+  console.log('%c[script] FINAL-IMPORT loaded', 'color:#10b981;font-weight:bold');
+
   const XLSX_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
 
   function ensureXLSX() {
@@ -14473,332 +14472,56 @@ esc(
       s.src = XLSX_CDN;
       s.async = true;
       s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Failed to load Excel parser'));
+      s.onerror = () => reject(new Error('Failed to load Excel library. Please disable AdBlocker.'));
       document.head.appendChild(s);
     });
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     2. Smart header finder — scans first 50 rows for real headers
-     ═══════════════════════════════════════════════════════════════════════ */
   function findRealHeaderRow(rows) {
     for (let i = 0; i < Math.min(rows.length, 50); i++) {
       const row = rows[i];
       if (!row || !row.length) continue;
-
-      /* Flatten all cells in this row */
-      const joined = row.map(c => String(c || '').toLowerCase().trim()).join(' ');
-
-      /* Header must contain date keyword AND at least 2 of (debit, credit, amount, balance, description) */
-      const hasDate = joined.includes('date');
-      const hasAmount = joined.includes('debit') || joined.includes('credit') || joined.includes('amount');
-      const hasBalance = joined.includes('balance') || joined.includes('running');
-      const hasDesc = joined.includes('description') || joined.includes('details') || joined.includes('narration') || joined.includes('particulars');
-
-      if (hasDate && hasAmount && (hasBalance || hasDesc)) {
-        dbg.ok('Found real header row at line ' + (i + 1));
-        return i;
-      }
-    }
-    dbg.warn('No header row found — using row 1 as fallback');
-    return 0;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. Column mapper tuned for HNB + generic banks
-     ═══════════════════════════════════════════════════════════════════════ */
-  function mapColumnsForHNB(headerRow) {
-    const h = headerRow.map(c => String(c || '').toLowerCase().trim());
-    const out = { date: -1, desc: -1, debit: -1, credit: -1, balance: -1 };
-
-    h.forEach((cell, i) => {
-      if (out.date === -1 && cell.includes('value date')) out.date = i;
-      else if (out.date === -1 && cell === 'date') out.date = i;
-
-      if (out.desc === -1 && (cell.includes('transaction details') || cell.includes('description') || cell.includes('narration') || cell.includes('particulars'))) out.desc = i;
-
-      if (out.debit === -1 && cell.includes('debit')) out.debit = i;
-      if (out.credit === -1 && cell.includes('credit')) out.credit = i;
-
-      if (out.balance === -1 && cell.includes('running balance')) out.balance = i;
-      else if (out.balance === -1 && cell === 'balance') out.balance = i;
-    });
-
-    dbg.info('Columns mapped: ' + JSON.stringify(out));
-    return out;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     4. COMPLETE REPLACEMENT of openImportDialog
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.openImportDialog = function (bankId) {
-    if (!state.perms.write) { toast('Read-only role', 'error'); return; }
-    const banks = arr(state.data.banks).filter(b => b.active !== false);
-    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
-
-    const body =
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">Bank' +
-          '<select id="impBank">' +
-            banks.map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') +
-          '</select>' +
-        '</label>' +
-        '<div class="field">File (.csv, .xlsx, .xls)' +
-          '<input type="file" id="impFile" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" ' +
-            'style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%">' +
-        '</div>' +
-      '</div>' +
-      '<div class="alert" style="background:var(--accent-soft);color:var(--accent-text);padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:12.5px">' +
-        'ℹ The parser auto-detects the header row — HNB statement preambles (client info, dates) are skipped automatically.' +
-      '</div>' +
-      '<div id="impPreview" style="display:none"></div>';
-
-    openModal('📥 Import Bank Statement', body, {
-      width: 900,
-      footer:
-        '<button class="btn" data-close-modal>Cancel</button>' +
-        '<button class="btn primary" id="impConfirmBtn" disabled>Import</button>'
-    });
-
-    let parsed = null;
-
-    document.getElementById('impFile').onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-
-      try {
-        let rows = [];
-
-        if (isExcel) {
-          toast('Loading Excel parser…', 'info', 1500);
-          await ensureXLSX();
-          const data = await file.arrayBuffer();
-          const workbook = window.XLSX.read(data, { type: 'array', cellDates: true });
-          const firstSheet = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[firstSheet];
-          /* Convert to array of arrays (header: 1) — dates become Date objects */
-          rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
-        } else {
-          const text = await file.text();
-          rows = parseCSV(text);
-        }
-
-        if (!rows || rows.length < 2) {
-          toast('File is empty or unreadable', 'error');
-          return;
-        }
-
-        /* 1. Find the real header row */
-        const headerIndex = findRealHeaderRow(rows);
-        const headerRow = rows[headerIndex];
-
-        /* 2. Map the columns */
-        const cols = mapColumnsForHNB(headerRow);
-        if (cols.date === -1 || cols.debit === -1 || cols.credit === -1) {
-          toast('Could not detect required columns (Date, Debit, Credit)', 'error', 5000);
-          return;
-        }
-
-        /* 3. Parse the data rows */
-        const dataRows = rows.slice(headerIndex + 1);
-        const parsedRows = [];
-        let skipped = 0;
-
-        dataRows.forEach((row, i) => {
-          /* Skip empty or metadata rows */
-          if (!row || !row.length) return;
-          if (!row[cols.date] && !row[cols.debit] && !row[cols.credit]) return;
-
-          const dateVal = parseDateAny(row[cols.date]);
-          if (!dateVal) { skipped++; return; }
-
-          const desc = cols.desc >= 0 ? String(row[cols.desc] || '').trim() : '';
-
-          let debit = 0, credit = 0;
-          if (cols.debit >= 0) debit = parseAmountAny(row[cols.debit]);
-          if (cols.credit >= 0) credit = parseAmountAny(row[cols.credit]);
-
-          /* HNB puts either debit OR credit (one is empty).
-             If both are 0, skip. */
-          if (debit === 0 && credit === 0) return;
-
-          const dir = credit > 0 ? 'credit' : 'debit';
-          const amount = credit > 0 ? credit : debit;
-
-          let balAfter = null;
-          if (cols.balance >= 0) {
-            const b = parseAmountAny(row[cols.balance]);
-            if (b !== 0) balAfter = b;
-          }
-
-          parsedRows.push({
-            date: dateVal,
-            description: desc,
-            amount: Math.abs(amount),
-            direction: dir,
-            balanceAfter: balAfter
-          });
-        });
-
-        if (!parsedRows.length) {
-          toast('No valid transaction rows found. Check file format.', 'error', 5000);
-          return;
-        }
-
-        parsed = { rows: parsedRows, fileName: file.name };
-
-        /* 4. Render preview */
-        const preview = document.getElementById('impPreview');
-        preview.style.display = '';
-        preview.innerHTML =
-          '<div class="card" style="background:var(--surface-2);border:none;padding:14px">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
-              '<strong style="font-size:14px">Preview: ' + parsedRows.length + ' transaction(s)</strong>' +
-              '<span class="badge green">Columns detected ✓</span>' +
-            '</div>' +
-            '<div class="table-wrap" style="max-height:300px;overflow:auto">' +
-              '<table style="font-size:12px">' +
-                '<thead><tr><th>Date</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>' +
-                '<tbody>' +
-                  parsedRows.slice(0, 100).map(r =>
-                    '<tr>' +
-                      '<td>' + dateFmt(r.date) + '</td>' +
-                      '<td>' + esc(r.description.slice(0, 50)) + '</td>' +
-                      '<td class="num" style="color:var(--red)">' + (r.direction === 'debit' ? money(r.amount) : '') + '</td>' +
-                      '<td class="num" style="color:var(--green)">' + (r.direction === 'credit' ? money(r.amount) : '') + '</td>' +
-                      '<td class="num">' + (r.balanceAfter !== null ? money(r.balanceAfter) : '') + '</td>' +
-                    '</tr>'
-                  ).join('') +
-                  (parsedRows.length > 100 ? '<tr><td colspan="5" class="muted small">… and ' + (parsedRows.length - 100) + ' more</td></tr>' : '') +
-                '</tbody>' +
-              '</table>' +
-            '</div>' +
-            (skipped > 0 ? '<div class="small muted" style="margin-top:8px">⚠ Skipped ' + skipped + ' row(s) with unparseable data.</div>' : '') +
-          '</div>';
-
-        document.getElementById('impConfirmBtn').disabled = false;
-
-      } catch (err) {
-        dbg.err('Import parse failed: ' + err.message);
-        toast('Parse failed: ' + err.message, 'error', 5000);
-      }
-    };
-
-    document.getElementById('impConfirmBtn').onclick = () => {
-      if (!parsed) return;
-      const targetBankId = document.getElementById('impBank').value;
-      if (typeof window.commitImport === 'function') {
-        window.commitImport(targetBankId, parsed);
-      } else {
-        toast('Import engine missing', 'error');
-      }
-    };
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     5. Ensure commitImport still works — the S06 version expects `preset`
-     We wrap it to inject the preset if missing
-     ═══════════════════════════════════════════════════════════════════════ */
-  const origCommitImport = window.commitImport;
-  if (typeof origCommitImport === 'function') {
-    window.commitImport = function (bankId, parsed) {
-      /* S06's commitImport expects `preset` to exist */
-      if (!parsed.preset) parsed.preset = 'generic';
-      return origCommitImport.apply(this, arguments);
-    };
-  }
-
-  scriptLoaded('SMART-IMPORT');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     BULLETPROOF EXCEL IMPORT FIX — HNB / Sampath / Commercial support
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     1. Load SheetJS reliably
-     ═══════════════════════════════════════════════════════════════════════ */
-  const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-
-  function ensureXLSX() {
-    return new Promise((resolve, reject) => {
-      if (window.XLSX) return resolve();
-      const s = document.createElement('script');
-      s.src = XLSX_CDN;
-      s.async = true;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Failed to load Excel parser. Check your internet connection.'));
-      document.head.appendChild(s);
-    });
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     2. Smart Header Finder
-     Scans up to 50 rows to find the row that contains 'date', 'debit'/'credit', and 'balance'
-     ═══════════════════════════════════════════════════════════════════════ */
-  function findRealHeaderRow(rows) {
-    for (let i = 0; i < Math.min(rows.length, 50); i++) {
-      const row = rows[i];
-      if (!row || !row.length) continue;
-
-      const cells = row.map(c => String(c || '').toLowerCase().trim());
+      
+      const cells = row.map(c => String(c || '').toLowerCase().trim()).filter(Boolean);
       const hasDate = cells.some(c => c.includes('date'));
-      const hasAmount = cells.some(c => c.includes('debit') || c.includes('credit') || c.includes('withdrawal') || c.includes('deposit'));
-      const hasBalance = cells.some(c => c.includes('balance'));
+      const hasDebit = cells.some(c => c.includes('debit'));
+      const hasCredit = cells.some(c => c.includes('credit'));
 
-      if (hasDate && hasAmount && hasBalance) {
-        dbg.ok('Found real header row at line ' + (i + 1));
+      // HNB specifically has "Value Date", "Debit", "Credit", "Running Balance"
+      if (hasDate && hasDebit && hasCredit) {
+        console.log('Found real header row at line ' + (i + 1), row);
         return i;
       }
     }
-    dbg.warn('No obvious header found, using row 1 as fallback');
+    console.warn('No header found, using row 0');
     return 0;
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. Column Mapper (handles empty spacer columns)
-     ═══════════════════════════════════════════════════════════════════════ */
   function mapColumns(headerRow) {
     const h = headerRow.map(c => String(c || '').toLowerCase().trim());
     const out = { date: -1, desc: -1, debit: -1, credit: -1, balance: -1 };
 
     h.forEach((cell, i) => {
       if (out.date === -1 && cell.includes('date')) out.date = i;
-      
-      if (out.desc === -1 && (
-        cell.includes('details') || 
-        cell.includes('description') || 
-        cell.includes('narration') || 
-        cell.includes('particulars') ||
-        cell.includes('transaction')
-      )) out.desc = i;
-      
-      if (out.debit === -1 && (cell.includes('debit') || cell.includes('withdrawal'))) out.debit = i;
-      if (out.credit === -1 && (cell.includes('credit') || cell.includes('deposit'))) out.credit = i;
+      if (out.desc === -1 && (cell.includes('details') || cell.includes('description'))) out.desc = i;
+      if (out.debit === -1 && cell.includes('debit')) out.debit = i;
+      if (out.credit === -1 && cell.includes('credit')) out.credit = i;
       if (out.balance === -1 && cell.includes('balance')) out.balance = i;
     });
 
-    dbg.info('Columns detected: ' + JSON.stringify(out));
+    console.log('Mapped Columns:', out);
     return out;
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     4. Bulletproof Date Parser (handles Excel serial numbers)
-     ═══════════════════════════════════════════════════════════════════════ */
   function parseDateSmart(v) {
-    if (v === null || v === undefined || v === '') return null;
+    if (!v) return null;
     
-    // If it's a JS Date (from SheetJS)
+    // JS Date object from SheetJS
     if (v instanceof Date) {
       return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
     }
     
-    // If it's a raw Excel serial number (e.g. 46000)
+    // Excel Serial Number (e.g. 45000)
     if (typeof v === 'number' && v > 20000 && v < 70000) {
       const d = new Date(Math.round((v - 25569) * 86400 * 1000));
       return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
@@ -14807,11 +14530,11 @@ esc(
     const s = String(v).trim();
     if (!s) return null;
 
-    // Check ISO format: YYYY-MM-DD
+    // YYYY-MM-DD
     let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
     if (m) return m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0');
 
-    // Check DD/MM/YYYY
+    // DD/MM/YYYY or DD-MM-YYYY
     m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})/);
     if (m) {
       let d = String(m[1]).padStart(2, '0');
@@ -14821,7 +14544,7 @@ esc(
       return y + '-' + mo + '-' + d;
     }
 
-    // Fallback
+    // Fallback JS Date
     const d = new Date(s);
     if (!isNaN(d.getTime())) {
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -14829,9 +14552,18 @@ esc(
     return null;
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     5. Complete Replacement of openImportDialog
-     ═══════════════════════════════════════════════════════════════════════ */
+  function parseAmountAny(v) {
+    if (v === null || v === undefined) return 0;
+    let s = String(v).trim();
+    if (!s) return 0;
+    let negative = false;
+    if (s.indexOf('-') === 0) { negative = true; s = s.slice(1); }
+    s = s.replace(/[^0-9.]/g, '');
+    if (!s) return 0;
+    const n = parseFloat(s);
+    return negative ? -n : n;
+  }
+
   window.openImportDialog = function (bankId) {
     if (!state.perms.write) { toast('Read-only role', 'error'); return; }
     const banks = arr(state.data.banks).filter(b => b.active !== false);
@@ -14845,20 +14577,14 @@ esc(
           '</select>' +
         '</label>' +
         '<div class="field">File (.csv, .xlsx)' +
-          '<input type="file" id="impFile" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" ' +
-            'style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%">' +
+          '<input type="file" id="impFile" accept=".csv,.xlsx,.xls" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);width:100%">' +
         '</div>' +
-      '</div>' +
-      '<div class="alert" style="background:var(--accent-soft);color:var(--accent-text);padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:12.5px">' +
-        'ℹ The parser auto-detects the header row. HNB statement preambles (client info, bank details) are skipped automatically.' +
       '</div>' +
       '<div id="impPreview" style="display:none"></div>';
 
     openModal('📥 Import Bank Statement', body, {
       width: 900,
-      footer:
-        '<button class="btn" data-close-modal>Cancel</button>' +
-        '<button class="btn primary" id="impConfirmBtn" disabled>Import</button>'
+      footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="impConfirmBtn" disabled>Import</button>'
     });
 
     let parsed = null;
@@ -14871,123 +14597,90 @@ esc(
 
       try {
         let rows = [];
-
         if (isExcel) {
-          toast('Loading Excel parser…', 'info', 1500);
+          toast('Loading Excel parser…', 'info');
           await ensureXLSX();
           const data = await file.arrayBuffer();
-          
-          // Read with cellDates true, which makes SheetJS return Date objects for date cells
           const workbook = window.XLSX.read(data, { type: 'array', cellDates: true });
-          const firstSheet = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[firstSheet];
-          
-          // Convert to array of arrays. raw: false ensures we get formatted text for numbers/dates
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
           rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
         } else {
           const text = await file.text();
-          rows = typeof parseCSV === 'function' ? parseCSV(text) : [];
+          // Simple CSV parser fallback
+          rows = text.split('\n').map(l => l.split(','));
         }
 
-        if (!rows || rows.length < 2) {
-          toast('File is empty or unreadable', 'error');
-          return;
-        }
+        if (!rows || rows.length < 2) { toast('File is empty', 'error'); return; }
 
-        // 1. Find Header
         const headerIndex = findRealHeaderRow(rows);
         const headerRow = rows[headerIndex];
-
-        // 2. Map Columns
         const cols = mapColumns(headerRow);
+
         if (cols.date === -1 || cols.debit === -1 || cols.credit === -1) {
           toast('Could not detect Date, Debit, or Credit columns.', 'error', 5000);
+          console.error('Headers found:', headerRow);
           return;
         }
 
-        // 3. Parse Rows
         const dataRows = rows.slice(headerIndex + 1);
         const parsedRows = [];
         let skipped = 0;
 
-        dataRows.forEach((row, i) => {
+        dataRows.forEach((row) => {
           if (!row || !row.length) return;
           
-          // Skip completely empty rows
-          if (!row[cols.date] && !row[cols.debit] && !row[cols.credit]) return;
-
           const dateVal = parseDateSmart(row[cols.date]);
-          if (!dateVal) { skipped++; return; } // silently skip bad dates
+          if (!dateVal) { skipped++; return; }
 
           const desc = cols.desc >= 0 ? String(row[cols.desc] || '').trim() : '';
+          
+          let debit = cols.debit >= 0 ? parseAmountAny(row[cols.debit]) : 0;
+          let credit = cols.credit >= 0 ? parseAmountAny(row[cols.credit]) : 0;
 
-          // HNB has strings like "15,000.00" and empty strings ""
-          let debit = 0, credit = 0;
-          if (cols.debit >= 0) debit = parseAmountAny ? parseAmountAny(row[cols.debit]) : 0;
-          if (cols.credit >= 0) credit = parseAmountAny ? parseAmountAny(row[cols.credit]) : 0;
-
-          // Skip if both are 0 (e.g. opening balance row in some formats)
           if (debit === 0 && credit === 0) return;
 
-          // Determine direction
           const dir = credit > 0 ? 'credit' : 'debit';
           const amount = credit > 0 ? credit : debit;
+          let balAfter = cols.balance >= 0 ? parseAmountAny(row[cols.balance]) : null;
 
-          let balAfter = null;
-          if (cols.balance >= 0 && row[cols.balance]) {
-            const b = parseAmountAny ? parseAmountAny(row[cols.balance]) : 0;
-            if (b !== 0) balAfter = b;
-          }
-
-          parsedRows.push({
-            date: dateVal,
-            description: desc,
-            amount: Math.abs(amount),
-            direction: dir,
-            balanceAfter: balAfter
-          });
+          parsedRows.push({ date: dateVal, description: desc, amount: Math.abs(amount), direction: dir, balanceAfter: balAfter });
         });
 
         if (!parsedRows.length) {
           toast('No transaction rows detected. Check the file format.', 'error', 5000);
+          console.error('Data rows sample:', dataRows.slice(0, 3));
           return;
         }
 
         parsed = { rows: parsedRows, fileName: file.name, preset: 'generic' };
 
-        // 4. Render Preview
         const preview = document.getElementById('impPreview');
         preview.style.display = '';
         preview.innerHTML =
           '<div class="card" style="background:var(--surface-2);border:none;padding:14px">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
-              '<strong style="font-size:14px">Preview: ' + parsedRows.length + ' transaction(s)</strong>' +
-              '<span class="badge green">Columns detected ✓</span>' +
-            '</div>' +
+            '<div style="margin-bottom:10px"><strong>Preview: ' + parsedRows.length + ' transaction(s)</strong></div>' +
             '<div class="table-wrap" style="max-height:300px;overflow:auto">' +
               '<table style="font-size:12px">' +
                 '<thead><tr><th>Date</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>' +
                 '<tbody>' +
                   parsedRows.slice(0, 100).map(r =>
                     '<tr>' +
-                      '<td>' + (typeof dateFmt === 'function' ? dateFmt(r.date) : r.date) + '</td>' +
+                      '<td>' + dateFmt(r.date) + '</td>' +
                       '<td>' + esc(r.description.slice(0, 50)) + '</td>' +
                       '<td class="num" style="color:var(--red)">' + (r.direction === 'debit' ? money(r.amount) : '') + '</td>' +
                       '<td class="num" style="color:var(--green)">' + (r.direction === 'credit' ? money(r.amount) : '') + '</td>' +
                       '<td class="num">' + (r.balanceAfter !== null ? money(r.balanceAfter) : '') + '</td>' +
                     '</tr>'
                   ).join('') +
-                  (parsedRows.length > 100 ? '<tr><td colspan="5" class="muted small">… and ' + (parsedRows.length - 100) + ' more</td></tr>' : '') +
                 '</tbody>' +
               '</table>' +
             '</div>' +
-            (skipped > 0 ? '<div class="small muted" style="margin-top:8px">⚠ Skipped ' + skipped + ' row(s) with unparseable data.</div>' : '') +
           '</div>';
 
         document.getElementById('impConfirmBtn').disabled = false;
 
       } catch (err) {
-        dbg.err('Import parse failed: ' + err.message);
+        console.error(err);
         toast('Parse failed: ' + err.message, 'error', 5000);
       }
     };
@@ -14997,13 +14690,11 @@ esc(
       const targetBankId = document.getElementById('impBank').value;
       if (typeof window.commitImport === 'function') {
         window.commitImport(targetBankId, parsed);
-      } else {
-        toast('Import engine missing', 'error');
       }
     };
   };
 
-  scriptLoaded('BULLETPROOF-IMPORT');
+  scriptLoaded('FINAL-IMPORT');
 })();
 </script>
 </body>

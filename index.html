@@ -16534,5 +16534,344 @@ User question: "${query}"`;
   scriptLoaded('S12-ABSOLUTE-FIX');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IMPORT CLEANUP — Delete ONLY imported cheques + restore bank impact
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] IMPORT-CLEANUP loaded', 'color:#10b981;font-weight:bold');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. TAG IMPORTED CHEQUES AT IMPORT TIME
+     Patch the import save so every imported cheque gets isImported: true
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* We intercept the existing `bulkSaveBtn` click handler by wrapping
+     the __LS_registerAction that creates the import modal. Easiest hook:
+     monkey-patch after modal is opened. We use a MutationObserver on
+     #modalWrap to detect when the import modal opens, then wrap the
+     save button. */
+
+  const _origOpenModal = window.openModal;
+  window.openModal = function (title, body, opts) {
+    const r = _origOpenModal.apply(this, arguments);
+
+    /* Detect import modal by its title */
+    if (title && title.indexOf('Bulk Import') !== -1) {
+      setTimeout(() => patchImportSave(), 50);
+    }
+    return r;
+  };
+
+  function patchImportSave() {
+    const btn = document.getElementById('bulkSaveBtn');
+    if (!btn || btn.dataset.importPatched === '1') return;
+    btn.dataset.importPatched = '1';
+
+    /* We don't replace the handler — the import code reads state
+       through makeCheque(). Instead, we override makeCheque temporarily
+       when the save button is clicked, so every cheque created during
+       save gets isImported: true. */
+    const origClick = btn.onclick;
+    btn.onclick = function (ev) {
+      const origMake = window.makeCheque;
+      window.makeCheque = function (seed) {
+        const chq = origMake.apply(this, arguments);
+        chq.isImported = true;
+        chq.importedAt = nowISO();
+        chq.importedBy = state.user?.email || 'system';
+        return chq;
+      };
+      try {
+        return origClick.apply(this, arguments);
+      } finally {
+        /* Restore after save */
+        setTimeout(() => { window.makeCheque = origMake; }, 0);
+      }
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. ONE-TIME MIGRATION — tag already-imported cheques in DB
+     Any cheque whose memo contains "Import" or "Bulk Import" or
+     "Historical Import" is treated as imported.
+     We run this once on boot and mark them so the cleanup works on
+     your existing bad imports.
+     ═══════════════════════════════════════════════════════════════════════ */
+  function migrateOldImports() {
+    let tagged = 0;
+    arr(state.data.cheques).forEach(c => {
+      if (c.isImported) return;   /* already tagged */
+
+      const memo = String(c.memo || '').toLowerCase();
+      const isImportMemo =
+        memo.indexOf('historical import') !== -1 ||
+        memo.indexOf('bulk import') !== -1 ||
+        memo.indexOf('imported') !== -1;
+
+      /* Also tag any cheque with importedAt timestamp */
+      const hasImportStamp = !!c.importedAt;
+
+      if (isImportMemo || hasImportStamp) {
+        c.isImported = true;
+        c.importedAt = c.importedAt || c.createdAt || nowISO();
+        c.importedBy = c.importedBy || c.createdBy || 'system';
+        markDirty('cheques', c.id);
+        tagged++;
+      }
+    });
+    if (tagged) {
+      dbg.ok('Tagged ' + tagged + ' pre-existing cheque(s) as imported');
+      saveCache();
+    }
+    return tagged;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. DELETE ONLY IMPORTED CHEQUES + RESTORE BANK IMPACT
+     ═══════════════════════════════════════════════════════════════════════ */
+  async function deleteImportedCheques() {
+    if (state.role !== 'owner' && state.role !== 'admin' && !state.perms.delete) {
+      toast('Only owner/admin/manager can delete imported cheques', 'error');
+      return;
+    }
+
+    /* Find all imported cheques */
+    const imported = arr(state.data.cheques).filter(c => c.isImported);
+
+    if (!imported.length) {
+      toast('No imported cheques found in the system', 'info');
+      return;
+    }
+
+    /* ── Compute bank impact per bank ── */
+    /* Only CLEARED cheques affect bank balance.
+       Approved cheques affect book balance only (they're "floating").
+       Scheduled/pending/draft affect nothing. */
+    const bankImpact = {};   /* bankId → amount to add back to bank */
+    const bookImpact = {};   /* bankId → amount to add back to book (via floating removal) */
+    let clearedCount = 0, approvedCount = 0, otherCount = 0;
+    let totalValue = 0;
+    let leavesToFree = [];
+
+    imported.forEach(c => {
+      totalValue += num(c.amount);
+      const bid = c.bankId || '__none__';
+
+      if (c.status === 'cleared') {
+        /* Money was deducted from bank → add it back */
+        bankImpact[bid] = (bankImpact[bid] || 0) + num(c.amount);
+        clearedCount++;
+      } else if (c.status === 'approved') {
+        /* Approved = floating; removing releases the floating reservation */
+        bookImpact[bid] = (bookImpact[bid] || 0) + num(c.amount);
+        approvedCount++;
+      } else {
+        otherCount++;
+      }
+
+      /* Remember leaf reservations to release */
+      if (c.bookId && c.leafId !== null && c.leafId !== undefined) {
+        leavesToFree.push({ bookId: c.bookId, leafId: c.leafId, chequeId: c.id });
+      }
+    });
+
+    /* ── Build confirmation message ── */
+    let bankLines = '';
+    Object.keys(bankImpact).forEach(bid => {
+      const b = bankObj(bid);
+      bankLines += '\n  • ' + (b ? b.name : '(deleted bank)') + ': +' + money(bankImpact[bid]);
+    });
+    let bookLines = '';
+    Object.keys(bookImpact).forEach(bid => {
+      const b = bankObj(bid);
+      bookLines += '\n  • ' + (b ? b.name : '(deleted bank)') + ': floating −' + money(bookImpact[bid]);
+    });
+
+    const summary =
+      'Delete ' + imported.length + ' imported cheque(s)?\n\n' +
+      'Total value: ' + money(totalValue) + '\n' +
+      '  • ' + clearedCount + ' cleared (will restore bank balance)' + '\n' +
+      '  • ' + approvedCount + ' approved (will restore floating / book balance)' + '\n' +
+      '  • ' + otherCount + ' other (draft/scheduled/pending — no balance impact)' +
+      (bankLines ? '\n\nBank balances to restore:' + bankLines : '') +
+      (bookLines ? '\n\nBook (floating) to restore:' + bookLines : '') +
+      '\n\nManual (non-imported) cheques will NOT be touched.\n' +
+      'Cheque book leaves will be freed back to "available".\n\n' +
+      'This cannot be undone. Continue?';
+
+    if (!confirm(summary)) return;
+    if (!confirm('Final confirmation — delete ' + imported.length + ' imported cheque(s)?')) return;
+
+    /* ── Execute deletion in batches ── */
+    const importedIds = new Set(imported.map(c => c.id));
+
+    try {
+      /* Delete from Firestore in batches of 450 */
+      const list = imported.slice();
+      for (let i = 0; i < list.length; i += 450) {
+        const batch = firestore.batch();
+        list.slice(i, i + 450).forEach(c => {
+          batch.delete(colRef('cheques').doc(c.id));
+        });
+        await batch.commit();
+      }
+
+      /* Remove from state */
+      state.data.cheques = state.data.cheques.filter(c => !importedIds.has(c.id));
+      importedIds.forEach(id => {
+        _dirty.add('cheques:' + id);
+        delete _snapshot['cheques:' + id];
+      });
+
+      /* ── Free cheque book leaves ── */
+      const booksTouched = new Set();
+      leavesToFree.forEach(lf => {
+        const bk = bookObj(lf.bookId);
+        if (!bk) return;
+        const leaf = arr(bk.leaves)[lf.leafId];
+        if (leaf && leaf.chequeId === lf.chequeId) {
+          leaf.status = 'available';
+          leaf.chequeId = null;
+          leaf.note = '';
+          booksTouched.add(lf.bookId);
+        }
+      });
+      booksTouched.forEach(bid => markDirty('chequeBooks', bid));
+
+      /* ── Bank balance restoration ──
+         Bank balance = opening − clearedTotal + adjustments
+         Removing cleared cheques therefore increases bank balance by
+         sum of their amounts, per bank. Since our engine recomputes
+         balances from the cheques array, deleting the cleared cheques
+         automatically restores the bank balance.
+         Same for approved (floating) — removing them drops floating. */
+
+      /* ── Audit log ── */
+      if (window.logActivity) {
+        window.logActivity({
+          action: 'delete_imported',
+          collection: 'cheques',
+          recordId: imported.length + '_cheques',
+          summary: 'Deleted ' + imported.length + ' imported cheque(s) — ' +
+                   money(totalValue) + ' value. ' +
+                   clearedCount + ' cleared, ' + approvedCount + ' approved, ' +
+                   otherCount + ' other.'
+        });
+      }
+      if (window.recordAudit) {
+        window.recordAudit({
+          collection: 'cheques',
+          recordId: '(bulk)',
+          action: 'delete',
+          before: imported.map(c => ({
+            id: c.id, chequeNo: c.chequeNo, amount: c.amount, status: c.status,
+            bankId: c.bankId, payeeName: c.payeeName
+          })),
+          after: null,
+          summary: 'Bulk-delete of ' + imported.length + ' imported cheques'
+        });
+      }
+
+      /* ── Force a fresh render + save ── */
+      saveCache();
+      try { await sync.push(); } catch (e) { dbg.warn('sync push: ' + e.message); }
+      renderApp();
+
+      /* ── Success toast with per-bank breakdown ── */
+      let toastMsg = 'Deleted ' + imported.length + ' imported cheque(s).';
+      if (Object.keys(bankImpact).length) {
+        toastMsg += '\nBank balance restored:';
+        Object.keys(bankImpact).forEach(bid => {
+          const b = bankObj(bid);
+          toastMsg += '\n  • ' + (b ? b.name : '(deleted)') + ': +' + money(bankImpact[bid]);
+        });
+      }
+      if (Object.keys(bookImpact).length) {
+        toastMsg += '\nFloating released:';
+        Object.keys(bookImpact).forEach(bid => {
+          const b = bankObj(bid);
+          toastMsg += '\n  • ' + (b ? b.name : '(deleted)') + ': ' + money(bookImpact[bid]);
+        });
+      }
+      toast(toastMsg, 'success', 10000);
+
+    } catch (e) {
+      dbg.err('Delete imported failed: ' + (e.code || e.message));
+      toast('Delete failed: ' + e.message, 'error', 6000);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     4. ADD BUTTON TO CHEQUES PAGE
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origRenderCheques = REGISTRY.routes.cheques ? REGISTRY.routes.cheques.fn : null;
+  if (origRenderCheques) {
+    __LS_addRoute('cheques', 'Cheques', function () {
+      let html = origRenderCheques();
+
+      const importedCount = arr(state.data.cheques).filter(c => c.isImported).length;
+      const importedValue = arr(state.data.cheques)
+        .filter(c => c.isImported)
+        .reduce((s, c) => s + num(c.amount), 0);
+
+      /* Only show the delete button if there are imported cheques */
+      if (importedCount === 0) return html;
+
+      const button =
+        '<button class="btn danger" data-action="delete-imported" ' +
+          'title="Remove only imported cheques, leaving manual ones untouched">' +
+          '🗑 Delete Imported (' + importedCount + ' · ' + money(importedValue) + ')' +
+        '</button>';
+
+      /* Insert next to the "Write Cheque" button */
+      html = html.replace(
+        '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>',
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+          button +
+          '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>' +
+        '</div>'
+      );
+
+      return html;
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     5. REGISTER THE ACTION HANDLER
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_registerAction('delete-imported', () => deleteImportedCheques());
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     6. RUN MIGRATION ON BOOT (tag existing imports)
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_register('IMPORT-CLEANUP', function () {
+    /* Wait a moment for auth + pull to complete */
+    setTimeout(() => {
+      try {
+        const tagged = migrateOldImports();
+        if (tagged) {
+          toast(tagged + ' pre-existing cheque(s) tagged as imported — ' +
+                'you can now delete only them from the Cheques page',
+                'info', 8000);
+          renderApp();
+        }
+      } catch (e) {
+        dbg.warn('migrateOldImports: ' + e.message);
+      }
+      scriptLoaded('IMPORT-CLEANUP');
+    }, 3000);
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     7. NEW IMPORT STATUS DROPDOWN (auto-include isImported flag)
+     Since our patched import save already sets isImported, we only need
+     to make sure the import dialog has the correct status selector.
+     The S12-ABSOLUTE-FIX already adds it. Nothing extra here.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+})();
+</script>
 </body>
 </html>

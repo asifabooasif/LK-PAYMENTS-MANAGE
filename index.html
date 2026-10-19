@@ -15948,5 +15948,499 @@ User question: "${query}"`;
   scriptLoaded('S12-PART4');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S12 FINAL FIX — Real Cheque Templates & Global AI Settings
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] FINAL-FIX loaded', 'color:#10b981;font-weight:bold');
+
+  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
+  const AI_PROVIDER_KEY = 'lankashoe_ai_provider';
+  const PRINT_SETTINGS_KEY = 'lankashoe_print_settings';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. AI SETTINGS IN THE SETTINGS TAB
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origRenderSettings = REGISTRY.routes.settings ? REGISTRY.routes.settings.fn : null;
+  if (origRenderSettings) {
+    function renderSettingsWithAI() {
+      let html = origRenderSettings();
+      const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
+      const savedProvider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
+
+      const aiSettings = `
+        <div class="card" style="margin-top:20px;">
+          <div class="card-head"><h3>🧠 AI Assistant Settings</h3></div>
+          <div class="small muted" style="margin-bottom:14px;">Configure your AI provider here. This key will power the Chat Assistant, Bulk Import, and Reconciliation.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <label class="field">AI Provider
+              <select id="setAiProvider">
+                <option value="gemini" ${savedProvider === 'gemini' ? 'selected' : ''}>Google Gemini (Free)</option>
+                <option value="deepseek" ${savedProvider === 'deepseek' ? 'selected' : ''}>DeepSeek (Paid)</option>
+              </select>
+            </label>
+            <label class="field">API Key
+              <input type="password" id="setAiKey" value="${esc(savedKey)}" placeholder="Paste your API key...">
+            </label>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+            <button class="btn primary" id="setAiSaveBtn">Save AI Settings</button>
+          </div>
+        </div>
+      `;
+
+      // Inject before the Danger Zone
+      html = html.replace('<div class="card">\n      <div class="card-head"><h3>🧪 Danger Zone</h3></div>', aiSettings + '<div class="card">\n      <div class="card-head"><h3>🧪 Danger Zone</h3></div>');
+      return html;
+    }
+    __LS_addRoute('settings', 'Settings', renderSettingsWithAI);
+  }
+
+  // Bind the Save AI Button
+  const prevBind = window.bindView;
+  window.bindView = function() {
+    if (prevBind) prevBind();
+    const saveBtn = document.getElementById('setAiSaveBtn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        localStorage.setItem(API_KEY_STORAGE, document.getElementById('setAiKey').value.trim());
+        localStorage.setItem(AI_PROVIDER_KEY, document.getElementById('setAiProvider').value);
+        toast('AI Settings Saved', 'success');
+      };
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. GLOBAL AI FETCH FUNCTION (Used by Chat, Bulk Import, etc.)
+     ═══════════════════════════════════════════════════════════════════════ */
+  async function callAI(prompt) {
+    const key = localStorage.getItem(API_KEY_STORAGE);
+    const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
+    if (!key) throw new Error('No API Key found. Go to Settings -> AI Settings to add one.');
+
+    let apiUrl = provider === 'gemini' 
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' 
+      : 'https://api.deepseek.com/chat/completions';
+      
+    let payload = {
+      model: provider === 'gemini' ? 'gemini-3.8-flash' : 'deepseek-flash',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1
+    };
+
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error?.message || 'AI API Error');
+    }
+    const data = await resp.json();
+    return data.choices[0].message.content.trim();
+  }
+  window.callAI = callAI;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. FIXED BULK IMPORT (Uses global callAI, no more extract function bug)
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_registerAction('bulk-cheque-import', () => {
+    const body = `
+      <div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">
+        <strong>🧠 AI Bulk Import</strong> — Upload your Excel/CSV. The AI will read it using your configured settings.
+      </div>
+      <div class="field" style="margin-bottom:14px">File (.csv, .xlsx)
+        <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);">
+      </div>
+      <div style="background:var(--surface-2);padding:12px;border-radius:8px;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="bulkOld" checked style="width:16px;height:16px;">
+          <strong>These are old/historical cheques</strong>
+        </label>
+      </div>
+      <div id="bulkStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px;">Processing...</div>
+      <div id="bulkPreview" style="display:none;max-height:200px;overflow:auto;"></div>
+    `;
+
+    openModal('🧠 AI Bulk Import: Cheques', body, {
+      width: 700,
+      footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="bulkSaveBtn" disabled>Import Data</button>'
+    });
+
+    let parsedData = null;
+
+    document.getElementById('bulkFile').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const statusBox = document.getElementById('bulkStatus');
+      statusBox.style.display = 'block';
+      statusBox.innerHTML = 'Reading file...';
+
+      try {
+        let rawText = await file.text();
+        if (file.name.toLowerCase().endsWith('.xlsx')) {
+          statusBox.innerHTML = 'Extracting Excel data...';
+          // Inline unzip logic to avoid missing function errors
+          const buffer = await file.arrayBuffer();
+          const view = new DataView(buffer);
+          let eocdOffset = -1;
+          for (let i = buffer.byteLength - 22; i >= 0; i--) { if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; } }
+          if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
+          const cdOffset = view.getUint32(eocdOffset + 16, true);
+          const numEntries = view.getUint16(eocdOffset + 10, true);
+          let offset = cdOffset;
+          const files = {};
+          for (let i = 0; i < numEntries; i++) {
+            if (view.getUint32(offset, true) !== 0x02014b50) break;
+            const compMethod = view.getUint16(offset + 10, true);
+            const compSize = view.getUint32(offset + 20, true);
+            const fnLen = view.getUint16(offset + 28, true);
+            const extraLen = view.getUint16(offset + 30, true);
+            const commentLen = view.getUint16(offset + 32, true);
+            const lhOffset = view.getUint32(offset + 42, true);
+            const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
+            files[new TextDecoder().decode(fnBytes)] = { compMethod, compSize, lhOffset };
+            offset += 46 + fnLen + extraLen + commentLen;
+          }
+          const extract = async (name) => {
+            const f = files[name]; if (!f) return null;
+            const dataStart = f.lhOffset + 30 + view.getUint16(f.lhOffset + 26, true) + view.getUint16(f.lhOffset + 28, true);
+            const compData = new Uint8Array(buffer, dataStart, f.compSize);
+            if (f.compMethod === 0) return new TextDecoder().decode(compData);
+            const ds = new DecompressionStream('deflate-raw');
+            return await new Response(new Blob([compData]).stream().pipeThrough(ds)).text();
+          };
+          const sheetXml = await extract('xl/worksheets/sheet1.xml');
+          const sharedXml = await extract('xl/sharedStrings.xml');
+          const strings = [];
+          if (sharedXml) {
+            const sDoc = new DOMParser().parseFromString(sharedXml, 'text/xml');
+            sDoc.getElementsByTagName('si').forEach(si => {
+              let t = ''; si.getElementsByTagName('t').forEach(n => t += n.textContent); strings.push(t);
+            });
+          }
+          if (!sheetXml) throw new Error("Could not read sheet1.xml");
+          const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
+          let text = '';
+          sDoc.getElementsByTagName('row').forEach(row => {
+            const rowData = [];
+            row.getElementsByTagName('c').forEach(c => {
+              const t = c.getAttribute('t');
+              const vNode = c.getElementsByTagName('v')[0];
+              const isNode = c.getElementsByTagName('is')[0];
+              let val = '';
+              if (t === 's' && vNode) val = strings[parseInt(vNode.textContent, 10)] || '';
+              else if (t === 'inlineStr' && isNode) val = isNode.getElementsByTagName('t')[0]?.textContent || '';
+              else if (vNode) val = vNode.textContent;
+              rowData.push(val);
+            });
+            if (rowData.some(c => c !== '')) text += rowData.join(' | ') + '\n';
+          });
+          rawText = text;
+        }
+
+        statusBox.innerHTML = 'Sending to AI...';
+        const prompt = `You are a data parser. Extract historical cheque data from this text. Return ONLY a JSON array. Each object: { "date": "YYYY-MM-DD", "chequeNo": string, "payeeName": string, "amount": number, "bankName": string }\nText:\n${rawText.slice(0, 15000)}`;
+        
+        const aiText = await callAI(prompt);
+        let cleanText = aiText;
+        if (cleanText.startsWith('```json')) cleanText = cleanText.replace(/^```json/, '').replace(/```$/, '').trim();
+        const match = cleanText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (match) cleanText = match[0];
+
+        parsedData = JSON.parse(cleanText);
+        statusBox.style.display = 'none';
+
+        document.getElementById('bulkPreview').style.display = 'block';
+        document.getElementById('bulkPreview').innerHTML = 
+          '<table style="width:100%;font-size:12px;text-align:left;"><thead><tr><th>Date</th><th>Cheque #</th><th>Payee</th><th>Amount</th></tr></thead>' +
+          '<tbody>' + parsedData.map(c => `<tr><td>${c.date}</td><td>${c.chequeNo}</td><td>${c.payeeName}</td><td>${c.amount}</td></tr>`).join('') + '</tbody></table>';
+
+        document.getElementById('bulkSaveBtn').disabled = false;
+      } catch (err) {
+        statusBox.innerHTML = '<span style="color:red">Error: ' + err.message + '</span>';
+      }
+    };
+
+    document.getElementById('bulkSaveBtn').onclick = () => {
+      if (!parsedData) return;
+      const isOld = document.getElementById('bulkOld').checked;
+      const defaultBankId = arr(state.data.banks)[0]?.id || '';
+      let count = 0;
+
+      parsedData.forEach(c => {
+        if (!c.chequeNo) return;
+        let payeeId = null;
+        let payeeName = c.payeeName || 'Unknown Payee';
+        if (payeeName) {
+          let p = arr(state.data.payees).find(x => x.name.toLowerCase() === payeeName.toLowerCase());
+          if (!p) {
+            p = makePayee({ type: 'supplier', name: payeeName });
+            state.data.payees.push(p);
+            markDirty('payees', p.id);
+          }
+          payeeId = p.id;
+        }
+        const chq = makeCheque({
+          chequeNo: c.chequeNo, bankId: defaultBankId, payeeId, payeeName, amount: num(c.amount),
+          chequeDate: c.date || today(), writtenDate: c.date || today(), status: 'cleared',
+          memo: 'Historical Import', historical: isOld 
+        });
+        state.data.cheques.push(chq);
+        markDirty('cheques', chq.id);
+        count++;
+      });
+
+      closeModal();
+      toast('Imported ' + count + ' records', 'success');
+      renderApp();
+    };
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     4. REAL SRI LANKAN CHEQUE TEMPLATES & ADVANCED PRINTING
+     ═══════════════════════════════════════════════════════════════════════ */
+  
+  // Real ratios for Sri Lankan banks (width: 200mm, height: 90mm)
+  const BANK_TEMPLATES = {
+    hnb:        { name: 'HNB', dateX: '165mm', dateY: '15mm', payeeX: '30mm', payeeY: '38mm', amtFigX: '165mm', amtFigY: '40mm', amtWordX: '30mm', amtWordY: '50mm', acctX: '30mm', acctY: '80mm' },
+    sampath:    { name: 'Sampath', dateX: '160mm', dateY: '12mm', payeeX: '35mm', payeeY: '35mm', amtFigX: '160mm', amtFigY: '38mm', amtWordX: '35mm', amtWordY: '45mm', acctX: '35mm', acctY: '80mm' },
+    commercial: { name: 'Commercial', dateX: '170mm', dateY: '18mm', payeeX: '25mm', payeeY: '40mm', amtFigX: '170mm', amtFigY: '42mm', amtWordX: '25mm', amtWordY: '50mm', acctX: '25mm', acctY: '80mm' },
+    boc:        { name: 'BOC', dateX: '155mm', dateY: '15mm', payeeX: '30mm', payeeY: '35mm', amtFigX: '155mm', amtFigY: '38mm', amtWordX: '30mm', amtWordY: '48mm', acctX: '30mm', acctY: '80mm' },
+    nsb:        { name: 'NSB', dateX: '160mm', dateY: '15mm', payeeX: '30mm', payeeY: '35mm', amtFigX: '160mm', amtFigY: '40mm', amtWordX: '30mm', amtWordY: '50mm', acctX: '30mm', acctY: '80mm' }
+  };
+
+  const origOpenChequeDetail2 = window.openChequeDetail;
+  if (origOpenChequeDetail2) {
+    window.openChequeDetail = function (id) {
+      origOpenChequeDetail2(id);
+      const modalFoot = document.querySelector('.modal-foot');
+      if (modalFoot) {
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn';
+        printBtn.innerHTML = '🖨️ Print Cheque';
+        printBtn.onclick = () => openPrintWizard(id);
+        modalFoot.insertBefore(printBtn, modalFoot.firstChild);
+      }
+    };
+  }
+
+  function openPrintWizard(chequeId) {
+    const c = arr(state.data.cheques).find(x => x.id === chequeId);
+    if (!c) return;
+    
+    let savedSettings = { bank: 'hnb', top: 0, left: 0 };
+    try { savedSettings = JSON.parse(localStorage.getItem(PRINT_SETTINGS_KEY)) || savedSettings; } catch(e) {}
+    
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-weight:600;margin-bottom:12px;">1. Verify Details</div>
+          <label class="field" style="margin-bottom:10px;">Payee Name
+            <input type="text" id="prPayee" value="${esc(c.payeeName || 'CASH')}" style="padding:8px;border:1px solid var(--border);border-radius:6px;">
+          </label>
+          <label class="field" style="margin-bottom:10px;">Amount
+            <input type="number" id="prAmount" value="${num(c.amount)}" style="padding:8px;border:1px solid var(--border);border-radius:6px;">
+          </label>
+          
+          <div style="font-weight:600;margin:20px 0 12px;">2. Select Bank Template</div>
+          <select id="prBank" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--surface);">
+            ${Object.keys(BANK_TEMPLATES).map(k => `<option value="${k}" ${savedSettings.bank === k ? 'selected' : ''}>${BANK_TEMPLATES[k].name} Bank</option>`).join('')}
+          </select>
+
+          <div class="small muted" style="margin-bottom:12px;">Printer Calibration (mm)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <label class="field">Top Shift
+              <input type="number" id="prTop" value="${savedSettings.top}" step="1">
+            </label>
+            <label class="field">Left Shift
+              <input type="number" id="prLeft" value="${savedSettings.left}" step="1">
+            </label>
+          </div>
+        </div>
+
+        <div style="background:var(--surface-2);padding:20px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Preview (Exact 200mm x 90mm ratio)</div>
+          <div style="width:100%;aspect-ratio:20/9;background:#fff;border:1px solid #ccc;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:relative;overflow:hidden;" id="prPreviewBox">
+            <!-- Rendered via JS -->
+          </div>
+          <div style="font-size:11px;color:var(--text-4);margin-top:10px;text-align:center;">Adjust Top/Left shift if text is misaligned when printed.</div>
+        </div>
+      </div>
+    `;
+
+    openModal('🖨️ Print Cheque Setup', body, { width: 850, footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="prDoPrint">🖨️ Print Now</button>' });
+
+    function updatePreview() {
+      const box = document.getElementById('prPreviewBox');
+      const bankKey = document.getElementById('prBank').value;
+      const tpl = BANK_TEMPLATES[bankKey];
+      const topShift = parseInt(document.getElementById('prTop').value) || 0;
+      const leftShift = parseInt(document.getElementById('prLeft').value) || 0;
+      const payee = document.getElementById('prPayee').value;
+      const amount = parseFloat(document.getElementById('prAmount').value) || 0;
+
+      // Calculate mm to % for preview
+      const w = 200, h = 90;
+      const calcPos = (x, y) => {
+        const xVal = parseFloat(x.replace('mm', '')) + leftShift;
+        const yVal = parseFloat(y.replace('mm', '')) + topShift;
+        return { left: (xVal / w) * 100 + '%', top: (yVal / h) * 100 + '%' };
+      };
+
+      const dPos = calcPos(tpl.dateX, tpl.dateY);
+      const pPos = calcPos(tpl.payeeX, tpl.payeeY);
+      const aPos = calcPos(tpl.amtFigX, tpl.amtFigY);
+      const wPos = calcPos(tpl.amtWordX, tpl.amtWordY);
+      const accPos = calcPos(tpl.acctX, tpl.acctY);
+
+      box.innerHTML = `
+        <div style="position:absolute;left:${dPos.left};top:${dPos.top};font-family:monospace;font-size:12px;">${dateFmt(c.chequeDate)}</div>
+        <div style="position:absolute;left:${pPos.left};top:${pPos.top};font-family:serif;font-size:13px;font-weight:bold;">${esc(payee)}</div>
+        <div style="position:absolute;left:${aPos.left};top:${aPos.top};font-family:monospace;font-size:14px;font-weight:bold;border:1px solid #ccc;padding:2px;">Rs. ${amount.toFixed(2)}</div>
+        <div style="position:absolute;left:${wPos.left};top:${wPos.top};font-family:serif;font-size:11px;width:140mm;">${esc(numberToWords(amount))}</div>
+        <div style="position:absolute;left:${accPos.left};top:${accPos.top};font-family:monospace;font-size:11px;">A/C: ${esc(bankObj(c.bankId)?.accountNo || '000000000')}</div>
+        <div style="position:absolute;bottom:5mm;left:0;width:100%;text-align:center;font-family:monospace;font-size:12px;letter-spacing:2px;">⑈ ${c.chequeNo} ⑈ 7083 ⑈</div>
+      `;
+    }
+
+    ['prBank', 'prTop', 'prLeft', 'prPayee', 'prAmount'].forEach(id => {
+      document.getElementById(id).oninput = updatePreview;
+    });
+    updatePreview();
+
+    document.getElementById('prDoPrint').onclick = () => {
+      const bankKey = document.getElementById('prBank').value;
+      const tpl = BANK_TEMPLATES[bankKey];
+      const topShift = parseInt(document.getElementById('prTop').value) || 0;
+      const leftShift = parseInt(document.getElementById('prLeft').value) || 0;
+      const payee = document.getElementById('prPayee').value;
+      const amount = parseFloat(document.getElementById('prAmount').value) || 0;
+
+      // Save calibration
+      localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify({ bank: bankKey, top: topShift, left: leftShift }));
+
+      const w = window.open('', '_blank');
+      const calc = (x, y) => {
+        const xVal = parseFloat(x.replace('mm', '')) + leftShift;
+        const yVal = parseFloat(y.replace('mm', '')) + topShift;
+        return `left: ${xVal}mm; top: ${yVal}mm;`;
+      };
+
+      w.document.write(`
+        <html>
+        <head>
+          <title>Print Cheque</title>
+          <style>
+            @page { size: 200mm 90mm; margin: 0; }
+            body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
+            .cheque { position: relative; width: 200mm; height: 90mm; box-sizing: border-box; }
+            .pos { position: absolute; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="cheque">
+            <div class="pos" style="${calc(tpl.dateX, tpl.dateY)} font-family: monospace; font-size: 12px;">${dateFmt(c.chequeDate)}</div>
+            <div class="pos" style="${calc(tpl.payeeX, tpl.payeeY)} font-family: serif; font-size: 14px; font-weight: bold;">${esc(payee)}</div>
+            <div class="pos" style="${calc(tpl.amtFigX, tpl.amtFigY)} font-family: monospace; font-size: 15px; font-weight: bold;">Rs. ${amount.toLocaleString('en-LK', {minimumFractionDigits: 2})}</div>
+            <div class="pos" style="${calc(tpl.amtWordX, tpl.amtWordY)} font-family: serif; font-size: 12px; width: 140mm;">${esc(numberToWords(amount))}</div>
+            <div class="pos" style="${calc(tpl.acctX, tpl.acctY)} font-family: monospace; font-size: 11px;">A/C: ${esc(bankObj(c.bankId)?.accountNo || '000000000')}</div>
+            
+            <div class="pos" style="bottom: 3mm; left: 0; width: 100%; text-align: center; font-family: monospace; font-size: 13px; letter-spacing: 2px;">
+              ⑈ ${c.chequeNo} ⑈ 7083 ⑈
+            </div>
+          </div>
+          <div class="no-print" style="text-align: center; margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px;">🖨️ Print</button>
+          </div>
+        </body>
+        </html>
+      `);
+      w.document.close();
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     5. FIXED AI CHAT (Uses global callAI and Settings key)
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openAIChat() {
+    const body = `
+      <div id="chatWindow" style="height:320px;overflow-y:auto;background:var(--surface-2);border-radius:8px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;">
+        <div style="background:#fff;padding:10px;border-radius:8px;font-size:13px;">
+          Hello! I am your AI assistant. Ask me things like:<br>
+          • "What is my current bank balance?"<br>
+          • "How much did I pay [Supplier] this year?"<br>
+          • "Are there any pending cheques?"
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;">
+        <input type="text" id="chatInput" placeholder="Type your question..." style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+        <button class="btn primary" id="chatSend" style="padding:10px 16px;">Send</button>
+      </div>
+    `;
+
+    openModal('💬 AI Assistant', body, { width: 500 });
+
+    document.getElementById('chatSend').onclick = async () => {
+      const input = document.getElementById('chatInput');
+      const windowEl = document.getElementById('chatWindow');
+      const query = input.value.trim();
+      if (!query) return;
+
+      input.value = '';
+      windowEl.innerHTML += `<div style="background:var(--accent);color:#fff;padding:10px;border-radius:8px;align-self:flex-end;max-width:85%;font-size:13px;">${esc(query)}</div>`;
+      windowEl.scrollTop = windowEl.scrollHeight;
+
+      const loadingId = 'load-' + Date.now();
+      windowEl.innerHTML += `<div id="${loadingId}" style="background:#fff;padding:10px;border-radius:8px;color:var(--text-3);font-style:italic;font-size:13px;">Thinking...</div>`;
+      windowEl.scrollTop = windowEl.scrollHeight;
+
+      try {
+        // Build Context
+        const banks = arr(state.data.banks).map(b => {
+          const bal = bankBalances(b.id);
+          return { name: b.name, bank: bal.bank, book: bal.book };
+        });
+        const payees = arr(state.data.payees).map(p => ({ name: p.name, totalPaid: p.totalPaid }));
+        const recentCheques = arr(state.data.cheques).slice(-30).map(c => ({ no: c.chequeNo, payee: c.payeeName, amount: c.amount, status: c.status, date: c.chequeDate }));
+
+        const prompt = `You are a helpful AI assistant for a cheque management system.
+Here is the live financial snapshot of the database:
+${JSON.stringify({ banks, payees, recentCheques }, null, 2)}
+Answer the user's question clearly based ONLY on this data.
+User question: "${query}"`;
+
+        const reply = await callAI(prompt);
+        
+        document.getElementById(loadingId).remove();
+        windowEl.innerHTML += `<div style="background:#fff;padding:10px;border-radius:8px;white-space:pre-wrap;max-width:85%;font-size:13px;">${esc(reply)}</div>`;
+        windowEl.scrollTop = windowEl.scrollHeight;
+      } catch (err) {
+        document.getElementById(loadingId).innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+      }
+    };
+  }
+
+  // Inject Chat Button if not exists
+  if (!document.getElementById('aiChatBtn')) {
+    const chatBtn = document.createElement('button');
+    chatBtn.id = 'aiChatBtn';
+    chatBtn.innerHTML = '💬';
+    chatBtn.title = 'Ask AI Assistant';
+    chatBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;font-size:24px;border:none;box-shadow:0 4px 12px rgba(124,58,237,.4);cursor:pointer;z-index:9000;transition:transform .2s';
+    chatBtn.onmouseover = () => chatBtn.style.transform = 'scale(1.1)';
+    chatBtn.onmouseout = () => chatBtn.style.transform = 'scale(1)';
+    chatBtn.onclick = openAIChat;
+    document.body.appendChild(chatBtn);
+  }
+
+  scriptLoaded('FINAL-FIX');
+})();
+</script>
 </body>
 </html>

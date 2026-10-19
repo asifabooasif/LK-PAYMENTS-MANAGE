@@ -14976,5 +14976,977 @@ ${rawText.slice(0, 15000)}`;
   scriptLoaded('AI-IMPORT-v6');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S12 PART 1 — DESKTOP SHELL & GLOBAL SEARCH
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] S12-PART1 loaded', 'color:#10b981;font-weight:bold');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. PWA MANIFEST INJECTION (Makes it installable)
+     ═══════════════════════════════════════════════════════════════════════ */
+  const manifest = {
+    name: 'Lanka Shoe — Cheque Manager',
+    short_name: 'Lanka Shoe',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#fafaff',
+    theme_color: '#7c3aed',
+    icons: [{
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%B3%3C/text%3E%3C/svg%3E",
+      sizes: '192x192',
+      type: 'image/svg+xml'
+    }]
+  };
+  
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const manifestUrl = URL.createObjectURL(manifestBlob);
+  
+  let manifestLink = document.querySelector('link[rel="manifest"]');
+  if (!manifestLink) {
+    manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    document.head.appendChild(manifestLink);
+  }
+  manifestLink.href = manifestUrl;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. GLOBAL SEARCH BAR (Top Navigation)
+     ═══════════════════════════════════════════════════════════════════════ */
+  function injectSearchBar() {
+    const topbar = document.querySelector('.topbar');
+    if (!topbar || document.getElementById('globalSearchWrap')) return;
+
+    // We insert it between the title and the actions
+    const titleWrap = topbar.firstElementChild;
+    const searchWrap = document.createElement('div');
+    searchWrap.id = 'globalSearchWrap';
+    searchWrap.style.cssText = 'flex:1;max-width:400px;margin:0 20px;position:relative;display:none;';
+    
+    // Only show on desktop
+    if (window.innerWidth > 840) searchWrap.style.display = 'block';
+
+    searchWrap.innerHTML = `
+      <div style="position:relative;">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-4);font-size:14px">🔍</span>
+        <input type="search" id="globalSearchInput" placeholder="Search cheques, payees, amounts..." autocomplete="off" style="width:100%;padding:8px 12px 8px 34px;border-radius:20px;border:1px solid var(--border);background:var(--surface-2);font-size:13px;outline:none;transition:all .2s;">
+      </div>
+      <div id="globalSearchResults" style="position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-top:6px;max-height:400px;overflow-y:auto;box-shadow:var(--shadow-lg);z-index:1000;display:none;"></div>
+    `;
+
+    topbar.insertBefore(searchWrap, topbar.lastElementChild);
+
+    const input = document.getElementById('globalSearchInput');
+    const results = document.getElementById('globalSearchResults');
+
+    input.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) { results.style.display = 'none'; return; }
+
+      let html = '';
+      let count = 0;
+
+      // Search Cheques
+      const cheques = arr(state.data.cheques).filter(c => 
+        (c.chequeNo || '').toLowerCase().includes(q) ||
+        (c.payeeName || '').toLowerCase().includes(q) ||
+        String(c.amount).includes(q)
+      ).slice(0, 5);
+
+      if (cheques.length) {
+        html += '<div style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;background:var(--surface-2)">Cheques</div>';
+        cheques.forEach(c => {
+          html += `<div data-action="cheque-open" data-id="${c.id}" style="padding:10px 12px;border-bottom:1px solid var(--border-2);cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+            <div><strong>#${esc(c.chequeNo)}</strong> — ${esc(c.payeeName)}</div>
+            <div style="font-size:12px;color:var(--text-3)">${money(c.amount)}</div>
+          </div>`;
+          count++;
+        });
+      }
+
+      // Search Payees
+      const payees = arr(state.data.payees).filter(p => 
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.phone || '').includes(q)
+      ).slice(0, 3);
+
+      if (payees.length) {
+        html += '<div style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;background:var(--surface-2)">Payees</div>';
+        payees.forEach(p => {
+          html += `<div data-action="payee-ledger" data-id="${p.id}" style="padding:10px 12px;border-bottom:1px solid var(--border-2);cursor:pointer;">
+            <div><strong>${esc(p.name)}</strong></div>
+            <div style="font-size:11px;color:var(--text-3)">${esc(p.type)}</div>
+          </div>`;
+          count++;
+        });
+      }
+
+      if (count === 0) {
+        html = '<div style="padding:20px;text-align:center;color:var(--text-4);font-size:12px;">No results found.</div>';
+      }
+
+      results.innerHTML = html;
+      results.style.display = 'block';
+    });
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#globalSearchWrap')) {
+        results.style.display = 'none';
+      }
+    });
+
+    // Close when clicking a result
+    results.addEventListener('click', () => {
+      input.value = '';
+      results.style.display = 'none';
+    });
+  }
+
+  // Inject search bar after render
+  const originalRenderApp = window.renderApp;
+  window.renderApp = function() {
+    originalRenderApp.apply(this, arguments);
+    injectSearchBar();
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. KEYBOARD SHORTCUTS
+     ═══════════════════════════════════════════════════════════════════════ */
+  document.addEventListener('keydown', (e) => {
+    // Alt + N = New Cheque
+    if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+      e.preventDefault();
+      if (window.openChequeForm) window.openChequeForm(null);
+    }
+    // Alt + P = Payees
+    if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      window.location.hash = '#/payees';
+    }
+    // Alt + S = Focus Search
+    if (e.altKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      const searchInput = document.getElementById('globalSearchInput');
+      if (searchInput) searchInput.focus();
+    }
+  });
+
+  scriptLoaded('S12-PART1');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S12 PART 2 — ADVANCED CHEQUE PRINTING ENGINE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] S12-PART2 loaded', 'color:#10b981;font-weight:bold');
+
+  const PRINT_SETTINGS_KEY = 'lankashoe_print_settings';
+
+  function getPrintSettings() {
+    try {
+      return JSON.parse(localStorage.getItem(PRINT_SETTINGS_KEY)) || {
+        bank: 'hnb', top: 0, left: 0, right: 0, crossed: true
+      };
+    } catch (e) {
+      return { bank: 'hnb', top: 0, left: 0, right: 0, crossed: true };
+    }
+  }
+
+  function savePrintSettings(s) {
+    localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify(s));
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. INJECT PRINT BUTTONS
+     ═══════════════════════════════════════════════════════════════════════ */
+  
+  // Add to Cheque Detail Modal
+  const origOpenChequeDetail = window.openChequeDetail;
+  if (origOpenChequeDetail) {
+    window.openChequeDetail = function (id) {
+      origOpenChequeDetail(id);
+      const modalFoot = document.querySelector('.modal-foot');
+      if (modalFoot) {
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn';
+        printBtn.innerHTML = '🖨️ Print';
+        printBtn.onclick = () => openPrintWizard(id);
+        modalFoot.insertBefore(printBtn, modalFoot.firstChild);
+      }
+    };
+  }
+
+  // Add to Cheques List
+  const origRenderCheques = REGISTRY.routes.cheques ? REGISTRY.routes.cheques.fn : null;
+  if (origRenderCheques) {
+    function renderChequesWithPrint() {
+      let html = origRenderCheques();
+      // Add a print icon next to the open button in the table
+      html = html.replace(
+        /<button class="btn xs" data-action="cheque-open" data-id="([^"]+)">Open<\/button>/g,
+        '<button class="btn xs" data-action="cheque-open" data-id="$1">Open</button> ' +
+        '<button class="btn xs" data-action="cheque-print" data-id="$1" title="Print Cheque">🖨️</button>'
+      );
+      return html;
+    }
+    __LS_addRoute('cheques', 'Cheques', renderChequesWithPrint);
+  }
+
+  __LS_registerAction('cheque-print', (ev, id) => {
+    ev.stopPropagation();
+    openPrintWizard(id);
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. PRINT WIZARD & CALIBRATION UI
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openPrintWizard(chequeId) {
+    const c = arr(state.data.cheques).find(x => x.id === chequeId);
+    if (!c) return;
+    const bank = bankObj(c.bankId);
+    let settings = getPrintSettings();
+
+    // Default to the cheque's bank if settings are generic
+    if (settings.bank === 'hnb' && bank && bank.bankName) {
+      const bn = bank.bankName.toLowerCase();
+      if (bn.includes('sampath')) settings.bank = 'sampath';
+      else if (bn.includes('commercial')) settings.bank = 'commercial';
+      else if (bn.includes('boc')) settings.bank = 'boc';
+      else if (bn.includes('nsb')) settings.bank = 'nsb';
+      else if (bn.includes('seylan')) settings.bank = 'seylan';
+    }
+
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <!-- Left: Controls -->
+        <div>
+          <div style="font-weight:600;margin-bottom:12px;font-size:14px">1. Select Bank Layout</div>
+          <select id="prBank" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px;background:var(--surface);">
+            <option value="hnb" ${settings.bank === 'hnb' ? 'selected' : ''}>HNB (Hatton National Bank)</option>
+            <option value="sampath" ${settings.bank === 'sampath' ? 'selected' : ''}>Sampath Bank</option>
+            <option value="commercial" ${settings.bank === 'commercial' ? 'selected' : ''}>Commercial Bank</option>
+            <option value="boc" ${settings.bank === 'boc' ? 'selected' : ''}>Bank of Ceylon (BOC)</option>
+            <option value="nsb" ${settings.bank === 'nsb' ? 'selected' : ''}>NSB (National Savings Bank)</option>
+            <option value="seylan" ${settings.bank === 'seylan' ? 'selected' : ''}>Seylan Bank</option>
+          </select>
+
+          <div style="font-weight:600;margin-bottom:12px;font-size:14px">2. Calibration (in mm)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+            <label class="field">Top Margin
+              <input type="number" id="prTop" value="${settings.top}" step="1">
+            </label>
+            <label class="field">Left Margin
+              <input type="number" id="prLeft" value="${settings.left}" step="1">
+            </label>
+            <label class="field">Right Margin
+              <input type="number" id="prRight" value="${settings.right}" step="1">
+            </label>
+          </div>
+
+          <div style="font-weight:600;margin-bottom:12px;font-size:14px">3. Options</div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;">
+            <input type="checkbox" id="prCrossed" ${settings.crossed ? 'checked' : ''}>
+            Print "A/C PAYEE ONLY" crossing lines
+          </label>
+          
+          <button class="btn primary" id="prSaveBtn" style="width:100%;margin-top:20px;padding:12px;">💾 Save Settings & Print</button>
+        </div>
+
+        <!-- Right: Visual Preview -->
+        <div style="background:var(--surface-2);padding:20px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Preview</div>
+          <div style="width:100%;aspect-ratio:8/3.5;background:#fff;border:1px solid #ccc;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:relative;overflow:hidden;" id="prPreviewBox">
+            <!-- Preview content injected via JS -->
+          </div>
+          <div style="font-size:11px;color:var(--text-4);margin-top:10px;text-align:center;">Place your physical cheque in the printer. Adjust margins if it misaligns.</div>
+        </div>
+      </div>
+    `;
+
+    openModal('🖨️ Print Cheque Setup', body, { width: 800, footer: '<button class="btn" data-close-modal>Cancel</button>' });
+
+    function updatePreview() {
+      const box = document.getElementById('prPreviewBox');
+      if (!box) return;
+      
+      const bankVal = document.getElementById('prBank').value;
+      const top = parseInt(document.getElementById('prTop').value) || 0;
+      const left = parseInt(document.getElementById('prLeft').value) || 0;
+      const right = parseInt(document.getElementById('prRight').value) || 0;
+      const crossed = document.getElementById('prCrossed').checked;
+
+      // Draw a mini representation
+      box.innerHTML = `
+        <div style="position:absolute;top:${20 + top}px;left:${20 + left}px;right:${20 + right}px;font-family:Courier;font-size:10px;line-height:1.4;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:bold;">${esc(bank ? bank.bankName : 'BANK')}</div>
+            <div>${dateFmt(c.chequeDate)}</div>
+          </div>
+          <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:2px;">PAY: <strong>${esc(c.payeeName)}</strong></div>
+          <div style="margin-bottom:8px;border-bottom:1px dashed #ccc;padding-bottom:2px;font-size:9px;">${esc(c.amountWords)}</div>
+          <div style="text-align:right;font-weight:bold;">Rs. ${num(c.amount).toFixed(2)}</div>
+          <div style="margin-top:20px;text-align:right;border-top:1px solid #000;width:80px;margin-left:auto;padding-top:2px;">Signature</div>
+        </div>
+        ${crossed ? '<div style="position:absolute;top:20px;left:20px;width:60px;height:30px;border-top:1px solid #000;border-left:1px solid #000;transform:skew(-30deg);"></div><div style="position:absolute;top:20px;left:20px;width:60px;height:30px;border-top:1px solid #000;border-left:1px solid #000;transform:skew(-30deg);margin-top:4px;"></div><div style="position:absolute;top:30px;left:25px;font-size:8px;font-family:Arial;transform:rotate(-45deg);">A/C PAYEE ONLY</div>' : ''}
+      `;
+    }
+
+    // Bind inputs to update preview live
+    ['prTop', 'prLeft', 'prRight'].forEach(id => {
+      document.getElementById(id).oninput = updatePreview;
+    });
+    document.getElementById('prCrossed').onchange = updatePreview;
+    document.getElementById('prBank').onchange = updatePreview;
+    updatePreview();
+
+    document.getElementById('prSaveBtn').onclick = () => {
+      const newSettings = {
+        bank: document.getElementById('prBank').value,
+        top: parseInt(document.getElementById('prTop').value) || 0,
+        left: parseInt(document.getElementById('prLeft').value) || 0,
+        right: parseInt(document.getElementById('prRight').value) || 0,
+        crossed: document.getElementById('prCrossed').checked
+      };
+      savePrintSettings(newSettings);
+      closeModal();
+      generatePrintWindow(c, bank, newSettings);
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. GENERATE PHYSICAL PRINT WINDOW
+     ═══════════════════════════════════════════════════════════════════════ */
+  function generatePrintWindow(c, bank, settings) {
+    const printWindow = window.open('', '_blank');
+    
+    // Base mm to px conversion (1mm ≈ 3.78px at 96 DPI)
+    const mm = (val) => val * 3.78;
+    
+    // Bank specific default offsets (approximate based on standard Sri Lankan cheque stock)
+    const bankOffsets = {
+      hnb:        { top: 45, left: 45, right: 45 },
+      sampath:    { top: 40, left: 50, right: 50 },
+      commercial: { top: 42, left: 42, right: 42 },
+      boc:        { top: 48, left: 45, right: 45 },
+      nsb:        { top: 40, left: 40, right: 40 },
+      seylan:     { top: 45, left: 45, right: 45 }
+    };
+    
+    const base = bankOffsets[settings.bank] || { top: 45, left: 45, right: 45 };
+    const topMargin = base.top + settings.top;
+    const leftMargin = base.left + settings.left;
+    const rightMargin = base.right + settings.right;
+
+    printWindow.document.write(`
+      <html>
+      <head>
+        <title>Print Cheque - ${c.chequeNo}</title>
+        <style>
+          @page { size: auto; margin: 0; }
+          body { font-family: 'Courier New', Courier, monospace; margin: 0; padding: 0; background: #f0f0f0; }
+          
+          .cheque-wrapper {
+            width: 200mm;
+            height: 90mm;
+            background: #fff;
+            margin: 20mm auto;
+            position: relative;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+          }
+
+          .print-content {
+            position: absolute;
+            top: ${mm(topMargin)}px;
+            left: ${mm(leftMargin)}px;
+            right: ${mm(rightMargin)}px;
+            font-size: 12px;
+            line-height: 1.6;
+          }
+
+          /* Layout Grid */
+          .row { display: flex; justify-content: space-between; margin-bottom: 12px; }
+          .payee-line { display: flex; margin-bottom: 12px; align-items: baseline; }
+          .payee-line span { flex: 1; border-bottom: 1px solid transparent; padding-left: 8px; font-family: Arial, sans-serif; font-size: 14px; }
+          
+          .amount-words { font-family: Arial, sans-serif; font-size: 12px; margin-bottom: 20px; padding-bottom: 2px; }
+          
+          .amount-figures {
+            border: 1.5px solid #000;
+            padding: 4px 8px;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            font-weight: bold;
+            display: inline-block;
+            float: right;
+            margin-top: -30px;
+            min-width: 120px;
+            text-align: right;
+          }
+
+          .signature-line {
+            border-top: 1px solid #000;
+            width: 100px;
+            text-align: center;
+            font-size: 10px;
+            margin-top: 40px;
+            float: right;
+            padding-top: 2px;
+          }
+
+          /* MICR Line */
+          .micr-line {
+            position: absolute;
+            bottom: 3mm;
+            left: ${mm(leftMargin)}px;
+            right: ${mm(rightMargin)}px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+          }
+
+          /* Crossing */
+          .crossing {
+            position: absolute;
+            top: 8mm;
+            left: 8mm;
+            width: 50px;
+            height: 25px;
+          }
+          .crossing-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: #000;
+            transform: rotate(-25deg);
+          }
+          .crossing-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-25deg);
+            font-family: Arial, sans-serif;
+            font-size: 7px;
+            font-weight: bold;
+            background: #fff;
+            padding: 0 2px;
+            white-space: nowrap;
+          }
+
+          @media print {
+            body { background: #fff; }
+            .cheque-wrapper { margin: 0; box-shadow: none; border: none; }
+            .no-print { display: none; }
+            .crossing, .signature-line, .amount-figures { border-color: #000; }
+          }
+        </style>
+      </head>
+      <body>
+        
+        <div class="cheque-wrapper">
+          
+          ${settings.crossed ? `
+          <div class="crossing">
+            <div class="crossing-line" style="top:6px;"></div>
+            <div class="crossing-line" style="top:16px;"></div>
+            <div class="crossing-text">A/C PAYEE ONLY</div>
+          </div>
+          ` : ''}
+
+          <div class="print-content">
+            <div class="row">
+              <div style="font-family: Arial; font-weight: bold; font-size: 14px;">
+                ${esc(bank ? bank.bankName : '')}
+                <div style="font-size: 10px; font-weight: normal; color: #333;">${esc(bank ? bank.branch : '')}</div>
+              </div>
+              <div style="font-family: Arial; font-size: 14px; font-weight: bold; margin-top: 5px;">
+                ${dateFmt(c.chequeDate)}
+              </div>
+            </div>
+
+            <div class="payee-line">
+              <span style="font-family: Arial; font-size: 12px; width: 120px;">PAY TO THE ORDER OF</span>
+              <span><strong>${esc(c.payeeName)}</strong></span>
+            </div>
+
+            <div class="amount-words">
+              <span style="font-size: 10px; color: #666;">RUPEES</span>
+              <strong>${esc(c.amountWords.replace(/Rupees|Only/gi, '').trim())}</strong>
+            </div>
+
+            <div class="amount-figures">
+              Rs. ${num(c.amount).toLocaleString('en-LK', {minimumFractionDigits: 2})}
+            </div>
+
+            <div class="signature-line">
+              Authorized Signature
+            </div>
+
+            <div style="clear: both;"></div>
+            
+            <div style="font-family: Arial; font-size: 12px; margin-top: 20px; color: #333;">
+              A/C: <strong>${esc(bank ? bank.accountNo : '')}</strong>
+            </div>
+          </div>
+
+          <div class="micr-line">
+            <div>⑈${c.chequeNo || '000000'}⑈</div>
+            <div>⑆${(bank && bank.accountNo ? bank.accountNo : '000000000').slice(-10)}⑆</div>
+            <div>⑈7083⑈</div>
+          </div>
+
+        </div>
+
+        <div class="no-print" style="text-align: center; margin-top: 30px;">
+          <button onclick="window.print()" style="padding: 12px 30px; font-size: 16px; cursor: pointer; background: #7c3aed; color: #fff; border: none; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 12px rgba(124,58,237,.3);">🖨️ PRINT NOW</button>
+          <p style="font-family: sans-serif; color: #666; font-size: 13px; margin-top: 10px;">Ensure your physical cheque is loaded correctly.</p>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  }
+
+  scriptLoaded('S12-PART2');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S12 PART 3 — AI BULK IMPORT & SUPPLIER LEDGERS
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] S12-PART3 loaded', 'color:#10b981;font-weight:bold');
+
+  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. PAYEE LEDGERS
+     ═══════════════════════════════════════════════════════════════════════ */
+  
+  // Patch the Payees page to add a Ledger button
+  const origRenderPayees = REGISTRY.routes.payees ? REGISTRY.routes.payees.fn : null;
+  if (origRenderPayees) {
+    function renderPayeesWithLedger() {
+      let html = origRenderPayees();
+      // Add the Ledger button right before the Edit button
+      html = html.replace(
+        /<button class="btn xs" data-action="payee-edit" data-id="([^"]+)">Edit<\/button>/g,
+        '<button class="btn xs primary" data-action="payee-ledger" data-id="$1">Ledger</button> ' +
+        '<button class="btn xs" data-action="payee-edit" data-id="$1">Edit</button>'
+      );
+      return html;
+    }
+    __LS_addRoute('payees', 'Payees', renderPayeesWithLedger);
+  }
+
+  __LS_registerAction('payee-ledger', (ev, id) => {
+    ev.stopPropagation();
+    const p = payeeObj(id);
+    if (!p) return;
+
+    // Get all cleared or approved cheques for this payee
+    const cheques = arr(state.data.cheques)
+      .filter(c => c.payeeId === id && ['cleared', 'approved'].includes(c.status))
+      .sort((a, b) => String(a.chequeDate).localeCompare(String(b.chequeDate)));
+
+    const totalPaid = cheques.reduce((s, c) => s + num(c.amount), 0);
+
+    const rows = cheques.map(c =>
+      '<tr>' +
+        '<td>' + dateFmt(c.chequeDate) + '</td>' +
+        '<td class="mono">' + esc(c.chequeNo) + '</td>' +
+        '<td>' + esc(bankName(c.bankId)) + '</td>' +
+        '<td>' + chequeStatusBadge(c.status) + '</td>' +
+        '<td class="num">' + money(c.amount) + '</td>' +
+      '</tr>'
+    ).join('');
+
+    const body =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">' +
+        '<div>' +
+          '<div style="font-size:20px;font-weight:700">' + esc(p.name) + '</div>' +
+          '<div class="muted small" style="margin-top:4px">' + esc(p.phone || 'No phone') + ' · ' + esc(p.email || 'No email') + '</div>' +
+          '<div style="margin-top:8px">' + payeeTypeBadge(p.type) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<div class="k-label">Total Paid</div>' +
+          '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + money(totalPaid) + '</div>' +
+          '<div class="small muted" style="margin-top:4px">' + cheques.length + ' cheque(s)</div>' +
+        '</div>' +
+      '</div>' +
+      (cheques.length
+        ? '<div class="table-wrap" style="max-height:400px;overflow:auto"><table>' +
+            '<thead><tr><th>Date</th><th>Cheque #</th><th>Bank</th><th>Status</th><th class="num">Amount</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table></div>'
+        : '<div class="empty">No cleared or approved cheques for this payee yet.</div>');
+
+    openModal('📒 Ledger: ' + esc(p.name), body, {
+      width: 800,
+      footer: '<button class="btn" onclick="window.print()">🖨️ Print Ledger</button><button class="btn primary" data-close-modal>Close</button>'
+    });
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. BULK IMPORT (AI-POWERED)
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  // Add buttons to the UI
+  const origRenderCheques2 = REGISTRY.routes.cheques ? REGISTRY.routes.cheques.fn : null;
+  if (origRenderCheques2) {
+    const prev = REGISTRY.routes.cheques.fn;
+    __LS_addRoute('cheques', 'Cheques', function() {
+      let html = prev();
+      html = html.replace(
+        '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>',
+        '<div style="display:flex;gap:6px">' +
+          '<button class="btn" data-action="bulk-cheque-import">🧠 AI Import</button>' +
+          '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>' +
+        '</div>'
+      );
+      return html;
+    });
+  }
+
+  __LS_registerAction('bulk-cheque-import', () => openAIBulkImportDialog('cheques'));
+  __LS_registerAction('bulk-payee-import', () => openAIBulkImportDialog('payees'));
+
+  function openAIBulkImportDialog(type) {
+    const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
+    const title = type === 'cheques' ? 'Historical Cheques' : 'Payees';
+
+    const body = `
+      <div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">
+        <strong>🧠 AI Bulk Import (${title})</strong> — Upload your Excel or CSV file. The AI will extract the data and save it to the system.
+      </div>
+      
+      <label class="field" style="margin-bottom:14px">Gemini API Key
+        <input type="password" id="bulkKey" value="${esc(savedKey)}" placeholder="sk-...">
+      </label>
+      
+      <div class="field" style="margin-bottom:14px">File (.csv, .xlsx)
+        <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);">
+      </div>
+
+      ${type === 'cheques' ? `
+      <div style="background:var(--surface-2);padding:12px;border-radius:8px;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="bulkOld" checked style="width:16px;height:16px;">
+          <strong>These are old/historical cheques</strong>
+        </label>
+        <div class="small muted" style="margin-top:4px;margin-left:24px;">
+          If checked, these cheques will NOT deduct from your current bank balance (prevents your balance from going negative). They will just show as "Cleared" history.
+        </div>
+      </div>
+      ` : ''}
+
+      <div id="bulkStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px;">Processing...</div>
+      <div id="bulkPreview" style="display:none;max-height:200px;overflow:auto;"></div>
+    `;
+
+    openModal('🧠 AI Bulk Import: ' + title, body, {
+      width: 700,
+      footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="bulkSaveBtn" disabled>Import Data</button>'
+    });
+
+    let parsedData = null;
+
+    document.getElementById('bulkFile').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const apiKey = document.getElementById('bulkKey').value.trim();
+      if (!apiKey) { toast('Please enter API Key', 'error'); return; }
+      localStorage.setItem(API_KEY_STORAGE, apiKey);
+
+      const statusBox = document.getElementById('bulkStatus');
+      statusBox.style.display = 'block';
+      statusBox.innerHTML = 'Reading file...';
+
+      try {
+        let rawText = await file.text();
+        if (file.name.toLowerCase().endsWith('.xlsx')) {
+          statusBox.innerHTML = 'Extracting Excel data...';
+          // Using the extractor from S11
+          rawText = await window.extractTextFromXLSX(file); 
+        }
+
+        statusBox.innerHTML = 'Sending to Gemini AI...';
+        
+        let prompt = '';
+        if (type === 'cheques') {
+          prompt = `You are a data parser. Extract the historical cheque data from this text.
+Return ONLY a JSON array. Each object must have:
+- "date": "YYYY-MM-DD"
+- "chequeNo": string
+- "payeeName": string
+- "amount": number
+- "bankName": string (infer from text if possible)
+Text: ${rawText.slice(0, 15000)}`;
+        } else {
+          prompt = `You are a data parser. Extract contact info from this text.
+Return ONLY a JSON array. Each object must have:
+- "name": string
+- "phone": string
+- "email": string
+- "type": string (supplier, customer, employee, other)
+Text: ${rawText.slice(0, 15000)}`;
+        }
+
+        const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: 'gemini-3.8-flash',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.1
+          })
+        });
+
+        const data = await resp.json();
+        let aiText = data.choices[0].message.content.trim();
+        if (aiText.startsWith('```json')) aiText = aiText.replace(/^```json/, '').replace(/```$/, '').trim();
+        
+        // Extract array
+        const match = aiText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (match) aiText = match[0];
+
+        parsedData = JSON.parse(aiText);
+        statusBox.style.display = 'none';
+
+        // Preview
+        document.getElementById('bulkPreview').style.display = 'block';
+        if (type === 'cheques') {
+          document.getElementById('bulkPreview').innerHTML = 
+            '<table style="width:100%;font-size:12px;text-align:left;">' +
+              '<thead><tr><th>Date</th><th>Cheque #</th><th>Payee</th><th>Amount</th></tr></thead>' +
+              '<tbody>' + parsedData.map(c => `<tr><td>${c.date}</td><td>${c.chequeNo}</td><td>${c.payeeName}</td><td>${c.amount}</td></tr>`).join('') + '</tbody>' +
+            '</table>';
+        } else {
+          document.getElementById('bulkPreview').innerHTML = 
+            '<table style="width:100%;font-size:12px;text-align:left;">' +
+              '<thead><tr><th>Type</th><th>Name</th><th>Phone</th></tr></thead>' +
+              '<tbody>' + parsedData.map(p => `<tr><td>${p.type}</td><td>${p.name}</td><td>${p.phone}</td></tr>`).join('') + '</tbody>' +
+            '</table>';
+        }
+
+        document.getElementById('bulkSaveBtn').disabled = false;
+
+      } catch (err) {
+        statusBox.innerHTML = '<span style="color:red">Error: ' + err.message + '</span>';
+      }
+    };
+
+    document.getElementById('bulkSaveBtn').onclick = () => {
+      if (!parsedData) return;
+      let count = 0;
+
+      if (type === 'payees') {
+        parsedData.forEach(p => {
+          if (!p.name) return;
+          const created = makePayee({ type: p.type || 'supplier', name: p.name, phone: p.phone || '', email: p.email || '' });
+          state.data.payees.push(created);
+          markDirty('payees', created.id);
+          count++;
+        });
+      } else if (type === 'cheques') {
+        const isOld = document.getElementById('bulkOld').checked;
+        const defaultBankId = arr(state.data.banks)[0]?.id || '';
+
+        parsedData.forEach(c => {
+          if (!c.chequeNo) return;
+          
+          // Try to match payee by name, create if not exists
+          let payeeId = null;
+          let payeeName = c.payeeName || 'Unknown Payee';
+          if (payeeName) {
+            let p = arr(state.data.payees).find(x => x.name.toLowerCase() === payeeName.toLowerCase());
+            if (!p) {
+              p = makePayee({ type: 'supplier', name: payeeName });
+              state.data.payees.push(p);
+              markDirty('payees', p.id);
+            }
+            payeeId = p.id;
+          }
+
+          // Create Cheque
+          const chq = makeCheque({
+            chequeNo: c.chequeNo,
+            bankId: defaultBankId, // Needs manual adjustment by user later
+            payeeId: payeeId,
+            payeeName: payeeName,
+            amount: num(c.amount),
+            chequeDate: c.date || today(),
+            writtenDate: c.date || today(),
+            status: 'cleared', // Import as cleared
+            memo: 'Historical Import',
+            // If isOld is checked, we set a flag so the bank balance doesn't double-deduct
+            historical: isOld 
+          });
+          
+          state.data.cheques.push(chq);
+          markDirty('cheques', chq.id);
+          count++;
+        });
+      }
+
+      closeModal();
+      toast('Imported ' + count + ' records successfully', 'success');
+      renderApp();
+    };
+  }
+
+  scriptLoaded('S12-PART3');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S12 PART 4 — AI CHAT ASSISTANT
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] S12-PART4 loaded', 'color:#10b981;font-weight:bold');
+
+  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     1. INJECT FLOATING CHAT BUTTON
+     ═══════════════════════════════════════════════════════════════════════ */
+  const chatBtn = document.createElement('button');
+  chatBtn.innerHTML = '💬';
+  chatBtn.title = 'Ask AI Assistant';
+  chatBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;font-size:24px;border:none;box-shadow:0 4px 12px rgba(124,58,237,.4);cursor:pointer;z-index:9000;transition:transform .2s';
+  chatBtn.onmouseover = () => chatBtn.style.transform = 'scale(1.1)';
+  chatBtn.onmouseout = () => chatBtn.style.transform = 'scale(1)';
+  chatBtn.onclick = openAIChat;
+  document.body.appendChild(chatBtn);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. CHAT DIALOG
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openAIChat() {
+    const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
+
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px;">
+        <input type="password" id="chatKey" value="${esc(savedKey)}" placeholder="Gemini API Key (sk-...)" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface-2);">
+        <button class="btn primary" id="chatKeySave" style="padding:8px 12px;">Save</button>
+      </div>
+      
+      <div id="chatWindow" style="height:320px;overflow-y:auto;background:var(--surface-2);border-radius:8px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;">
+        <div style="background:#fff;padding:10px;border-radius:8px;border-bottom-left-radius:0;box-shadow:0 1px 2px rgba(0,0,0,.05);font-size:13px;">
+          Hello! I am your AI assistant. Ask me things like:<br>
+          • "What is my current bank balance?"<br>
+          • "How much did I pay [Supplier] this year?"<br>
+          • "Are there any pending cheques?"
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;">
+        <input type="text" id="chatInput" placeholder="Type your question..." style="padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+        <button class="btn primary" id="chatSend" style="padding:10px 16px;">Send</button>
+      </div>
+    `;
+
+    openModal('💬 AI Assistant', body, { width: 500 });
+
+    // Wire up events
+    document.getElementById('chatKeySave').onclick = () => {
+      const k = document.getElementById('chatKey').value.trim();
+      localStorage.setItem(API_KEY_STORAGE, k);
+      toast('API Key saved', 'success');
+    };
+
+    document.getElementById('chatSend').onclick = sendChatMessage;
+    document.getElementById('chatInput').onkeydown = (e) => { 
+      if (e.key === 'Enter') sendChatMessage(); 
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. SEND MESSAGE TO GEMINI
+     ═══════════════════════════════════════════════════════════════════════ */
+  async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const windowEl = document.getElementById('chatWindow');
+    const query = input.value.trim();
+    if (!query) return;
+    
+    const apiKey = localStorage.getItem(API_KEY_STORAGE);
+    if (!apiKey) { toast('Please save your Gemini API key first', 'error'); return; }
+
+    // Append User Message
+    input.value = '';
+    windowEl.innerHTML += `<div style="background:var(--accent);color:#fff;padding:10px;border-radius:8px;border-bottom-right-radius:0;align-self:flex-end;max-width:85%;font-size:13px;">${esc(query)}</div>`;
+    windowEl.scrollTop = windowEl.scrollHeight;
+
+    // Append Loading
+    const loadingId = 'load-' + Date.now();
+    windowEl.innerHTML += `<div id="${loadingId}" style="background:#fff;padding:10px;border-radius:8px;color:var(--text-3);font-style:italic;font-size:13px;">Thinking...</div>`;
+    windowEl.scrollTop = windowEl.scrollHeight;
+
+    try {
+      // 1. Build the Context (Snapshot of the database)
+      const banks = arr(state.data.banks).map(b => {
+        const bal = bankBalances(b.id);
+        return { name: b.name, bank: bal.bank, book: bal.book };
+      });
+
+      const payees = arr(state.data.payees).map(p => ({
+        name: p.name, type: p.type, totalPaid: p.totalPaid, chequeCount: p.chequeCount
+      }));
+
+      const recentCheques = arr(state.data.cheques).slice(-30).map(c => ({
+        no: c.chequeNo, payee: c.payeeName, amount: c.amount, status: c.status, date: c.chequeDate
+      }));
+
+      const contextStr = JSON.stringify({ banks, payees, recentCheques }, null, 2);
+
+      // 2. Build Prompt
+      const prompt = `You are a helpful AI assistant for a cheque management system.
+Here is the live financial snapshot of the database:
+${contextStr}
+
+Answer the user's question clearly and concisely based ONLY on this data.
+If they ask for a total, do the math. If the answer isn't in the data, say so.
+User question: "${query}"`;
+
+      // 3. Call Gemini API
+      const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gemini-3.8-flash',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1
+        })
+      });
+
+      if (!resp.ok) throw new Error('API Error');
+      
+      const data = await resp.json();
+      const reply = data.choices[0].message.content.trim();
+
+      // 4. Render Reply
+      document.getElementById(loadingId).remove();
+      windowEl.innerHTML += `<div style="background:#fff;padding:10px;border-radius:8px;border-bottom-left-radius:0;box-shadow:0 1px 2px rgba(0,0,0,.05);white-space:pre-wrap;max-width:85%;font-size:13px;">${esc(reply)}</div>`;
+      windowEl.scrollTop = windowEl.scrollHeight;
+
+    } catch (err) {
+      document.getElementById(loadingId).innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+    }
+  }
+
+  scriptLoaded('S12-PART4');
+})();
+</script>
 </body>
 </html>

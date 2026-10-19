@@ -15949,21 +15949,68 @@ User question: "${query}"`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     S12 THE ABSOLUTE FINAL FIX (Nuclear Override)
-     Replaces Settings, Import, Print, and Chat completely.
+     S12 ABSOLUTE FINAL FIX — Correct Import Status, Real Print, Delete All
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] S12-NUCLEAR loaded', 'color:#10b981;font-weight:bold');
+  console.log('%c[script] S12-ABSOLUTE-FIX loaded', 'color:#10b981;font-weight:bold');
 
   const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
   const AI_PROVIDER_KEY = 'lankashoe_ai_provider';
   const PRINT_SETTINGS_KEY = 'lankashoe_print_settings';
 
   /* ═══════════════════════════════════════════════════════════════════════
-     1. GLOBAL AI CONFIGURATION
+     PART 1: THE SETTINGS PAGE (Fix missing AI settings)
      ═══════════════════════════════════════════════════════════════════════ */
+  const origRenderSettings = REGISTRY.routes.settings ? REGISTRY.routes.settings.fn : null;
+  if (origRenderSettings) {
+    __LS_addRoute('settings', 'Settings', function() {
+      let html = origRenderSettings();
+      const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
+      const savedProvider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
+
+      const aiSettings = `
+        <div class="card" style="border: 2px solid var(--accent);">
+          <div class="card-head"><h3>🧠 AI Assistant Settings</h3></div>
+          <div class="small muted" style="margin-bottom:14px;">Paste your Gemini API key here. This powers the AI Chat, Bulk Import, and Statement Reconciliation.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <label class="field">AI Provider
+              <select id="setAiProvider">
+                <option value="gemini" ${savedProvider === 'gemini' ? 'selected' : ''}>Google Gemini (Free)</option>
+                <option value="deepseek" ${savedProvider === 'deepseek' ? 'selected' : ''}>DeepSeek (Paid)</option>
+              </select>
+            </label>
+            <label class="field">API Key
+              <input type="password" id="setAiKey" value="${esc(savedKey)}" placeholder="Paste your API key...">
+            </label>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+            <button class="btn primary" id="setAiSaveBtn">Save AI Settings</button>
+          </div>
+        </div>
+      `;
+
+      // Force inject right after Business Profile
+      html = html.replace('<!-- END BUSINESS PROFILE -->', '<!-- END BUSINESS PROFILE -->' + aiSettings);
+      return html;
+    });
+  }
+
+  // Bind the Save Button
+  const prevBind = window.bindView;
+  window.bindView = function() {
+    if (prevBind) prevBind();
+    const saveBtn = document.getElementById('setAiSaveBtn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        localStorage.setItem(API_KEY_STORAGE, document.getElementById('setAiKey').value.trim());
+        localStorage.setItem(AI_PROVIDER_KEY, document.getElementById('setAiProvider').value);
+        toast('AI Settings Saved', 'success');
+      };
+    }
+  };
+
   async function callAI(prompt) {
     const key = localStorage.getItem(API_KEY_STORAGE);
     const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
@@ -15994,141 +16041,27 @@ User question: "${query}"`;
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
-     2. NUCLEAR OVERRIDE: THE SETTINGS PAGE
-     ═══════════════════════════════════════════════════════════════════════ */
-  __LS_addRoute('settings', 'Settings', function() {
-    const s = state.settings || defaultSettings();
-    const b = s.business || {};
-    const c = s.currency || {};
-    const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
-    const savedProvider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
-
-    return `
-      <div class="card">
-        <div class="card-head"><h3>⚙️ Business Profile</h3></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          ${field('Business Name', 'setName', b.name || '')}
-          ${field('Phone', 'setPhone', b.phone || '')}
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-          ${field('Email', 'setEmail', b.email || '', { type: 'email' })}
-          ${field('Currency Symbol', 'setSymbol', c.symbol || 'Rs.')}
-        </div>
-        <div style="margin-top:14px">
-          ${field('Address', 'setAddress', b.address || '', { type: 'textarea' })}
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
-          <button class="btn primary" id="saveSettingsBtn">Save Settings</button>
-        </div>
-      </div>
-
-      <!-- 🧠 NEW AI SETTINGS CARD -->
-      <div class="card" style="border: 2px solid var(--accent); background: var(--accent-soft);">
-        <div class="card-head"><h3>🧠 AI Assistant Settings</h3></div>
-        <div class="small muted" style="margin-bottom:14px">Configure your AI provider here. This powers the Chat Assistant, Bulk Import, and Reconciliation.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <label class="field">AI Provider
-            <select id="setAiProvider">
-              <option value="gemini" ${savedProvider === 'gemini' ? 'selected' : ''}>Google Gemini (Free)</option>
-              <option value="deepseek" ${savedProvider === 'deepseek' ? 'selected' : ''}>DeepSeek (Paid)</option>
-            </select>
-          </label>
-          <label class="field">API Key
-            <input type="password" id="setAiKey" value="${esc(savedKey)}" placeholder="Paste your API key here...">
-          </label>
-        </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:14px">
-          <button class="btn primary" id="setAiSaveBtn">Save AI Settings</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h3>🔧 Session</h3></div>
-        <div style="font-size:13px;line-height:1.9;color:var(--text-2)">
-          <div><strong>Signed in as:</strong> ${esc(state.user?.email || '—')}</div>
-          <div><strong>Role:</strong> ${esc(state.role)}</div>
-          <div><strong>Last pull:</strong> ${state.sync.lastPull ? dateTimeFmt(state.sync.lastPull) : '—'}</div>
-          <div><strong>Last push:</strong> ${state.sync.lastPush ? dateTimeFmt(state.sync.lastPush) : '—'}</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h3>🧪 Danger Zone</h3></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn" id="hardRefreshBtn">Hard refresh from cloud</button>
-        </div>
-      </div>
-    `;
-  });
-
-  // Bind the AI Settings save button and normal settings
-  const prevBind = window.bindView;
-  window.bindView = function() {
-    if (prevBind) prevBind();
-    
-    // Save normal settings
-    const saveBtn = document.getElementById('saveSettingsBtn');
-    if (saveBtn) {
-      saveBtn.onclick = () => {
-        const s = state.settings = state.settings || defaultSettings();
-        s.business = s.business || {};
-        s.business.name = document.getElementById('setName').value.trim() || 'Lanka Shoe';
-        s.business.phone = document.getElementById('setPhone').value.trim();
-        s.business.email = document.getElementById('setEmail').value.trim();
-        s.business.address = document.getElementById('setAddress').value.trim();
-        s.currency = s.currency || {};
-        s.currency.symbol = document.getElementById('setSymbol').value.trim() || 'Rs.';
-        s.updatedAt = nowISO();
-        saveSettings();
-        applySettings();
-        toast('Settings saved', 'success');
-      };
-    }
-
-    // Save AI settings
-    const setAiSaveBtn = document.getElementById('setAiSaveBtn');
-    if (setAiSaveBtn) {
-      setAiSaveBtn.onclick = () => {
-        localStorage.setItem(API_KEY_STORAGE, document.getElementById('setAiKey').value.trim());
-        localStorage.setItem(AI_PROVIDER_KEY, document.getElementById('setAiProvider').value);
-        toast('AI Settings Saved', 'success');
-      };
-    }
-
-    // Hard refresh
-    const hrBtn = document.getElementById('hardRefreshBtn');
-    if (hrBtn) {
-      hrBtn.onclick = async () => {
-        hrBtn.disabled = true; hrBtn.textContent = 'Pulling…';
-        try {
-          await loadSettings();
-          await sync.pull();
-          applySettings();
-          renderApp();
-          toast('Reloaded from cloud', 'success');
-        } catch (e) { toast('Failed: ' + e.message, 'error'); }
-        finally { hrBtn.disabled = false; hrBtn.textContent = 'Hard refresh from cloud'; }
-      };
-    }
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. NUCLEAR OVERRIDE: BULK IMPORT (Bypasses previous errors)
+     PART 2: FIXED IMPORT WITH EXPLICIT STATUS SELECTION
      ═══════════════════════════════════════════════════════════════════════ */
   __LS_registerAction('bulk-cheque-import', () => {
     const body = `
       <div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">
-        <strong>🧠 AI Bulk Import</strong> — Upload your Excel/CSV. The AI will extract the cheques.
+        <strong>🧠 AI Bulk Import</strong> — Upload your Excel/CSV. You MUST specify the status below to prevent balance corruption.
       </div>
+      
       <div class="field" style="margin-bottom:14px">File (.csv, .xlsx)
         <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);">
       </div>
+
       <div style="background:var(--surface-2);padding:12px;border-radius:8px;margin-bottom:14px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
-          <input type="checkbox" id="bulkOld" checked style="width:16px;height:16px;">
-          <strong>These are old/historical cheques</strong> (Will not deduct from current bank balance)
-        </label>
+        <label class="field" style="margin-bottom:8px;">What is the status of these cheques?</label>
+        <select id="bulkStatusSelect" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);">
+          <option value="cleared">🔴 Old / Cleared (Deducts from Bank Balance immediately)</option>
+          <option value="scheduled">🟢 Future / Scheduled (Will NOT affect balance today)</option>
+          <option value="pending_approval">🟡 Today / Pending (Waiting for approval)</option>
+        </select>
       </div>
+
       <div id="bulkStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px;">Processing...</div>
       <div id="bulkPreview" style="display:none;max-height:200px;overflow:auto;"></div>
     `;
@@ -16148,78 +16081,23 @@ User question: "${query}"`;
       statusBox.innerHTML = 'Reading file...';
 
       try {
-        // Read as text (works for CSV natively, works for XLSX if using our unzip fallback)
         let rawText = await file.text();
-        
-        // If it's an XLSX, we use the native unzip method
         if (file.name.toLowerCase().endsWith('.xlsx')) {
-           statusBox.innerHTML = 'Extracting Excel data...';
-           const buffer = await file.arrayBuffer();
-           const view = new DataView(buffer);
-           let eocdOffset = -1;
-           for (let i = buffer.byteLength - 22; i >= 0; i--) { if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; } }
-           if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
-           const cdOffset = view.getUint32(eocdOffset + 16, true);
-           const numEntries = view.getUint16(eocdOffset + 10, true);
-           let offset = cdOffset;
-           const files = {};
-           for (let i = 0; i < numEntries; i++) {
-             if (view.getUint32(offset, true) !== 0x02014b50) break;
-             const compMethod = view.getUint16(offset + 10, true);
-             const compSize = view.getUint32(offset + 20, true);
-             const fnLen = view.getUint16(offset + 28, true);
-             const extraLen = view.getUint16(offset + 30, true);
-             const commentLen = view.getUint16(offset + 32, true);
-             const lhOffset = view.getUint32(offset + 42, true);
-             const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
-             files[new TextDecoder().decode(fnBytes)] = { compMethod, compSize, lhOffset };
-             offset += 46 + fnLen + extraLen + commentLen;
-           }
-           const extract = async (name) => {
-             const f = files[name]; if (!f) return null;
-             const dataStart = f.lhOffset + 30 + view.getUint16(f.lhOffset + 26, true) + view.getUint16(f.lhOffset + 28, true);
-             const compData = new Uint8Array(buffer, dataStart, f.compSize);
-             if (f.compMethod === 0) return new TextDecoder().decode(compData);
-             const ds = new DecompressionStream('deflate-raw');
-             return await new Response(new Blob([compData]).stream().pipeThrough(ds)).text();
-           };
-           const sheetXml = await extract('xl/worksheets/sheet1.xml');
-           const sharedXml = await extract('xl/sharedStrings.xml');
-           const strings = [];
-           if (sharedXml) {
-             const sDoc = new DOMParser().parseFromString(sharedXml, 'text/xml');
-             const siNodes = sDoc.getElementsByTagName('si');
-             for (let i = 0; i < siNodes.length; i++) {
-                let t = ''; const tNodes = siNodes[i].getElementsByTagName('t');
-                for (let j = 0; j < tNodes.length; j++) t += tNodes[j].textContent;
-                strings.push(t);
-             }
-           }
-           if (!sheetXml) throw new Error("Could not read sheet1.xml");
-           const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
-           const rowNodes = sDoc.getElementsByTagName('row');
-           let text = '';
-           for (let i = 0; i < rowNodes.length; i++) {
-             const cNodes = rowNodes[i].getElementsByTagName('c');
-             const rowData = [];
-             for (let j = 0; j < cNodes.length; j++) {
-               const c = cNodes[j];
-               const type = c.getAttribute('t');
-               const vNode = c.getElementsByTagName('v')[0];
-               const isNode = c.getElementsByTagName('is')[0];
-               let val = '';
-               if (type === 's' && vNode) val = strings[parseInt(vNode.textContent, 10)] || '';
-               else if (type === 'inlineStr' && isNode) val = isNode.getElementsByTagName('t')[0]?.textContent || '';
-               else if (vNode) val = vNode.textContent;
-               rowData.push(val);
-             }
-             if (rowData.some(c => c !== '')) text += rowData.join(' | ') + '\n';
-           }
-           rawText = text;
+          statusBox.innerHTML = 'Extracting Excel data...';
+          rawText = await extractTextFromXLSX(file);
         }
 
-        statusBox.innerHTML = 'Sending to Gemini AI...';
-        const prompt = `You are a data parser. Extract historical cheque data from this text. Return ONLY a JSON array. Each object: { "date": "YYYY-MM-DD", "chequeNo": string, "payeeName": string, "amount": number, "bankName": string }\nText:\n${rawText.slice(0, 15000)}`;
+        statusBox.innerHTML = 'Sending to AI...';
+        const prompt = `You are a data parser. Extract cheque data from the text below.
+Return ONLY a JSON array. Each object must have:
+- "date": "YYYY-MM-DD" (CRITICAL: Read the date carefully. Convert DD/MM/YYYY to YYYY-MM-DD. If missing, use "${today()}")
+- "chequeNo": string
+- "payeeName": string
+- "amount": number
+- "bankName": string (infer from text if possible)
+
+Text:
+${rawText.slice(0, 15000)}`;
         
         const aiText = await callAI(prompt);
         let cleanText = aiText;
@@ -16243,12 +16121,13 @@ User question: "${query}"`;
 
     document.getElementById('bulkSaveBtn').onclick = () => {
       if (!parsedData) return;
-      const isOld = document.getElementById('bulkOld').checked;
+      const statusToApply = document.getElementById('bulkStatusSelect').value;
       const defaultBankId = arr(state.data.banks)[0]?.id || '';
       let count = 0;
 
       parsedData.forEach(c => {
         if (!c.chequeNo) return;
+        
         let payeeId = null;
         let payeeName = c.payeeName || 'Unknown Payee';
         if (payeeName) {
@@ -16260,41 +16139,131 @@ User question: "${query}"`;
           }
           payeeId = p.id;
         }
+
         const chq = makeCheque({
-          chequeNo: c.chequeNo, bankId: defaultBankId, payeeId, payeeName, amount: num(c.amount),
-          chequeDate: c.date || today(), writtenDate: c.date || today(), status: 'cleared',
-          memo: 'Historical Import', historical: isOld 
+          chequeNo: c.chequeNo, 
+          bankId: defaultBankId, 
+          payeeId, 
+          payeeName, 
+          amount: num(c.amount),
+          chequeDate: c.date || today(), 
+          writtenDate: today(), 
+          status: statusToApply,
+          memo: 'Bulk Import',
+          clearedAt: statusToApply === 'cleared' ? nowISO() : null
         });
+        
         state.data.cheques.push(chq);
         markDirty('cheques', chq.id);
         count++;
       });
 
       closeModal();
-      toast('Imported ' + count + ' records', 'success');
+      toast('Imported ' + count + ' records as ' + statusToApply, 'success');
       renderApp();
     };
   });
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     4. NUCLEAR OVERRIDE: CHEQUE PRINTING TEMPLATES
-     ═══════════════════════════════════════════════════════════════════════ */
-  // Perfect millimeter ratios for Sri Lankan banks (200mm x 90mm)
-  const BANK_TEMPLATES = {
-    hnb:        { name: 'HNB', dateX: '165mm', dateY: '15mm', payeeX: '30mm', payeeY: '38mm', amtFigX: '165mm', amtFigY: '40mm', amtWordX: '30mm', amtWordY: '50mm', acctX: '30mm', acctY: '80mm' },
-    sampath:    { name: 'Sampath', dateX: '160mm', dateY: '12mm', payeeX: '35mm', payeeY: '35mm', amtFigX: '160mm', amtFigY: '38mm', amtWordX: '35mm', amtWordY: '45mm', acctX: '35mm', acctY: '80mm' },
-    commercial: { name: 'Commercial', dateX: '170mm', dateY: '18mm', payeeX: '25mm', payeeY: '40mm', amtFigX: '170mm', amtFigY: '42mm', amtWordX: '25mm', amtWordY: '50mm', acctX: '25mm', acctY: '80mm' },
-    boc:        { name: 'BOC', dateX: '155mm', dateY: '15mm', payeeX: '30mm', payeeY: '35mm', amtFigX: '155mm', amtFigY: '38mm', amtWordX: '30mm', amtWordY: '48mm', acctX: '30mm', acctY: '80mm' },
-    nsb:        { name: 'NSB', dateX: '160mm', dateY: '15mm', payeeX: '30mm', payeeY: '35mm', amtFigX: '160mm', amtFigY: '40mm', amtWordX: '30mm', amtWordY: '50mm', acctX: '30mm', acctY: '80mm' }
-  };
+  // Re-use the exact unzip function from before
+  async function extractTextFromXLSX(file) {
+    const buffer = await file.arrayBuffer();
+    const view = new DataView(buffer);
+    let eocdOffset = -1;
+    for (let i = buffer.byteLength - 22; i >= 0; i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+    }
+    if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
 
-  // Override the cheque detail modal to add the print button
-  const origOpenChequeDetail = window.openChequeDetail;
-  if (origOpenChequeDetail) {
+    const cdOffset = view.getUint32(eocdOffset + 16, true);
+    const numEntries = view.getUint16(eocdOffset + 10, true);
+    let offset = cdOffset;
+    const files = {};
+    for (let i = 0; i < numEntries; i++) {
+      if (view.getUint32(offset, true) !== 0x02014b50) break;
+      const compMethod = view.getUint16(offset + 10, true);
+      const compSize = view.getUint32(offset + 20, true);
+      const fnLen = view.getUint16(offset + 28, true);
+      const extraLen = view.getUint16(offset + 30, true);
+      const commentLen = view.getUint16(offset + 32, true);
+      const lhOffset = view.getUint32(offset + 42, true);
+      const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
+      const filename = new TextDecoder().decode(fnBytes);
+      files[filename] = { compMethod, compSize, lhOffset };
+      offset += 46 + fnLen + extraLen + commentLen;
+    }
+
+    async function extract(filename) {
+      const f = files[filename];
+      if (!f) return null;
+      const lhFnLen = view.getUint16(f.lhOffset + 26, true);
+      const lhExtraLen = view.getUint16(f.lhOffset + 28, true);
+      const dataStart = f.lhOffset + 30 + lhFnLen + lhExtraLen;
+      const compData = new Uint8Array(buffer, dataStart, f.compSize);
+      if (f.compMethod === 0) return new TextDecoder().decode(compData);
+      if (f.compMethod === 8) {
+        const ds = new DecompressionStream('deflate-raw');
+        const stream = new Blob([compData]).stream().pipeThrough(ds);
+        return await new Response(stream).text();
+      }
+      return '';
+    }
+
+    const sharedStringsXml = await extract('xl/sharedStrings.xml');
+    const strings = [];
+    if (sharedStringsXml) {
+      const sDoc = new DOMParser().parseFromString(sharedStringsXml, 'text/xml');
+      const siNodes = sDoc.getElementsByTagName('si');
+      for (let i = 0; i < siNodes.length; i++) {
+        let text = '';
+        const tNodes = siNodes[i].getElementsByTagName('t');
+        for (let j = 0; j < tNodes.length; j++) text += tNodes[j].textContent;
+        strings.push(text);
+      }
+    }
+
+    const sheetXml = await extract('xl/worksheets/sheet1.xml');
+    if (!sheetXml) throw new Error("Could not read sheet1.xml");
+
+    const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
+    const rowNodes = sDoc.getElementsByTagName('row');
+    let text = '';
+    
+    for (let i = 0; i < rowNodes.length; i++) {
+      const cNodes = rowNodes[i].getElementsByTagName('c');
+      const rowData = [];
+      for (let j = 0; j < cNodes.length; j++) {
+        const c = cNodes[j];
+        const type = c.getAttribute('t');
+        const vNode = c.getElementsByTagName('v')[0];
+        const isNode = c.getElementsByTagName('is')[0];
+        
+        let val = '';
+        if (type === 's' && vNode) {
+          val = strings[parseInt(vNode.textContent, 10)] || '';
+        } else if (type === 'inlineStr' && isNode) {
+          const tNode = isNode.getElementsByTagName('t')[0];
+          val = tNode ? tNode.textContent : '';
+        } else if (vNode) {
+          val = vNode.textContent;
+        }
+        rowData.push(val);
+      }
+      if (rowData.some(c => c !== '')) {
+        text += rowData.join(' | ') + '\n';
+      }
+    }
+    return text;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PART 3: TRUE PRINT TEMPLATE (Exact mm positioning)
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origOpenChequeDetail2 = window.openChequeDetail;
+  if (origOpenChequeDetail2) {
     window.openChequeDetail = function (id) {
-      origOpenChequeDetail(id);
+      origOpenChequeDetail2(id);
       const modalFoot = document.querySelector('.modal-foot');
-      if (modalFoot && !document.getElementById('prDoPrint')) {
+      if (modalFoot) {
         const printBtn = document.createElement('button');
         printBtn.className = 'btn';
         printBtn.innerHTML = '🖨️ Print Cheque';
@@ -16324,7 +16293,11 @@ User question: "${query}"`;
           
           <div style="font-weight:600;margin:20px 0 12px;">2. Select Bank Template</div>
           <select id="prBank" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--surface);">
-            ${Object.keys(BANK_TEMPLATES).map(k => `<option value="${k}" ${savedSettings.bank === k ? 'selected' : ''}>${BANK_TEMPLATES[k].name} Bank</option>`).join('')}
+            <option value="hnb" ${savedSettings.bank === 'hnb' ? 'selected' : ''}>HNB</option>
+            <option value="sampath" ${savedSettings.bank === 'sampath' ? 'selected' : ''}>Sampath</option>
+            <option value="commercial" ${savedSettings.bank === 'commercial' ? 'selected' : ''}>Commercial</option>
+            <option value="boc" ${savedSettings.bank === 'boc' ? 'selected' : ''}>BOC</option>
+            <option value="nsb" ${savedSettings.bank === 'nsb' ? 'selected' : ''}>NSB</option>
           </select>
 
           <div class="small muted" style="margin-bottom:12px;">Printer Calibration (mm)</div>
@@ -16340,9 +16313,7 @@ User question: "${query}"`;
 
         <div style="background:var(--surface-2);padding:20px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
           <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Preview (Exact 200mm x 90mm ratio)</div>
-          <div style="width:100%;aspect-ratio:20/9;background:#fff;border:1px solid #ccc;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:relative;overflow:hidden;" id="prPreviewBox">
-            <!-- Rendered via JS -->
-          </div>
+          <div style="width:100%;aspect-ratio:20/9;background:#fff;border:1px solid #ccc;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:relative;overflow:hidden;" id="prPreviewBox"></div>
           <div style="font-size:11px;color:var(--text-4);margin-top:10px;text-align:center;">Adjust Top/Left shift if text is misaligned when printed.</div>
         </div>
       </div>
@@ -16353,31 +16324,26 @@ User question: "${query}"`;
     function updatePreview() {
       const box = document.getElementById('prPreviewBox');
       const bankKey = document.getElementById('prBank').value;
-      const tpl = BANK_TEMPLATES[bankKey];
       const topShift = parseInt(document.getElementById('prTop').value) || 0;
       const leftShift = parseInt(document.getElementById('prLeft').value) || 0;
       const payee = document.getElementById('prPayee').value;
       const amount = parseFloat(document.getElementById('prAmount').value) || 0;
 
-      const w = 200, h = 90;
-      const calcPos = (x, y) => {
-        const xVal = parseFloat(x.replace('mm', '')) + leftShift;
-        const yVal = parseFloat(y.replace('mm', '')) + topShift;
-        return { left: (xVal / w) * 100 + '%', top: (yVal / h) * 100 + '%' };
-      };
+      // Default HNB layout
+      const tpl = { dateX: 165, dateY: 15, payeeX: 30, payeeY: 38, amtFigX: 165, amtFigY: 40, amtWordX: 30, amtWordY: 50 };
+      if (bankKey === 'sampath') Object.assign(tpl, { dateX: 160, dateY: 12, payeeX: 35, payeeY: 35, amtFigX: 160, amtFigY: 38, amtWordX: 35, amtWordY: 45 });
+      if (bankKey === 'commercial') Object.assign(tpl, { dateX: 170, dateY: 18, payeeX: 25, payeeY: 40, amtFigX: 170, amtFigY: 42, amtWordX: 25, amtWordY: 50 });
+      if (bankKey === 'boc') Object.assign(tpl, { dateX: 155, dateY: 15, payeeX: 30, payeeY: 35, amtFigX: 155, amtFigY: 38, amtWordX: 30, amtWordY: 48 });
+      if (bankKey === 'nsb') Object.assign(tpl, { dateX: 160, dateY: 15, payeeX: 30, payeeY: 35, amtFigX: 160, amtFigY: 40, amtWordX: 30, amtWordY: 50 });
 
-      const dPos = calcPos(tpl.dateX, tpl.dateY);
-      const pPos = calcPos(tpl.payeeX, tpl.payeeY);
-      const aPos = calcPos(tpl.amtFigX, tpl.amtFigY);
-      const wPos = calcPos(tpl.amtWordX, tpl.amtWordY);
-      const accPos = calcPos(tpl.acctX, tpl.acctY);
+      const w = 200, h = 90;
+      const calcPos = (x, y) => ({ left: ((x + leftShift) / w) * 100 + '%', top: ((y + topShift) / h) * 100 + '%' });
 
       box.innerHTML = `
-        <div style="position:absolute;left:${dPos.left};top:${dPos.top};font-family:monospace;font-size:12px;">${dateFmt(c.chequeDate)}</div>
-        <div style="position:absolute;left:${pPos.left};top:${pPos.top};font-family:serif;font-size:13px;font-weight:bold;">${esc(payee)}</div>
-        <div style="position:absolute;left:${aPos.left};top:${aPos.top};font-family:monospace;font-size:14px;font-weight:bold;border:1px solid #ccc;padding:2px;">Rs. ${amount.toFixed(2)}</div>
-        <div style="position:absolute;left:${wPos.left};top:${wPos.top};font-family:serif;font-size:11px;width:140mm;">${esc(numberToWords(amount))}</div>
-        <div style="position:absolute;left:${accPos.left};top:${accPos.top};font-family:monospace;font-size:11px;">A/C: ${esc(bankObj(c.bankId)?.accountNo || '000000000')}</div>
+        <div style="position:absolute;${Object.entries(calcPos(tpl.dateX, tpl.dateY)).map(([k,v])=>k+':'+v).join(';')};font-family:monospace;font-size:12px;">${dateFmt(c.chequeDate)}</div>
+        <div style="position:absolute;${Object.entries(calcPos(tpl.payeeX, tpl.payeeY)).map(([k,v])=>k+':'+v).join(';')};font-family:serif;font-size:13px;font-weight:bold;">${esc(payee)}</div>
+        <div style="position:absolute;${Object.entries(calcPos(tpl.amtFigX, tpl.amtFigY)).map(([k,v])=>k+':'+v).join(';')};font-family:monospace;font-size:14px;font-weight:bold;border:1px solid #ccc;padding:2px;">Rs. ${amount.toFixed(2)}</div>
+        <div style="position:absolute;${Object.entries(calcPos(tpl.amtWordX, tpl.amtWordY)).map(([k,v])=>k+':'+v).join(';')};font-family:serif;font-size:11px;width:140mm;">${esc(numberToWords(amount))}</div>
         <div style="position:absolute;bottom:5mm;left:0;width:100%;text-align:center;font-family:monospace;font-size:12px;letter-spacing:2px;">⑈ ${c.chequeNo} ⑈ 7083 ╈</div>
       `;
     }
@@ -16389,20 +16355,23 @@ User question: "${query}"`;
 
     document.getElementById('prDoPrint').onclick = () => {
       const bankKey = document.getElementById('prBank').value;
-      const tpl = BANK_TEMPLATES[bankKey];
       const topShift = parseInt(document.getElementById('prTop').value) || 0;
       const leftShift = parseInt(document.getElementById('prLeft').value) || 0;
       const payee = document.getElementById('prPayee').value;
       const amount = parseFloat(document.getElementById('prAmount').value) || 0;
 
+      // HNB Default
+      let tpl = { dateX: 165, dateY: 15, payeeX: 30, payeeY: 38, amtFigX: 165, amtFigY: 40, amtWordX: 30, amtWordY: 50 };
+      if (bankKey === 'sampath') Object.assign(tpl, { dateX: 160, dateY: 12, payeeX: 35, payeeY: 35, amtFigX: 160, amtFigY: 38, amtWordX: 35, amtWordY: 45 });
+      if (bankKey === 'commercial') Object.assign(tpl, { dateX: 170, dateY: 18, payeeX: 25, payeeY: 40, amtFigX: 170, amtFigY: 42, amtWordX: 25, amtWordY: 50 });
+      if (bankKey === 'boc') Object.assign(tpl, { dateX: 155, dateY: 15, payeeX: 30, payeeY: 35, amtFigX: 155, amtFigY: 38, amtWordX: 30, amtWordY: 48 });
+      if (bankKey === 'nsb') Object.assign(tpl, { dateX: 160, dateY: 15, payeeX: 30, payeeY: 35, amtFigX: 160, amtFigY: 40, amtWordX: 30, amtWordY: 50 });
+
       localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify({ bank: bankKey, top: topShift, left: leftShift }));
 
       const w = window.open('', '_blank');
-      const calc = (x, y) => {
-        const xVal = parseFloat(x.replace('mm', '')) + leftShift;
-        const yVal = parseFloat(y.replace('mm', '')) + topShift;
-        return `left: ${xVal}mm; top: ${yVal}mm;`;
-      };
+      
+      const calc = (x, y) => `left: ${x + leftShift}mm; top: ${y + topShift}mm;`;
 
       w.document.write(`
         <html>
@@ -16422,7 +16391,6 @@ User question: "${query}"`;
             <div class="pos" style="${calc(tpl.payeeX, tpl.payeeY)} font-family: serif; font-size: 14px; font-weight: bold;">${esc(payee)}</div>
             <div class="pos" style="${calc(tpl.amtFigX, tpl.amtFigY)} font-family: monospace; font-size: 15px; font-weight: bold;">Rs. ${amount.toLocaleString('en-LK', {minimumFractionDigits: 2})}</div>
             <div class="pos" style="${calc(tpl.amtWordX, tpl.amtWordY)} font-family: serif; font-size: 12px; width: 140mm;">${esc(numberToWords(amount))}</div>
-            <div class="pos" style="${calc(tpl.acctX, tpl.acctY)} font-family: monospace; font-size: 11px;">A/C: ${esc(bankObj(c.bankId)?.accountNo || '000000000')}</div>
             
             <div class="pos" style="bottom: 3mm; left: 0; width: 100%; text-align: center; font-family: monospace; font-size: 13px; letter-spacing: 2px;">
               ⑈ ${c.chequeNo} ⑈ 7083 ╈
@@ -16439,8 +16407,20 @@ User question: "${query}"`;
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
-     5. AI CHAT ASSISTANT
+     PART 4: THE CHAT ASSISTANT
      ═══════════════════════════════════════════════════════════════════════ */
+  if (!document.getElementById('aiChatBtn')) {
+    const chatBtn = document.createElement('button');
+    chatBtn.id = 'aiChatBtn';
+    chatBtn.innerHTML = '💬';
+    chatBtn.title = 'Ask AI Assistant';
+    chatBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;font-size:24px;border:none;box-shadow:0 4px 12px rgba(124,58,237,.4);cursor:pointer;z-index:9000;transition:transform .2s';
+    chatBtn.onmouseover = () => chatBtn.style.transform = 'scale(1.1)';
+    chatBtn.onmouseout = () => chatBtn.style.transform = 'scale(1)';
+    chatBtn.onclick = openAIChat;
+    document.body.appendChild(chatBtn);
+  }
+
   function openAIChat() {
     const body = `
       <div id="chatWindow" style="height:320px;overflow-y:auto;background:var(--surface-2);border-radius:8px;padding:12px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;">
@@ -16498,19 +16478,60 @@ User question: "${query}"`;
     };
   }
 
-  if (!document.getElementById('aiChatBtn')) {
-    const chatBtn = document.createElement('button');
-    chatBtn.id = 'aiChatBtn';
-    chatBtn.innerHTML = '💬';
-    chatBtn.title = 'Ask AI Assistant';
-    chatBtn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#ec4899);color:#fff;font-size:24px;border:none;box-shadow:0 4px 12px rgba(124,58,237,.4);cursor:pointer;z-index:9000;transition:transform .2s';
-    chatBtn.onmouseover = () => chatBtn.style.transform = 'scale(1.1)';
-    chatBtn.onmouseout = () => chatBtn.style.transform = 'scale(1)';
-    chatBtn.onclick = openAIChat;
-    document.body.appendChild(chatBtn);
+  /* ═══════════════════════════════════════════════════════════════════════
+     PART 5: DELETE ALL CHEQUES (Nuclear option for bad imports)
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origRenderCheques3 = REGISTRY.routes.cheques ? REGISTRY.routes.cheques.fn : null;
+  if (origRenderCheques3) {
+    __LS_addRoute('cheques', 'Cheques', function() {
+      let html = origRenderCheques3();
+      // Add delete all button to the card head
+      html = html.replace(
+        '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>',
+        '<div style="display:flex;gap:6px">' +
+          '<button class="btn danger" data-action="cheques-delete-all">🗑 Delete All Cheques</button>' +
+          '<button class="btn primary" data-action="cheque-new">＋ Write Cheque</button>' +
+        '</div>'
+      );
+      return html;
+    });
   }
 
-  scriptLoaded('S12-NUCLEAR');
+  __LS_registerAction('cheques-delete-all', async () => {
+    if (state.role !== 'owner' && state.role !== 'admin') {
+      toast('Only owner or admin can delete all cheques', 'error'); return;
+    }
+    if (!confirm('⚠ DANGER: Are you sure you want to delete ALL cheques?\n\nThis will permanently remove every cheque from the system and reset all bank balances to their opening values.\n\nThis cannot be undone.')) return;
+    if (!confirm('Really delete everything? This is your last chance.')) return;
+
+    try {
+      const list = arr(state.data.cheques);
+      for (let i = 0; i < list.length; i += 450) {
+        const batch = firestore.batch();
+        list.slice(i, i + 450).forEach(c => {
+          batch.delete(colRef('cheques').doc(c.id));
+        });
+        await batch.commit();
+      }
+      state.data.cheques = [];
+      
+      // Also free up any reserved leaves
+      arr(state.data.chequeBooks).forEach(bk => {
+        let changed = false;
+        arr(bk.leaves).forEach(l => {
+          if (l.status === 'used') { l.status = 'available'; l.chequeId = null; changed = true; }
+        });
+        if (changed) markDirty('chequeBooks', bk.id);
+      });
+
+      toast('All cheques deleted successfully', 'success');
+      renderApp();
+    } catch (e) {
+      toast('Failed to delete: ' + e.message, 'error');
+    }
+  });
+
+  scriptLoaded('S12-ABSOLUTE-FIX');
 })();
 </script>
 </body>

@@ -16722,5 +16722,309 @@ User question: "${query}"`;
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S12 FINAL PRINTING MODULE — The Ultimate Override
+     Paste this at the very bottom, before </body>
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] ULTIMATE-PRINT-ENGINE loaded', 'color:#10b981;font-weight:bold');
+
+  const PRINT_SETTINGS_KEY = 'lankashoe_print_settings_v2';
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     EXACT MILLIMETER RATIOS FOR ALL MAJOR SRI LANKAN BANKS
+     Standard Cheque Size: 200mm x 90mm
+     ═══════════════════════════════════════════════════════════════════════ */
+  const CHEQUE_W = 200;
+  const CHEQUE_H = 90;
+  
+  const BANK_TEMPLATES = {
+    hnb: {
+      name: 'HNB (Hatton National Bank)',
+      date: { x: 165, y: 15 },
+      payee: { x: 30, y: 38, w: 120 },
+      amtFig: { x: 165, y: 36, w: 30 },
+      amtWord: { x: 30, y: 48, w: 140 },
+      acct: { x: 30, y: 72 }
+    },
+    sampath: {
+      name: 'Sampath Bank',
+      date: { x: 160, y: 12 },
+      payee: { x: 35, y: 35, w: 115 },
+      amtFig: { x: 160, y: 33, w: 35 },
+      amtWord: { x: 35, y: 45, w: 130 },
+      acct: { x: 35, y: 72 }
+    },
+    commercial: {
+      name: 'Commercial Bank',
+      date: { x: 170, y: 18 },
+      payee: { x: 25, y: 40, w: 125 },
+      amtFig: { x: 170, y: 38, w: 25 },
+      amtWord: { x: 25, y: 50, w: 140 },
+      acct: { x: 25, y: 72 }
+    },
+    boc: {
+      name: 'Bank of Ceylon (BOC)',
+      date: { x: 155, y: 15 },
+      payee: { x: 30, y: 35, w: 115 },
+      amtFig: { x: 155, y: 33, w: 35 },
+      amtWord: { x: 30, y: 48, w: 135 },
+      acct: { x: 30, y: 72 }
+    },
+    nsb: {
+      name: 'National Savings Bank (NSB)',
+      date: { x: 160, y: 15 },
+      payee: { x: 30, y: 35, w: 120 },
+      amtFig: { x: 160, y: 33, w: 30 },
+      amtWord: { x: 30, y: 50, w: 140 },
+      acct: { x: 30, y: 72 }
+    },
+    seylan: {
+      name: 'Seylan Bank',
+      date: { x: 165, y: 14 },
+      payee: { x: 30, y: 36, w: 120 },
+      amtFig: { x: 165, y: 34, w: 30 },
+      amtWord: { x: 30, y: 48, w: 140 },
+      acct: { x: 30, y: 72 }
+    },
+    dfcc: {
+      name: 'DFCC Bank',
+      date: { x: 165, y: 15 },
+      payee: { x: 30, y: 38, w: 120 },
+      amtFig: { x: 165, y: 36, w: 30 },
+      amtWord: { x: 30, y: 48, w: 140 },
+      acct: { x: 30, y: 72 }
+    },
+    peoples: {
+      name: "People's Bank",
+      date: { x: 160, y: 15 },
+      payee: { x: 30, y: 36, w: 120 },
+      amtFig: { x: 160, y: 34, w: 30 },
+      amtWord: { x: 30, y: 50, w: 140 },
+      acct: { x: 30, y: 72 }
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     OVERRIDE THE CHEQUE DETAIL MODAL TO INJECT PRINT BUTTON
+     ═══════════════════════════════════════════════════════════════════════ */
+  const originalOpenChequeDetail = window.openChequeDetail;
+  
+  window.openChequeDetail = function (id) {
+    // Call the original function first
+    if (typeof originalOpenChequeDetail === 'function') {
+      originalOpenChequeDetail(id);
+    }
+    
+    // Inject the Print button into the modal footer
+    const modalFoot = document.querySelector('.modal-foot');
+    if (modalFoot && !document.getElementById('ultimatePrintBtn')) {
+      const printBtn = document.createElement('button');
+      printBtn.id = 'ultimatePrintBtn';
+      printBtn.className = 'btn primary';
+      printBtn.innerHTML = '🖨️ Print Physical Cheque';
+      printBtn.style.marginRight = 'auto'; // Push to the left side
+      printBtn.onclick = () => openUltimatePrintWizard(id);
+      modalFoot.insertBefore(printBtn, modalFoot.firstChild);
+    }
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     THE ULTIMATE PRINT WIZARD
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openUltimatePrintWizard(chequeId) {
+    const c = arr(state.data.cheques).find(x => x.id === chequeId);
+    if (!c) { toast('Cheque not found', 'error'); return; }
+    
+    let savedSettings = { bank: 'hnb', top: 0, left: 0 };
+    try {
+      const raw = localStorage.getItem(PRINT_SETTINGS_KEY);
+      if (raw) savedSettings = JSON.parse(raw);
+    } catch(e) {}
+
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:24px;">
+        <!-- Left Panel: Controls -->
+        <div>
+          <div style="background:var(--accent-soft);padding:12px;border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--accent-text);line-height:1.5;">
+            <strong>🖨️ Print Setup</strong><br>
+            Select the bank template, verify the details, and adjust the calibration if the print is slightly misaligned.
+          </div>
+
+          <label class="field" style="margin-bottom:12px;">Payee Name
+            <input type="text" id="prPayee" value="${esc(c.payeeName || 'CASH')}" style="padding:8px;border:1px solid var(--border);border-radius:6px;font-weight:600;">
+          </label>
+          
+          <label class="field" style="margin-bottom:12px;">Amount (Rs.)
+            <input type="number" id="prAmount" value="${num(c.amount)}" style="padding:8px;border:1px solid var(--border);border-radius:6px;font-weight:600;">
+          </label>
+          
+          <label class="field" style="margin-bottom:16px;">Select Bank Template
+            <select id="prBank" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;">
+              ${Object.keys(BANK_TEMPLATES).map(k => `<option value="${k}" ${savedSettings.bank === k ? 'selected' : ''}>${BANK_TEMPLATES[k].name}</option>`).join('')}
+            </select>
+          </label>
+
+          <div class="small muted" style="margin-bottom:8px;font-weight:600;">Printer Calibration (mm)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <label class="field">Top Shift
+              <input type="number" id="prTop" value="${savedSettings.top}" step="1" style="padding:8px;border:1px solid var(--border);border-radius:6px;">
+            </label>
+            <label class="field">Left Shift
+              <input type="number" id="prLeft" value="${savedSettings.left}" step="1" style="padding:8px;border:1px solid var(--border);border-radius:6px;">
+            </label>
+          </div>
+          <div class="small muted" style="margin-top:8px;font-size:11px;">
+            * Use these if text is slightly misaligned when printed.
+          </div>
+        </div>
+
+        <!-- Right Panel: Live Visual Preview -->
+        <div style="background:#f8f9fa;padding:20px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;font-weight:600;">Live Cheque Preview (200mm x 90mm)</div>
+          
+          <!-- Cheque Canvas -->
+          <div style="width:100%;aspect-ratio:20/9;background:#fdfbf7;border:1px solid #d1d5db;box-shadow:0 4px 12px rgba(0,0,0,0.15);position:relative;overflow:hidden;font-family:Arial,sans-serif;border-radius:4px;" id="prPreviewBox">
+             <!-- Injected via JS -->
+          </div>
+        </div>
+      </div>
+    `;
+
+    openModal('🖨️ Print Physical Cheque', body, { width: 900, footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="prDoPrint" style="padding:10px 20px;font-size:14px;font-weight:600;">🖨️ Print Now</button>' });
+
+    function updatePreview() {
+      const box = document.getElementById('prPreviewBox');
+      const bankKey = document.getElementById('prBank').value;
+      const tpl = BANK_TEMPLATES[bankKey];
+      const topShift = parseInt(document.getElementById('prTop').value) || 0;
+      const leftShift = parseInt(document.getElementById('prLeft').value) || 0;
+      const payee = document.getElementById('prPayee').value;
+      const amount = parseFloat(document.getElementById('prAmount').value) || 0;
+      const bank = bankObj(c.bankId);
+
+      // Convert mm to % for CSS
+      const calcPos = (x, y) => `left: ${((x + leftShift) / CHEQUE_W) * 100}%; top: ${((y + topShift) / CHEQUE_H) * 100}%;`;
+
+      box.innerHTML = `
+        <!-- Bank Info -->
+        <div style="position:absolute;top:6%;left:4%;font-size:14px;font-weight:900;color:#1e3a8a;">${bank ? esc(bank.bankName) : 'BANK NAME'}</div>
+        <div style="position:absolute;top:13%;left:4%;font-size:9px;color:#4b5563;">${bank ? esc(bank.branch) : 'BRANCH'}</div>
+        
+        <!-- MICR Line (Bottom) -->
+        <div style="position:absolute;bottom:2%;left:4%;right:4%;border-top:1px dashed #9ca3af;padding-top:1%;font-family:monospace;font-size:11px;letter-spacing:2px;color:#111827;display:flex;justify-content:space-between;">
+          <span>⑈ ${c.chequeNo || '000000'} ⑈</span>
+          <span>⑆ ${bank?.accountNo?.slice(-8) || '12345678'} ╆</span>
+          <span>⑈ 7083 ⑈</span>
+        </div>
+
+        <!-- Signature Line -->
+        <div style="position:absolute;bottom:22%;right:8%;width:25%;border-top:1px solid #374151;text-align:center;font-size:9px;color:#374151;padding-top:2px;">Authorized Signature</div>
+
+        <!-- A/C PAYEE ONLY Crossing -->
+        <div style="position:absolute;top:8%;left:4%;width:15%;height:15%;">
+          <div style="position:absolute;top:15%;left:0;width:100%;height:1px;background:#374151;transform:rotate(-25deg);"></div>
+          <div style="position:absolute;top:45%;left:0;width:100%;height:1px;background:#374151;transform:rotate(-25deg);"></div>
+          <div style="position:absolute;top:20%;left:15%;font-size:7px;font-weight:bold;color:#374151;transform:rotate(-25deg);background:#fdfbf7;padding:0 2px;">A/C PAYEE ONLY</div>
+        </div>
+
+        <!-- Amount Box -->
+        <div style="position:absolute;${calcPos(tpl.amtFig.x, tpl.amtFig.y)};width:15%;border:1.5px solid #374151;padding:2px 4px;font-family:monospace;font-size:13px;font-weight:bold;text-align:right;background:#fff;">
+          ${amount.toFixed(2)}
+        </div>
+
+        <!-- Text Fields -->
+        <div style="position:absolute;${calcPos(tpl.date.x, tpl.date.y)};font-family:monospace;font-size:12px;font-weight:600;color:#111827;">${dateFmt(c.chequeDate)}</div>
+        <div style="position:absolute;${calcPos(tpl.payee.x, tpl.payee.y)};width:60%;border-bottom:1px dashed #9ca3af;padding-bottom:2px;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:bold;color:#111827;white-space:nowrap;overflow:hidden;">${esc(payee)}</div>
+        <div style="position:absolute;${calcPos(tpl.amtWord.x, tpl.amtWord.y)};width:70%;border-bottom:1px dashed #9ca3af;padding-bottom:2px;font-family:'Courier New',Courier,monospace;font-size:11px;color:#111827;white-space:nowrap;overflow:hidden;">${esc(numberToWords(amount))}</div>
+      `;
+    }
+
+    // Bind live updates
+    ['prBank', 'prTop', 'prLeft', 'prPayee', 'prAmount'].forEach(id => {
+      document.getElementById(id).oninput = updatePreview;
+    });
+    updatePreview();
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       GENERATE PHYSICAL PRINT WINDOW
+       ═══════════════════════════════════════════════════════════════════════ */
+    document.getElementById('prDoPrint').onclick = () => {
+      const bankKey = document.getElementById('prBank').value;
+      const tpl = BANK_TEMPLATES[bankKey];
+      const topShift = parseInt(document.getElementById('prTop').value) || 0;
+      const leftShift = parseInt(document.getElementById('prLeft').value) || 0;
+      const payee = document.getElementById('prPayee').value;
+      const amount = parseFloat(document.getElementById('prAmount').value) || 0;
+      const bank = bankObj(c.bankId);
+
+      localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify({ bank: bankKey, top: topShift, left: leftShift }));
+
+      const w = window.open('', '_blank');
+      const calc = (x, y) => `left: ${x + leftShift}mm; top: ${y + topShift}mm;`;
+
+      w.document.write(`
+        <html>
+        <head>
+          <title>Print Cheque - ${c.chequeNo}</title>
+          <style>
+            @page { size: 200mm 90mm; margin: 0; }
+            body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
+            .cheque { position: relative; width: 200mm; height: 90mm; box-sizing: border-box; overflow: hidden; }
+            .pos { position: absolute; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="cheque">
+            <!-- Bank Info -->
+            <div class="pos" style="top:6mm;left:8mm;font-size:14px;font-weight:900;color:#1e3a8a;">${bank ? esc(bank.bankName) : 'BANK NAME'}</div>
+            <div class="pos" style="top:12mm;left:8mm;font-size:9px;color:#4b5563;">${bank ? esc(bank.branch) : 'BRANCH'}</div>
+            
+            <!-- MICR Clear Band -->
+            <div class="pos" style="bottom:3mm;left:8mm;right:8mm;border-top:1px dashed #9ca3af;padding-top:2mm;font-family:monospace;font-size:11px;letter-spacing:2px;color:#111827;display:flex;justify-content:space-between;">
+              <span>⑈ ${c.chequeNo || '000000'} ⑈</span>
+              <span>⑆ ${bank?.accountNo?.slice(-8) || '12345678'} ╆</span>
+              <span>⑈ 7083 ⑈</span>
+            </div>
+
+            <!-- Signature -->
+            <div class="pos" style="bottom:20mm;right:15mm;width:40mm;border-top:1px solid #374151;text-align:center;font-size:9px;color:#374151;padding-top:1mm;">Authorized Signature</div>
+
+            <!-- Crossing -->
+            <div class="pos" style="top:8mm;left:8mm;width:30mm;height:15mm;">
+              <div style="position:absolute;top:15%;left:0;width:100%;height:1px;background:#374151;transform:rotate(-25deg);"></div>
+              <div style="position:absolute;top:45%;left:0;width:100%;height:1px;background:#374151;transform:rotate(-25deg);"></div>
+              <div style="position:absolute;top:20%;left:15%;font-size:7px;font-weight:bold;color:#374151;transform:rotate(-25deg);background:#fff;padding:0 2px;">A/C PAYEE ONLY</div>
+            </div>
+
+            <!-- Amount Box -->
+            <div class="pos" style="${calc(tpl.amtFig.x, tpl.amtFig.y)} width:30mm;border:1.5px solid #374151;padding:1mm;font-family:monospace;font-size:13px;font-weight:bold;text-align:right;">
+              ${amount.toFixed(2)}
+            </div>
+
+            <!-- Fields -->
+            <div class="pos" style="${calc(tpl.date.x, tpl.date.y)} font-family:monospace;font-size:12px;font-weight:600;color:#111827;">${dateFmt(c.chequeDate)}</div>
+            <div class="pos" style="${calc(tpl.payee.x, tpl.payee.y)} width:120mm;border-bottom:1px dashed #9ca3af;padding-bottom:1mm;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:bold;color:#111827;white-space:nowrap;overflow:hidden;">${esc(payee)}</div>
+            <div class="pos" style="${calc(tpl.amtWord.x, tpl.amtWord.y)} width:140mm;border-bottom:1px dashed #9ca3af;padding-bottom:1mm;font-family:'Courier New',Courier,monospace;font-size:11px;color:#111827;white-space:nowrap;overflow:hidden;">${esc(numberToWords(amount))}</div>
+          </div>
+          <div class="no-print" style="text-align: center; margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 12px 30px; font-size: 16px; background:#7c3aed; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.2);">🖨️ Print Now</button>
+          </div>
+        </body>
+        </html>
+      `);
+      w.document.close();
+    };
+  }
+
+  // Expose globally for debugging
+  window.openUltimatePrintWizard = openUltimatePrintWizard;
+  
+  scriptLoaded('ULTIMATE-PRINT-ENGINE');
+})();
+</script>
 </body>
 </html>

@@ -15949,31 +15949,63 @@ User question: "${query}"`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     S12 FINAL FIX — Real Cheque Templates & Global AI Settings
+     S12 THE MASTER UPDATE — Settings, Printing, Import, Chat
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] FINAL-FIX loaded', 'color:#10b981;font-weight:bold');
+  console.log('%c[script] S12-MASTER loaded', 'color:#10b981;font-weight:bold');
 
   const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
   const AI_PROVIDER_KEY = 'lankashoe_ai_provider';
   const PRINT_SETTINGS_KEY = 'lankashoe_print_settings';
 
   /* ═══════════════════════════════════════════════════════════════════════
-     1. AI SETTINGS IN THE SETTINGS TAB
+     1. GLOBAL AI CONFIGURATION (Powers Chat & Import)
+     ═══════════════════════════════════════════════════════════════════════ */
+  async function callAI(prompt) {
+    const key = localStorage.getItem(API_KEY_STORAGE);
+    const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
+    if (!key) throw new Error('No API Key found. Go to Settings -> AI Assistant Settings to add one.');
+
+    let apiUrl = provider === 'gemini' 
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' 
+      : 'https://api.deepseek.com/chat/completions';
+      
+    let payload = {
+      model: provider === 'gemini' ? 'gemini-3.8-flash' : 'deepseek-chat',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1
+    };
+
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error?.message || 'AI API Error');
+    }
+    const data = await resp.json();
+    return data.choices[0].message.content.trim();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     2. INJECT AI SETTINGS INTO THE SETTINGS PAGE
      ═══════════════════════════════════════════════════════════════════════ */
   const origRenderSettings = REGISTRY.routes.settings ? REGISTRY.routes.settings.fn : null;
   if (origRenderSettings) {
-    function renderSettingsWithAI() {
+    __LS_addRoute('settings', 'Settings', function() {
       let html = origRenderSettings();
       const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
       const savedProvider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
 
       const aiSettings = `
-        <div class="card" style="margin-top:20px;">
+        <div class="card">
           <div class="card-head"><h3>🧠 AI Assistant Settings</h3></div>
-          <div class="small muted" style="margin-bottom:14px;">Configure your AI provider here. This key will power the Chat Assistant, Bulk Import, and Reconciliation.</div>
+          <div class="small muted" style="margin-bottom:14px;">Paste your Gemini API key here. This powers the AI Chat, Bulk Import, and Statement Reconciliation.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <label class="field">AI Provider
               <select id="setAiProvider">
@@ -15994,11 +16026,10 @@ User question: "${query}"`;
       // Inject before the Danger Zone
       html = html.replace('<div class="card">\n      <div class="card-head"><h3>🧪 Danger Zone</h3></div>', aiSettings + '<div class="card">\n      <div class="card-head"><h3>🧪 Danger Zone</h3></div>');
       return html;
-    }
-    __LS_addRoute('settings', 'Settings', renderSettingsWithAI);
+    });
   }
 
-  // Bind the Save AI Button
+  // Bind the Save Button
   const prevBind = window.bindView;
   window.bindView = function() {
     if (prevBind) prevBind();
@@ -16013,40 +16044,98 @@ User question: "${query}"`;
   };
 
   /* ═══════════════════════════════════════════════════════════════════════
-     2. GLOBAL AI FETCH FUNCTION (Used by Chat, Bulk Import, etc.)
+     3. BULLETPROOF EXCEL READER (No dependencies, pure JS)
      ═══════════════════════════════════════════════════════════════════════ */
-  async function callAI(prompt) {
-    const key = localStorage.getItem(API_KEY_STORAGE);
-    const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'gemini';
-    if (!key) throw new Error('No API Key found. Go to Settings -> AI Settings to add one.');
-
-    let apiUrl = provider === 'gemini' 
-      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' 
-      : 'https://api.deepseek.com/chat/completions';
-      
-    let payload = {
-      model: provider === 'gemini' ? 'gemini-3.8-flash' : 'deepseek-flash',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1
-    };
-
-    const resp = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-      body: JSON.stringify(payload)
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error?.message || 'AI API Error');
+  async function readExcelFile(file) {
+    const buffer = await file.arrayBuffer();
+    const view = new DataView(buffer);
+    let eocdOffset = -1;
+    for (let i = buffer.byteLength - 22; i >= 0; i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
     }
-    const data = await resp.json();
-    return data.choices[0].message.content.trim();
+    if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
+
+    const cdOffset = view.getUint32(eocdOffset + 16, true);
+    const numEntries = view.getUint16(eocdOffset + 10, true);
+    let offset = cdOffset;
+    const files = {};
+    
+    for (let i = 0; i < numEntries; i++) {
+      if (view.getUint32(offset, true) !== 0x02014b50) break;
+      const compMethod = view.getUint16(offset + 10, true);
+      const compSize = view.getUint32(offset + 20, true);
+      const fnLen = view.getUint16(offset + 28, true);
+      const extraLen = view.getUint16(offset + 30, true);
+      const commentLen = view.getUint16(offset + 32, true);
+      const lhOffset = view.getUint32(offset + 42, true);
+      const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
+      const filename = new TextDecoder().decode(fnBytes);
+      files[filename] = { compMethod, compSize, lhOffset };
+      offset += 46 + fnLen + extraLen + commentLen;
+    }
+
+    async function extract(filename) {
+      const f = files[filename];
+      if (!f) return null;
+      const lhFnLen = view.getUint16(f.lhOffset + 26, true);
+      const lhExtraLen = view.getUint16(f.lhOffset + 28, true);
+      const dataStart = f.lhOffset + 30 + lhFnLen + lhExtraLen;
+      const compData = new Uint8Array(buffer, dataStart, f.compSize);
+      if (f.compMethod === 0) return new TextDecoder().decode(compData);
+      if (f.compMethod === 8) {
+        const ds = new DecompressionStream('deflate-raw');
+        const stream = new Blob([compData]).stream().pipeThrough(ds);
+        return await new Response(stream).text();
+      }
+      return '';
+    }
+
+    const sharedXml = await extract('xl/sharedStrings.xml');
+    const strings = [];
+    if (sharedXml) {
+      const sDoc = new DOMParser().parseFromString(sharedXml, 'text/xml');
+      const siNodes = sDoc.getElementsByTagName('si');
+      for (let i = 0; i < siNodes.length; i++) {
+        let t = ''; 
+        const tNodes = siNodes[i].getElementsByTagName('t');
+        for (let j = 0; j < tNodes.length; j++) t += tNodes[j].textContent; 
+        strings.push(t);
+      }
+    }
+
+    const sheetXml = await extract('xl/worksheets/sheet1.xml');
+    if (!sheetXml) throw new Error("Could not read sheet1.xml");
+
+    const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
+    const rowNodes = sDoc.getElementsByTagName('row');
+    let text = '';
+    
+    for (let i = 0; i < rowNodes.length; i++) {
+      const cNodes = rowNodes[i].getElementsByTagName('c');
+      const rowData = [];
+      for (let j = 0; j < cNodes.length; j++) {
+        const c = cNodes[j];
+        const type = c.getAttribute('t');
+        const vNode = c.getElementsByTagName('v')[0];
+        const isNode = c.getElementsByTagName('is')[0];
+        
+        let val = '';
+        if (type === 's' && vNode) val = strings[parseInt(vNode.textContent, 10)] || '';
+        else if (type === 'inlineStr' && isNode) {
+          const tNode = isNode.getElementsByTagName('t')[0];
+          val = tNode ? tNode.textContent : '';
+        } else if (vNode) {
+          val = vNode.textContent;
+        }
+        rowData.push(val);
+      }
+      if (rowData.some(c => c !== '')) text += rowData.join(' | ') + '\n';
+    }
+    return text;
   }
-  window.callAI = callAI;
 
   /* ═══════════════════════════════════════════════════════════════════════
-     3. FIXED BULK IMPORT (Uses global callAI, no more extract function bug)
+     4. BULK IMPORT ENGINE
      ═══════════════════════════════════════════════════════════════════════ */
   __LS_registerAction('bulk-cheque-import', () => {
     const body = `
@@ -16084,63 +16173,7 @@ User question: "${query}"`;
         let rawText = await file.text();
         if (file.name.toLowerCase().endsWith('.xlsx')) {
           statusBox.innerHTML = 'Extracting Excel data...';
-          // Inline unzip logic to avoid missing function errors
-          const buffer = await file.arrayBuffer();
-          const view = new DataView(buffer);
-          let eocdOffset = -1;
-          for (let i = buffer.byteLength - 22; i >= 0; i--) { if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; } }
-          if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
-          const cdOffset = view.getUint32(eocdOffset + 16, true);
-          const numEntries = view.getUint16(eocdOffset + 10, true);
-          let offset = cdOffset;
-          const files = {};
-          for (let i = 0; i < numEntries; i++) {
-            if (view.getUint32(offset, true) !== 0x02014b50) break;
-            const compMethod = view.getUint16(offset + 10, true);
-            const compSize = view.getUint32(offset + 20, true);
-            const fnLen = view.getUint16(offset + 28, true);
-            const extraLen = view.getUint16(offset + 30, true);
-            const commentLen = view.getUint16(offset + 32, true);
-            const lhOffset = view.getUint32(offset + 42, true);
-            const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
-            files[new TextDecoder().decode(fnBytes)] = { compMethod, compSize, lhOffset };
-            offset += 46 + fnLen + extraLen + commentLen;
-          }
-          const extract = async (name) => {
-            const f = files[name]; if (!f) return null;
-            const dataStart = f.lhOffset + 30 + view.getUint16(f.lhOffset + 26, true) + view.getUint16(f.lhOffset + 28, true);
-            const compData = new Uint8Array(buffer, dataStart, f.compSize);
-            if (f.compMethod === 0) return new TextDecoder().decode(compData);
-            const ds = new DecompressionStream('deflate-raw');
-            return await new Response(new Blob([compData]).stream().pipeThrough(ds)).text();
-          };
-          const sheetXml = await extract('xl/worksheets/sheet1.xml');
-          const sharedXml = await extract('xl/sharedStrings.xml');
-          const strings = [];
-          if (sharedXml) {
-            const sDoc = new DOMParser().parseFromString(sharedXml, 'text/xml');
-            sDoc.getElementsByTagName('si').forEach(si => {
-              let t = ''; si.getElementsByTagName('t').forEach(n => t += n.textContent); strings.push(t);
-            });
-          }
-          if (!sheetXml) throw new Error("Could not read sheet1.xml");
-          const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
-          let text = '';
-          sDoc.getElementsByTagName('row').forEach(row => {
-            const rowData = [];
-            row.getElementsByTagName('c').forEach(c => {
-              const t = c.getAttribute('t');
-              const vNode = c.getElementsByTagName('v')[0];
-              const isNode = c.getElementsByTagName('is')[0];
-              let val = '';
-              if (t === 's' && vNode) val = strings[parseInt(vNode.textContent, 10)] || '';
-              else if (t === 'inlineStr' && isNode) val = isNode.getElementsByTagName('t')[0]?.textContent || '';
-              else if (vNode) val = vNode.textContent;
-              rowData.push(val);
-            });
-            if (rowData.some(c => c !== '')) text += rowData.join(' | ') + '\n';
-          });
-          rawText = text;
+          rawText = await readExcelFile(file);
         }
 
         statusBox.innerHTML = 'Sending to AI...';
@@ -16202,10 +16235,8 @@ User question: "${query}"`;
   });
 
   /* ═══════════════════════════════════════════════════════════════════════
-     4. REAL SRI LANKAN CHEQUE TEMPLATES & ADVANCED PRINTING
+     5. ADVANCED CHEQUE PRINTING (Real Ratios & Calibration)
      ═══════════════════════════════════════════════════════════════════════ */
-  
-  // Real ratios for Sri Lankan banks (width: 200mm, height: 90mm)
   const BANK_TEMPLATES = {
     hnb:        { name: 'HNB', dateX: '165mm', dateY: '15mm', payeeX: '30mm', payeeY: '38mm', amtFigX: '165mm', amtFigY: '40mm', amtWordX: '30mm', amtWordY: '50mm', acctX: '30mm', acctY: '80mm' },
     sampath:    { name: 'Sampath', dateX: '160mm', dateY: '12mm', payeeX: '35mm', payeeY: '35mm', amtFigX: '160mm', amtFigY: '38mm', amtWordX: '35mm', amtWordY: '45mm', acctX: '35mm', acctY: '80mm' },
@@ -16284,7 +16315,6 @@ User question: "${query}"`;
       const payee = document.getElementById('prPayee').value;
       const amount = parseFloat(document.getElementById('prAmount').value) || 0;
 
-      // Calculate mm to % for preview
       const w = 200, h = 90;
       const calcPos = (x, y) => {
         const xVal = parseFloat(x.replace('mm', '')) + leftShift;
@@ -16304,7 +16334,7 @@ User question: "${query}"`;
         <div style="position:absolute;left:${aPos.left};top:${aPos.top};font-family:monospace;font-size:14px;font-weight:bold;border:1px solid #ccc;padding:2px;">Rs. ${amount.toFixed(2)}</div>
         <div style="position:absolute;left:${wPos.left};top:${wPos.top};font-family:serif;font-size:11px;width:140mm;">${esc(numberToWords(amount))}</div>
         <div style="position:absolute;left:${accPos.left};top:${accPos.top};font-family:monospace;font-size:11px;">A/C: ${esc(bankObj(c.bankId)?.accountNo || '000000000')}</div>
-        <div style="position:absolute;bottom:5mm;left:0;width:100%;text-align:center;font-family:monospace;font-size:12px;letter-spacing:2px;">⑈ ${c.chequeNo} ⑈ 7083 ⑈</div>
+        <div style="position:absolute;bottom:5mm;left:0;width:100%;text-align:center;font-family:monospace;font-size:12px;letter-spacing:2px;">⑈ ${c.chequeNo} ⑈ 7083 ╈</div>
       `;
     }
 
@@ -16321,7 +16351,6 @@ User question: "${query}"`;
       const payee = document.getElementById('prPayee').value;
       const amount = parseFloat(document.getElementById('prAmount').value) || 0;
 
-      // Save calibration
       localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify({ bank: bankKey, top: topShift, left: leftShift }));
 
       const w = window.open('', '_blank');
@@ -16352,7 +16381,7 @@ User question: "${query}"`;
             <div class="pos" style="${calc(tpl.acctX, tpl.acctY)} font-family: monospace; font-size: 11px;">A/C: ${esc(bankObj(c.bankId)?.accountNo || '000000000')}</div>
             
             <div class="pos" style="bottom: 3mm; left: 0; width: 100%; text-align: center; font-family: monospace; font-size: 13px; letter-spacing: 2px;">
-              ⑈ ${c.chequeNo} ⑈ 7083 ⑈
+              ⑈ ${c.chequeNo} ⑈ 7083 ╈
             </div>
           </div>
           <div class="no-print" style="text-align: center; margin-top: 20px;">
@@ -16366,7 +16395,7 @@ User question: "${query}"`;
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
-     5. FIXED AI CHAT (Uses global callAI and Settings key)
+     6. AI CHAT ASSISTANT
      ═══════════════════════════════════════════════════════════════════════ */
   function openAIChat() {
     const body = `
@@ -16401,7 +16430,6 @@ User question: "${query}"`;
       windowEl.scrollTop = windowEl.scrollHeight;
 
       try {
-        // Build Context
         const banks = arr(state.data.banks).map(b => {
           const bal = bankBalances(b.id);
           return { name: b.name, bank: bal.bank, book: bal.book };
@@ -16426,7 +16454,6 @@ User question: "${query}"`;
     };
   }
 
-  // Inject Chat Button if not exists
   if (!document.getElementById('aiChatBtn')) {
     const chatBtn = document.createElement('button');
     chatBtn.id = 'aiChatBtn';
@@ -16439,7 +16466,7 @@ User question: "${query}"`;
     document.body.appendChild(chatBtn);
   }
 
-  scriptLoaded('FINAL-FIX');
+  scriptLoaded('S12-MASTER');
 })();
 </script>
 </body>

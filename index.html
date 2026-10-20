@@ -16214,5 +16214,487 @@ ${rawText.slice(0, 15000)}`;
   scriptLoaded('ULTIMATE-REPORT');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MASTER CASHFLOW ENGINE — ACCURATE ARREARS & BANK INTERCONNECT
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] MASTER CASHFLOW ENGINE loaded', 'color:#ef4444;font-weight:bold');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     CORE CALCULATION FUNCTION (Used by Calendar & Reports)
+     ═══════════════════════════════════════════════════════════════════════ */
+  function calculateCashflow(bankId, targetDate) {
+    // 1. Get exact Bank Balance from Accounting Engine
+    let currentBankBal = 0;
+    if (bankId === 'all') {
+      currentBankBal = arr(state.data.banks).filter(b => b.active !== false).reduce((s, b) => s + bankBalances(b.id).bank, 0);
+    } else {
+      currentBankBal = bankBalances(bankId).bank;
+    }
+
+    // 2. Gather ALL pending liabilities (scheduled, approved, pending_approval)
+    let pendingCheques = arr(state.data.cheques).filter(c => 
+      ['scheduled', 'approved', 'pending_approval'].includes(c.status)
+    );
+    
+    if (bankId !== 'all') {
+      pendingCheques = pendingCheques.filter(c => c.bankId === bankId);
+    }
+
+    // 3. Separate Arrears from Future
+    const todayStr = today();
+    let arrearsTotal = 0;
+    let arrearsList = [];
+    
+    // We only calculate arrears for *today's* projected balance if we are looking at today or future
+    pendingCheques.forEach(c => {
+      if (c.chequeDate <= todayStr) {
+        arrearsList.push(c);
+        arrearsTotal += num(c.amount);
+      }
+    });
+
+    // 4. Build Timeline
+    const timeline = [];
+    // Starting from today, project forward
+    let runningBalance = currentBankBal;
+    
+    // First, hit today with the arrears
+    runningBalance -= arrearsTotal;
+    timeline.push({
+      date: todayStr,
+      isToday: true,
+      arrears: arrearsList,
+      cheques: pendingCheques.filter(c => c.chequeDate === todayStr && c.status !== 'cleared'),
+      totalDue: arrearsTotal,
+      opening: currentBankBal,
+      closing: runningBalance
+    });
+
+    // Then project future days
+    for (let i = 1; i <= 60; i++) { // 60-day projection
+      const d = shiftDate(todayStr, i);
+      const dayCheques = pendingCheques.filter(c => c.chequeDate === d);
+      const dayTotal = dayCheques.reduce((s, c) => s + num(c.amount), 0);
+      
+      const opening = runningBalance;
+      runningBalance -= dayTotal;
+      
+      timeline.push({
+        date: d,
+        isToday: false,
+        arrears: [], // Arrears are only kept in today's bucket for projection purposes
+        cheques: dayCheques,
+        totalDue: dayTotal,
+        opening: opening,
+        closing: runningBalance
+      });
+    }
+
+    return {
+      currentBankBal,
+      arrearsTotal,
+      arrearsList,
+      timeline
+    };
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     MODULE 1: ACCURATE PDC CALENDAR
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.renderPdcCalendar = function() {
+    const f = state.filters.pdcCalendar || {};
+    const currentYm = f.ym || today().slice(0, 7);
+    const filterBankId = f.bankId || 'all';
+    
+    const [year, month] = currentYm.split('-').map(x => parseInt(x, 10));
+    const firstOfMonth = new Date(year, month - 1, 1);
+    const lastOfMonth = new Date(year, month, 0);
+    const startWeekday = firstOfMonth.getDay();
+    const daysInMonth = lastOfMonth.getDate();
+    const todayStr = today();
+
+    // Calculate the exact timeline
+    const data = calculateCashflow(filterBankId, currentYm);
+    
+    // Map timeline to a dictionary for easy calendar lookup
+    const timelineMap = {};
+    data.timeline.forEach(t => { timelineMap[t.date] = t; });
+
+    const cells = [];
+    for (let i = 0; i < startWeekday; i++) cells.push(null);
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      
+      // Find if we have data for this day
+      // If the day is in the past, we show arrears (if any) and actual cleared balance
+      // If it's today or future, we show the projection
+      let tData = timelineMap[dateStr];
+      
+      // If it's a past day (before today), we don't have a projected timeline for it
+      if (dateStr < todayStr) {
+        // Just show what was scheduled for that day
+        const pastCheques = arr(state.data.cheques).filter(c => 
+          c.chequeDate === dateStr && 
+          ['scheduled', 'approved', 'pending_approval', 'cleared', 'bounced'].includes(c.status) &&
+          (filterBankId === 'all' || c.bankId === filterBankId)
+        );
+        const pastTotal = pastCheques.filter(c => c.status !== 'bounced').reduce((s, c) => s + num(c.amount), 0);
+        tData = { totalDue: pastTotal, cheques: pastCheques, closing: 0, arrears: [] };
+      }
+
+      if (!tData) tData = { totalDue: 0, cheques: [], closing: 0, arrears: [] };
+
+      // Is this day a shortfall?
+      const isShortfall = tData.closing < 0 && tData.totalDue > 0;
+
+      cells.push({
+        date: dateStr,
+        dayNum: d,
+        isToday: dateStr === todayStr,
+        data: tData,
+        isShortfall
+      });
+    }
+
+    const monthLabel = firstOfMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const bankOptions = arr(state.data.banks).filter(b => b.active !== false).map(b => 
+      `<option value="${esc(b.id)}" ${filterBankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`
+    ).join('');
+
+    return `
+      <div class="card" style="margin-bottom:20px; background:var(--surface-2);">
+        <div style="display:grid; grid-template-columns:auto auto 1fr auto; gap:16px; align-items:center;">
+          <div style="display:flex; gap:6px;">
+            <button class="btn" data-action="pdc-prev">←</button>
+            <button class="btn" data-action="pdc-today">Today</button>
+            <button class="btn" data-action="pdc-next">→</button>
+          </div>
+          <h3 style="margin:0; font-size:20px; font-weight:700;">${monthLabel}</h3>
+          <div></div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <label class="field" style="margin:0; flex-direction:row; align-items:center; gap:8px;">
+              <span style="font-size:12px; font-weight:600; color:var(--text-3);">Bank:</span>
+              <select id="pdcBankFilter" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:13px;">
+                <option value="all" ${filterBankId === 'all' ? 'selected' : ''}>All Banks</option>
+                ${bankOptions}
+              </select>
+            </label>
+            <div style="padding:8px 16px; background:var(--accent-soft); border-radius:8px; border:1px solid var(--accent); text-align:right;">
+              <div style="font-size:10px; text-transform:uppercase; font-weight:700; color:var(--accent-text);">Exact Bank Bal</div>
+              <div style="font-size:16px; font-weight:800; color:var(--accent-text);">${money(data.currentBankBal)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARREARS WARNING BANNER -->
+      ${data.arrearsTotal > 0 ? `
+        <div class="alert" style="background:var(--red-soft); border:1px solid var(--red); color:var(--red); margin-bottom:16px; font-weight:600;">
+          ⚠️ <strong>Arrears Alert:</strong> There are ${data.arrearsList.length} cheques from previous days totaling <strong>${money(data.arrearsTotal)}</strong> that have NOT been cleared. This has been deducted from today's starting balance.
+        </div>
+      ` : ''}
+
+      <div class="card" style="padding:0; overflow:hidden; border:1px solid var(--border-3);">
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:var(--border); gap:1px;">
+          ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="background:var(--surface-3); padding:12px 0; text-align:center; font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-2);">${d}</div>`).join('')}
+
+          ${cells.map(c => {
+            if (!c) return '<div style="background:var(--surface); min-height:130px;"></div>';
+            
+            let bg = 'var(--surface)';
+            let badgeBg = 'var(--accent-soft)';
+            let badgeText = 'var(--accent-text)';
+            
+            if (c.isShortfall) {
+              bg = 'var(--red-soft)'; badgeBg = 'var(--red)'; badgeText = '#fff';
+            } else if (c.data.totalDue > 0) {
+              badgeBg = 'var(--blue-soft)'; badgeText = 'var(--blue)';
+            }
+
+            return `
+              <div style="background:${bg}; min-height:130px; padding:10px; position:relative; display:flex; flex-direction:column; ${c.isToday ? 'box-shadow:inset 0 0 0 2px var(--accent); z-index:1;' : ''}"
+                   data-action="pdc-day-click" data-date="${c.date}">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="font-weight:800; font-size:14px; color:${c.isToday ? 'var(--accent)' : 'var(--text-3)'};">${c.dayNum}</div>
+                  ${c.isToday ? '<span style="font-size:9px; font-weight:800; background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px;">TODAY</span>' : ''}
+                </div>
+                
+                <div style="flex:1;"></div>
+
+                ${c.data.totalDue > 0 ? `
+                  <div style="background:${badgeBg}; color:${badgeText}; padding:6px; border-radius:6px; font-weight:800; font-size:13px; text-align:center; margin-bottom:6px;">
+                    ${money(c.data.totalDue)}
+                  </div>
+                  <div style="font-size:11px; font-weight:600; color:var(--text-3); text-align:center;">
+                    ${c.data.cheques.length + (c.data.arrears ? c.data.arrears.length : 0)} chq
+                  </div>
+                  <div style="font-size:11px; font-weight:700; margin-top:4px; text-align:center; color:${c.isShortfall ? 'var(--red)' : 'var(--green)'};">
+                    Bal: ${money(c.data.closing)}
+                  </div>
+                ` : `
+                  <div style="font-size:11px; font-weight:600; color:var(--text-4); text-align:center; padding-bottom:4px;">
+                    ${c.date < todayStr ? 'Past' : 'Bal: ' + money(c.data.closing)}
+                  </div>
+                `}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     MODULE 2: DAY CLICK MODAL
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openPdcDayModal(dateStr) {
+    const filterBankId = state.filters.pdcCalendar?.bankId || 'all';
+    let list = [];
+
+    if (dateStr === today()) {
+       // Show both arrears and today's cheques
+       list = arr(state.data.cheques).filter(c => 
+         (c.chequeDate <= today() || c.chequeDate === today()) && 
+         ['scheduled', 'approved', 'pending_approval'].includes(c.status) &&
+         (filterBankId === 'all' || c.bankId === filterBankId)
+       );
+    } else {
+       list = arr(state.data.cheques).filter(c => 
+         c.chequeDate === dateStr && 
+         ['scheduled', 'approved', 'pending_approval', 'cleared'].includes(c.status) &&
+         (filterBankId === 'all' || c.bankId === filterBankId)
+       );
+    }
+
+    if (!list.length) {
+      openModal('📅 Day Details', `<div class="empty">No cheques on ${dateFmt(dateStr)}</div>`, { width: 500 });
+      return;
+    }
+
+    const total = list.reduce((s, c) => s + num(c.amount), 0);
+
+    const body = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+          <div style="font-size:20px; font-weight:800; color:var(--text);">${dateFmt(dateStr)}</div>
+          <div style="font-size:13px; color:var(--text-3); margin-top:2px;">${list.length} cheque(s)</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="k-label">Total</div>
+          <div style="font-size:24px; font-weight:800; color:var(--red);">${money(total)}</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Cheque #</th><th>Payee</th><th>Bank</th><th>Status</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            ${list.map(c => `
+              <tr>
+                <td>${dateFmt(c.chequeDate)}</td>
+                <td class="mono">${esc(c.chequeNo)}</td>
+                <td><strong>${esc(c.payeeName)}</strong></td>
+                <td>${esc(bankName(c.bankId))}</td>
+                <td>${chequeStatusBadge(c.status)}</td>
+                <td class="num"><strong>${money(c.amount)}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    openModal('📅 Cheques for ' + dateFmt(dateStr), body, { width: 800, footer: '<button class="btn" data-close-modal>Close</button>' });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     MODULE 3: ACCURATE WHATSAPP REPORT (Interconnected with Arrears)
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.renderDailyReport = function() {
+    // Force Chart.js to load
+    if (!window.Chart) {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+      document.head.appendChild(s);
+    }
+    if (!window.html2canvas) {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      document.head.appendChild(s);
+    }
+
+    const tomorrowStr = shiftDate(today(), 1);
+    const cfg = window.reportConfig || { showSummary: true, showActionItems: true, showChart: true, showBankBreakdown: true, showTopPayees: true };
+
+    // 1. Get Accurate Cashflow for TOMORROW
+    const flow = calculateCashflow('all', tomorrowStr);
+    const tomorrowData = flow.timeline.find(t => t.date === tomorrowStr);
+    
+    // Calculate total due tomorrow (Arrears + Tomorrow's cheques)
+    const tomorrowArrears = flow.arrearsList; // From today
+    const tomorrowCheques = tomorrowData ? tomorrowData.cheques : [];
+    
+    // Wait, the flow logic puts arrears in TODAY. So for tomorrow's report, we must show:
+    // 1. The Un-cleared Arrears from before tomorrow
+    // 2. The cheques scheduled FOR tomorrow
+    const relevantCheques = [...tomorrowArrears, ...tomorrowCheques];
+    const totalDue = relevantCheques.reduce((s, c) => s + num(c.amount), 0);
+
+    // Exact Bank Balance Today
+    const exactBankBal = flow.currentBankBal;
+    const isShortfall = totalDue > exactBankBal;
+
+    return `
+      <div class="card no-print" style="display:flex; flex-direction:column; gap:16px; border-left:4px solid var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0; font-size:18px;">📱 Ultimate Cashflow Report</h3>
+            <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Accurate forecasting with Arrears & Bank Interconnect</div>
+          </div>
+          <button class="btn primary" onclick="window.downloadWAReport()">📥 Download Image</button>
+        </div>
+      </div>
+
+      <!-- CANVAS TO EXPORT -->
+      <div id="waReportCanvas" style="background:#f8fafc; padding:36px; border-radius:16px; max-width:950px; margin:0 auto; font-family:'Segoe UI', Roboto, sans-serif; border:1px solid #e2e8f0;">
+        
+        <!-- HEADER -->
+        <div style="background:#0f172a; border-radius:16px; padding:28px; margin-bottom:24px; display:flex; justify-content:space-between;">
+          <div>
+            <div style="color:#94a3b8; font-size:12px; font-weight:800; text-transform:uppercase;">Tomorrow's Forecast (${dateFmt(tomorrowStr)})</div>
+            <div style="color:#fff; font-size:28px; font-weight:900;">${state.settings?.business?.name || 'Lanka Shoe'}</div>
+          </div>
+          <div style="background:${isShortfall ? '#ef4444' : '#eab308'}; padding:20px; border-radius:12px; text-align:right; min-width:240px;">
+            <div style="color:rgba(0,0,0,0.7); font-size:11px; font-weight:800; text-transform:uppercase;">Total Due (Incl Arrears)</div>
+            <div style="color:#000; font-size:32px; font-weight:900;">${money(totalDue)}</div>
+          </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+          <div style="background:#fff; padding:20px; border-radius:12px; border:1px solid #e2e8f0; border-top:4px solid #3b82f6;">
+            <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase;">Exact Bank Balance</div>
+            <div style="font-size:28px; font-weight:900; color:#0f172a;">${money(exactBankBal)}</div>
+          </div>
+          <div style="background:${isShortfall ? '#fef2f2' : '#ecfdf5'}; padding:20px; border-radius:12px; border:1px solid ${isShortfall ? '#f87171' : '#34d399'};">
+            <div style="font-size:12px; font-weight:800; color:${isShortfall ? '#b91c1c' : '#047857'}; text-transform:uppercase;">Status</div>
+            <div style="font-size:24px; font-weight:900; color:${isShortfall ? '#ef4444' : '#10b981'};">
+              ${isShortfall ? '⚠️ INSUFFICIENT' : '✓ SUFFICIENT'}
+            </div>
+          </div>
+        </div>
+
+        <!-- ARREARS WARNING -->
+        ${tomorrowArrears.length > 0 ? `
+          <div style="background:#fef2f2; border:1px solid #f87171; border-radius:12px; padding:20px; margin-bottom:24px; border-left:6px solid #ef4444;">
+            <div style="font-size:14px; font-weight:800; color:#b91c1c; text-transform:uppercase; margin-bottom:8px;">🚨 ARREARS ROLLING OVER</div>
+            <div style="font-size:13px; color:#7f1d1d; margin-bottom:12px;">These cheques are from previous days and have NOT cleared. They will hit the bank tomorrow.</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${tomorrowArrears.map(c => `
+                <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #fecaca; display:flex; justify-content:space-between;">
+                  <div><strong>${esc(c.payeeName)}</strong> (Date: ${dateFmt(c.chequeDate)})</div>
+                  <div style="font-weight:900; color:#ef4444;">${money(c.amount)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- TOMORROW'S CHEQUES -->
+        <div style="margin-bottom:24px;">
+          <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:16px;">Cheques Due Tomorrow</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            ${tomorrowCheques.length ? tomorrowCheques.map(c => `
+              <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                  <div style="font-weight:800; color:#0f172a;">${esc(c.payeeName)}</div>
+                  <div style="font-weight:900; color:#0f172a;">${money(c.amount)}</div>
+                </div>
+                <div style="font-size:12px; color:#64748b;">Chq #${esc(c.chequeNo)} · ${esc(bankName(c.bankId))}</div>
+              </div>
+            `).join('') : '<div style="color:#64748b; font-size:13px;">No new cheques for tomorrow.</div>'}
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="text-align:center; font-size:12px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:20px;">
+          Generated by ${state.settings?.business?.name || 'Lanka Shoe'} · ${new Date().toLocaleString('en-GB')}
+        </div>
+      </div>
+    `;
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     ACTIONS & BINDINGS
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_addRoute('pdc-calendar', 'PDC Calendar', window.renderPdcCalendar);
+  __LS_addNav({ group: 'Cheques', id: 'pdc-calendar', ico: '📅', label: 'PDC Calendar' });
+  __LS_addRoute('daily-report', 'WhatsApp Report', window.renderDailyReport);
+
+  __LS_registerAction('pdc-prev', () => {
+    const f = state.filters.pdcCalendar || {};
+    const ym = f.ym || today().slice(0, 7);
+    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
+    const prev = new Date(y, m - 2, 1);
+    state.filters.pdcCalendar = Object.assign({}, f, { ym: prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0') });
+    renderApp();
+  });
+  __LS_registerAction('pdc-next', () => {
+    const f = state.filters.pdcCalendar || {};
+    const ym = f.ym || today().slice(0, 7);
+    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
+    const next = new Date(y, m, 1);
+    state.filters.pdcCalendar = Object.assign({}, f, { ym: next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') });
+    renderApp();
+  });
+  __LS_registerAction('pdc-today', () => {
+    const f = state.filters.pdcCalendar || {};
+    state.filters.pdcCalendar = Object.assign({}, f, { ym: today().slice(0, 7) });
+    renderApp();
+  });
+  __LS_registerAction('pdc-day-click', (ev) => {
+    const date = ev.target.closest('[data-date]').dataset.date;
+    openPdcDayModal(date);
+  });
+
+  window.downloadWAReport = async function() {
+    const el = document.getElementById('waReportCanvas');
+    if (!el) return;
+    toast('Generating high-res image...', 'info');
+    try {
+      const canvas = await window.html2canvas(el, { scale: 3, backgroundColor: '#f8fafc', useCORS: true });
+      const link = document.createElement('a');
+      link.download = `Cashflow_Forecast_${today()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      toast('Image downloaded successfully!', 'success');
+    } catch (e) {
+      toast('Failed to generate image', 'error');
+    }
+  };
+
+  __LS_register('MASTER-CASHFLOW', function () {
+    const prevBind = window.bindView;
+    window.bindView = function () {
+      try { if (prevBind) prevBind(); } catch(e){}
+      const bankFilter = document.getElementById('pdcBankFilter');
+      if (bankFilter) {
+        bankFilter.onchange = () => {
+          const f = state.filters.pdcCalendar || {};
+          state.filters.pdcCalendar = Object.assign({}, f, { bankId: bankFilter.value });
+          renderApp();
+        };
+      }
+    };
+    scriptLoaded('MASTER-CASHFLOW');
+  });
+
+})();
+</script>
 </body>
 </html>

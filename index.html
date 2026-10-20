@@ -15579,6 +15579,42 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
+     HOTFIX: Force Print Button into Cheque Details
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  
+  // We wrap the existing openChequeDetail function
+  const origOpenChequeDetail = window.openChequeDetail;
+  
+  window.openChequeDetail = function(id) {
+    // 1. Temporarily hijack the openModal function to intercept the footer
+    const origOpenModal = window.openModal;
+    
+    window.openModal = function(title, body, opts) {
+      if (title.includes('Cheque Details') && opts && opts.footer) {
+        // Inject our Print button at the very beginning of the footer
+        opts.footer = `
+          <button class="btn primary" onclick="window.closeModal(); setTimeout(() => window.openChequePrint('${id}'), 150)">🖨️ Print</button>
+          ${opts.footer}
+        `;
+      }
+      // Call the original openModal with the modified footer
+      origOpenModal(title, body, opts);
+    };
+    
+    // 2. Call the original Cheque Detail function
+    origOpenChequeDetail(id);
+    
+    // 3. Restore the original openModal so we don't break other modals
+    window.openModal = origOpenModal;
+  };
+  
+  console.log('✅ Print button hotfix applied');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
      PART 3: PREMIUM WHATSAPP ANALYTICS REPORT
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
@@ -15783,6 +15819,399 @@ ${rawText.slice(0, 15000)}`;
   };
 
   scriptLoaded('WHATSAPP-REPORT');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PART 3: ULTIMATE WHATSAPP REPORT & PRINT BUTTON HOTFIX
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] PART 3: ULTIMATE REPORT loaded', 'color:#10b981;font-weight:bold');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     HOTFIX: FORCE PRINT BUTTON INTO CHEQUE DETAILS
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origOpenChequeDetail = window.openChequeDetail;
+  window.openChequeDetail = function(id) {
+    const origOpenModal = window.openModal;
+    window.openModal = function(title, body, opts) {
+      if (title.includes('Cheque Details') && opts && opts.footer) {
+        // Inject Print button safely using string replacement
+        opts.footer = `<button class="btn primary" onclick="window.closeModal(); setTimeout(() => window.openChequePrint('${id}'), 150)">🖨️ Print</button> ` + opts.footer;
+      }
+      origOpenModal(title, body, opts);
+    };
+    origOpenChequeDetail(id);
+    window.openModal = origOpenModal; // Restore
+  };
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DYNAMIC LIBRARY LOADER (Chart.js & html2canvas)
+     ═══════════════════════════════════════════════════════════════════════ */
+  async function ensureLibraries() {
+    const loadScript = (src, check) => new Promise((res, rej) => {
+      if (window[check]) return res();
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+    try {
+      await Promise.all([
+        loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js', 'Chart'),
+        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas')
+      ]);
+    } catch (e) {
+      console.warn('Libraries failed to load', e);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     REPORT CONFIGURATION & TOGGLES
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.reportConfig = {
+    showSummary: true,
+    showActionItems: true,
+    showChart: true,
+    showBankBreakdown: true,
+    showTopPayees: true
+  };
+
+  // Load saved config from local storage if exists
+  try {
+    const saved = localStorage.getItem('lankashoe_report_config');
+    if (saved) Object.assign(window.reportConfig, JSON.parse(saved));
+  } catch(e) {}
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     THE REPORT RENDERER
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.renderDailyReport = function() {
+    ensureLibraries(); // Load Chart.js in background
+    
+    const tomorrowStr = shiftDate(today(), 1);
+    const cfg = window.reportConfig;
+    
+    // ── 1. DATA CALCULATION ──
+    const tomorrowCheques = arr(state.data.cheques).filter(c => 
+      c.chequeDate === tomorrowStr && ['scheduled', 'approved', 'pending_approval'].includes(c.status)
+    );
+
+    const totalTomorrowAmount = tomorrowCheques.reduce((s, c) => s + num(c.amount), 0);
+    const activeBanks = arr(state.data.banks).filter(b => b.active !== false);
+    const totalBankBalance = activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0);
+    
+    const isGlobalShortfall = totalTomorrowAmount > totalBankBalance;
+
+    // Bank Data
+    const bankData = activeBanks.map(b => {
+      const bCheques = tomorrowCheques.filter(c => c.bankId === b.id);
+      const bAmount = bCheques.reduce((s, c) => s + num(c.amount), 0);
+      const bal = bankBalances(b.id);
+      const isShort = bAmount > bal.bank;
+
+      return {
+        bank: b, cheques: bCheques, amount: bAmount, balance: bal.bank,
+        shortfall: isShort ? (bAmount - bal.bank) : 0, isShort: isShort
+      };
+    }).filter(b => b.cheques.length > 0);
+
+    // Top Payees
+    const payeeTotals = {};
+    tomorrowCheques.forEach(c => {
+      payeeTotals[c.payeeName] = (payeeTotals[c.payeeName] || 0) + num(c.amount);
+    });
+    const topPayees = Object.keys(payeeTotals)
+      .map(name => ({ name, total: payeeTotals[name] }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // 7-Day Forecast Data
+    const next7Days = [];
+    const next7Labels = [];
+    const next7Data = [];
+    for (let i = 1; i <= 7; i++) {
+      const d = shiftDate(today(), i);
+      next7Labels.push(new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }));
+      const dayTotal = arr(state.data.cheques)
+        .filter(c => c.chequeDate === d && ['scheduled', 'approved', 'pending_approval'].includes(c.status))
+        .reduce((s, c) => s + num(c.amount), 0);
+      next7Data.push(dayTotal);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       2. RENDER HTML
+       ═══════════════════════════════════════════════════════════════════════ */
+    return `
+      <!-- CONTROLS BAR -->
+      <div class="card no-print" style="display:flex; flex-direction:column; gap:16px; background:var(--surface); border-left:4px solid var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0; font-size:18px;">📱 Ultimate Cashflow Report</h3>
+            <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Customize and export high-res analytics for WhatsApp</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn primary" onclick="window.downloadWAReport()">📥 Download Image</button>
+          </div>
+        </div>
+        
+        <!-- Toggles -->
+        <div style="display:flex; gap:16px; flex-wrap:wrap; background:var(--surface-2); padding:12px; border-radius:8px; border:1px solid var(--border);">
+          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" onchange="window.toggleRepCfg('showSummary', this.checked)" ${cfg.showSummary ? 'checked' : ''}> Global Summary
+          </label>
+          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" onchange="window.toggleRepCfg('showActionItems', this.checked)" ${cfg.showActionItems ? 'checked' : ''}> Action Alerts
+          </label>
+          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" onchange="window.toggleRepCfg('showChart', this.checked)" ${cfg.showChart ? 'checked' : ''}> 7-Day Chart
+          </label>
+          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" onchange="window.toggleRepCfg('showBankBreakdown', this.checked)" ${cfg.showBankBreakdown ? 'checked' : ''}> Bank Breakdown
+          </label>
+          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" onchange="window.toggleRepCfg('showTopPayees', this.checked)" ${cfg.showTopPayees ? 'checked' : ''}> Top Payees
+          </label>
+        </div>
+      </div>
+
+      <!-- THE CANVAS TO EXPORT -->
+      <div id="waReportCanvas" style="background:#f8fafc; padding:36px; border-radius:16px; max-width:950px; margin:0 auto; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; border:1px solid #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+        
+        <!-- HEADER -->
+        <div style="background:#0f172a; border-radius:16px; padding:28px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start; box-shadow: 0 10px 25px rgba(15,23,42,0.2);">
+          <div>
+            <div style="color:#94a3b8; font-size:12px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Cheque Payment Forecast</div>
+            <div style="color:#fff; font-size:30px; font-weight:900; line-height:1.2;">${new Date(tomorrowStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+            <div style="color:#38bdf8; font-size:14px; font-weight:600; margin-top:10px;">${state.settings?.business?.name || 'Lanka Shoe'}</div>
+          </div>
+          <div style="background:${isGlobalShortfall ? '#ef4444' : '#eab308'}; padding:20px 24px; border-radius:12px; text-align:right; min-width:250px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div style="color:rgba(0,0,0,0.7); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Total to Arrange</div>
+            <div style="color:#000; font-size:32px; font-weight:900; margin-top:4px; line-height:1;">${money(totalTomorrowAmount)}</div>
+            <div style="color:rgba(0,0,0,0.8); font-size:12px; font-weight:700; margin-top:8px;">${tomorrowCheques.length} cheque(s) clearing</div>
+          </div>
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        ${cfg.showSummary ? `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+            <div style="background:#fff; padding:20px; border-radius:12px; border:1px solid #e2e8f0; border-top:4px solid #3b82f6;">
+              <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:8px;">Total Bank Balance</div>
+              <div style="font-size:28px; font-weight:900; color:#0f172a;">${money(totalBankBalance)}</div>
+            </div>
+            <div style="background:${isGlobalShortfall ? '#fef2f2' : '#ecfdf5'}; padding:20px; border-radius:12px; border:1px solid ${isGlobalShortfall ? '#f87171' : '#34d399'}; border-top:4px solid ${isGlobalShortfall ? '#ef4444' : '#10b981'};">
+              <div style="font-size:12px; font-weight:800; color:${isGlobalShortfall ? '#b91c1c' : '#047857'}; text-transform:uppercase; margin-bottom:8px;">Status</div>
+              <div style="font-size:24px; font-weight:900; color:${isGlobalShortfall ? '#ef4444' : '#10b981'}; display:flex; align-items:center; gap:8px;">
+                ${isGlobalShortfall ? '⚠️ INSUFFICIENT FUNDS' : '✓ SUFFICIENT FUNDS'}
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- ACTION ALERTS -->
+        ${cfg.showActionItems && bankData.some(b => b.isShort) ? `
+          <div style="background:#fef2f2; border:1px solid #f87171; border-radius:12px; padding:20px; margin-bottom:24px; border-left:6px solid #ef4444;">
+            <div style="font-size:14px; font-weight:800; color:#b91c1c; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">🚨 Action Required: Deposit Funds</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${bankData.filter(b => b.isShort).map(b => `
+                <div style="background:#fff; padding:12px 16px; border-radius:8px; border:1px solid #fecaca; display:flex; justify-content:space-between; align-items:center;">
+                  <div style="font-weight:700; color:#0f172a;">${esc(b.bank.name)}</div>
+                  <div style="font-weight:900; color:#ef4444; font-size:16px;">Deposit ${money(b.shortfall)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- 7-DAY CHART -->
+        ${cfg.showChart ? `
+          <div style="background:#fff; border-radius:12px; padding:24px; margin-bottom:24px; border:1px solid #e2e8f0;">
+            <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Next 7 Days Cashflow Projection</div>
+            <div style="height:180px; width:100%; position:relative;">
+              <canvas id="waChartCanvas"></canvas>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- BANK BREAKDOWN -->
+        ${cfg.showBankBreakdown ? `
+          <div style="margin-bottom:24px;">
+            <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Bank-by-Bank Breakdown</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+              ${bankData.length ? bankData.map(b => `
+                <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; border-left:4px solid ${b.isShort ? '#ef4444' : '#3b82f6'};">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                    <div style="font-size:16px; font-weight:800; color:#0f172a;">${esc(b.bank.name)}</div>
+                    <div style="text-align:right;">
+                      <div style="font-size:18px; font-weight:900; color:#0f172a;">${money(b.amount)}</div>
+                      <div style="font-size:11px; font-weight:800; color:${b.isShort ? '#ef4444' : '#10b981'}; margin-top:2px;">
+                        ${b.isShort ? `SHORT ${money(b.shortfall)}` : 'OK'}
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Balance Bar -->
+                  <div style="margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:#64748b; margin-bottom:4px;">
+                      <span>Required: ${money(b.amount)}</span>
+                      <span>Bal: ${money(b.balance)}</span>
+                    </div>
+                    <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+                      <div style="height:100%; width:${Math.min(100, (b.amount / (b.balance || 1)) * 100)}%; background:${b.isShort ? '#ef4444' : '#3b82f6'};"></div>
+                    </div>
+                  </div>
+                  <!-- Cheques list -->
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    ${b.cheques.slice(0,3).map(c => `
+                      <div style="display:flex; justify-content:space-between; font-size:12px; padding:6px 8px; background:#f8fafc; border-radius:4px;">
+                        <span style="font-weight:600; color:#334155;">${esc(c.payeeName)}</span>
+                        <span style="font-weight:800; color:#0f172a;">${money(c.amount)}</span>
+                      </div>
+                    `).join('')}
+                    ${b.cheques.length > 3 ? `<div style="font-size:11px; color:#64748b; text-align:center; font-weight:600;">+ ${b.cheques.length - 3} more...</div>` : ''}
+                  </div>
+                </div>
+              `).join('') : '<div style="grid-column:1/-1; text-align:center; padding:20px; color:#64748b;">No cheques clearing tomorrow.</div>'}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- TOP PAYEES -->
+        ${cfg.showTopPayees && topPayees.length ? `
+          <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0;">
+            <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Top Payees Tomorrow</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${topPayees.map((p, i) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="background:#f1f5f9; color:#64748b; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${i+1}</span>
+                    <span style="font-weight:600; color:#334155;">${esc(p.name)}</span>
+                  </div>
+                  <span style="font-weight:800; color:#0f172a;">${money(p.total)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- FOOTER -->
+        <div style="text-align:center; font-size:12px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:20px; margin-top:24px;">
+          Generated by ${state.settings?.business?.name || 'Lanka Shoe'} · ${new Date().toLocaleString('en-GB')}
+        </div>
+      </div>
+    `;
+  };
+
+  // Register Route
+  __LS_addRoute('daily-report', 'WhatsApp Report', window.renderDailyReport);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     INTERACTIVITY & CHART RENDERING
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.toggleRepCfg = function(key, val) {
+    window.reportConfig[key] = val;
+    localStorage.setItem('lankashoe_report_config', JSON.stringify(window.reportConfig));
+    renderApp();
+  };
+
+  // Chart Rendering Hook
+  __LS_register('WA-CHART-RENDER', function () {
+    const prevBind = window.bindView;
+    window.bindView = function () {
+      try { if (prevBind) prevBind(); } catch(e){}
+      
+      if (state.view === 'daily-report' && window.reportConfig.showChart) {
+        // We must wait for the canvas to exist in the DOM
+        setTimeout(() => {
+          const ctx = document.getElementById('waChartCanvas');
+          if (!ctx) return;
+          
+          // Destroy existing chart if it exists
+          if (window._waChartInstance) {
+            try { window._waChartInstance.destroy(); } catch(e){}
+          }
+
+          // Calculate data again for the chart
+          const labels = [];
+          const data = [];
+          for (let i = 1; i <= 7; i++) {
+            const d = shiftDate(today(), i);
+            labels.push(new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }));
+            const dayTotal = arr(state.data.cheques)
+              .filter(c => c.chequeDate === d && ['scheduled', 'approved', 'pending_approval'].includes(c.status))
+              .reduce((s, c) => s + num(c.amount), 0);
+            data.push(dayTotal);
+          }
+
+          window._waChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Cheques Clearing (Rs.)',
+                data: data,
+                backgroundColor: data.map(val => val > 0 ? '#3b82f6' : '#e2e8f0'),
+                borderRadius: 6,
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => 'Rs. ' + ctx.parsed.y.toLocaleString('en-LK')
+                  }
+                }
+              },
+              scales: {
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { color: '#64748b', font: {size: 11} } },
+                x: { grid: { display: false }, ticks: { color: '#64748b', font: {size: 11} } }
+              }
+            }
+          });
+        }, 100);
+      }
+    };
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     IMAGE DOWNLOAD LOGIC (ULTRA HD)
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.downloadWAReport = async function() {
+    const el = document.getElementById('waReportCanvas');
+    if (!el) return;
+    
+    toast('Generating high-res image...', 'info');
+    
+    try {
+      await ensureLibraries(); // Ensure html2canvas is ready
+      
+      // Create a clone of the element to ensure the chart is perfectly rendered
+      // html2canvas sometimes struggles with canvas elements directly
+      const canvas = await window.html2canvas(el, {
+        scale: 3, // Ultra HD
+        backgroundColor: '#f8fafc',
+        useCORS: true,
+        logging: false,
+        // If the chart is visible, it will capture it natively
+      });
+      
+      const link = document.createElement('a');
+      link.download = `Cashflow_Forecast_${today()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast('Image downloaded successfully!', 'success', 4000);
+    } catch (e) {
+      dbg.err('Report generation failed: ' + e.message);
+      toast('Failed to generate image. Check console.', 'error');
+    }
+  };
+
+  scriptLoaded('ULTIMATE-REPORT');
 })();
 </script>
 </body>

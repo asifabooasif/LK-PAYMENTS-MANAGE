@@ -14977,7 +14977,7 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 1: MASSIVE 3D CHEQUE PRINT DESIGNER
+     FEATURE 1: MASSIVE 3D CHEQUE PRINT DESIGNER (Bulletproof Injection)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -14993,27 +14993,42 @@ ${rawText.slice(0, 15000)}`;
     'NDB':        { date: { x: 160, y: 15, fs: 14 }, payee: { x: 25, y: 30, fs: 15 }, amount: { x: 160, y: 30, fs: 15 }, words: { x: 15, y: 40, fs: 14 } }
   };
 
-  // 1. Inject the Print Button into the existing Cheque Detail Modal
-  const origOpenChequeDetail = window.openChequeDetail;
-  window.openChequeDetail = function (id) {
-    origOpenChequeDetail(id); // Call original S03 function
+  // 1. THE BULLETPROOF INJECTION (MutationObserver)
+  // This watches the modal. The moment "Cheque Details" opens, it injects the Print button.
+  const modalWrap = document.getElementById('modalWrap');
+  if (modalWrap) {
+    const observer = new MutationObserver(() => {
+      if (!modalWrap.classList.contains('open')) return;
+      
+      const title = modalWrap.querySelector('.modal-head h3');
+      if (!title || !title.textContent.includes('Cheque Details')) return;
+      
+      const footer = modalWrap.querySelector('.modal-foot');
+      if (!footer || footer.querySelector('#masterPrintBtn')) return; // Don't inject twice
+      
+      // Find the cheque ID from the existing buttons (Approve, Edit, etc.)
+      const btnWithId = footer.querySelector('[data-id]');
+      if (!btnWithId) return;
+      
+      const chqId = btnWithId.dataset.id;
+      
+      const printBtn = document.createElement('button');
+      printBtn.id = 'masterPrintBtn';
+      printBtn.className = 'btn primary';
+      printBtn.style.marginRight = 'auto'; // Pushes it to the left side
+      printBtn.innerHTML = '🖨️ Print Designer';
+      printBtn.onclick = () => {
+        window.closeModal();
+        setTimeout(() => window.openChequePrint(chqId), 100);
+      };
+      
+      footer.insertBefore(printBtn, footer.firstChild);
+    });
     
-    // Inject Print button safely
-    setTimeout(() => {
-      const footer = document.querySelector('.modal-foot');
-      if (footer && !document.getElementById('masterPrintBtn')) {
-        const btn = document.createElement('button');
-        btn.id = 'masterPrintBtn';
-        btn.className = 'btn primary';
-        btn.innerHTML = '🖨️ Print Designer';
-        btn.style.marginRight = 'auto'; // Push to the left side of the footer
-        btn.onclick = () => { closeModal(); setTimeout(() => openChequePrint(id), 100); };
-        footer.insertBefore(btn, footer.firstChild);
-      }
-    }, 50);
-  };
+    observer.observe(modalWrap, { childList: true, attributes: true });
+  }
 
-  // 2. The Massive 3D Designer Function
+  // 2. THE MASSIVE 3D DESIGNER FUNCTION
   window.openChequePrint = function (id) {
     const c = chequeObj(id);
     if (!c) return;
@@ -15041,12 +15056,13 @@ ${rawText.slice(0, 15000)}`;
 
     // Helper to format date
     const getFormattedDate = () => {
-      if (settings.dateFormat === 'DD/MM/YYYY') return dateFmt(c.chequeDate).replace(/[a-zA-Z]/g, '').replace(/\s+/g, '');
-      if (settings.dateFormat === 'MM/DD/YYYY') {
+      if (settings.dateFormat === 'DD/MM/YYYY') {
          const d = new Date(c.chequeDate);
          return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
       }
-      return dateFmt(c.chequeDate); // Default
+      if (settings.dateFormat === 'DD MMM YYYY') return dateFmt(c.chequeDate);
+      if (settings.dateFormat === 'YYYY-MM-DD') return c.chequeDate;
+      return dateFmt(c.chequeDate);
     };
 
     // Helper for words

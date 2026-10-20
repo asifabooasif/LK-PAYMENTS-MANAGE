@@ -15765,7 +15765,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 3: ADVANCED BANK ADJUSTMENTS & TRANSFERS (Fixed Binding)
+     FEATURE 3: ULTIMATE BANK ADJUSTMENTS (With Balance Impact & Receipts)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -15781,7 +15781,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     custom:      { label: 'Custom Category', ico: '🏷️', sign:  0 }
   };
 
-  // 2. The New Advanced Form
+  // 2. The Ultimate Form
   window.openAdjustmentFormPro = function(id) {
     if (!state.perms.write) { toast('Read-only role', 'error'); return; }
     const a = id ? adjObj(id) : null;
@@ -15790,17 +15790,15 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
     const isEdit = !!a;
     const defaultType = a?.type || 'bank_charge';
-    
-    // Build Bank Options
     const bankOpts = banks.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
     const bankOptsWithPlaceholder = `<option value="">— Select Destination Bank —</option>` + bankOpts;
 
-    // Type Options
     const typeOpts = Object.keys(ADJUSTMENT_TYPES).map(k => 
       `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${ADJUSTMENT_TYPES[k].ico} ${ADJUSTMENT_TYPES[k].label}</option>`
     ).join('');
 
     const body = `
+      <!-- Top Row: Bank & Date -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label class="field">Source Bank
           <select id="adjBank" ${isEdit ? 'disabled' : ''}>
@@ -15812,6 +15810,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         </label>
       </div>
 
+      <!-- Second Row: Type & Direction -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
         <label class="field">Adjustment Type
           <select id="adjType" ${isEdit ? 'disabled' : ''}>
@@ -15826,26 +15825,45 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         </label>
       </div>
 
-      <!-- Custom Category Field -->
+      <!-- Custom Name (If Custom) -->
       <div style="margin-top:14px; display:none;" id="adjCustomWrap">
         <label class="field">Custom Category Name
           <input type="text" id="adjCustomName" placeholder="e.g. Loan Payment, Director Fee" value="${a?.customName || ''}">
         </label>
       </div>
 
-      <!-- Destination Bank (For Transfers) -->
+      <!-- Destination Bank (If Transfer) -->
       <div style="margin-top:14px; display:none;" id="adjDestWrap">
         <label class="field">Destination Bank (Transfer To)
           <select id="adjDestBank">${bankOptsWithPlaceholder}</select>
         </label>
       </div>
 
+      <!-- Amount & Reason -->
       <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:14px">
         <label class="field">Amount (Rs.)
           <input type="number" id="adjAmount" value="${a ? num(a.amount).toFixed(2) : ''}" placeholder="0.00" step="0.01">
         </label>
-        <label class="field">Reason / Reference
+        <label class="field">Reason / Description
           <input type="text" id="adjReason" value="${a?.reason || ''}" placeholder="e.g. Monthly service charge">
+        </label>
+      </div>
+
+      <!-- Reference & Recurring -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Reference / Slip No.
+          <input type="text" id="adjReference" value="${a?.reference || ''}" placeholder="Leave blank to auto-generate">
+        </label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;padding-top:24px;">
+          <input type="checkbox" id="adjRecurring" ${a?.isRecurring ? 'checked' : ''}>
+          <span style="font-weight:600;font-size:12.5px;">Recurring Entry?</span>
+        </label>
+      </div>
+
+      <!-- Attachment -->
+      <div style="margin-top:14px">
+        <label class="field">Receipt / Slip Attachment (Optional)
+          <input type="file" id="adjFile" accept="image/*,.pdf" style="padding:6px; border:1px solid var(--border); border-radius:6px;">
         </label>
       </div>
 
@@ -15855,16 +15873,17 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         </label>
       </div>
 
-      <div id="adjPreview" style="margin-top:16px;padding:14px;background:var(--surface-2);border-radius:8px;font-size:13px;display:none;">
-        <!-- Live preview -->
+      <!-- THE BALANCE IMPACT PREVIEW -->
+      <div id="adjPreview" style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border); display:none;">
+        <!-- Injected via JS -->
       </div>
     `;
 
     openModal(isEdit ? '✏️ Edit Adjustment' : '＋ Advanced Adjustment', body, {
-      width: 680,
+      width: 720,
       footer: `
         <button class="btn" data-close-modal>Cancel</button>
-        <button class="btn primary" id="adjSaveBtn">${isEdit ? 'Update' : 'Save'}</button>
+        <button class="btn primary" id="adjSaveBtn">${isEdit ? 'Update' : 'Save Adjustment'}</button>
       `
     });
 
@@ -15882,7 +15901,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     function updateUIForType() {
       const t = typeSel.value;
       
-      // Reset
       destWrap.style.display = 'none';
       customWrap.style.display = 'none';
       dirWrap.style.display = 'block';
@@ -15891,9 +15909,8 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         customWrap.style.display = 'block';
       } else if (t === 'transfer') {
         destWrap.style.display = 'block';
-        dirWrap.style.display = 'none'; // Transfers automatically do Debit/ Credit
+        dirWrap.style.display = 'none'; 
       } else {
-        // Auto-set direction for standard types
         const meta = ADJUSTMENT_TYPES[t];
         if (meta && meta.sign === 1) dirSel.value = 'credit';
         if (meta && meta.sign === -1) dirSel.value = 'debit';
@@ -15901,39 +15918,71 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       updatePreview();
     }
 
-    // 4. Live Preview
+    // 4. THE RESTORED BALANCE IMPACT PREVIEW
     function updatePreview() {
       const t = typeSel.value;
       const amt = num(amtInp.value);
       if (amt <= 0) { preview.style.display = 'none'; return; }
       
       preview.style.display = 'block';
-      
+
       if (t === 'transfer') {
         const fromBank = bankObj(bankSel.value);
         const toBank = bankObj(destSel.value);
+        
         if (!fromBank || !toBank) {
-          preview.innerHTML = '<span style="color:var(--amber)">Select destination bank to preview transfer.</span>';
+          preview.innerHTML = '<div style="color:var(--amber); font-weight:600; text-align:center;">Select destination bank to preview transfer impact.</div>';
           return;
         }
+        
+        const fromBal = bankBalances(fromBank.id);
+        const toBal = bankBalances(toBank.id);
+
         preview.innerHTML = `
-          <div style="font-weight:700;margin-bottom:8px;">Transfer Preview</div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <span style="color:var(--red)">− ${esc(fromBank.name)}</span>
-            <strong>${money(amt)}</strong>
-          </div>
-          <div style="display:flex;justify-content:space-between;">
-            <span style="color:var(--green)">+ ${esc(toBank.name)}</span>
-            <strong>${money(amt)}</strong>
+          <div style="font-weight:700;margin-bottom:12px;font-size:12px;text-transform:uppercase;color:var(--text-3);">Transfer Impact</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+              <div style="font-weight:600;color:var(--red);margin-bottom:4px;">− ${esc(fromBank.name)}</div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;"><span class="muted">Bank:</span> <span>${money(fromBal.bank)} → <strong>${money(fromBal.bank - amt)}</strong></span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;"><span class="muted">Book:</span> <span>${money(fromBal.book)} → <strong>${money(fromBal.book - amt)}</strong></span></div>
+            </div>
+            <div>
+              <div style="font-weight:600;color:var(--green);margin-bottom:4px;">+ ${esc(toBank.name)}</div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;"><span class="muted">Bank:</span> <span>${money(toBal.bank)} → <strong>${money(toBal.bank + amt)}</strong></span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;"><span class="muted">Book:</span> <span>${money(toBal.book)} → <strong>${money(toBal.book + amt)}</strong></span></div>
+            </div>
           </div>
         `;
       } else {
         const isCredit = dirSel.value === 'credit';
+        const signedAmt = isCredit ? amt : -amt;
+        const bal = bankBalances(bankSel.value);
+        const bName = bankObj(bankSel.value).name;
+
+        const afterBank = bal.bank + signedAmt;
+        const afterBook = bal.book + signedAmt;
+
         preview.innerHTML = `
-          <div style="font-weight:700;margin-bottom:4px;">Impact on ${esc(bankObj(bankSel.value).name)}</div>
-          <div style="color:${isCredit ? 'var(--green)' : 'var(--red)'};font-size:16px;font-weight:700;">
-            ${isCredit ? '+' : '−'} ${money(amt)}
+          <div style="font-weight:700;margin-bottom:12px;font-size:12px;text-transform:uppercase;color:var(--text-3);">Balance Impact on ${esc(bName)}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div>
+              <div class="k-label">Bank Balance</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                <span>${money(bal.bank)}</span>
+                <span style="color:var(--text-3);">→</span>
+                <strong style="color:${afterBank < 0 ? 'var(--red)' : 'var(--text)'}">${money(afterBank)}</strong>
+              </div>
+            </div>
+            <div>
+              <div class="k-label">Book Balance</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                <span>${money(bal.book)}</span>
+                <span style="color:var(--text-3);">→</span>
+                <strong style="color:${afterBook < 0 ? 'var(--red)' : 'var(--text)'}">${money(afterBook)}</strong>
+              </div>
+            </div>
           </div>
+          ${afterBook < 0 ? `<div style="margin-top:10px;color:var(--red);font-weight:600;font-size:12px;">⚠ This adjustment pushes the Book balance negative.</div>` : ''}
         `;
       }
     }
@@ -15944,7 +15993,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     bankSel.onchange = updatePreview;
     destSel.onchange = updatePreview;
 
-    updateUIForType(); // init
+    updateUIForType(); 
 
     // 5. Save Logic
     document.getElementById('adjSaveBtn').onclick = () => {
@@ -15957,41 +16006,49 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       const notes = document.getElementById('adjNotes').value.trim();
       const customName = document.getElementById('adjCustomName').value.trim();
       const destBankId = destSel.value;
+      const isRecurring = document.getElementById('adjRecurring').checked;
+      
+      let reference = document.getElementById('adjReference').value.trim();
+      if (!reference) {
+        reference = 'ADJ-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
+      }
 
       if (amount <= 0) { toast('Amount must be > 0', 'error'); return; }
       if (!reason) { toast('Reason is required', 'error'); return; }
 
+      // Handle file attachment (base64 for demo, ideally Firebase Storage)
+      const fileInp = document.getElementById('adjFile');
+      let fileName = null;
+      if (fileInp.files && fileInp.files[0]) {
+         fileName = fileInp.files[0].name; // Just saving the name for now to keep it simple
+      }
+
       if (type === 'transfer') {
-        if (!destBankId) { toast('Please select destination bank', 'error'); return; }
-        if (destBankId === bankId) { toast('Cannot transfer to the same bank', 'error'); return; }
+        if (!destBankId) { toast('Select destination bank', 'error'); return; }
+        if (destBankId === bankId) { toast('Cannot transfer to same bank', 'error'); return; }
         
-        // Create Transfer (Two linked records)
         const transferGroupId = uid();
         
-        // Outgoing
         const outRecord = makeBankAdjustment({
           bankId: bankId, date, type: 'transfer_out', direction: 'debit', amount,
-          reason: reason || 'Transfer Out', notes, transferGroupId
+          reason, notes, transferGroupId, reference, isRecurring, attachment: fileName
         });
         outRecord.customName = 'Transfer to ' + bankObj(destBankId).name;
 
-        // Incoming
         const inRecord = makeBankAdjustment({
           bankId: destBankId, date, type: 'transfer_in', direction: 'credit', amount,
-          reason: reason || 'Transfer In', notes, transferGroupId
+          reason, notes, transferGroupId, reference, isRecurring, attachment: fileName
         });
         inRecord.customName = 'Transfer from ' + bankObj(bankId).name;
 
         state.data.bankAdjustments.push(outRecord, inRecord);
         markDirty('bankAdjustments', outRecord.id);
         markDirty('bankAdjustments', inRecord.id);
-        
         toast('Transfer completed successfully', 'success');
 
       } else {
-        // Standard Adjustment
         const data = {
-          bankId, date, type, direction, amount, reason, notes
+          bankId, date, type, direction, amount, reason, notes, reference, isRecurring, attachment: fileName
         };
         if (type === 'custom') data.customName = customName;
 
@@ -16013,12 +16070,9 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     };
   };
 
-  // 6. REDIRECT THE BUTTONS (The magic fix)
-  // Overwrite the actions so the "New Adjustment" button opens our new form
+  // 6. REDIRECT THE BUTTONS
   window.__LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
   window.__LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
-
-  // Also override the global window function just in case
   window.openAdjustmentForm = window.openAdjustmentFormPro;
 
 })();

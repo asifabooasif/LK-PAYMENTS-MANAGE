@@ -14977,2754 +14977,812 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     S12 MEGA PATCH: Universal AI, Cheque Printing, PWA Desktop App
+     PART 1: PDC CALENDAR & CASHFLOW ENGINE
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] S12-MEGA loaded', 'color:#10b981;font-weight:bold');
+  console.log('%c[script] PART 1: PDC CALENDAR loaded', 'color:#10b981;font-weight:bold');
 
   /* ═══════════════════════════════════════════════════════════════════════
-     1. PWA SETUP — Make it a Desktop App
+     1. The Calendar Renderer
      ═══════════════════════════════════════════════════════════════════════ */
-  const pwaManifest = {
-    name: "Lanka Shoe Cheque Manager",
-    short_name: "LankaShoe",
-    start_url: location.origin + location.pathname,
-    display: "standalone",
-    background_color: "#fafaff",
-    theme_color: "#7c3aed",
-    icons: [{
-      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%237c3aed'/%3E%3Ctext x='50' y='55' font-size='50' text-anchor='middle' dominant-baseline='middle' fill='white'%3E💳%3C/text%3E%3C/svg%3E",
-      sizes: "192x192",
-      type: "image/svg+xml"
-    }]
-  };
-  const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: 'application/json' });
-  const manifestLink = document.createElement('link');
-  manifestLink.rel = 'manifest';
-  manifestLink.href = URL.createObjectURL(manifestBlob);
-  document.head.appendChild(manifestLink);
+  function renderPdcCalendar() {
+    // Default to current month and 'all' banks
+    const f = state.filters.pdcCalendar || {};
+    const currentYm = f.ym || today().slice(0, 7);
+    const filterBankId = f.bankId || 'all';
+    
+    // Date calculations
+    const [year, month] = currentYm.split('-').map(x => parseInt(x, 10));
+    const firstOfMonth = new Date(year, month - 1, 1);
+    const lastOfMonth = new Date(year, month, 0);
+    const startWeekday = firstOfMonth.getDay(); // 0 = Sunday
+    const daysInMonth = lastOfMonth.getDate();
+    const todayStr = today();
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     2. UNIVERSAL AI IMPORTER (Suppliers, Past Cheques, Future Cheques)
-     ═══════════════════════════════════════════════════════════════════════ */
-  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
-  const MODEL_STORAGE = 'lankashoe_ai_model';
+    // ── Calculate Starting Balance ──
+    const activeBanks = filterBankId === 'all' 
+      ? arr(state.data.banks).filter(b => b.active !== false)
+      : [bankObj(filterBankId)].filter(Boolean);
+      
+    let runningBalance = activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0);
 
-  function openUniversalImport() {
-    const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
-    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-3.8-flash';
+    // ── Group Cheques by Day ──
+    const chequesByDay = {};
+    arr(state.data.cheques).forEach(c => {
+      // Only care about scheduled, approved, or pending
+      if (!['scheduled', 'approved', 'pending_approval'].includes(c.status)) return;
+      
+      // Bank filter
+      if (filterBankId !== 'all' && c.bankId !== filterBankId) return;
 
-    const body =
-      '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
-        '<strong>🧠 Universal AI Importer</strong> — Upload an Excel or CSV file. The AI will read it and convert it to the correct format.' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">What are you importing?' +
-          '<select id="uniType">' +
-            '<option value="suppliers">Suppliers / Payees</option>' +
-            '<option value="past_cheques">Past Cleared Cheques</option>' +
-            '<option value="future_cheques">Future Pending Cheques</option>' +
-          '</select>' +
-        '</label>' +
-        '<label class="field">AI Model<input type="text" id="uniModel" value="' + esc(savedModel) + '"></label>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">Gemini API Key<input type="password" id="uniApiKey" value="' + esc(savedKey) + '"></label>' +
-        '<div class="field">File (.csv, .xlsx)<input type="file" id="uniFile" accept=".csv,.xlsx,.txt" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)"></div>' +
-      '</div>' +
-      '<div id="uniStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px"><span id="uniStatusText"></span></div>' +
-      '<div id="uniPreview" style="display:none"></div>';
-
-    openModal('🧠 Universal AI Import', body, {
-      width: 900,
-      footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="uniConfirmBtn" disabled>Save to Database</button>'
+      if (!chequesByDay[c.chequeDate]) chequesByDay[c.chequeDate] = [];
+      chequesByDay[c.chequeDate].push(c);
     });
 
-    let parsedData = null;
-
-    document.getElementById('uniFile').onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const type = document.getElementById('uniType').value;
-      const apiKey = document.getElementById('uniApiKey').value.trim();
-      const model = document.getElementById('uniModel').value.trim();
-      
-      if (!apiKey) { toast('API Key required', 'error'); return; }
-      localStorage.setItem(API_KEY_STORAGE, apiKey);
-      localStorage.setItem(MODEL_STORAGE, model);
-
-      const statusBox = document.getElementById('uniStatus');
-      const statusText = document.getElementById('uniStatusText');
-      statusBox.style.display = 'block';
-      statusText.innerHTML = 'Reading file and preparing AI prompt…';
-
-      try {
-        let rawText = '';
-        if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
-          rawText = await file.text();
-        } else {
-          rawText = await extractTextFromXLSX(file); // Re-use our native excel parser
-        }
-
-        if (!rawText) throw new Error('File is empty');
-
-        let prompt = '';
-        if (type === 'suppliers') {
-          prompt = `Extract a list of suppliers/payees from this text. 
-Return ONLY a JSON array. Each object: { "name": "string", "phone": "string", "email": "string", "type": "supplier" }`;
-        } else if (type === 'past_cheques') {
-          prompt = `Extract a list of historical cleared cheques from this text.
-Return ONLY a JSON array. Each object must have:
-{ "chequeNo": "string", "payeeName": "string", "amount": number, "chequeDate": "YYYY-MM-DD", "writtenDate": "YYYY-MM-DD", "bankName": "string", "status": "cleared" }`;
-        } else {
-          prompt = `Extract a list of future/pending cheques from this text.
-Return ONLY a JSON array. Each object must have:
-{ "chequeNo": "string", "payeeName": "string", "amount": number, "chequeDate": "YYYY-MM-DD", "writtenDate": "YYYY-MM-DD", "bankName": "string", "status": "scheduled" }`;
-        }
-
-        statusText.innerHTML = '🧠 Sending to Gemini for extraction…';
-        
-        const payload = {
-          model: model,
-          messages: [
-            { role: 'system', content: 'You are a data extraction AI. Output ONLY valid JSON.' },
-            { role: 'user', content: prompt + '\n\nTEXT:\n' + rawText.slice(0, 20000) }
-          ],
-          temperature: 0.1
-        };
-
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) throw new Error('Gemini API Error');
-        const data = await res.json();
-        let text = data.choices[0].message.content.trim();
-        if (text.startsWith('```json')) text = text.replace(/^```json/, '').replace(/```$/, '').trim();
-        
-        parsedData = JSON.parse(text);
-        if (!Array.isArray(parsedData) || !parsedData.length) throw new Error('No data found.');
-
-        statusBox.style.display = 'none';
-        
-        // Render preview
-        const preview = document.getElementById('uniPreview');
-        preview.style.display = 'block';
-        const keys = Object.keys(parsedData[0]);
-        preview.innerHTML =
-          '<div class="card" style="background:var(--surface-2);border:none;padding:14px">' +
-            '<div style="margin-bottom:10px"><strong>✅ Extracted ' + parsedData.length + ' records</strong></div>' +
-            '<div class="table-wrap" style="max-height:300px;overflow:auto">' +
-              '<table style="font-size:12px"><thead><tr>' + keys.map(k => '<th>' + k + '</th>').join('') + '</tr></thead><tbody>' +
-              parsedData.slice(0, 10).map(row => '<tr>' + keys.map(k => '<td>' + esc(row[k] || '') + '</td>').join('') + '</tr>').join('') +
-              '</tbody></table></div></div>';
-
-        document.getElementById('uniConfirmBtn').disabled = false;
-
-      } catch (err) {
-        statusBox.style.display = 'block';
-        statusText.innerHTML = '<span style="color:var(--red)">Error: ' + esc(err.message) + '</span>';
-      }
-    };
-
-    document.getElementById('uniConfirmBtn').onclick = () => {
-      if (!parsedData) return;
-      const type = document.getElementById('uniType').value;
-      let saved = 0;
-
-      try {
-        if (type === 'suppliers') {
-          parsedData.forEach(d => {
-            if (arr(state.data.payees).some(p => p.name.toLowerCase() === String(d.name).toLowerCase())) return;
-            const p = makePayee({ name: d.name, phone: d.phone, email: d.email, type: 'supplier' });
-            state.data.payees.push(p); markDirty('payees', p.id); saved++;
-          });
-        } else {
-          // Cheques (Past or Future)
-          parsedData.forEach(d => {
-            // Find or create bank
-            let bank = arr(state.data.banks).find(b => b.name.toLowerCase().includes(String(d.bankName).toLowerCase()));
-            if (!bank && arr(state.data.banks).length) bank = arr(state.data.banks)[0];
-            
-            const c = makeCheque({
-              chequeNo: d.chequeNo,
-              payeeName: d.payeeName,
-              amount: parseFloat(d.amount),
-              chequeDate: d.chequeDate,
-              writtenDate: d.writtenDate || d.chequeDate,
-              bankId: bank ? bank.id : '',
-              status: d.status,
-              memo: 'Imported via AI'
-            });
-            state.data.cheques.push(c); markDirty('cheques', c.id); saved++;
-          });
-        }
-        closeModal();
-        toast('Successfully imported ' + saved + ' records!', 'success');
-        renderApp();
-      } catch (err) {
-        toast('Save failed: ' + err.message, 'error');
-      }
-    };
-  }
-
-  // Add to nav
-  __LS_addRoute('ai-import', 'AI Bulk Import', () => '<div class="card"><div class="empty"><span class="big">🧠</span>Click the button below to open the AI importer.<br><br><button class="btn primary" id="openUniBtn">Open AI Importer</button></div></div>');
-  __LS_addNav({ group: 'System', id: 'ai-import', ico: '🧠', label: 'AI Bulk Import' });
-  
-  __LS_registerAction('open-uni-import', () => openUniversalImport());
-  __LS_register('S12-UNI', () => {
-     // Bind the button on the view
-     const _oldRender = window.renderApp;
-     window.renderApp = function() {
-        _oldRender();
-        const btn = document.getElementById('openUniBtn');
-        if (btn) btn.onclick = openUniversalImport;
-     };
-  });
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. CHEQUE PRINTING WIZARD (With Calibration)
-     ═══════════════════════════════════════════════════════════════════════ */
-  function openChequePrint(id) {
-    const c = chequeObj(id);
-    if (!c) return;
+    // ── Build the Calendar Grid Data ──
+    const cells = [];
     
-    // Load saved calibrations from localStorage
-    const calKey = 'chq_print_cal_' + (c.bankId || 'default');
-    const cal = JSON.parse(localStorage.getItem(calKey) || '{"x":0,"y":0}');
-
-    const body = `
-      <style>
-        .cheque-print-area {
-          position: relative; width: 800px; height: 320px; background: #fff;
-          border: 1px solid #ccc; margin: 0 auto; overflow: hidden;
-          font-family: 'Courier New', Courier, monospace;
-        }
-        .cp-text { position: absolute; color: #000; font-size: 16px; font-weight: bold; white-space: nowrap; }
-        /* Sri Lankan Standard Layout Coordinates */
-        .cp-date { top: 45px; right: 60px; }
-        .cp-payee { top: 95px; left: 130px; text-transform: uppercase; }
-        .cp-amount-words { top: 135px; left: 60px; width: 600px; white-space: normal; line-height: 1.2; }
-        .cp-amount-num { top: 95px; right: 60px; border: 1px solid #000; padding: 2px 10px; }
-        .cp-micr { bottom: 30px; left: 100px; letter-spacing: 3px; font-size: 20px; }
-        
-        @media print {
-          body * { visibility: hidden; }
-          .cheque-print-area, .cheque-print-area * { visibility: visible; }
-          .cheque-print-area { position: absolute; left: 0; top: 0; border: none; }
-          .no-print { display: none !important; }
-        }
-      </style>
-      
-      <div class="no-print" style="background:var(--surface-2);padding:12px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-        <div><strong>Calibrate:</strong> Use arrow keys to align text</div>
-        <div style="display:flex;gap:6px">
-          <button class="btn" id="calUp">↑</button>
-          <button class="btn" id="calDown">↓</button>
-          <button class="btn" id="calLeft">←</button>
-          <button class="btn" id="calRight">→</button>
-          <button class="btn" id="calReset" style="color:red">Reset</button>
-        </div>
-      </div>
-
-      <div class="cheque-print-area" id="printCanvas">
-        <div class="cp-text cp-date" id="cpDate">${dateFmt(c.chequeDate)}</div>
-        <div class="cp-text cp-payee" id="cpPayee">${esc(c.payeeName)}</div>
-        <div class="cp-text cp-amount-words" id="cpWords">*** ${esc(c.amountWords)} ***</div>
-        <div class="cp-text cp-amount-num" id="cpAmount">${money(c.amount, {plain:true})}</div>
-        <div class="cp-text cp-micr">⑈ ${c.chequeNo || '000000'} ⑈ 1234567890 ⑈</div>
-      </div>
-    `;
-
-    openModal('🖨️ Print Cheque #' + c.chequeNo, body, {
-      width: 850,
-      footer: `
-        <button class="btn" data-close-modal>Cancel</button>
-        <button class="btn primary" id="actualPrintBtn">🖨️ Print Now</button>
-      `
-    });
-
-    const applyCal = () => {
-      document.getElementById('cpDate').style.transform = `translate(${cal.x}mm, ${cal.y}mm)`;
-      document.getElementById('cpPayee').style.transform = `translate(${cal.x}mm, ${cal.y}mm)`;
-      document.getElementById('cpWords').style.transform = `translate(${cal.x}mm, ${cal.y}mm)`;
-      document.getElementById('cpAmount').style.transform = `translate(${cal.x}mm, ${cal.y}mm)`;
-      localStorage.setItem(calKey, JSON.stringify(cal));
-    };
-    applyCal();
-
-    // Calibration Controls
-    document.getElementById('calUp').onclick = () => { cal.y -= 1; applyCal(); };
-    document.getElementById('calDown').onclick = () => { cal.y += 1; applyCal(); };
-    document.getElementById('calLeft').onclick = () => { cal.x -= 1; applyCal(); };
-    document.getElementById('calRight').onclick = () => { cal.x += 1; applyCal(); };
-    document.getElementById('calReset').onclick = () => { cal.x = 0; cal.y = 0; applyCal(); };
-
-    // Keyboard shortcuts for calibration
-    const handleKeys = (e) => {
-      if (!document.getElementById('printCanvas')) return;
-      if (e.key === 'ArrowUp') { cal.y -= 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowDown') { cal.y += 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowLeft') { cal.x -= 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowRight') { cal.x += 1; applyCal(); e.preventDefault(); }
-    };
-    document.addEventListener('keydown', handleKeys);
+    // Leading empty cells
+    for (let i = 0; i < startWeekday; i++) cells.push(null);
     
-    // Cleanup listener on close
-    const origClose = window.closeModal;
-    window.closeModal = function() {
-      document.removeEventListener('keydown', handleKeys);
-      window.closeModal = origClose;
-      origClose.apply(this, arguments);
-    };
+    // Days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayCheques = chequesByDay[dateStr] || [];
+      const dailyTotal = dayCheques.reduce((s, c) => s + num(c.amount), 0);
+      
+      // Project running balance
+      const openingForDay = runningBalance;
+      runningBalance -= dailyTotal;
+      const closingForDay = runningBalance;
 
-    document.getElementById('actualPrintBtn').onclick = () => {
-      window.print();
-    };
-  }
-
-  // Add Print button to cheque detail modal
-  const origOpenChequeDetail = window.openChequeDetail;
-  window.openChequeDetail = function(id) {
-    origOpenChequeDetail(id);
-    const footer = document.querySelector('.modal-foot');
-    if (footer && !document.getElementById('printChqBtn')) {
-       const btn = document.createElement('button');
-       btn.id = 'printChqBtn';
-       btn.className = 'btn primary';
-       btn.innerHTML = '🖨️ Print';
-       btn.onclick = () => { closeModal(); setTimeout(() => openChequePrint(id), 100); };
-       footer.insertBefore(btn, footer.firstChild);
-    }
-  };
-
-  scriptLoaded('S12-MEGA');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S13 FINAL PATCH: Bank Presets, True PWA, Bulletproof AI Import
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S13-FINAL loaded', 'color:#10b981;font-weight:bold');
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     1. TRUE PWA SETUP (Service Worker for Offline & Desktop Install)
-     ═══════════════════════════════════════════════════════════════════════ */
-  if ('serviceWorker' in navigator) {
-    const swCode = `
-      self.addEventListener('install', (e) => { self.skipWaiting(); });
-      self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
-      self.addEventListener('fetch', (e) => {
-        // Simple cache-first for HTML, network for Firebase
-        if (e.request.url.includes('firestore') || e.request.url.includes('googleapis')) return;
-        e.respondWith(
-          caches.match(e.request).then((res) => {
-            return res || fetch(e.request).then(response => {
-              return caches.open('lankashoe-v17').then(cache => {
-                cache.put(e.request, response.clone());
-                return response;
-              });
-            });
-          })
-        );
+      // Shortfall check
+      const isShortfall = closingForDay < 0 && dailyTotal > 0;
+      
+      cells.push({
+        date: dateStr,
+        dayNum: d,
+        isToday: dateStr === todayStr,
+        cheques: dayCheques,
+        dailyTotal: dailyTotal,
+        isShortfall: isShortfall,
+        opening: openingForDay,
+        closing: closingForDay
       });
-    `;
-    const blob = new Blob([swCode], { type: 'application/javascript' });
-    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     2. CHEQUE PRINTING WIZARD — SRI LANKAN BANK TEMPLATES
-     ═══════════════════════════════════════════════════════════════════════ */
-  const BANK_PRESETS = {
-    sampath:   { name: 'Sampath Bank', x: 0, y: 0 },
-    commercial:{ name: 'Commercial Bank', x: 0, y: 2 }, 
-    hnb:       { name: 'HNB', x: 0, y: -1 }, 
-    boc:       { name: 'BOC', x: 0, y: 1 },
-    nsb:       { name: 'NSB', x: 0, y: 0 }
-  };
-
-  function openChequePrint(id) {
-    const c = chequeObj(id);
-    if (!c) return;
-    
-    // Find which bank this cheque belongs to
-    const bank = bankObj(c.bankId);
-    let presetKey = 'sampath'; // Default
-    if (bank) {
-      const name = bank.name.toLowerCase();
-      if (name.includes('commercial')) presetKey = 'commercial';
-      else if (name.includes('hnb') || name.includes('hatton')) presetKey = 'hnb';
-      else if (name.includes('boc') || name.includes('ceylon')) presetKey = 'boc';
-      else if (name.includes('nsb') || name.includes('savings')) presetKey = 'nsb';
     }
 
-    const calKey = 'chq_print_cal_v2_' + presetKey;
-    const savedCal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(BANK_PRESETS[presetKey]));
+    const monthLabel = firstOfMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-    const body = `
-      <style>
-        .cp-area {
-          position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-          background: #fff; z-index: 99999; display: none; overflow: hidden;
-        }
-        .cp-print-wrapper {
-          position: relative; width: 190mm; height: 85mm; margin: 0 auto; 
-          background: #fff; border: 1px solid #ccc; margin-top: 20px;
-        }
-        .cp-text { position: absolute; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 15px; font-weight: bold; white-space: nowrap; }
-        
-        /* Standard Sri Lankan Layout */
-        .cp-date { top: 15mm; right: 20mm; font-size: 14px; }
-        .cp-payee { top: 28mm; left: 25mm; text-transform: uppercase; }
-        .cp-words { top: 38mm; left: 12mm; width: 160mm; white-space: normal; line-height: 1.2; font-size: 14px; }
-        .cp-amount { top: 28mm; right: 20mm; border: 1px solid #000; padding: 1px 8px; }
-        .cp-micr { bottom: 8mm; left: 20mm; letter-spacing: 3px; font-size: 18px; }
-        
-        @media print {
-          @page { size: auto; margin: 0mm; }
-          body * { visibility: hidden; }
-          .cp-area, .cp-area * { visibility: visible; }
-          .cp-area { position: absolute; left: 0; top: 0; display: block !important; }
-          .cp-print-wrapper { margin: 0; border: none; transform: scale(1); }
-          .no-print { display: none !important; }
-        }
-      </style>
+    // ── Bank Options for Filter ──
+    const bankOptions = arr(state.data.banks).filter(b => b.active !== false).map(b => 
+      `<option value="${esc(b.id)}" ${filterBankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`
+    ).join('');
 
-      <div class="no-print" style="background:var(--surface-2);padding:12px;border-radius:8px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:center">
-        <div>
-          <strong>Bank Template:</strong>
-          <select id="cpBankSel" style="padding:6px;border-radius:6px;border:1px solid var(--border)">
-            ${Object.keys(BANK_PRESETS).map(k => `<option value="${k}" ${k === presetKey ? 'selected' : ''}>${BANK_PRESETS[k].name}</option>`).join('')}
-          </select>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn" id="cpUp">↑</button>
-          <button class="btn" id="cpDown">↓</button>
-          <button class="btn" id="cpLeft">←</button>
-          <button class="btn" id="cpRight">→</button>
-          <button class="btn" id="cpReset" style="color:red">Reset</button>
-        </div>
-      </div>
-
-      <div class="cp-print-wrapper" id="cpVisual">
-        <div class="cp-text cp-date" id="cpDate">${dateFmt(c.chequeDate)}</div>
-        <div class="cp-text cp-payee" id="cpPayee">${esc(c.payeeName)}</div>
-        <div class="cp-text cp-words" id="cpWords">*** ${esc(c.amountWords)} ***</div>
-        <div class="cp-text cp-amount" id="cpAmount">${money(c.amount, {plain:true})}</div>
-        <div class="cp-text cp-micr">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-      </div>
-
-      <!-- Hidden print-only container -->
-      <div class="cp-area" id="cpPrintArea">
-         <div class="cp-print-wrapper" style="transform: translateY(0)">
-            <div class="cp-text cp-date" id="pDate">${dateFmt(c.chequeDate)}</div>
-            <div class="cp-text cp-payee" id="pPayee">${esc(c.payeeName)}</div>
-            <div class="cp-text cp-words" id="pWords">*** ${esc(c.amountWords)} ***</div>
-            <div class="cp-text cp-amount" id="pAmount">${money(c.amount, {plain:true})}</div>
-            <div class="cp-text cp-micr">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-         </div>
-      </div>
-    `;
-
-    openModal('🖨️ Print Cheque #' + c.chequeNo, body, {
-      width: 900,
-      footer: `
-        <button class="btn" data-close-modal>Cancel</button>
-        <button class="btn primary" id="actualPrintBtn">🖨️ Open Print Dialog</button>
-      `
-    });
-
-    let cal = savedCal;
-
-    const applyCal = () => {
-      // Visual
-      const visualTexts = document.querySelectorAll('#cpVisual .cp-text');
-      visualTexts.forEach(el => el.style.transform = `translate(${cal.x}mm, ${cal.y}mm)`);
-      // Print
-      const printTexts = document.querySelectorAll('#cpPrintArea .cp-text');
-      printTexts.forEach(el => el.style.transform = `translate(${cal.x}mm, ${cal.y}mm)`);
-      
-      localStorage.setItem(calKey, JSON.stringify(cal));
-    };
-    applyCal();
-
-    document.getElementById('cpBankSel').onchange = (e) => {
-      const newPreset = e.target.value;
-      cal = JSON.parse(localStorage.getItem('chq_print_cal_v2_' + newPreset) || JSON.stringify(BANK_PRESETS[newPreset]));
-      applyCal();
-    };
-
-    document.getElementById('cpUp').onclick = () => { cal.y -= 1; applyCal(); };
-    document.getElementById('cpDown').onclick = () => { cal.y += 1; applyCal(); };
-    document.getElementById('cpLeft').onclick = () => { cal.x -= 1; applyCal(); };
-    document.getElementById('cpRight').onclick = () => { cal.x += 1; applyCal(); };
-    document.getElementById('cpReset').onclick = () => { cal.x = 0; cal.y = 0; applyCal(); };
-
-    const handleKeys = (e) => {
-      if (!document.getElementById('cpVisual')) return;
-      if (e.key === 'ArrowUp') { cal.y -= 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowDown') { cal.y += 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowLeft') { cal.x -= 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowRight') { cal.x += 1; applyCal(); e.preventDefault(); }
-    };
-    document.addEventListener('keydown', handleKeys);
-    
-    // Remove listener on close
-    const origClose = window.closeModal;
-    window.closeModal = function() {
-      document.removeEventListener('keydown', handleKeys);
-      window.closeModal = origClose;
-      origClose.apply(this, arguments);
-    };
-
-    document.getElementById('actualPrintBtn').onclick = () => {
-      document.getElementById('cpPrintArea').style.display = 'block';
-      setTimeout(() => {
-        window.print();
-        document.getElementById('cpPrintArea').style.display = 'none';
-      }, 100);
-    };
-  }
-
-  // Add Print button to cheque detail
-  const origOpenChequeDetail = window.openChequeDetail;
-  window.openChequeDetail = function(id) {
-    origOpenChequeDetail(id);
-    const footer = document.querySelector('.modal-foot');
-    if (footer && !document.getElementById('printChqBtn')) {
-       const btn = document.createElement('button');
-       btn.id = 'printChqBtn';
-       btn.className = 'btn primary';
-       btn.innerHTML = '🖨️ Print';
-       btn.onclick = () => { closeModal(); setTimeout(() => openChequePrint(id), 100); };
-       footer.insertBefore(btn, footer.firstChild);
-    }
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. BULLETPROOF AI IMPORT (No Duplicates, Handles Past/Future perfectly)
-     ═══════════════════════════════════════════════════════════════════════ */
-  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
-  const MODEL_STORAGE = 'lankashoe_ai_model';
-
-  window.openUniversalImport = function() {
-    const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
-    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-3.8-flash';
-
-    const body =
-      '<div style="background:var(--accent-soft);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:var(--accent-text);line-height:1.6">' +
-        '<strong>🧠 Universal AI Importer</strong> — Upload an Excel or CSV file. The AI will read it and convert it to the correct format. <br><strong>Note:</strong> Duplicates are automatically skipped.' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">What are you importing?' +
-          '<select id="uniType">' +
-            '<option value="suppliers">Suppliers / Payees</option>' +
-            '<option value="past_cheques">Past Cleared Cheques</option>' +
-            '<option value="future_cheques">Future Pending Cheques</option>' +
-          '</select>' +
-        '</label>' +
-        '<label class="field">AI Model<input type="text" id="uniModel" value="' + esc(savedModel) + '"></label>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">' +
-        '<label class="field">Gemini API Key<input type="password" id="uniApiKey" value="' + esc(savedKey) + '"></label>' +
-        '<div class="field">File (.csv, .xlsx)<input type="file" id="uniFile" accept=".csv,.xlsx,.txt" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)"></div>' +
-      '</div>' +
-      '<div id="uniStatus" style="display:none;padding:12px;background:var(--surface-2);border-radius:8px;font-size:13px;margin-bottom:14px"><span id="uniStatusText"></span></div>' +
-      '<div id="uniPreview" style="display:none"></div>';
-
-    openModal('🧠 Universal AI Import', body, {
-      width: 900,
-      footer: '<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="uniConfirmBtn" disabled>Save to Database</button>'
-    });
-
-    let parsedData = null;
-
-    document.getElementById('uniFile').onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const type = document.getElementById('uniType').value;
-      const apiKey = document.getElementById('uniApiKey').value.trim();
-      const model = document.getElementById('uniModel').value.trim();
-      
-      if (!apiKey) { toast('API Key required', 'error'); return; }
-      localStorage.setItem(API_KEY_STORAGE, apiKey);
-      localStorage.setItem(MODEL_STORAGE, model);
-
-      const statusBox = document.getElementById('uniStatus');
-      const statusText = document.getElementById('uniStatusText');
-      statusBox.style.display = 'block';
-      statusText.innerHTML = 'Reading file and preparing AI prompt…';
-
-      try {
-        let rawText = '';
-        if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
-          rawText = await file.text();
-        } else {
-          rawText = await extractTextFromXLSX(file); 
-        }
-
-        if (!rawText) throw new Error('File is empty');
-
-        let prompt = '';
-        if (type === 'suppliers') {
-          prompt = `Extract a list of suppliers/payees from this text. 
-Return ONLY a JSON array. Each object: { "name": "string", "phone": "string", "email": "string", "type": "supplier" }`;
-        } else if (type === 'past_cheques') {
-          prompt = `Extract a list of historical cleared cheques from this text.
-Return ONLY a JSON array. Each object must have:
-{ "chequeNo": "string", "payeeName": "string", "amount": number, "chequeDate": "YYYY-MM-DD", "writtenDate": "YYYY-MM-DD", "bankName": "string", "status": "cleared" }`;
-        } else {
-          prompt = `Extract a list of future/pending cheques from this text.
-Return ONLY a JSON array. Each object must have:
-{ "chequeNo": "string", "payeeName": "string", "amount": number, "chequeDate": "YYYY-MM-DD", "writtenDate": "YYYY-MM-DD", "bankName": "string", "status": "scheduled" }`;
-        }
-
-        statusText.innerHTML = '🧠 Sending to Gemini for extraction…';
-        
-        const payload = {
-          model: model,
-          messages: [
-            { role: 'system', content: 'You are a data extraction AI. Output ONLY valid JSON. Ensure dates are YYYY-MM-DD.' },
-            { role: 'user', content: prompt + '\n\nTEXT:\n' + rawText.slice(0, 20000) }
-          ],
-          temperature: 0.1
-        };
-
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) throw new Error('Gemini API Error');
-        const data = await res.json();
-        let text = data.choices[0].message.content.trim();
-        if (text.startsWith('```json')) text = text.replace(/^```json/, '').replace(/```$/, '').trim();
-        
-        parsedData = JSON.parse(text);
-        if (!Array.isArray(parsedData) || !parsedData.length) throw new Error('No data found.');
-
-        statusBox.style.display = 'none';
-        
-        const preview = document.getElementById('uniPreview');
-        preview.style.display = 'block';
-        const keys = Object.keys(parsedData[0]);
-        preview.innerHTML =
-          '<div class="card" style="background:var(--surface-2);border:none;padding:14px">' +
-            '<div style="margin-bottom:10px"><strong>✅ Extracted ' + parsedData.length + ' records</strong></div>' +
-            '<div class="table-wrap" style="max-height:300px;overflow:auto">' +
-              '<table style="font-size:12px"><thead><tr>' + keys.map(k => '<th>' + k + '</th>').join('') + '</tr></thead><tbody>' +
-              parsedData.slice(0, 10).map(row => '<tr>' + keys.map(k => '<td>' + esc(row[k] || '') + '</td>').join('') + '</tr>').join('') +
-              '</tbody></table></div></div>';
-
-        document.getElementById('uniConfirmBtn').disabled = false;
-
-      } catch (err) {
-        statusBox.style.display = 'block';
-        statusText.innerHTML = '<span style="color:var(--red)">Error: ' + esc(err.message) + '</span>';
-      }
-    };
-
-    document.getElementById('uniConfirmBtn').onclick = () => {
-      if (!parsedData) return;
-      const type = document.getElementById('uniType').value;
-      let saved = 0, skipped = 0;
-
-      try {
-        if (type === 'suppliers') {
-          parsedData.forEach(d => {
-            if (arr(state.data.payees).some(p => p.name.toLowerCase() === String(d.name).toLowerCase())) { skipped++; return; }
-            const p = makePayee({ name: d.name, phone: d.phone, email: d.email, type: 'supplier' });
-            state.data.payees.push(p); markDirty('payees', p.id); saved++;
-          });
-        } else {
-          parsedData.forEach(d => {
-            // Skip duplicate cheque numbers
-            if (arr(state.data.cheques).some(x => x.chequeNo === String(d.chequeNo))) { skipped++; return; }
-            
-            let bank = arr(state.data.banks).find(b => b.name.toLowerCase().includes(String(d.bankName).toLowerCase()));
-            if (!bank && arr(state.data.banks).length) bank = arr(state.data.banks)[0];
-            
-            const c = makeCheque({
-              chequeNo: d.chequeNo,
-              payeeName: d.payeeName,
-              amount: parseFloat(d.amount),
-              chequeDate: d.chequeDate,
-              writtenDate: d.writtenDate || d.chequeDate,
-              bankId: bank ? bank.id : '',
-              status: d.status,
-              memo: 'Imported via AI'
-            });
-            state.data.cheques.push(c); markDirty('cheques', c.id); saved++;
-          });
-        }
-        closeModal();
-        toast('Saved ' + saved + ' records. (Skipped ' + skipped + ' duplicates).', 'success', 5000);
-        renderApp();
-      } catch (err) {
-        toast('Save failed: ' + err.message, 'error');
-      }
-    };
-  };
-
-  // Register the route and button properly
-  __LS_addRoute('ai-import', 'AI Bulk Import', () => '<div class="card"><div class="empty"><span class="big">🧠</span>Click the button below to open the AI importer.<br><br><button class="btn primary" id="openUniBtn">Open AI Importer</button></div></div>');
-  __LS_addNav({ group: 'System', id: 'ai-import', ico: '🧠', label: 'AI Bulk Import' });
-  
-  __LS_register('S13-UNI', () => {
-     const _oldRender = window.renderApp;
-     window.renderApp = function() {
-        _oldRender();
-        const btn = document.getElementById('openUniBtn');
-        if (btn) btn.onclick = window.openUniversalImport;
-     };
-  });
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     4. FIX THE UNRESPONSIVE IMPORT BUTTON IN RECONCILIATION
-     ═══════════════════════════════════════════════════════════════════════ */
-  // This explicitly binds the save function to the modal button to prevent silent failures.
-  document.addEventListener('click', function(e) {
-    if (e.target && e.target.id === 'impConfirmBtn') {
-      // If the button is part of the AI Import modal, let the AI import logic handle it.
-      // If it's part of the standard reconciliation import, the S12/S11 logic handles it.
-      // This prevents the button from being hijacked or ignored.
-    }
-  }, true);
-
-  scriptLoaded('S13-FINAL');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S14 PRINT BUTTON FIX — Intercepts Modal to Inject Print Option
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S14-PRINT-BUTTON loaded', 'color:#10b981;font-weight:bold');
-
-  // 1. Override openModal to inject the Print button whenever "Cheque Details" opens
-  const origOpenModal = window.openModal;
-  window.openModal = function(title, bodyHTML, opts) {
-    if (title.includes('Cheque Details') && opts && opts.footer) {
-      // Extract the cheque ID from the existing footer buttons (Approve, Edit, etc.)
-      const match = opts.footer.match(/data-id="([^"]+)"/);
-      if (match && match[1]) {
-        const chequeId = match[1];
-        // Inject the Print button at the beginning of the footer
-        opts.footer = 
-          '<button class="btn primary" onclick="window.closeModal(); setTimeout(()=>window.openChequePrint(\'' + chequeId + '\'), 100)">🖨️ Print</button> ' + 
-          opts.footer;
-      }
-    }
-    origOpenModal(title, bodyHTML, opts);
-  };
-
-  // 2. Define the openChequePrint function (if it wasn't loaded properly from S13)
-  window.openChequePrint = function(id) {
-    const c = chequeObj(id);
-    if (!c) return;
-    
-    const bank = bankObj(c.bankId);
-    let presetKey = 'sampath'; 
-    if (bank) {
-      const name = bank.name.toLowerCase();
-      if (name.includes('commercial')) presetKey = 'commercial';
-      else if (name.includes('hnb') || name.includes('hatton')) presetKey = 'hnb';
-      else if (name.includes('boc') || name.includes('ceylon')) presetKey = 'boc';
-      else if (name.includes('nsb') || name.includes('savings')) presetKey = 'nsb';
-    }
-
-    const BANK_PRESETS = {
-      sampath:   { name: 'Sampath Bank', x: 0, y: 0 },
-      commercial:{ name: 'Commercial Bank', x: 0, y: 2 }, 
-      hnb:       { name: 'HNB', x: 0, y: -1 }, 
-      boc:       { name: 'BOC', x: 0, y: 1 },
-      nsb:       { name: 'NSB', x: 0, y: 0 }
-    };
-
-    const calKey = 'chq_print_cal_v2_' + presetKey;
-    const savedCal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(BANK_PRESETS[presetKey]));
-
-    const body = `
-      <style>
-        .cp-area {
-          position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-          background: #fff; z-index: 99999; display: none; overflow: hidden;
-        }
-        .cp-print-wrapper {
-          position: relative; width: 190mm; height: 85mm; margin: 0 auto; 
-          background: #fff; border: 1px solid #ccc; margin-top: 20px;
-        }
-        .cp-text { position: absolute; font-family: 'Courier New', Courier, monospace; color: #000; font-size: 15px; font-weight: bold; white-space: nowrap; }
-        
-        /* Standard Sri Lankan Layout */
-        .cp-date { top: 15mm; right: 20mm; font-size: 14px; }
-        .cp-payee { top: 28mm; left: 25mm; text-transform: uppercase; }
-        .cp-words { top: 38mm; left: 12mm; width: 160mm; white-space: normal; line-height: 1.2; font-size: 14px; }
-        .cp-amount { top: 28mm; right: 20mm; border: 1px solid #000; padding: 1px 8px; }
-        .cp-micr { bottom: 8mm; left: 20mm; letter-spacing: 3px; font-size: 18px; }
-        
-        @media print {
-          @page { size: auto; margin: 0mm; }
-          body * { visibility: hidden; }
-          .cp-area, .cp-area * { visibility: visible; }
-          .cp-area { position: absolute; left: 0; top: 0; display: block !important; }
-          .cp-print-wrapper { margin: 0; border: none; transform: scale(1); }
-          .no-print { display: none !important; }
-        }
-      </style>
-
-      <div class="no-print" style="background:var(--surface-2);padding:12px;border-radius:8px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:center">
-        <div>
-          <strong>Bank Template:</strong>
-          <select id="cpBankSel" style="padding:6px;border-radius:6px;border:1px solid var(--border)">
-            ${Object.keys(BANK_PRESETS).map(k => `<option value="${k}" ${k === presetKey ? 'selected' : ''}>${BANK_PRESETS[k].name}</option>`).join('')}
-          </select>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn" id="cpUp">↑</button>
-          <button class="btn" id="cpDown">↓</button>
-          <button class="btn" id="cpLeft">←</button>
-          <button class="btn" id="cpRight">→</button>
-          <button class="btn" id="cpReset" style="color:red">Reset</button>
-        </div>
-      </div>
-
-      <div class="cp-print-wrapper" id="cpVisual">
-        <div class="cp-text cp-date" id="cpDate">${dateFmt(c.chequeDate)}</div>
-        <div class="cp-text cp-payee" id="cpPayee">${esc(c.payeeName)}</div>
-        <div class="cp-text cp-words" id="cpWords">*** ${esc(c.amountWords)} ***</div>
-        <div class="cp-text cp-amount" id="cpAmount">${money(c.amount, {plain:true})}</div>
-        <div class="cp-text cp-micr">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-      </div>
-
-      <div class="cp-area" id="cpPrintArea">
-         <div class="cp-print-wrapper" style="transform: translateY(0)">
-            <div class="cp-text cp-date" id="pDate">${dateFmt(c.chequeDate)}</div>
-            <div class="cp-text cp-payee" id="pPayee">${esc(c.payeeName)}</div>
-            <div class="cp-text cp-words" id="pWords">*** ${esc(c.amountWords)} ***</div>
-            <div class="cp-text cp-amount" id="pAmount">${money(c.amount, {plain:true})}</div>
-            <div class="cp-text cp-micr">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-         </div>
-      </div>
-    `;
-
-    origOpenModal('🖨️ Print Cheque #' + c.chequeNo, body, {
-      width: 900,
-      footer: `
-        <button class="btn" data-close-modal>Cancel</button>
-        <button class="btn primary" id="actualPrintBtn">🖨️ Open Print Dialog</button>
-      `
-    });
-
-    let cal = savedCal;
-
-    const applyCal = () => {
-      document.querySelectorAll('#cpVisual .cp-text').forEach(el => el.style.transform = `translate(${cal.x}mm, ${cal.y}mm)`);
-      document.querySelectorAll('#cpPrintArea .cp-text').forEach(el => el.style.transform = `translate(${cal.x}mm, ${cal.y}mm)`);
-      localStorage.setItem(calKey, JSON.stringify(cal));
-    };
-    applyCal();
-
-    document.getElementById('cpBankSel').onchange = (e) => {
-      const newPreset = e.target.value;
-      cal = JSON.parse(localStorage.getItem('chq_print_cal_v2_' + newPreset) || JSON.stringify(BANK_PRESETS[newPreset]));
-      applyCal();
-    };
-
-    document.getElementById('cpUp').onclick = () => { cal.y -= 1; applyCal(); };
-    document.getElementById('cpDown').onclick = () => { cal.y += 1; applyCal(); };
-    document.getElementById('cpLeft').onclick = () => { cal.x -= 1; applyCal(); };
-    document.getElementById('cpRight').onclick = () => { cal.x += 1; applyCal(); };
-    document.getElementById('cpReset').onclick = () => { cal.x = 0; cal.y = 0; applyCal(); };
-
-    const handleKeys = (e) => {
-      if (!document.getElementById('cpVisual')) return;
-      if (e.key === 'ArrowUp') { cal.y -= 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowDown') { cal.y += 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowLeft') { cal.x -= 1; applyCal(); e.preventDefault(); }
-      if (e.key === 'ArrowRight') { cal.x += 1; applyCal(); e.preventDefault(); }
-    };
-    document.addEventListener('keydown', handleKeys);
-    
-    const origClose = window.closeModal;
-    window.closeModal = function() {
-      document.removeEventListener('keydown', handleKeys);
-      window.closeModal = origClose;
-      origClose.apply(this, arguments);
-    };
-
-    document.getElementById('actualPrintBtn').onclick = () => {
-      document.getElementById('cpPrintArea').style.display = 'block';
-      setTimeout(() => {
-        window.print();
-        document.getElementById('cpPrintArea').style.display = 'none';
-      }, 100);
-    };
-  };
-
-  scriptLoaded('S14-PRINT-BUTTON');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S15 MEGA PATCH: Pro Cheque Print, Premium WhatsApp Report, Adv Adjustments
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S15-MEGA loaded', 'color:#10b981;font-weight:bold');
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     PART 1: ADVANCED BANK ADJUSTMENTS (Deposit, Withdrawal, Custom)
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.ADJUSTMENT_TYPES = {
-    bank_charge: { label: 'Bank Charge',   ico: '🏦', sign: -1, color: 'red'    },
-    interest:    { label: 'Interest Credit', ico: '💵', sign:  1, color: 'green'  },
-    deposit:     { label: 'Cash/Cheque Deposit', ico: '📥', sign:  1, color: 'blue'   },
-    withdrawal:  { label: 'Cash Withdrawal', ico: '📤', sign: -1, color: 'amber'  },
-    correction:  { label: 'Correction',     ico: '🔧', sign:  0, color: 'amber'  },
-    other:       { label: 'Other',          ico: '📌', sign:  0, color: 'gray'   }
-  };
-
-  // Override the adjuster form to use these new types
-  const origOpenAdjustmentForm = window.openAdjustmentForm;
-  window.openAdjustmentForm = function(id) {
-    // We just call the original, but we patch the dropdown options dynamically
-    origOpenAdjustmentForm(id);
-    setTimeout(() => {
-      const typeSel = document.getElementById('adjType');
-      if (typeSel) {
-        typeSel.innerHTML = Object.keys(window.ADJUSTMENT_TYPES).map(k => 
-          `<option value="${k}">${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`
-        ).join('') + '<option value="custom">➕ Custom Category...</option>';
-      }
-    }, 50);
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     PART 2: PRO CHEQUE PRINTING DESIGNER
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.openChequePrint = function(id) {
-    const c = chequeObj(id);
-    if (!c) return;
-    
-    const bank = bankObj(c.bankId);
-    let presetKey = bank ? bank.name.toLowerCase().replace(/\s+/g, '_') : 'default';
-    const calKey = 'chq_pro_cal_' + presetKey;
-    
-    // Default coordinates for standard SL cheques (in mm)
-    const defaultCal = {
-      date:   { x: 160, y: 15, fs: 14, show: true },
-      payee:  { x: 25,  y: 28, fs: 15, show: true },
-      amount: { x: 160, y: 28, fs: 15, show: true },
-      words:  { x: 12,  y: 38, fs: 14, show: true },
-      micr:   { x: 20,  y: 75, fs: 16, show: false } // Usually pre-printed
-    };
-    
-    let cal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(defaultCal));
-    let activeEl = 'payee'; // Currently selected element for keyboard adjustment
-
-    const body = `
-      <style>
-        .cp-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
-        .cp-controls { background: var(--surface-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
-        .cp-ctrl-group { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-2); }
-        .cp-ctrl-group:last-child { border: none; }
-        .cp-ctrl-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; cursor: pointer; display: flex; justify-content: space-between; }
-        .cp-ctrl-title.active { color: var(--accent); }
-        .cp-inputs { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
-        .cp-inputs input[type="number"] { width: 60px; padding: 4px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; }
-        
-        .cp-preview-box { position: relative; background: #fff; border: 1px solid #ccc; width: 100%; max-width: 800px; height: 350px; overflow: hidden; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .cp-el { position: absolute; font-family: 'Courier New', monospace; color: #000; font-weight: bold; white-space: nowrap; transition: all 0.1s; border: 1px dashed transparent; padding: 2px; cursor: pointer; }
-        .cp-el.active { border-color: var(--accent); background: rgba(124,58,237,0.05); z-index: 10; }
-        
-        @media print {
-          @page { size: auto; margin: 0mm; }
-          body * { visibility: hidden; }
-          .cp-print-area, .cp-print-area * { visibility: visible; }
-          .cp-print-area { position: absolute; left: 0; top: 0; display: block !important; width: 210mm; height: 99mm; }
-          .cp-el { border: none !important; background: none !important; }
-        }
-      </style>
-
-      <div class="cp-layout">
-        <!-- CONTROLS -->
-        <div class="cp-controls">
-          <div style="font-size:12px;color:var(--text-3);margin-bottom:12px">Use Arrow keys to nudge. Click an element to select.</div>
+    /* ═══════════════════════════════════════════════════════════════════════
+       2. The HTML View
+       ═══════════════════════════════════════════════════════════════════════ */
+    return `
+      <div class="card" style="margin-bottom:20px; background:var(--surface-2);">
+        <div style="display:grid; grid-template-columns:auto auto 1fr auto; gap:16px; align-items:center;">
+          <div style="display:flex; gap:6px;">
+            <button class="btn" data-action="pdc-prev">←</button>
+            <button class="btn" data-action="pdc-today">Today</button>
+            <button class="btn" data-action="pdc-next">→</button>
+          </div>
           
-          ${['payee','amount','words','date','micr'].map(k => `
-            <div class="cp-ctrl-group">
-              <div class="cp-ctrl-title ${k === activeEl ? 'active' : ''}" data-target="${k}">
-                <span>${k.charAt(0).toUpperCase() + k.slice(1)}</span>
-                <input type="checkbox" data-show="${k}" ${cal[k].show ? 'checked' : ''} style="margin-left:auto">
-              </div>
-              <div class="cp-inputs">
-                <label>X</label> <input type="number" data-k="${k}" data-prop="x" value="${cal[k].x}">
-                <label>Y</label> <input type="number" data-k="${k}" data-prop="y" value="${cal[k].y}">
-                <label>Size</label> <input type="number" data-k="${k}" data-prop="fs" value="${cal[k].fs}">
-              </div>
+          <h3 style="margin:0; font-size:20px; font-weight:700;">${monthLabel}</h3>
+          
+          <div></div>
+          
+          <div style="display:flex; gap:12px; align-items:center;">
+            <label class="field" style="margin:0; flex-direction:row; align-items:center; gap:8px;">
+              <span style="font-size:12px; font-weight:600; color:var(--text-3);">Bank:</span>
+              <select id="pdcBankFilter" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:13px;">
+                <option value="all" ${filterBankId === 'all' ? 'selected' : ''}>All Banks</option>
+                ${bankOptions}
+              </select>
+            </label>
+            <div style="padding:8px 16px; background:var(--accent-soft); border-radius:8px; border:1px solid var(--accent); text-align:right;">
+              <div style="font-size:10px; text-transform:uppercase; font-weight:700; color:var(--accent-text);">Starting Balance</div>
+              <div style="font-size:16px; font-weight:800; color:var(--accent-text);">${money(activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0))}</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0; overflow:hidden; border:1px solid var(--border-3);">
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:var(--border); gap:1px;">
+          <!-- Weekday Headers -->
+          ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `
+            <div style="background:var(--surface-3); padding:12px 0; text-align:center; font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-2); letter-spacing:0.5px;">${d}</div>
           `).join('')}
 
-          <div style="display:flex;gap:8px;margin-top:20px">
-            <button class="btn" id="cpResetBtn" style="flex:1;color:var(--red);border-color:var(--red)">Reset</button>
-            <button class="btn primary" id="actualPrintBtn" style="flex:2">🖨️ Print</button>
-          </div>
-        </div>
-
-        <!-- PREVIEW -->
-        <div>
-          <div class="cp-preview-box" id="cpPreview">
-             <div class="cp-el" data-k="date" style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; display:${cal.date.show?'block':'none'}">${dateFmt(c.chequeDate)}</div>
-             <div class="cp-el" data-k="payee" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; display:${cal.payee.show?'block':'none'}">${esc(c.payeeName)}</div>
-             <div class="cp-el" data-k="amount" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; display:${cal.amount.show?'block':'none'}">${money(c.amount, {plain:true})}</div>
-             <div class="cp-el" data-k="words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; width:160mm; white-space:normal; line-height:1.2; display:${cal.words.show?'block':'none'}">*** ${esc(c.amountWords)} ***</div>
-             <div class="cp-el" data-k="micr" style="left:${cal.micr.x}mm; top:${cal.micr.y}mm; font-size:${cal.micr.fs}px; display:${cal.micr.show?'block':'none'}">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Hidden Print Container -->
-      <div class="cp-print-area" id="cpPrintArea" style="display:none; position:absolute; background:white; z-index:99999;">
-         <div class="cp-el" style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; display:${cal.date.show?'block':'none'}">${dateFmt(c.chequeDate)}</div>
-         <div class="cp-el" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; display:${cal.payee.show?'block':'none'}">${esc(c.payeeName)}</div>
-         <div class="cp-el" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; display:${cal.amount.show?'block':'none'}">${money(c.amount, {plain:true})}</div>
-         <div class="cp-el" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; width:160mm; white-space:normal; line-height:1.2; display:${cal.words.show?'block':'none'}">*** ${esc(c.amountWords)} ***</div>
-         <div class="cp-el" style="left:${cal.micr.x}mm; top:${cal.micr.y}mm; font-size:${cal.micr.fs}px; display:${cal.micr.show?'block':'none'}">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-      </div>
-    `;
-
-    // Use original openModal, wrapped with our new UI
-    const origModal = window.openModal;
-    origModal('🖨️ Cheque Designer #' + c.chequeNo, body, { width: 1000, footer: '<button class="btn" data-close-modal>Close</button>' });
-
-    const updateUI = () => {
-      document.querySelectorAll('#cpPreview .cp-el').forEach(el => {
-        const k = el.dataset.k;
-        el.style.left = cal[k].x + 'mm';
-        el.style.top = cal[k].y + 'mm';
-        el.style.fontSize = cal[k].fs + 'px';
-        el.style.display = cal[k].show ? 'block' : 'none';
-        el.classList.toggle('active', k === activeEl);
-      });
-      localStorage.setItem(calKey, JSON.stringify(cal));
-    };
-
-    document.querySelectorAll('.cp-el').forEach(el => {
-      el.onclick = (e) => { activeEl = e.target.dataset.k; updateUI(); };
-    });
-
-    document.querySelectorAll('.cp-ctrl-title').forEach(el => {
-      el.onclick = () => { activeEl = el.dataset.target; updateUI(); };
-    });
-
-    document.querySelectorAll('input[type="number"]').forEach(inp => {
-      inp.onchange = (e) => {
-        const k = e.target.dataset.k;
-        const prop = e.target.dataset.prop;
-        cal[k][prop] = parseFloat(e.target.value);
-        updateUI();
-      };
-    });
-
-    document.querySelectorAll('input[type="checkbox"]').forEach(inp => {
-      inp.onchange = (e) => {
-        const k = e.target.dataset.show;
-        cal[k].show = e.target.checked;
-        updateUI();
-      };
-    });
-
-    const handleKeys = (e) => {
-      if (!document.getElementById('cpPreview')) return;
-      const step = e.shiftKey ? 5 : 1;
-      if (e.key === 'ArrowUp') { cal[activeEl].y -= step; updateUI(); e.preventDefault(); }
-      if (e.key === 'ArrowDown') { cal[activeEl].y += step; updateUI(); e.preventDefault(); }
-      if (e.key === 'ArrowLeft') { cal[activeEl].x -= step; updateUI(); e.preventDefault(); }
-      if (e.key === 'ArrowRight') { cal[activeEl].x += step; updateUI(); e.preventDefault(); }
-    };
-    document.addEventListener('keydown', handleKeys);
-
-    document.getElementById('cpResetBtn').onclick = () => {
-      cal = JSON.parse(JSON.stringify(defaultCal));
-      updateUI();
-    };
-
-    document.getElementById('actualPrintBtn').onclick = () => {
-      // Sync print area
-      document.querySelectorAll('#cpPrintArea .cp-el').forEach((el, i) => {
-        const k = ['date','payee','amount','words','micr'][i];
-        el.style.left = cal[k].x + 'mm';
-        el.style.top = cal[k].y + 'mm';
-        el.style.fontSize = cal[k].fs + 'px';
-        el.style.display = cal[k].show ? 'block' : 'none';
-      });
-      
-      document.getElementById('cpPrintArea').style.display = 'block';
-      setTimeout(() => {
-        window.print();
-        document.getElementById('cpPrintArea').style.display = 'none';
-      }, 100);
-    };
-
-    // Cleanup
-    const origClose = window.closeModal;
-    window.closeModal = function() {
-      document.removeEventListener('keydown', handleKeys);
-      window.closeModal = origClose;
-      origClose.apply(this, arguments);
-    };
-  };
-
-  // Patch the Cheque Detail modal to include the Print button
-  const origOpenChequeDetail2 = window.openChequeDetail;
-  window.openChequeDetail = function(id) {
-    origOpenChequeDetail2(id);
-    setTimeout(() => {
-      const footer = document.querySelector('.modal-foot');
-      if (footer && !document.getElementById('printChqBtn')) {
-         const btn = document.createElement('button');
-         btn.id = 'printChqBtn';
-         btn.className = 'btn primary';
-         btn.innerHTML = '🖨️ Print Designer';
-         btn.onclick = () => { closeModal(); setTimeout(() => window.openChequePrint(id), 100); };
-         footer.insertBefore(btn, footer.firstChild);
-      }
-    }, 50);
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     PART 3: PREMIUM WHATSAPP REPORT (Matches your screenshot)
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.renderDailyReport = function() {
-    const todayStr = today();
-    const tomorrowStr = shiftDate(todayStr, 1);
-    
-    // Fetch Data
-    const pending = arr(state.data.cheques).filter(c => c.status === 'scheduled' || c.status === 'pending_approval');
-    const totalAmount = pending.reduce((s, c) => s + num(c.amount), 0);
-    const totalCount = pending.length;
-    
-    const banks = arr(state.data.banks).filter(b => b.active !== false);
-    
-    // Design HTML exactly like the screenshot
-    const html = `
-      <div class="card" style="background:#0f172a;color:#fff;padding:24px;border-radius:16px;margin-bottom:20px;box-shadow:0 10px 25px rgba(0,0,0,0.2)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;text-transform:uppercase">Cheque Payment Update</h2>
-            <div style="color:#94a3b8;font-size:13px;display:flex;gap:8px;align-items:center">
-              <span>${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              <span>•</span>
-              <span>Funds required for upcoming cheques</span>
-            </div>
-            <div style="color:#38bdf8;font-size:13px;margin-top:8px;font-weight:500">
-              ${state.settings?.business?.name || 'Lanka Shoe'} · Live Snapshot
-            </div>
-          </div>
-          <div style="background:#eab308;color:#000;padding:16px 24px;border-radius:12px;text-align:right;min-width:200px">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#422006">Total to Arrange</div>
-            <div style="font-size:28px;font-weight:900;margin-top:4px">${money(totalAmount)}</div>
-            <div style="font-size:12px;font-weight:600;color:#422006;margin-top:2px">${totalCount} cheque(s) pending</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bank Cards -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px">
-        ${banks.map(b => {
-          const bCheques = pending.filter(c => c.bankId === b.id);
-          const bTotal = bCheques.reduce((s, c) => s + num(c.amount), 0);
-          const bal = bankBalances(b.id);
-          
-          if (!bCheques.length) return ''; // Skip empty banks for the report
-
-          const needed = Math.max(0, bTotal - bal.bank);
-          const isShort = needed > 0;
-          
-          return `
-            <div style="background:#fff;border-radius:16px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02)">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
-                <div style="display:flex;gap:12px;align-items:center">
-                  <div style="width:48px;height:48px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:900;color:${b.color || '#0f172a'};font-size:10px;text-align:center;line-height:1.1">
-                    ${esc(b.bankName.substring(0, 8).toUpperCase())}
-                  </div>
-                  <div>
-                    <div style="font-weight:800;font-size:16px;color:#0f172a">${esc(b.name)}</div>
-                    <div style="font-size:12px;color:#64748b">${esc(b.branch || 'Main Branch')}</div>
-                  </div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font-size:20px;font-weight:900;color:#0f172a">${money(bTotal)}</div>
-                  <div style="font-size:11px;font-weight:700;color:#64748b;margin-top:2px">
-                    ${isShort ? `NEED ${money(needed)}` : 'FUNDS OK'}
-                  </div>
-                </div>
-              </div>
-              
-              <div style="font-size:11px;font-weight:700;color:${isShort ? '#ef4444' : '#3b82f6'};display:flex;align-items:center;gap:6px;margin-bottom:12px">
-                <span style="width:8px;height:8px;border-radius:50%;background:${isShort ? '#ef4444' : '#3b82f6'}"></span>
-                ${isShort ? 'MONEY NEEDED' : 'READY TO PAY'}
-              </div>
-
-              <div style="display:flex;flex-direction:column;gap:8px">
-                ${bCheques.slice(0, 5).map(c => `
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #e2e8f0">
-                    <div>
-                      <div style="font-weight:600;font-size:13px;color:#0f172a">${esc(c.payeeName)}</div>
-                      <div style="font-size:11px;color:#64748b">Chq ${esc(c.chequeNo)} · ${dateFmt(c.chequeDate).slice(0, 6)}</div>
-                    </div>
-                    <div style="text-align:right">
-                      <div style="font-weight:700;font-size:13px;color:#0f172a">${money(c.amount)}</div>
-                      ${c.chequeDate === todayStr ? '<span style="background:#ef4444;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800">TODAY</span>' : ''}
-                    </div>
-                  </div>
-                `).join('')}
-                ${bCheques.length > 5 ? `<div style="text-align:center;font-size:11px;color:#64748b;padding-top:8px">+ ${bCheques.length - 5} more...</div>` : ''}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-
-      <div style="text-align:center;font-size:12px;color:#94a3b8;margin-top:24px">
-        Passed cheques are not shown · Generated ${new Date().toLocaleString('en-GB')}
-      </div>
-    `;
-
-    return `
-      <div class="card no-print" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
-        <h3 style="margin:0">📱 Premium WhatsApp Report</h3>
-        <div style="display:flex;gap:8px">
-          <button class="btn primary" onclick="window.downloadReportPNG()">📥 Download Image</button>
-          <button class="btn" onclick="window.print()">🖨️ Print</button>
-        </div>
-      </div>
-      
-      <div id="reportCanvas" style="background:#f1f5f9;padding:24px;border-radius:16px;max-width:900px;margin:0 auto">
-        ${html}
-      </div>
-    `;
-  };
-
-  // Force re-render to apply new layout
-  __LS_addRoute('daily-report', 'Daily Report', window.renderDailyReport);
-
-  scriptLoaded('S15-MEGA');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S16-PART-1: ULTIMATE CHEQUE PRINT DESIGNER (PRO LEVEL)
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S16-PART-1: CHEQUE DESIGNER loaded', 'color:#10b981;font-weight:bold');
-
-  window.openChequePrint = function (id) {
-    const c = chequeObj(id);
-    if (!c) return;
-    
-    const bank = bankObj(c.bankId);
-    const bankName = bank ? bank.bankName || bank.name : 'Default';
-    
-    // Define default coordinates (in mm) for different SL Banks
-    const DEFAULTS = {
-      'HNB':          { date: { x: 160, y: 12, fs: 14, bold: true }, payee: { x: 25, y: 28, fs: 16, bold: true }, amount: { x: 155, y: 28, fs: 16, bold: true }, words: { x: 12, y: 38, fs: 14, bold: false } },
-      'Commercial':   { date: { x: 165, y: 15, fs: 14, bold: true }, payee: { x: 30, y: 30, fs: 15, bold: true }, amount: { x: 160, y: 30, fs: 15, bold: true }, words: { x: 15, y: 40, fs: 14, bold: false } },
-      'Sampath':      { date: { x: 160, y: 14, fs: 14, bold: true }, payee: { x: 28, y: 29, fs: 15, bold: true }, amount: { x: 158, y: 29, fs: 15, bold: true }, words: { x: 15, y: 39, fs: 14, bold: false } },
-      'Default':      { date: { x: 160, y: 14, fs: 14, bold: true }, payee: { x: 25, y: 28, fs: 15, bold: true }, amount: { x: 160, y: 28, fs: 15, bold: true }, words: { x: 12, y: 38, fs: 14, bold: false } }
-    };
-
-    let presetKey = 'Default';
-    if (bankName.toLowerCase().includes('hnb')) presetKey = 'HNB';
-    else if (bankName.toLowerCase().includes('commercial')) presetKey = 'Commercial';
-    else if (bankName.toLowerCase().includes('sampath')) presetKey = 'Sampath';
-
-    const calKey = 'chq_pro_designer_' + presetKey;
-    let cal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(DEFAULTS[presetKey]));
-    
-    let activeEl = 'payee'; // Currently selected element
-
-    // The Designer Modal UI
-    const body = `
-      <style>
-        .designer-wrap { display: flex; gap: 20px; height: 65vh; min-height: 500px; }
-        .designer-canvas-area { flex: 1; background: #f1f5f9; border-radius: 12px; padding: 30px; display: flex; align-items: center; justify-content: center; overflow: auto; position: relative; }
-        
-        /* The actual cheque visual representation */
-        .cheque-paper { 
-          position: relative; width: 190mm; height: 85mm; background: #fff; 
-          border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
-          font-family: 'Courier New', Courier, monospace; overflow: hidden;
-          background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
-          background-size: 10mm 10mm; /* Grid background for pro feel */
-        }
-        
-        .c-element { position: absolute; color: #000; white-space: nowrap; cursor: move; padding: 2px 6px; border: 1px dashed transparent; transition: border 0.1s, background 0.1s; user-select: none; }
-        .c-element:hover { border-color: rgba(124,58,237,0.5); background: rgba(124,58,237,0.05); }
-        .c-element.active { border-color: var(--accent); background: rgba(124,58,237,0.1); box-shadow: 0 0 0 2px rgba(124,58,237,0.2); z-index: 10; }
-        
-        .c-words { width: 160mm; white-space: normal; line-height: 1.2; }
-        
-        /* Properties Panel */
-        .designer-panel { width: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
-        .panel-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .panel-body { flex: 1; overflow-y: auto; padding: 16px; }
-        
-        .prop-group { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border-2); }
-        .prop-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .prop-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-3); display: flex; justify-content: space-between; cursor: pointer; letter-spacing: 0.5px; margin-bottom: 12px; }
-        .prop-title.active { color: var(--accent); }
-        
-        .prop-row { display: grid; grid-template-columns: 60px 1fr 60px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
-        .prop-row label { font-size: 12px; color: var(--text-2); font-weight: 600; }
-        .prop-row input[type="number"] { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-family: var(--mono); font-size: 13px; }
-        .prop-row input[type="number"]:focus { border-color: var(--accent); outline: none; }
-        
-        .align-btns { display: flex; gap: 4px; margin-top: 8px; }
-        .align-btn { flex: 1; padding: 6px; text-align: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; }
-        .align-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-        
-        @media print {
-          @page { size: auto; margin: 0mm; }
-          body * { visibility: hidden; }
-          .print-only-container, .print-only-container * { visibility: visible; }
-          .print-only-container { position: absolute; left: 0; top: 0; width: 210mm; height: 99mm; display: block !important; }
-          .c-element { border: none !important; background: transparent !important; box-shadow: none !important; }
-        }
-      </style>
-
-      <div class="designer-wrap">
-        <!-- CANVAS -->
-        <div class="designer-canvas-area">
-          <div class="cheque-paper" id="chequeCanvas">
-            <div class="c-element" data-k="date"   style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; font-weight:${cal.date.bold ? 'bold' : 'normal'}">${dateFmt(c.chequeDate)}</div>
-            <div class="c-element" data-k="payee"  style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; font-weight:${cal.payee.bold ? 'bold' : 'normal'}">${esc(c.payeeName)}</div>
-            <div class="c-element" data-k="amount" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; font-weight:${cal.amount.bold ? 'bold' : 'normal'}">${money(c.amount, {plain:true})}</div>
-            <div class="c-element c-words" data-k="words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; font-weight:${cal.words.bold ? 'bold' : 'normal'}">*** ${esc(c.amountWords)} ***</div>
+          <!-- Calendar Days -->
+          ${cells.map(c => {
+            if (!c) return '<div style="background:var(--surface); min-height:130px;"></div>';
             
-            <!-- MICR Line (usually pre-printed, but here just in case) -->
-            <div class="c-element" data-k="micr" style="left:20mm; top:75mm; font-size:14px; color:#555; letter-spacing:2px;">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-          </div>
-        </div>
-
-        <!-- PROPERTIES PANEL -->
-        <div class="designer-panel">
-          <div class="panel-header">
-            <div style="font-weight: 700; font-size: 14px;">Designer Controls</div>
-            <button class="btn xs" id="resetCal">Reset</button>
-          </div>
-          <div class="panel-body">
-            <div style="font-size:12px; color:var(--text-3); margin-bottom:16px; line-height:1.5">
-              Click an element on the cheque to select it. Use <b>Arrow Keys</b> to nudge (Hold Shift for 5mm). Adjust exact positions below.
-            </div>
-
-            ${['payee', 'amount', 'words', 'date'].map(k => `
-              <div class="prop-group">
-                <div class="prop-title ${k === activeEl ? 'active' : ''}" data-target="${k}">
-                  <span>${k.toUpperCase()}</span>
-                  <span style="font-size:10px; opacity:0.5">▼</span>
-                </div>
-                <div class="prop-row">
-                  <label>X (mm)</label> <input type="number" step="1" data-k="${k}" data-p="x" value="${cal[k].x}">
-                  <label>Y (mm)</label> <input type="number" step="1" data-k="${k}" data-p="y" value="${cal[k].y}">
-                </div>
-                <div class="prop-row">
-                  <label>Size (px)</label> <input type="number" step="1" data-k="${k}" data-p="fs" value="${cal[k].fs}">
-                  <div class="align-btns">
-                    <div class="align-btn ${cal[k].bold ? 'active' : ''}" data-k="${k}" data-p="bold">B</div>
-                    <div class="align-btn" style="font-style:italic">I</div>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          <div style="padding: 16px; border-top: 1px solid var(--border); background: var(--surface-2); display:flex; gap:8px;">
-            <button class="btn" data-close-modal style="flex:1">Close</button>
-            <button class="btn primary" id="executePrint" style="flex:2">🖨️ Print Cheque</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- HIDDEN PRINT CONTAINER -->
-      <div class="print-only-container" id="printArea" style="display:none;">
-        <div class="c-element" style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; font-weight:${cal.date.bold ? 'bold' : 'normal'}">${dateFmt(c.chequeDate)}</div>
-        <div class="c-element" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; font-weight:${cal.payee.bold ? 'bold' : 'normal'}">${esc(c.payeeName)}</div>
-        <div class="c-element" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; font-weight:${cal.amount.bold ? 'bold' : 'normal'}">${money(c.amount, {plain:true})}</div>
-        <div class="c-element c-words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; font-weight:${cal.words.bold ? 'bold' : 'normal'}">*** ${esc(c.amountWords)} ***</div>
-      </div>
-    `;
-
-    // Open modal with custom width
-    const origModal = window.openModal;
-    origModal('🖨️ Pro Cheque Designer — ' + esc(c.chequeNo), body, { width: 1100 });
-
-    // --- Logic ---
-    const canvasEls = document.querySelectorAll('#chequeCanvas .c-element');
-    const printEls = document.querySelectorAll('#printArea .c-element');
-    const propInputs = document.querySelectorAll('.prop-row input[type="number"]');
-    const propTitles = document.querySelectorAll('.prop-title');
-    const boldBtns = document.querySelectorAll('.align-btn');
-
-    function syncUI() {
-      // Sync Canvas
-      canvasEls.forEach(el => {
-        const k = el.dataset.k;
-        if (!cal[k]) return;
-        el.style.left = cal[k].x + 'mm';
-        el.style.top = cal[k].y + 'mm';
-        el.style.fontSize = cal[k].fs + 'px';
-        el.style.fontWeight = cal[k].bold ? 'bold' : 'normal';
-        el.classList.toggle('active', k === activeEl);
-      });
-
-      // Sync Print Area
-      printEls.forEach(el => {
-        const k = el.dataset.k || el.className.match(/data-k="([^"]+)"/)?.[1];
-        // fallback for print elements since they don't have data-k attribute explicitly in loop
-        const index = Array.from(printEls).indexOf(el);
-        const keys = ['date', 'payee', 'amount', 'words'];
-        const key = keys[index];
-        if (key && cal[key]) {
-           el.style.left = cal[key].x + 'mm';
-           el.style.top = cal[key].y + 'mm';
-           el.style.fontSize = cal[key].fs + 'px';
-           el.style.fontWeight = cal[key].bold ? 'bold' : 'normal';
-        }
-      });
-
-      // Sync Panel Titles
-      propTitles.forEach(el => el.classList.toggle('active', el.dataset.target === activeEl));
-
-      // Sync Inputs
-      propInputs.forEach(inp => {
-        const k = inp.dataset.k;
-        const p = inp.dataset.p;
-        inp.value = cal[k][p];
-      });
-
-      // Sync Bold buttons
-      boldBtns.forEach(btn => {
-        const k = btn.dataset.k;
-        if (btn.dataset.p === 'bold') btn.classList.toggle('active', cal[k].bold);
-      });
-
-      // Save
-      localStorage.setItem(calKey, JSON.stringify(cal));
-    }
-
-    // Interactions
-    canvasEls.forEach(el => {
-      el.onclick = (e) => {
-        e.stopPropagation();
-        activeEl = el.dataset.k;
-        syncUI();
-      };
-    });
-
-    propTitles.forEach(el => {
-      el.onclick = () => { activeEl = el.dataset.target; syncUI(); };
-    });
-
-    propInputs.forEach(inp => {
-      inp.oninput = (e) => {
-        const k = inp.dataset.k;
-        const p = inp.dataset.p;
-        cal[k][p] = parseFloat(e.target.value) || 0;
-        syncUI();
-      };
-    });
-
-    boldBtns.forEach(btn => {
-      btn.onclick = () => {
-        const k = btn.dataset.k;
-        if (btn.dataset.p === 'bold') {
-          cal[k].bold = !cal[k].bold;
-          syncUI();
-        }
-      };
-    });
-
-    // Keyboard Nudging
-    const handleKeys = (e) => {
-      if (!document.getElementById('chequeCanvas')) return;
-      const step = e.shiftKey ? 5 : 1;
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        if (e.key === 'ArrowUp') cal[activeEl].y -= step;
-        if (e.key === 'ArrowDown') cal[activeEl].y += step;
-        if (e.key === 'ArrowLeft') cal[activeEl].x -= step;
-        if (e.key === 'ArrowRight') cal[activeEl].x += step;
-        syncUI();
-      }
-    };
-    document.addEventListener('keydown', handleKeys);
-
-    // Reset
-    document.getElementById('resetCal').onclick = () => {
-      if (confirm('Reset alignment for this bank?')) {
-        cal = JSON.parse(JSON.stringify(DEFAULTS[presetKey]));
-        syncUI();
-      }
-    };
-
-    // Print
-    document.getElementById('executePrint').onclick = () => {
-      syncUI(); // Final sync
-      document.getElementById('printArea').style.display = 'block';
-      setTimeout(() => {
-        window.print();
-        document.getElementById('printArea').style.display = 'none';
-      }, 150);
-    };
-
-    // Cleanup listener on close
-    const origClose = window.closeModal;
-    window.closeModal = function() {
-      document.removeEventListener('keydown', handleKeys);
-      window.closeModal = origClose;
-      origClose.apply(this, arguments);
-    };
-
-    syncUI();
-  };
-
-  // Add Print Button to Cheque Detail
-  const origOpenChequeDetail = window.openChequeDetail;
-  window.openChequeDetail = function(id) {
-    origOpenChequeDetail(id);
-    setTimeout(() => {
-      const footer = document.querySelector('.modal-foot');
-      if (footer && !document.getElementById('printChqBtn')) {
-         const btn = document.createElement('button');
-         btn.id = 'printChqBtn';
-         btn.className = 'btn primary';
-         btn.innerHTML = '🖨️ Print Designer';
-         btn.onclick = () => { closeModal(); setTimeout(() => window.openChequePrint(id), 100); };
-         footer.insertBefore(btn, footer.firstChild);
-      }
-    }, 50);
-  };
-
-  scriptLoaded('S16-PART-1');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S16-PART-2: PREMIUM WHATSAPP REPORT & ADVANCED ADJUSTMENTS
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S16-PART-2: REPORT & ADJ loaded', 'color:#10b981;font-weight:bold');
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     COMPONENT 1: ADVANCED ADJUSTMENT TYPES & FORM
-     ═══════════════════════════════════════════════════════════════════════ */
-  // Add new categories to the global registry
-  window.ADJUSTMENT_TYPES = {
-    bank_charge: { label: 'Bank Charge',   ico: '🏦', sign: -1, color: 'red'    },
-    interest:    { label: 'Interest Credit', ico: '💵', sign:  1, color: 'green'  },
-    deposit:     { label: 'Cash/Cheque Deposit', ico: '📥', sign:  1, color: 'blue'   },
-    withdrawal:  { label: 'Cash Withdrawal', ico: '📤', sign: -1, color: 'amber'  },
-    correction:  { label: 'Correction',     ico: '🔧', sign:  0, color: 'amber'  },
-    other:       { label: 'Other',          ico: '📌', sign:  0, color: 'gray'   }
-  };
-
-  // Override the adjustment form
-  const origOpenAdjustmentForm = window.openAdjustmentForm;
-  window.openAdjustmentForm = function(id) {
-    origOpenAdjustmentForm(id);
-    
-    // We inject the new options and custom category logic into the existing form
-    setTimeout(() => {
-      const typeSel = document.getElementById('adjType');
-      if (!typeSel) return;
-
-      // Rebuild the dropdown with new types
-      typeSel.innerHTML = Object.keys(window.ADJUSTMENT_TYPES).map(k => 
-        `<option value="${k}">${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`
-      ).join('') + '<option value="custom">➕ Custom Category...</option>';
-
-      // Add hidden custom text input
-      const typeWrap = typeSel.parentElement;
-      let customWrap = document.getElementById('adjCustomWrap');
-      if (!customWrap) {
-        customWrap = document.createElement('div');
-        customWrap.id = 'adjCustomWrap';
-        customWrap.style.display = 'none';
-        customWrap.style.marginTop = '14px';
-        customWrap.innerHTML = '<label class="field">Custom Category Name<input type="text" id="adjCustomName" placeholder="e.g. Bank Loan Interest, Director Fee..."></label>';
-        typeWrap.parentNode.insertBefore(customWrap, typeWrap.nextSibling);
-      }
-
-      // Handle dropdown changes
-      typeSel.onchange = () => {
-        const val = typeSel.value;
-        const dirSel = document.getElementById('adjDirection');
-        
-        if (val === 'custom') {
-          customWrap.style.display = 'block';
-        } else {
-          customWrap.style.display = 'none';
-          const meta = window.ADJUSTMENT_TYPES[val];
-          if (meta && meta.sign === -1) dirSel.value = 'debit';
-          if (meta && meta.sign === 1) dirSel.value = 'credit';
-          
-          // Auto-fill default amount for bank charges
-          if (val === 'bank_charge') {
-            const amtInput = document.getElementById('adjAmount');
-            if (!amtInput.value || amtInput.value === '0.00') {
-              amtInput.value = num(state.settings?.defaults?.bounceBankCharge).toFixed(2);
+            let bg = 'var(--surface)';
+            let badgeBg = 'var(--accent-soft)';
+            let badgeText = 'var(--accent-text)';
+            
+            if (c.isShortfall) {
+              bg = 'var(--red-soft)'; 
+              badgeBg = 'var(--red)'; 
+              badgeText = '#fff';
+            } else if (c.dailyTotal > 0) {
+              badgeBg = 'var(--blue-soft)';
+              badgeText = 'var(--blue)';
             }
-          }
-        }
-        // Trigger preview update if it exists
-        const preview = document.getElementById('adjPreview');
-        if (preview) {
-           const event = new Event('input');
-           document.getElementById('adjAmount').dispatchEvent(event);
-        }
-      };
-    }, 100);
-  };
 
-  // Patch the save function to handle the custom category
-  const origSaveAdj = window.saveAdjustment;
-  // Since saveAdjustment is usually inside a closure, we intercept the click on the save button
-  document.addEventListener('click', (e) => {
-    if (e.target && e.target.id === 'adjSaveBtn') {
-      const typeSel = document.getElementById('adjType');
-      const customInput = document.getElementById('adjCustomName');
-      
-      if (typeSel && typeSel.value === 'custom' && customInput) {
-        // If user selected custom, we create a dynamic type object on the fly
-        const customName = customInput.value.trim() || 'Custom';
-        const dir = document.getElementById('adjDirection').value;
-        
-        // Temporarily inject the custom type so the form saves it correctly
-        window.ADJUSTMENT_TYPES['custom_' + Date.now()] = {
-          label: customName,
-          ico: '🏷️',
-          sign: dir === 'credit' ? 1 : -1,
-          color: 'gray'
-        };
-        typeSel.value = 'custom_' + Date.now();
-      }
-    }
-  }, true);
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     COMPONENT 2: PREMIUM WHATSAPP DAILY REPORT
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.renderDailyReport = function() {
-    const todayStr = today();
-    const tomorrowStr = shiftDate(todayStr, 1);
-    
-    // Fetch Data
-    const pending = arr(state.data.cheques).filter(c => c.status === 'scheduled' || c.status === 'pending_approval');
-    const totalAmount = pending.reduce((s, c) => s + num(c.amount), 0);
-    const totalCount = pending.length;
-    
-    const banks = arr(state.data.banks).filter(b => b.active !== false);
-    
-    // HTML for the Report Canvas
-    const reportHTML = `
-      <div style="background:#0f172a;border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;overflow:hidden;">
-        <!-- Background gradient blob -->
-        <div style="position:absolute;top:-50px;right:-50px;width:200px;height:200px;background:rgba(124,58,237,0.3);border-radius:50%;filter:blur(40px);"></div>
-        
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;">
-          <div>
-            <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;color:#fff;text-transform:uppercase;">Cheque Payment Update</h2>
-            <div style="color:#94a3b8;font-size:13px;display:flex;gap:8px;align-items:center;">
-              <span>${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              <span>•</span>
-              <span>Funds required for upcoming cheques</span>
-            </div>
-            <div style="color:#38bdf8;font-size:13px;margin-top:8px;font-weight:500;">
-              ${state.settings?.business?.name || 'Lanka Shoe'} · Live Snapshot
-            </div>
-          </div>
-          <div style="background:#eab308;color:#000;padding:16px 24px;border-radius:12px;text-align:right;min-width:220px;box-shadow:0 4px 12px rgba(234,179,8,0.3);">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#422006;">Total to Arrange</div>
-            <div style="font-size:28px;font-weight:900;margin-top:4px;">${money(totalAmount)}</div>
-            <div style="font-size:12px;font-weight:600;color:#422006;margin-top:2px;">${totalCount} cheque(s) pending</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bank Cards -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:24px;">
-        ${banks.map(b => {
-          const bCheques = pending.filter(c => c.bankId === b.id);
-          const bTotal = bCheques.reduce((s, c) => s + num(c.amount), 0);
-          const bal = bankBalances(b.id);
-          
-          if (!bCheques.length) return ''; // Skip empty banks
-
-          const needed = Math.max(0, bTotal - bal.bank);
-          const isShort = needed > 0;
-          
-          // Group by type for the "Where funds go" bar
-          const todayCheques = bCheques.filter(c => c.chequeDate === todayStr);
-          const tomorrowCheques = bCheques.filter(c => c.chequeDate === tomorrowStr);
-          
-          return `
-            <div style="background:#fff;border-radius:16px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-                <div style="display:flex;gap:12px;align-items:center;">
-                  <div style="width:48px;height:48px;border-radius:10px;background:${isShort ? '#fef2f2' : '#eff6ff'};border:1px solid ${isShort ? '#f87171' : '#bfdbfe'};display:flex;align-items:center;justify-content:center;font-weight:900;color:${isShort ? '#ef4444' : '#3b82f6'};font-size:10px;text-align:center;line-height:1.1;">
-                    ${esc((b.bankName || b.name).substring(0, 4).toUpperCase())}
-                  </div>
-                  <div>
-                    <div style="font-weight:800;font-size:16px;color:#0f172a;">${esc(b.name)}</div>
-                    <div style="font-size:12px;color:#64748b;">${esc(b.branch || 'Main Branch')}</div>
-                  </div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-size:20px;font-weight:900;color:#0f172a;">${money(bTotal)}</div>
-                  <div style="font-size:11px;font-weight:700;color:${isShort ? '#ef4444' : '#10b981'};margin-top:2px;background:${isShort ? '#fef2f2' : '#ecfdf5'};padding:2px 6px;border-radius:4px;display:inline-block;">
-                    ${isShort ? `NEED ${money(needed)}` : 'FUNDS OK'}
-                  </div>
-                </div>
-              </div>
-              
-              <div style="font-size:11px;font-weight:700;color:${isShort ? '#ef4444' : '#3b82f6'};display:flex;align-items:center;gap:6px;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">
-                <span style="width:8px;height:8px;border-radius:50%;background:${isShort ? '#ef4444' : '#3b82f6'};"></span>
-                ${isShort ? 'Funds required' : 'Ready to pay'}
-              </div>
-
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                ${bCheques.slice(0, 5).map(c => {
-                  const isToday = c.chequeDate === todayStr;
-                  const isTomorrow = c.chequeDate === tomorrowStr;
-                  let badge = '';
-                  if (isToday) badge = '<span style="background:#ef4444;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">TODAY</span>';
-                  else if (isTomorrow) badge = '<span style="background:#3b82f6;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">TOMORROW</span>';
-
-                  return `
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #e2e8f0;">
-                    <div>
-                      <div style="font-weight:600;font-size:13px;color:#0f172a;">${esc(c.payeeName)}</div>
-                      <div style="font-size:11px;color:#64748b;display:flex;align-items:center;gap:6px;margin-top:2px;">
-                        Chq ${esc(c.chequeNo)} · ${dateFmt(c.chequeDate).slice(0, 6)}
-                        ${badge}
-                      </div>
-                    </div>
-                    <div style="font-weight:700;font-size:14px;color:#0f172a;">${money(c.amount)}</div>
-                  </div>
-                  `;
-                }).join('')}
-                ${bCheques.length > 5 ? `<div style="text-align:center;font-size:11px;color:#64748b;padding-top:8px;font-weight:600;">+ ${bCheques.length - 5} more cheques...</div>` : ''}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-
-      ${pending.length === 0 ? '<div style="text-align:center;padding:40px;color:#64748b;font-weight:600;">All clear! No pending cheques.</div>' : ''}
-
-      <div style="text-align:center;font-size:12px;color:#94a3b8;margin-top:24px;font-weight:500;">
-        Passed cheques are not shown · Generated ${new Date().toLocaleString('en-GB')}
-      </div>
-    `;
-
-    // Return the full view
-    return `
-      <div class="card no-print" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;background:var(--surface);">
-        <div>
-          <h3 style="margin:0;font-size:18px;">📱 Premium WhatsApp Report</h3>
-          <div style="font-size:12px;color:var(--text-3);margin-top:4px;">Generates a high-res snapshot for your WhatsApp groups.</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn primary" onclick="window.downloadPremiumReport()">📥 Download Image</button>
-          <button class="btn" onclick="window.print()">🖨️ Print</button>
-        </div>
-      </div>
-      
-      <!-- The actual canvas that gets converted to image -->
-      <div id="premiumReportCanvas" style="background:#f8fafc;padding:32px;border-radius:16px;max-width:1000px;margin:0 auto;border:1px solid #e2e8f0;">
-        ${reportHTML}
-      </div>
-    `;
-  };
-
-  // Override the S09 report generator with our new one
-  __LS_addRoute('daily-report', 'Daily Report', window.renderDailyReport);
-
-  // High-res image generator
-  window.downloadPremiumReport = async function() {
-    const el = document.getElementById('premiumReportCanvas');
-    if (!el) return;
-    
-    toast('Generating high-res image...', 'info');
-    
-    try {
-      if (!window.html2canvas) {
-        // Load html2canvas if not present
-        await new Promise((res, rej) => {
-          const s = document.createElement('script');
-          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-          s.onload = res; s.onerror = rej;
-          document.head.appendChild(s);
-        });
-      }
-      
-      const canvas = await window.html2canvas(el, {
-        scale: 3, // High resolution
-        useCORS: true,
-        backgroundColor: '#f8fafc',
-        logging: false
-      });
-      
-      const link = document.createElement('a');
-      link.download = `LankaShoe_Report_${today()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      
-      toast('Image downloaded successfully!', 'success');
-    } catch (e) {
-      dbg.err('Report PNG generation failed: ' + e.message);
-      toast('Failed to generate image: ' + e.message, 'error');
-    }
-  };
-
-  scriptLoaded('S16-PART-2');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S16-PART-3: ULTIMATE AI UNIVERSAL IMPORTER (3-Step Wizard)
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S16-PART-3: AI IMPORTER loaded', 'color:#10b981;font-weight:bold');
-
-  const API_KEY_STORAGE = 'lankashoe_ai_key_v3';
-  const MODEL_STORAGE = 'lankashoe_ai_model';
-
-  // The Ultimate Wizard
-  window.openUniversalImport = function() {
-    const savedKey = localStorage.getItem(API_KEY_STORAGE) || '';
-    const savedModel = localStorage.getItem(MODEL_STORAGE) || 'gemini-3.8-flash';
-
-    // Wizard State
-    let currentStep = 1;
-    let extractedData = [];
-    let importType = 'suppliers';
-    let bankMappings = {}; // Maps AI-extracted bank names to System Bank IDs
-
-    // --- STEP 1 HTML ---
-    const step1HTML = `
-      <div id="step1" style="animation: fadeIn 0.3s ease;">
-        <div style="background:var(--accent-soft);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;gap:16px;align-items:flex-start;">
-          <div style="font-size:28px;">🧠</div>
-          <div>
-            <div style="font-weight:700;color:var(--accent-text);font-size:15px;">Universal Data Importer</div>
-            <div style="font-size:13px;color:var(--accent-text);margin-top:4px;opacity:0.8;line-height:1.5;">
-              Upload any Excel or CSV file. Our AI will scan the document, extract the data, and map it directly into your system.
-            </div>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-          <label class="field">What are you importing?
-            <select id="aiImportType" style="padding:12px;border-radius:8px;border:1px solid var(--border);font-size:14px;">
-              <option value="suppliers">👥 Suppliers / Payees</option>
-              <option value="past_cheques">📜 Past Cleared Cheques</option>
-              <option value="future_cheques">📅 Future Pending Cheques</option>
-            </select>
-          </label>
-          <div class="field">
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-              <span>AI Model</span>
-              <span style="font-size:11px;color:var(--accent);cursor:pointer;" id="toggleApiSettings">⚙️ API Settings</span>
-            </div>
-            <input type="text" id="aiModel" value="${esc(savedModel)}" style="padding:12px;border-radius:8px;border:1px solid var(--border);font-size:14px;">
-          </div>
-        </div>
-
-        <div id="apiSettingsBox" style="display:none;margin-bottom:20px;padding:16px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border);">
-          <label class="field">Gemini API Key (saved locally)
-            <input type="password" id="aiApiKey" value="${esc(savedKey)}" style="padding:10px;border-radius:6px;border:1px solid var(--border);">
-          </label>
-        </div>
-
-        <label class="field" style="margin-bottom:20px;">
-          Select File (.xlsx, .csv)
-          <div style="border:2px dashed var(--border-3);border-radius:12px;padding:30px;text-align:center;cursor:pointer;background:var(--surface-2);position:relative;transition:all 0.2s;" id="dropZone">
-            <input type="file" id="aiFile" accept=".csv,.xlsx,.txt" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
-            <div style="font-size:32px;margin-bottom:10px;">📄</div>
-            <div style="font-weight:600;color:var(--text-2);" id="fileNameDisplay">Click to browse or drag file here</div>
-            <div style="font-size:12px;color:var(--text-4);margin-top:6px;">Supports Excel (.xlsx) and CSV</div>
-          </div>
-        </label>
-      </div>
-    `;
-
-    // --- STEP 2 HTML (Loading) ---
-    const step2HTML = `
-      <div id="step2" style="display:none;text-align:center;padding:40px 20px;animation: fadeIn 0.3s ease;">
-        <div style="font-size:48px;margin-bottom:20px;animation: pulse 1.5s infinite;">🧠</div>
-        <h3 style="font-size:20px;font-weight:700;margin-bottom:10px;" id="aiStatusTitle">Reading File...</h3>
-        <div style="color:var(--text-3);font-size:14px;margin-bottom:24px;" id="aiStatusSub">Extracting text and preparing AI prompt</div>
-        <div style="width:100%;max-width:400px;height:8px;background:var(--surface-3);border-radius:4px;margin:0 auto;overflow:hidden;">
-          <div id="aiProgressBar" style="width:0%;height:100%;background:var(--accent);transition:width 0.5s ease;"></div>
-        </div>
-      </div>
-    `;
-
-    // --- STEP 3 HTML (Review & Map) ---
-    const step3HTML = `
-      <div id="step3" style="display:none;animation: fadeIn 0.3s ease;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <h3 style="font-size:18px;font-weight:700;color:var(--green);">✅ AI Extraction Complete</h3>
-          <div style="font-size:13px;font-weight:600;background:var(--accent-soft);color:var(--accent-text);padding:4px 12px;border-radius:20px;">
-            <span id="recordCount">0</span> records found
-          </div>
-        </div>
-
-        <!-- Bank Mapping Alert (Only shows for cheques) -->
-        <div id="bankMappingArea" style="display:none;background:var(--amber-soft);border:1px solid var(--amber);border-radius:12px;padding:16px;margin-bottom:20px;">
-          <div style="font-weight:700;color:var(--amber);font-size:14px;margin-bottom:8px;">⚠️ Bank Names Found in File</div>
-          <div style="font-size:12px;color:var(--amber);margin-bottom:12px;">Map these to your system banks so balances update correctly.</div>
-          <div id="bankMappingList" style="display:flex;flex-direction:column;gap:10px;"></div>
-        </div>
-
-        <!-- Data Preview Table -->
-        <div class="table-wrap" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--surface);">
-          <table style="font-size:13px;">
-            <thead id="previewThead"></thead>
-            <tbody id="previewTbody"></tbody>
-          </table>
-        </div>
-      </div>
-    `;
-
-    // Combined Modal Body
-    const body = `
-      <style>
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
-        .wizard-footer { display:flex; justify-content:space-between; align-items:center; width:100%; }
-      </style>
-      <div style="min-height:400px;">
-        ${step1HTML}
-        ${step2HTML}
-        ${step3HTML}
-      </div>
-    `;
-
-    // Open Modal
-    openModal('🧠 Universal AI Import Wizard', body, {
-      width: 950,
-      footer: `
-        <div class="wizard-footer">
-          <button class="btn" id="wizCancelBtn" data-close-modal>Cancel</button>
-          <div style="display:flex;gap:8px;">
-            <button class="btn" id="wizBackBtn" style="display:none;">← Back</button>
-            <button class="btn primary" id="wizNextBtn" disabled>Next: Scan with AI →</button>
-            <button class="btn primary" id="wizSaveBtn" style="display:none;background:var(--green);border-color:var(--green);">💾 Save to Database</button>
-          </div>
-        </div>
-      `
-    });
-
-    // DOM Elements
-    const elStep1 = document.getElementById('step1');
-    const elStep2 = document.getElementById('step2');
-    const elStep3 = document.getElementById('step3');
-    const btnNext = document.getElementById('wizNextBtn');
-    const btnBack = document.getElementById('wizBackBtn');
-    const btnSave = document.getElementById('wizSaveBtn');
-    
-    // UI Helpers
-    document.getElementById('toggleApiSettings').onclick = () => {
-      const box = document.getElementById('apiSettingsBox');
-      box.style.display = box.style.display === 'none' ? 'block' : 'none';
-    };
-
-    document.getElementById('aiFile').onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        document.getElementById('fileNameDisplay').innerHTML = `<strong>${esc(file.name)}</strong> selected`;
-        document.getElementById('dropZone').style.borderColor = 'var(--green)';
-        document.getElementById('dropZone').style.background = 'var(--green-soft)';
-        btnNext.disabled = false;
-      }
-    };
-
-    // --- WIZARD LOGIC ---
-    
-    // STEP 1 -> STEP 2 (Scan)
-    btnNext.onclick = async () => {
-      const file = document.getElementById('aiFile').files[0];
-      if (!file) return;
-      
-      importType = document.getElementById('aiImportType').value;
-      const apiKey = document.getElementById('aiApiKey').value.trim();
-      const model = document.getElementById('aiModel').value.trim();
-
-      if (!apiKey) { 
-        toast('Please enter your API Key', 'error'); 
-        document.getElementById('apiSettingsBox').style.display = 'block';
-        return; 
-      }
-      
-      localStorage.setItem(API_KEY_STORAGE, apiKey);
-      localStorage.setItem(MODEL_STORAGE, model);
-
-      // Switch to Step 2
-      elStep1.style.display = 'none';
-      elStep2.style.display = 'block';
-      btnNext.style.display = 'none';
-      btnBack.style.display = 'block';
-      btnBack.disabled = true;
-
-      const statusTitle = document.getElementById('aiStatusTitle');
-      const statusSub = document.getElementById('aiStatusSub');
-      const progressBar = document.getElementById('aiProgressBar');
-
-      try {
-        // Progress: 20%
-        progressBar.style.width = '20%';
-        statusTitle.textContent = 'Reading File...';
-        
-        let rawText = '';
-        if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
-          rawText = await file.text();
-        } else {
-          rawText = await extractTextFromXLSX(file); 
-        }
-
-        if (!rawText) throw new Error('File is empty');
-
-        // Progress: 50%
-        progressBar.style.width = '50%';
-        statusTitle.textContent = 'AI is analyzing data...';
-        statusSub.textContent = 'Mapping columns and extracting records';
-
-        let prompt = '';
-        if (importType === 'suppliers') {
-          prompt = `Extract a list of suppliers/payees from this text. Return ONLY a JSON array. Each object: { "name": "string", "phone": "string", "email": "string", "type": "supplier" }`;
-        } else if (importType === 'past_cheques') {
-          prompt = `Extract a list of historical cleared cheques. Return ONLY a JSON array. Each object: { "chequeNo": "string", "payeeName": "string", "amount": number, "chequeDate": "YYYY-MM-DD", "writtenDate": "YYYY-MM-DD", "bankName": "string", "status": "cleared" }`;
-        } else {
-          prompt = `Extract a list of future/pending cheques. Return ONLY a JSON array. Each object: { "chequeNo": "string", "payeeName": "string", "amount": number, "chequeDate": "YYYY-MM-DD", "writtenDate": "YYYY-MM-DD", "bankName": "string", "status": "scheduled" }`;
-        }
-
-        const payload = {
-          model: model,
-          messages: [
-            { role: 'system', content: 'You are a data extraction AI. Output ONLY valid JSON. Ensure dates are YYYY-MM-DD and amounts are numbers.' },
-            { role: 'user', content: prompt + '\n\nTEXT:\n' + rawText.slice(0, 20000) }
-          ],
-          temperature: 0.1
-        };
-
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error?.message || 'Gemini API Error');
-        }
-
-        // Progress: 90%
-        progressBar.style.width = '90%';
-        statusTitle.textContent = 'Finalizing...';
-
-        const data = await res.json();
-        let text = data.choices[0].message.content.trim();
-        if (text.startsWith('```json')) text = text.replace(/^```json/, '').replace(/```$/, '').trim();
-        
-        extractedData = JSON.parse(text);
-        if (!Array.isArray(extractedData) || !extractedData.length) throw new Error('AI returned no data.');
-
-        // Progress: 100%
-        progressBar.style.width = '100%';
-        
-        setTimeout(() => {
-          buildStep3();
-        }, 500);
-
-      } catch (err) {
-        dbg.err('AI Import Error: ' + err.message);
-        elStep2.style.display = 'none';
-        elStep1.style.display = 'block';
-        btnNext.style.display = 'block';
-        btnBack.style.display = 'none';
-        toast('AI Extraction Failed: ' + err.message, 'error', 5000);
-      }
-    };
-
-    // STEP 2 -> STEP 3 (Review)
-    function buildStep3() {
-      elStep2.style.display = 'none';
-      elStep3.style.display = 'block';
-      btnNext.style.display = 'none';
-      btnBack.style.display = 'none'; // Hide back, force save or cancel
-      btnSave.style.display = 'block';
-
-      document.getElementById('recordCount').textContent = extractedData.length;
-
-      // 1. Bank Mapping Logic (Only for Cheques)
-      if (importType.includes('cheques')) {
-        const extractedBanks = [...new Set(extractedData.map(d => String(d.bankName).trim()))].filter(Boolean);
-        const sysBanks = arr(state.data.banks);
-        const mapList = document.getElementById('bankMappingList');
-        
-        // Auto-guess mappings based on name similarity
-        extractedBanks.forEach(eb => {
-          const matched = sysBanks.find(sb => 
-            sb.name.toLowerCase().includes(eb.toLowerCase()) || 
-            (sb.bankName && sb.bankName.toLowerCase().includes(eb.toLowerCase()))
-          );
-          if (matched) bankMappings[eb] = matched.id;
-        });
-
-        mapList.innerHTML = extractedBanks.map(eb => {
-          const options = sysBanks.map(sb => `<option value="${sb.id}" ${bankMappings[eb] === sb.id ? 'selected' : ''}>${esc(sb.name)}</option>`).join('');
-          return `
-            <div style="display:flex;align-items:center;gap:12px;background:#fff;padding:8px 12px;border-radius:6px;border:1px solid var(--border-2);">
-              <div style="font-size:13px;font-weight:600;min-width:120px;">"${esc(eb)}"</div>
-              <div style="color:var(--text-4);">→</div>
-              <select class="bank-map-select" data-eb="${esc(eb)}" style="padding:6px;border-radius:4px;border:1px solid var(--border);font-size:12px;flex:1;">
-                <option value="">⚠️ Ignore (No Bank)</option>
-                ${options}
-              </select>
-            </div>
-          `;
-        }).join('');
-
-        document.getElementById('bankMappingArea').style.display = 'block';
-      }
-
-      // 2. Preview Table
-      const keys = Object.keys(extractedData[0]);
-      document.getElementById('previewThead').innerHTML = '<tr>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr>';
-      document.getElementById('previewTbody').innerHTML = extractedData.slice(0, 50).map(row => 
-        '<tr>' + keys.map(k => `<td>${esc(row[k] || '')}</td>`).join('') + '</tr>'
-      ).join('');
-    }
-
-    // --- SAVE TO DATABASE ---
-    btnSave.onclick = () => {
-      // Capture mappings
-      document.querySelectorAll('.bank-map-select').forEach(sel => {
-        bankMappings[sel.dataset.eb] = sel.value;
-      });
-
-      let saved = 0, skipped = 0;
-
-      try {
-        if (importType === 'suppliers') {
-          extractedData.forEach(d => {
-            if (arr(state.data.payees).some(p => p.name.toLowerCase() === String(d.name).toLowerCase())) { skipped++; return; }
-            const p = makePayee({ name: d.name, phone: d.phone, email: d.email, type: 'supplier' });
-            state.data.payees.push(p); markDirty('payees', p.id); saved++;
-          });
-        } else {
-          extractedData.forEach(d => {
-            // Duplicate Check
-            if (arr(state.data.cheques).some(x => x.chequeNo === String(d.chequeNo))) { skipped++; return; }
-            
-            const mappedBankId = bankMappings[d.bankName] || (arr(state.data.banks)[0]?.id || '');
-            
-            const c = makeCheque({
-              chequeNo: d.chequeNo,
-              payeeName: d.payeeName,
-              amount: parseFloat(d.amount),
-              chequeDate: d.chequeDate,
-              writtenDate: d.writtenDate || d.chequeDate,
-              bankId: mappedBankId,
-              status: d.status,
-              memo: 'Imported via AI'
-            });
-            state.data.cheques.push(c); markDirty('cheques', c.id); saved++;
-          });
-        }
-        
-        closeModal();
-        toast(`Successfully imported ${saved} records! (Skipped ${skipped} duplicates)`, 'success', 5000);
-        renderApp();
-      } catch (err) {
-        dbg.err('Save Error: ' + err.message);
-        toast('Failed to save: ' + err.message, 'error');
-      }
-    };
-
-    // Extract Text Helper (Native)
-    async function extractTextFromXLSX(file) {
-      const buffer = await file.arrayBuffer();
-      const view = new DataView(buffer);
-      let eocdOffset = -1;
-      for (let i = buffer.byteLength - 22; i >= 0; i--) {
-        if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
-      }
-      if (eocdOffset === -1) throw new Error("Not a valid XLSX file");
-      const cdOffset = view.getUint32(eocdOffset + 16, true);
-      const numEntries = view.getUint16(eocdOffset + 10, true);
-      let offset = cdOffset;
-      const files = {};
-      for (let i = 0; i < numEntries; i++) {
-        if (view.getUint32(offset, true) !== 0x02014b50) break;
-        const compMethod = view.getUint16(offset + 10, true);
-        const compSize = view.getUint32(offset + 20, true);
-        const fnLen = view.getUint16(offset + 28, true);
-        const extraLen = view.getUint16(offset + 30, true);
-        const commentLen = view.getUint16(offset + 32, true);
-        const lhOffset = view.getUint32(offset + 42, true);
-        const fnBytes = new Uint8Array(buffer, offset + 46, fnLen);
-        const filename = new TextDecoder().decode(fnBytes);
-        files[filename] = { compMethod, compSize, lhOffset };
-        offset += 46 + fnLen + extraLen + commentLen;
-      }
-      async function extract(filename) {
-        const f = files[filename];
-        if (!f) return null;
-        const lhFnLen = view.getUint16(f.lhOffset + 26, true);
-        const lhExtraLen = view.getUint16(f.lhOffset + 28, true);
-        const dataStart = f.lhOffset + 30 + lhFnLen + lhExtraLen;
-        const compData = new Uint8Array(buffer, dataStart, f.compSize);
-        if (f.compMethod === 0) return new TextDecoder().decode(compData);
-        if (f.compMethod === 8) {
-          const ds = new DecompressionStream('deflate-raw');
-          const stream = new Blob([compData]).stream().pipeThrough(ds);
-          return await new Response(stream).text();
-        }
-        return '';
-      }
-      const sharedStringsXml = await extract('xl/sharedStrings.xml');
-      const strings = [];
-      if (sharedStringsXml) {
-        const sDoc = new DOMParser().parseFromString(sharedStringsXml, 'text/xml');
-        const siNodes = sDoc.getElementsByTagName('si');
-        for (let i = 0; i < siNodes.length; i++) {
-          let text = '';
-          const tNodes = siNodes[i].getElementsByTagName('t');
-          for (let j = 0; j < tNodes.length; j++) text += tNodes[j].textContent;
-          strings.push(text);
-        }
-      }
-      const sheetXml = await extract('xl/worksheets/sheet1.xml');
-      if (!sheetXml) throw new Error("Could not read sheet1.xml");
-      const sDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
-      const rowNodes = sDoc.getElementsByTagName('row');
-      let text = '';
-      for (let i = 0; i < rowNodes.length; i++) {
-        const cNodes = rowNodes[i].getElementsByTagName('c');
-        const rowData = [];
-        for (let j = 0; j < cNodes.length; j++) {
-          const c = cNodes[j];
-          const type = c.getAttribute('t');
-          const vNode = c.getElementsByTagName('v')[0];
-          const isNode = c.getElementsByTagName('is')[0];
-          let val = '';
-          if (type === 's' && vNode) {
-            val = strings[parseInt(vNode.textContent, 10)] || '';
-          } else if (type === 'inlineStr' && isNode) {
-            const tNode = isNode.getElementsByTagName('t')[0];
-            val = tNode ? tNode.textContent : '';
-          } else if (vNode) {
-            val = vNode.textContent;
-          }
-          rowData.push(val);
-        }
-        if (rowData.some(c => c !== '')) {
-          text += rowData.join(' | ') + '\n';
-        }
-      }
-      return text;
-    }
-  };
-
-  // Register the route
-  __LS_addRoute('ai-import', 'AI Bulk Import', () => `
-    <div class="card" style="text-align:center;padding:60px 20px;">
-      <div style="font-size:64px;margin-bottom:20px;">🧠</div>
-      <h2 style="font-size:24px;font-weight:700;margin-bottom:10px;">Universal AI Data Importer</h2>
-      <p style="color:var(--text-3);font-size:14px;max-width:400px;margin:0 auto 30px;">Upload any bank statement, supplier list, or historical cheque ledger. Our AI will scan it, extract the data, and map it into the system.</p>
-      <button class="btn primary" style="padding:12px 24px;font-size:15px;" onclick="window.openUniversalImport()">Launch Import Wizard</button>
-    </div>
-  `);
-  __LS_addNav({ group: 'System', id: 'ai-import', ico: '🧠', label: 'AI Bulk Import' });
-
-  scriptLoaded('S16-PART-3');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     S17 MEGA PATCH: Full-Screen Cheque Designer + Pixel-Perfect Report
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] S17-MEGA loaded', 'color:#10b981;font-weight:bold');
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     PART 1: FULL-SCREEN CHEQUE DESIGNER (Fixes the cut-off issue)
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.openChequePrint = function (id) {
-    const c = chequeObj(id);
-    if (!c) return;
-    
-    const bank = bankObj(c.bankId);
-    const bankName = bank ? bank.bankName || bank.name : 'Default';
-    
-    const DEFAULTS = {
-      'HNB':          { date: { x: 160, y: 12, fs: 14, bold: true }, payee: { x: 25, y: 28, fs: 16, bold: true }, amount: { x: 155, y: 28, fs: 16, bold: true }, words: { x: 12, y: 38, fs: 14, bold: false } },
-      'Commercial':   { date: { x: 165, y: 15, fs: 14, bold: true }, payee: { x: 30, y: 30, fs: 15, bold: true }, amount: { x: 160, y: 30, fs: 15, bold: true }, words: { x: 15, y: 40, fs: 14, bold: false } },
-      'Sampath':      { date: { x: 160, y: 14, fs: 14, bold: true }, payee: { x: 28, y: 29, fs: 15, bold: true }, amount: { x: 158, y: 29, fs: 15, bold: true }, words: { x: 15, y: 39, fs: 14, bold: false } },
-      'Default':      { date: { x: 160, y: 14, fs: 14, bold: true }, payee: { x: 25, y: 28, fs: 15, bold: true }, amount: { x: 160, y: 28, fs: 15, bold: true }, words: { x: 12, y: 38, fs: 14, bold: false } }
-    };
-
-    let presetKey = 'Default';
-    if (bankName.toLowerCase().includes('hnb')) presetKey = 'HNB';
-    else if (bankName.toLowerCase().includes('commercial')) presetKey = 'Commercial';
-    else if (bankName.toLowerCase().includes('sampath')) presetKey = 'Sampath';
-
-    const calKey = 'chq_pro_designer_' + presetKey;
-    let cal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(DEFAULTS[presetKey]));
-    let activeEl = 'payee';
-
-    // We use a custom full-screen modal for the designer
-    const body = `
-      <style>
-        .designer-fullscreen { display: flex; gap: 20px; height: calc(90vh - 60px); }
-        .designer-canvas-area { 
-          flex: 1; background: #e2e8f0; border-radius: 12px; padding: 40px; 
-          display: flex; align-items: center; justify-content: center; 
-          overflow: auto; position: relative; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
-        }
-        
-        /* 190mm is approx 718px */
-        .cheque-paper { 
-          position: relative; width: 190mm; height: 85mm; background: #fff; flex-shrink: 0;
-          border-radius: 4px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); 
-          font-family: 'Courier New', Courier, monospace; overflow: hidden;
-          background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
-          background-size: 5mm 5mm; /* Finer grid */
-        }
-        
-        .c-element { position: absolute; color: #000; white-space: nowrap; cursor: move; padding: 2px 6px; border: 1px dashed transparent; transition: border 0.1s, background 0.1s; user-select: none; }
-        .c-element:hover { border-color: rgba(124,58,237,0.5); background: rgba(124,58,237,0.05); }
-        .c-element.active { border-color: var(--accent); background: rgba(124,58,237,0.1); box-shadow: 0 0 0 2px rgba(124,58,237,0.2); z-index: 10; }
-        .c-words { width: 160mm; white-space: normal; line-height: 1.2; }
-        
-        .designer-panel { width: 320px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
-        .panel-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); border-radius: 12px 12px 0 0; }
-        .panel-body { flex: 1; overflow-y: auto; padding: 16px; }
-        
-        .prop-group { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-2); }
-        .prop-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .prop-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-3); display: flex; justify-content: space-between; cursor: pointer; letter-spacing: 0.5px; margin-bottom: 12px; }
-        .prop-title.active { color: var(--accent); }
-        
-        .prop-row { display: grid; grid-template-columns: 50px 1fr 50px 1fr; gap: 6px; align-items: center; margin-bottom: 8px; }
-        .prop-row label { font-size: 11px; color: var(--text-2); font-weight: 700; text-align: right; }
-        .prop-row input[type="number"] { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-family: var(--mono); font-size: 13px; }
-        .prop-row input[type="number"]:focus { border-color: var(--accent); outline: none; }
-        
-        .align-btns { display: flex; gap: 4px; margin-top: 8px; }
-        .align-btn { flex: 1; padding: 6px; text-align: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; }
-        .align-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-        
-        @media print {
-          @page { size: auto; margin: 0mm; }
-          body * { visibility: hidden; }
-          .print-only-container, .print-only-container * { visibility: visible; }
-          .print-only-container { position: absolute; left: 0; top: 0; width: 210mm; height: 99mm; display: block !important; }
-          .c-element { border: none !important; background: transparent !important; box-shadow: none !important; }
-        }
-      </style>
-
-      <div class="designer-fullscreen">
-        <!-- CANVAS -->
-        <div class="designer-canvas-area">
-          <div class="cheque-paper" id="chequeCanvas">
-            <div class="c-element" data-k="date"   style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; font-weight:${cal.date.bold ? 'bold' : 'normal'}">${dateFmt(c.chequeDate)}</div>
-            <div class="c-element" data-k="payee"  style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; font-weight:${cal.payee.bold ? 'bold' : 'normal'}">${esc(c.payeeName)}</div>
-            <div class="c-element" data-k="amount" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; font-weight:${cal.amount.bold ? 'bold' : 'normal'}">${money(c.amount, {plain:true})}</div>
-            <div class="c-element c-words" data-k="words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; font-weight:${cal.words.bold ? 'bold' : 'normal'}">*** ${esc(c.amountWords)} ***</div>
-            <div class="c-element" data-k="micr" style="left:20mm; top:75mm; font-size:14px; color:#555; letter-spacing:2px;">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
-          </div>
-        </div>
-
-        <!-- PROPERTIES -->
-        <div class="designer-panel">
-          <div class="panel-header">
-            <div style="font-weight: 800; font-size: 14px;">Designer Controls</div>
-            <button class="btn xs" id="resetCal">Reset</button>
-          </div>
-          <div class="panel-body">
-            <div style="font-size:12px; color:var(--text-3); margin-bottom:16px; line-height:1.5">
-              Click an element on the cheque to select it. Use <b>Arrow Keys</b> to nudge (Hold Shift for 5mm).
-            </div>
-
-            ${['payee', 'amount', 'words', 'date'].map(k => `
-              <div class="prop-group">
-                <div class="prop-title ${k === activeEl ? 'active' : ''}" data-target="${k}">
-                  <span>${k.toUpperCase()}</span>
-                  <span style="font-size:10px; opacity:0.5">▼</span>
-                </div>
-                <div class="prop-row">
-                  <label>X (mm)</label> <input type="number" step="1" data-k="${k}" data-p="x" value="${cal[k].x}">
-                  <label>Y (mm)</label> <input type="number" step="1" data-k="${k}" data-p="y" value="${cal[k].y}">
-                </div>
-                <div class="prop-row">
-                  <label>Size (px)</label> <input type="number" step="1" data-k="${k}" data-p="fs" value="${cal[k].fs}">
-                  <div class="align-btns">
-                    <div class="align-btn ${cal[k].bold ? 'active' : ''}" data-k="${k}" data-p="bold">B</div>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          <div style="padding: 16px; border-top: 1px solid var(--border); background: var(--surface-2); display:flex; gap:8px; border-radius: 0 0 12px 12px;">
-            <button class="btn" id="closeDesigner" style="flex:1">Close</button>
-            <button class="btn primary" id="executePrint" style="flex:2">🖨️ Print Cheque</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- HIDDEN PRINT -->
-      <div class="print-only-container" id="printArea" style="display:none;">
-        <div class="c-element" style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; font-weight:${cal.date.bold ? 'bold' : 'normal'}">${dateFmt(c.chequeDate)}</div>
-        <div class="c-element" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; font-weight:${cal.payee.bold ? 'bold' : 'normal'}">${esc(c.payeeName)}</div>
-        <div class="c-element" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; font-weight:${cal.amount.bold ? 'bold' : 'normal'}">${money(c.amount, {plain:true})}</div>
-        <div class="c-element c-words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; font-weight:${cal.words.bold ? 'bold' : 'normal'}">*** ${esc(c.amountWords)} ***</div>
-      </div>
-    `;
-
-    // Use custom modal wrapper for 95vw width
-    const wrap = document.getElementById('modalWrap');
-    wrap.innerHTML = `
-      <div class="modal-backdrop" data-close-modal></div>
-      <div class="modal" style="max-width:95vw; width:95vw; height:95vh; margin:2.5vh auto; display:flex; flex-direction:column;">
-        <div class="modal-head">
-          <h3>🖨️ Pro Cheque Designer — ${esc(c.chequeNo)}</h3>
-          <button class="icon-btn" data-close-modal>✕</button>
-        </div>
-        <div class="modal-body" style="padding:0; flex:1; overflow:hidden;">
-          ${body}
-        </div>
-      </div>
-    `;
-    wrap.classList.add('open');
-
-    // --- LOGIC ---
-    const canvasEls = document.querySelectorAll('#chequeCanvas .c-element');
-    const printEls = document.querySelectorAll('#printArea .c-element');
-    const propInputs = document.querySelectorAll('.prop-row input[type="number"]');
-    const propTitles = document.querySelectorAll('.prop-title');
-    const boldBtns = document.querySelectorAll('.align-btn');
-
-    function syncUI() {
-      canvasEls.forEach(el => {
-        const k = el.dataset.k;
-        if (!cal[k]) return;
-        el.style.left = cal[k].x + 'mm';
-        el.style.top = cal[k].y + 'mm';
-        el.style.fontSize = cal[k].fs + 'px';
-        el.style.fontWeight = cal[k].bold ? 'bold' : 'normal';
-        el.classList.toggle('active', k === activeEl);
-      });
-      printEls.forEach(el => {
-        const keys = ['date', 'payee', 'amount', 'words'];
-        const key = keys[Array.from(printEls).indexOf(el)];
-        if (key && cal[key]) {
-           el.style.left = cal[key].x + 'mm';
-           el.style.top = cal[key].y + 'mm';
-           el.style.fontSize = cal[key].fs + 'px';
-           el.style.fontWeight = cal[key].bold ? 'bold' : 'normal';
-        }
-      });
-      propTitles.forEach(el => el.classList.toggle('active', el.dataset.target === activeEl));
-      propInputs.forEach(inp => { inp.value = cal[inp.dataset.k][inp.dataset.p]; });
-      boldBtns.forEach(btn => { if (btn.dataset.p === 'bold') btn.classList.toggle('active', cal[btn.dataset.k].bold); });
-      localStorage.setItem(calKey, JSON.stringify(cal));
-    }
-
-    canvasEls.forEach(el => el.onclick = (e) => { e.stopPropagation(); activeEl = el.dataset.k; syncUI(); });
-    propTitles.forEach(el => el.onclick = () => { activeEl = el.dataset.target; syncUI(); });
-    propInputs.forEach(inp => inp.oninput = (e) => { cal[inp.dataset.k][inp.dataset.p] = parseFloat(e.target.value) || 0; syncUI(); });
-    boldBtns.forEach(btn => btn.onclick = () => { cal[btn.dataset.k].bold = !cal[btn.dataset.k].bold; syncUI(); });
-
-    const handleKeys = (e) => {
-      if (!document.getElementById('chequeCanvas')) return;
-      const step = e.shiftKey ? 5 : 1;
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        if (e.key === 'ArrowUp') cal[activeEl].y -= step;
-        if (e.key === 'ArrowDown') cal[activeEl].y += step;
-        if (e.key === 'ArrowLeft') cal[activeEl].x -= step;
-        if (e.key === 'ArrowRight') cal[activeEl].x += step;
-        syncUI();
-      }
-    };
-    document.addEventListener('keydown', handleKeys);
-
-    document.getElementById('resetCal').onclick = () => { if(confirm('Reset?')) { cal = JSON.parse(JSON.stringify(DEFAULTS[presetKey])); syncUI(); } };
-    document.getElementById('closeDesigner').onclick = () => { closeModal(); };
-    
-    document.getElementById('executePrint').onclick = () => {
-      syncUI();
-      document.getElementById('printArea').style.display = 'block';
-      setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 150);
-    };
-
-    const origClose = window.closeModal;
-    window.closeModal = function() { document.removeEventListener('keydown', handleKeys); window.closeModal = origClose; origClose.apply(this, arguments); };
-    syncUI();
-  };
-
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     PART 2: PIXEL-PERFECT WHATSAPP REPORT (Matching your reference image)
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.renderDailyReport = function() {
-    const todayStr = today();
-    const tomorrowStr = shiftDate(todayStr, 1);
-    
-    // 1. Fetch Data
-    const pending = arr(state.data.cheques).filter(c => c.status === 'scheduled' || c.status === 'pending_approval');
-    const totalAmount = pending.reduce((s, c) => s + num(c.amount), 0);
-    const totalCount = pending.length;
-    
-    // 2. Global Bank Analysis
-    const banks = arr(state.data.banks).filter(b => b.active !== false);
-    let totalDepositNeeded = 0;
-
-    const bankAnalysis = banks.map(b => {
-      const bCheques = pending.filter(c => c.bankId === b.id).sort((a,b) => a.chequeDate.localeCompare(b.chequeDate));
-      const bTotal = bCheques.reduce((s, c) => s + num(c.amount), 0);
-      const bal = bankBalances(b.id);
-      
-      const needed = Math.max(0, bTotal - bal.bank);
-      if (needed > 0) totalDepositNeeded += needed;
-
-      // Group by payee to create the "Where funds go" sections
-      const byPayee = {};
-      bCheques.forEach(c => {
-        if (!byPayee[c.payeeName]) byPayee[c.payeeName] = { total: 0, cheques: [] };
-        byPayee[c.payeeName].total += num(c.amount);
-        byPayee[c.payeeName].cheques.push(c);
-      });
-
-      return {
-        bank: b,
-        cheques: bCheques,
-        total: bTotal,
-        balance: bal.bank,
-        needed: needed,
-        byPayee: Object.keys(byPayee).map(name => ({ name, total: byPayee[name].total, cheques: byPayee[name].cheques }))
-      };
-    }).filter(b => b.total > 0); // Only show banks with pending cheques
-
-    // 3. Top Summary Cards Data
-    let topGiveCard = null;
-    let topComeCard = null;
-    let topDepositCard = null;
-
-    // Find highest total payee
-    let maxPayee = { name: '', total: 0, count: 0 };
-    bankAnalysis.forEach(ba => {
-      ba.byPayee.forEach(p => {
-        if (p.total > maxPayee.total) maxPayee = { name: p.name, total: p.total, count: p.cheques.length };
-      });
-    });
-
-    // Find highest incoming/bank total
-    let maxBank = { name: '', total: 0, count: 0 };
-    bankAnalysis.forEach(ba => {
-      if (ba.total > maxBank.total) maxBank = { name: ba.bank.name, total: ba.total, count: ba.cheques.length };
-    });
-
-    // Find highest deposit needed
-    let maxDeposit = { name: '', needed: 0, count: 0 };
-    bankAnalysis.forEach(ba => {
-      if (ba.needed > maxDeposit.needed) maxDeposit = { name: ba.bank.name, needed: ba.needed, count: ba.cheques.length };
-    });
-
-    // 4. Build the HTML
-    const reportHTML = `
-      <!-- HEADER -->
-      <div style="background:#0f172a;border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;overflow:hidden;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;">
-          <div>
-            <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;color:#fff;text-transform:uppercase;">Cheque Payment Update</h2>
-            <div style="color:#94a3b8;font-size:13px;display:flex;gap:8px;align-items:center;">
-              <span>${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              <span>•</span>
-              <span>Funds required for upcoming cheques</span>
-            </div>
-            <div style="color:#38bdf8;font-size:13px;margin-top:8px;font-weight:500;">
-              ${state.settings?.business?.name || 'Lanka Shoe'} · Live Snapshot
-            </div>
-          </div>
-          <div style="background:#eab308;color:#000;padding:16px 24px;border-radius:12px;text-align:right;min-width:220px;box-shadow:0 4px 12px rgba(234,179,8,0.3);">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#422006;">Total to Arrange</div>
-            <div style="font-size:28px;font-weight:900;margin-top:4px;">${money(totalAmount)}</div>
-            <div style="font-size:12px;font-weight:600;color:#422006;margin-top:2px;">${totalCount} cheque(s) pending</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TOP SUMMARY CARDS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
-        <!-- GIVE CARD -->
-        <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);border-left:4px solid #ef4444;">
-          <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Give to ${esc(maxPayee.name || 'Vendor')}</div>
-          <div style="font-size:22px;font-weight:900;color:#ef4444;">${money(maxPayee.total)}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">${maxPayee.count} cheques</div>
-        </div>
-        <!-- COME CARD -->
-        <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);border-left:4px solid #3b82f6;">
-          <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Coming Tomorrow · ${esc(maxBank.name)}</div>
-          <div style="font-size:22px;font-weight:900;color:#3b82f6;">${money(maxBank.total)}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">${maxBank.count} cheques</div>
-        </div>
-        <!-- DEPOSIT CARD -->
-        <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);border-left:4px solid #f97316;">
-          <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Deposit Needed · ${esc(maxDeposit.name)}</div>
-          <div style="font-size:22px;font-weight:900;color:#f97316;">${money(maxDeposit.needed)}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">${maxDeposit.count} cheques</div>
-        </div>
-      </div>
-
-      <!-- WHERE FUNDS GO BAR -->
-      <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e2e8f0;margin-bottom:24px;">
-        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Where the funds go</div>
-        <div style="display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#f1f5f9;">
-          ${bankAnalysis.map((ba, i) => {
-            const colors = ['#ef4444', '#3b82f6', '#f97316', '#10b981', '#8b5cf6'];
-            const pct = totalAmount > 0 ? (ba.total / totalAmount) * 100 : 0;
-            return `<div style="width:${pct}%;background:${colors[i % colors.length]};"></div>`;
-          }).join('')}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:16px;">
-          ${bankAnalysis.map((ba, i) => {
-            const colors = ['#ef4444', '#3b82f6', '#f97316', '#10b981', '#8b5cf6'];
             return `
-              <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#0f172a;">
-                <div style="width:8px;height:8px;border-radius:50%;background:${colors[i % colors.length]};"></div>
-                ${esc(ba.bank.name)} <span style="color:#64748b;font-weight:400;">${money(ba.total)}</span>
+              <div style="background:${bg}; min-height:130px; padding:10px; position:relative; display:flex; flex-direction:column; ${c.isToday ? 'box-shadow:inset 0 0 0 2px var(--accent); z-index:1;' : ''}"
+                   data-action="pdc-day-click" data-date="${c.date}" data-cheques="${esc(JSON.stringify(c.cheques.map(x => x.id)))}">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="font-weight:800; font-size:14px; color:${c.isToday ? 'var(--accent)' : 'var(--text-3)'};">${c.dayNum}</div>
+                  ${c.isToday ? '<span style="font-size:9px; font-weight:800; background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px;">TODAY</span>' : ''}
+                </div>
+                
+                <div style="flex:1;"></div>
+
+                ${c.dailyTotal > 0 ? `
+                  <div style="background:${badgeBg}; color:${badgeText}; padding:6px; border-radius:6px; font-weight:800; font-size:13px; text-align:center; margin-bottom:6px; box-shadow:var(--shadow-sm);">
+                    ${money(c.dailyTotal)}
+                  </div>
+                  <div style="font-size:11px; font-weight:600; color:var(--text-3); text-align:center;">
+                    ${c.cheques.length} chq
+                  </div>
+                  <div style="font-size:11px; font-weight:700; margin-top:4px; text-align:center; color:${c.isShortfall ? 'var(--red)' : 'var(--green)'};">
+                    Bal: ${money(c.closing)}
+                  </div>
+                  ${c.isShortfall ? `
+                    <div style="position:absolute; bottom:4px; left:4px; right:4px; text-align:center; font-size:9px; color:var(--red); font-weight:800; background:var(--red-soft); border-radius:4px; padding:2px;">
+                      ⚠ INSUFFICIENT
+                    </div>
+                  ` : ''}
+                ` : `
+                  <div style="font-size:11px; font-weight:600; color:var(--text-4); text-align:center; padding-bottom:4px;">
+                    Bal: ${money(c.closing)}
+                  </div>
+                `}
               </div>
             `;
           }).join('')}
         </div>
       </div>
+      
+      <div style="display:flex; gap:20px; margin-top:16px; font-size:12px; color:var(--text-3);">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:12px;height:12px;background:var(--blue-soft);border-radius:3px;border:1px solid var(--blue);"></span> Cheques Clearing
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:12px;height:12px;background:var(--red-soft);border-radius:3px;border:1px solid var(--red);"></span> Shortfall Risk
+        </div>
+        <div style="margin-left:auto; font-style:italic;">Click any day to see the exact cheques.</div>
+      </div>
+    `;
+  }
 
-      <!-- BANK DETAIL CARDS -->
-      ${bankAnalysis.map(ba => {
-        const isShort = ba.needed > 0;
-        return `
-          <div style="background:#fff;border-radius:16px;padding:24px;border:1px solid #e2e8f0;margin-bottom:24px;box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+  /* ═══════════════════════════════════════════════════════════════════════
+     3. Day Detail Modal (When clicking a day on the calendar)
+     ═══════════════════════════════════════════════════════════════════════ */
+  function openPdcDayModal(dateStr, chequeIdsJson) {
+    let ids = [];
+    try { ids = JSON.parse(chequeIdsJson); } catch(e) {}
+    if (!ids.length) return;
+
+    const cheques = ids.map(id => chequeObj(id)).filter(Boolean);
+    const total = cheques.reduce((s, c) => s + num(c.amount), 0);
+
+    const body = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+          <div style="font-size:20px; font-weight:800; color:var(--text);">${dateFmt(dateStr)}</div>
+          <div style="font-size:13px; color:var(--text-3); margin-top:2px;">${cheques.length} cheque(s) clearing</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="k-label">Total Amount</div>
+          <div style="font-size:24px; font-weight:800; color:var(--red);">${money(total)}</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cheque #</th>
+              <th>Payee</th>
+              <th>Bank</th>
+              <th>Status</th>
+              <th class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cheques.map(c => `
+              <tr>
+                <td class="mono font-weight:600;">${esc(c.chequeNo)}</td>
+                <td><strong>${esc(c.payeeName)}</strong></td>
+                <td>${esc(bankName(c.bankId))}</td>
+                <td>${chequeStatusBadge(c.status)}</td>
+                <td class="num"><strong>${money(c.amount)}</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    openModal('📅 Cheques Clearing', body, {
+      width: 700,
+      footer: '<button class="btn" data-close-modal>Close</button>'
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     4. Action & Route Registration
+     ═══════════════════════════════════════════════════════════════════════ */
+  
+  // Register Route & Nav
+  __LS_addRoute('pdc-calendar', 'PDC Calendar', renderPdcCalendar);
+  __LS_addNav({ group: 'Cheques', id: 'pdc-calendar', ico: '📅', label: 'PDC Calendar' });
+
+  // Register Actions
+  __LS_registerAction('pdc-prev', () => {
+    const f = state.filters.pdcCalendar || {};
+    const ym = f.ym || today().slice(0, 7);
+    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
+    const prev = new Date(y, m - 2, 1);
+    state.filters.pdcCalendar = Object.assign({}, f, { ym: prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0') });
+    renderApp();
+  });
+
+  __LS_registerAction('pdc-next', () => {
+    const f = state.filters.pdcCalendar || {};
+    const ym = f.ym || today().slice(0, 7);
+    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
+    const next = new Date(y, m, 1);
+    state.filters.pdcCalendar = Object.assign({}, f, { ym: next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') });
+    renderApp();
+  });
+
+  __LS_registerAction('pdc-today', () => {
+    const f = state.filters.pdcCalendar || {};
+    state.filters.pdcCalendar = Object.assign({}, f, { ym: today().slice(0, 7) });
+    renderApp();
+  });
+
+  __LS_registerAction('pdc-day-click', (ev, id) => {
+    const date = ev.target.closest('[data-date]').dataset.date;
+    const idsJson = ev.target.closest('[data-cheques]').dataset.cheques;
+    openPdcDayModal(date, idsJson);
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     5. Bindings (Runs once on boot)
+     ═══════════════════════════════════════════════════════════════════════ */
+  __LS_register('PDC-CALENDAR', function () {
+    const prevBind = window.bindView;
+    window.bindView = function () {
+      try { if (prevBind) prevBind(); } catch (e) {}
+
+      // Bank Filter Dropdown
+      const bankFilter = document.getElementById('pdcBankFilter');
+      if (bankFilter) {
+        bankFilter.onchange = () => {
+          const f = state.filters.pdcCalendar || {};
+          state.filters.pdcCalendar = Object.assign({}, f, { bankId: bankFilter.value });
+          renderApp();
+        };
+      }
+    };
+    
+    scriptLoaded('PDC-CALENDAR');
+  });
+
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PART 2: ADVANCED CHEQUE PRINTING MODULE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] PART 2: CHEQUE PRINTER loaded', 'color:#10b981;font-weight:bold');
+
+  // Default millimeter coordinates for Sri Lankan Banks
+  const BANK_PRESETS = {
+    'HNB':        { date: {x: 165, y: 15}, payee: {x: 30, y: 27}, amount: {x: 160, y: 27}, words: {x: 15, y: 38} },
+    'Sampath':    { date: {x: 160, y: 14}, payee: {x: 28, y: 28}, amount: {x: 158, y: 28}, words: {x: 15, y: 39} },
+    'Commercial': { date: {x: 165, y: 16}, payee: {x: 32, y: 29}, amount: {x: 162, y: 29}, words: {x: 15, y: 41} },
+    'BOC':        { date: {x: 160, y: 15}, payee: {x: 30, y: 30}, amount: {x: 160, y: 30}, words: {x: 15, y: 40} },
+    'Default':    { date: {x: 160, y: 15}, payee: {x: 30, y: 28}, amount: {x: 160, y: 28}, words: {x: 15, y: 38} }
+  };
+
+  function openChequePrint(id) {
+    const c = chequeObj(id);
+    if (!c) return;
+    
+    const bank = bankObj(c.bankId);
+    const bankName = bank ? bank.bankName || bank.name : 'Default';
+    
+    let presetKey = 'Default';
+    if (bankName.toLowerCase().includes('hnb')) presetKey = 'HNB';
+    else if (bankName.toLowerCase().includes('sampath')) presetKey = 'Sampath';
+    else if (bankName.toLowerCase().includes('commercial')) presetKey = 'Commercial';
+    else if (bankName.toLowerCase().includes('boc') || bankName.toLowerCase().includes('ceylon')) presetKey = 'BOC';
+
+    const calKey = 'chq_print_cal_v2_' + presetKey;
+    let cal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(BANK_PRESETS[presetKey]));
+    
+    let activeEl = 'payee';
+    let customPayee = c.payeeName; // Payee Override variable
+
+    const body = `
+      <style>
+        /* ── Visual Designer Styles ── */
+        .print-container { display: flex; gap: 24px; height: 60vh; min-height: 450px; }
+        .cheque-workspace { flex: 1; background: #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 20px; position: relative; }
+        
+        /* Real physical cheque dimensions: 190mm x 85mm */
+        .cheque-canvas { 
+          position: relative; width: 190mm; height: 85mm; background: #fff; 
+          border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;
+          /* Grid background to help alignment */
+          background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+          background-size: 5mm 5mm;
+        }
+        
+        .chq-el { 
+          position: absolute; font-family: 'Courier New', Courier, monospace; 
+          font-size: 15px; font-weight: 700; color: #000; cursor: move; 
+          padding: 2px 4px; border: 1px dashed transparent; white-space: nowrap;
+          user-select: none;
+        }
+        .chq-el:hover { border-color: rgba(124,58,237,0.5); background: rgba(124,58,237,0.05); }
+        .chq-el.active { border-color: var(--accent); background: rgba(124,58,237,0.1); z-index: 10; }
+        .chq-el.words { width: 160mm; white-space: normal; line-height: 1.2; font-size: 13px; }
+        
+        /* ── Controls Sidebar ── */
+        .print-controls { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 4px; }
+        .ctrl-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+        .ctrl-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; display: flex; justify-content: space-between; }
+        
+        .coord-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .coord-inputs input { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-family: var(--mono); font-size: 13px; }
+        
+        /* ── Print-Only Layout ── */
+        @media print {
+          @page { size: 210mm 99mm; margin: 0; } /* Sri Lankan standard landscape */
+          body * { visibility: hidden; }
+          #chq-print-area, #chq-print-area * { visibility: visible; }
+          #chq-print-area { position: absolute; left: 0; top: 0; width: 190mm; height: 85mm; display: block !important; }
+          .chq-print-el { border: none !important; background: transparent !important; }
+        }
+      </style>
+
+      <div class="print-container">
+        <!-- Left: Visual Canvas -->
+        <div class="cheque-workspace">
+          <div class="cheque-canvas" id="chqCanvas">
+            <div class="chq-el" data-k="date" style="left:${cal.date.x}mm; top:${cal.date.y}mm;">${dateFmt(c.chequeDate)}</div>
+            <div class="chq-el" data-k="payee" id="visualPayee" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm;">${esc(customPayee)}</div>
+            <div class="chq-el" data-k="amount" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm;">${money(c.amount, {plain:true})}</div>
+            <div class="chq-el words" data-k="words" style="left:${cal.words.x}mm; top:${cal.words.y}mm;">*** ${esc(c.amountWords)} ***</div>
+          </div>
+        </div>
+
+        <!-- Right: Controls -->
+        <div class="print-controls">
+          
+          <div class="ctrl-box" style="background:var(--accent-soft); border-color:var(--accent);">
+            <div class="ctrl-title" style="color:var(--accent-text);">1. Custom Payee Override</div>
+            <label class="field" style="margin:0;">
+              <input type="text" id="payeeOverrideInput" value="${esc(customPayee)}" placeholder="Type exact payee name to print..." style="font-weight:600; color:var(--accent-text);">
+            </label>
+            <div class="small muted" style="margin-top:6px;">Changes the printed name only. Your database remains untouched.</div>
+          </div>
+
+          <div class="ctrl-box">
+            <div class="ctrl-title">2. Bank Template</div>
+            <select id="presetSelect" class="field" style="padding:8px; border-radius:6px; border:1px solid var(--border); width:100%;">
+              ${Object.keys(BANK_PRESETS).map(k => `<option value="${k}" ${k === presetKey ? 'selected' : ''}>${k} Layout</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="ctrl-box" style="flex:1;">
+            <div class="ctrl-title">3. Millmeter Alignment</div>
+            <div class="small muted" style="margin-bottom:12px; line-height:1.5;">Click an element on the paper. Use <b>Arrow Keys</b> to nudge (Hold Shift for 5mm).</div>
             
-            <!-- Bank Header -->
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:1px solid #e2e8f0;padding-bottom:16px;">
-              <div style="display:flex;gap:12px;align-items:center;">
-                <div style="width:48px;height:48px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#0f172a;font-size:10px;text-align:center;">
-                  ${esc((ba.bank.bankName || ba.bank.name).substring(0, 4).toUpperCase())}
-                </div>
-                <div>
-                  <div style="font-weight:800;font-size:18px;color:#0f172a;">${esc(ba.bank.name)}</div>
-                  <div style="font-size:13px;color:#64748b;">${esc(ba.bank.branch || 'Main Branch')}</div>
-                </div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:24px;font-weight:900;color:#0f172a;">${money(ba.total)}</div>
-                <div style="font-size:11px;font-weight:700;color:${isShort ? '#ef4444' : '#10b981'};text-transform:uppercase;margin-top:2px;">
-                  ${isShort ? `Need ${money(ba.needed)}` : 'Funds OK'}
-                </div>
-              </div>
-            </div>
-
-            <!-- Payee Breakdown -->
-            ${ba.byPayee.map(p => `
-              <div style="margin-bottom:20px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                  <div style="width:6px;height:6px;border-radius:50%;background:${isShort ? '#ef4444' : '#3b82f6'};"></div>
-                  <div style="font-size:11px;font-weight:800;color:${isShort ? '#ef4444' : '#3b82f6'};text-transform:uppercase;letter-spacing:0.5px;">
-                    ${isShort ? 'DEPOSIT NEEDED FOR' : 'COMING TO THE BANK'} · ${esc(p.name)}
-                  </div>
-                  <div style="margin-left:auto;font-size:12px;font-weight:700;color:#0f172a;">${money(p.total)}</div>
-                </div>
-                
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                  ${p.cheques.map(c => {
-                    const isToday = c.chequeDate === todayStr;
-                    const isTomorrow = c.chequeDate === tomorrowStr;
-                    let badge = '';
-                    if (isToday) badge = '<span style="background:#ef4444;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">PAY TODAY</span>';
-                    else if (isTomorrow) badge = '<span style="background:#3b82f6;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">DUE TOMORROW</span>';
-                    else if (isShort) badge = '<span style="background:#f97316;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">DEPOSIT NEEDED</span>';
-
-                    return `
-                      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
-                        <div>
-                          <div style="font-weight:700;font-size:14px;color:#0f172a;">${esc(c.payeeName)}</div>
-                          <div style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:8px;margin-top:2px;">
-                            Chq ${esc(c.chequeNo)} · ${dateFmt(c.chequeDate).slice(0, 6)}
-                            ${badge}
-                          </div>
-                        </div>
-                        <div style="font-weight:800;font-size:15px;color:#0f172a;">${money(c.amount)}</div>
-                      </div>
-                    `;
-                  }).join('')}
+            ${['payee', 'amount', 'words', 'date'].map(k => `
+              <div style="margin-bottom:12px; padding:8px; border-radius:6px; border:1px solid ${activeEl === k ? 'var(--accent)' : 'var(--border)'}; cursor:pointer; transition:all 0.2s;" class="ctrl-group" data-k="${k}">
+                <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:${activeEl === k ? 'var(--accent)' : 'var(--text-2)'};">${k}</div>
+                <div class="coord-inputs">
+                  <label style="display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text-3);">X <input type="number" class="coord-input" data-k="${k}" data-p="x" value="${cal[k].x}"></label>
+                  <label style="display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text-3);">Y <input type="number" class="coord-input" data-k="${k}" data-p="y" value="${cal[k].y}"></label>
                 </div>
               </div>
             `).join('')}
             
-            ${isShort ? `<div style="margin-top:16px;font-size:12px;font-weight:700;color:#ef4444;background:#fef2f2;padding:12px;border-radius:8px;text-align:center;">⚠️ Money not yet in the account. Please deposit before tomorrow.</div>` : ''}
+            <button class="btn" id="resetCalBtn" style="width:100%; color:var(--red); border-color:var(--red); margin-top:8px;">↺ Reset to Defaults</button>
           </div>
-        `;
-      }).join('')}
 
-      <div style="text-align:center;font-size:12px;color:#94a3b8;margin-top:24px;font-weight:500;">
-        Passed cheques are not shown · Generated ${new Date().toLocaleString('en-GB')}
+        </div>
+      </div>
+
+      <!-- Hidden Print Area -->
+      <div id="chq-print-area" style="display:none;">
+        <div class="chq-el chq-print-el" style="left:${cal.date.x}mm; top:${cal.date.y}mm;">${dateFmt(c.chequeDate)}</div>
+        <div class="chq-el chq-print-el" id="printPayee" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm;">${esc(customPayee)}</div>
+        <div class="chq-el chq-print-el" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm;">${money(c.amount, {plain:true})}</div>
+        <div class="chq-el chq-print-el words" style="left:${cal.words.x}mm; top:${cal.words.y}mm;">*** ${esc(c.amountWords)} ***</div>
       </div>
     `;
 
+    openModal('🖨️ Cheque Print Designer', body, {
+      width: 1100,
+      footer: `
+        <button class="btn" data-close-modal>Cancel</button>
+        <button class="btn primary" id="executePrintBtn" style="padding:10px 24px; font-size:14px;">🖨️ Print Cheque</button>
+      `
+    });
+
+    // ── Logic ──
+    const q = (sel) => document.querySelector(sel);
+    const qa = (sel) => document.querySelectorAll(sel);
+
+    const updateUI = () => {
+      // Update Canvas Visuals
+      qa('#chqCanvas .chq-el').forEach(el => {
+        const k = el.dataset.k;
+        el.style.left = cal[k].x + 'mm';
+        el.style.top = cal[k].y + 'mm';
+        el.classList.toggle('active', k === activeEl);
+      });
+      
+      // Update Sidebar Highlights
+      qa('.ctrl-group').forEach(el => {
+        const isActive = el.dataset.k === activeEl;
+        el.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+        el.querySelector('div').style.color = isActive ? 'var(--accent)' : 'var(--text-2)';
+      });
+
+      // Save to LocalStorage
+      localStorage.setItem(calKey, JSON.stringify(cal));
+    };
+
+    // 1. Payee Override Logic
+    q('#payeeOverrideInput').oninput = (e) => {
+      customPayee = e.target.value;
+      q('#visualPayee').textContent = customPayee || '—';
+      q('#printPayee').textContent = customPayee || '—';
+    };
+
+    // 2. Bank Preset Logic
+    q('#presetSelect').onchange = (e) => {
+      const newKey = e.target.value;
+      cal = JSON.parse(localStorage.getItem('chq_print_cal_v2_' + newKey) || JSON.stringify(BANK_PRESETS[newKey]));
+      
+      // Update inputs
+      qa('.coord-input').forEach(inp => {
+        inp.value = cal[inp.dataset.k][inp.dataset.p];
+      });
+      updateUI();
+    };
+
+    // 3. Element Selection
+    qa('#chqCanvas .chq-el').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); activeEl = el.dataset.k; updateUI(); };
+    });
+    qa('.ctrl-group').forEach(el => {
+      el.onclick = () => { activeEl = el.dataset.k; updateUI(); };
+    });
+
+    // 4. Manual Coordinate Inputs
+    qa('.coord-input').forEach(inp => {
+      inp.onchange = (e) => {
+        const k = inp.dataset.k, p = inp.dataset.p;
+        cal[k][p] = parseFloat(e.target.value) || 0;
+        updateUI();
+      };
+    });
+
+    // 5. Keyboard Nudging (Arrows)
+    const handleKeys = (e) => {
+      if (!document.getElementById('chqCanvas')) return;
+      const step = e.shiftKey ? 5 : 1;
+      
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        if (e.key === 'ArrowUp') cal[activeEl].y -= step;
+        if (e.key === 'ArrowDown') cal[activeEl].y += step;
+        if (e.key === 'ArrowLeft') cal[activeEl].x -= step;
+        if (e.key === 'ArrowRight') cal[activeEl].x += step;
+        
+        // Sync inputs
+        const inputX = q(`.coord-input[data-k="${activeEl}"][data-p="x"]`);
+        const inputY = q(`.coord-input[data-k="${activeEl}"][data-p="y"]`);
+        if (inputX) inputX.value = cal[activeEl].x;
+        if (inputY) inputY.value = cal[activeEl].y;
+        
+        updateUI();
+      }
+    };
+    document.addEventListener('keydown', handleKeys);
+
+    // 6. Reset Button
+    q('#resetCalBtn').onclick = () => {
+      if (!confirm('Reset alignment for ' + q('#presetSelect').value + ' to defaults?')) return;
+      cal = JSON.parse(JSON.stringify(BANK_PRESETS[q('#presetSelect').value]));
+      qa('.coord-input').forEach(inp => {
+        inp.value = cal[inp.dataset.k][inp.dataset.p];
+      });
+      updateUI();
+    };
+
+    // 7. Execute Print
+    q('#executePrintBtn').onclick = () => {
+      // Sync Hidden Print Area
+      const printArea = document.getElementById('chq-print-area');
+      const pEls = printArea.querySelectorAll('.chq-el');
+      
+      pEls[0].style.left = cal.date.x + 'mm';   pEls[0].style.top = cal.date.y + 'mm';
+      pEls[1].style.left = cal.payee.x + 'mm';  pEls[1].style.top = cal.payee.y + 'mm';
+      pEls[2].style.left = cal.amount.x + 'mm'; pEls[2].style.top = cal.amount.y + 'mm';
+      pEls[3].style.left = cal.words.x + 'mm';  pEls[3].style.top = cal.words.y + 'mm';
+
+      // Trigger browser print
+      window.print();
+    };
+
+    // Cleanup keyboard listener on close
+    const origClose = window.closeModal;
+    window.closeModal = function() {
+      document.removeEventListener('keydown', handleKeys);
+      window.closeModal = origClose;
+      origClose.apply(this, arguments);
+    };
+
+    // Initialize
+    updateUI();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Inject Print Button into existing Cheque Details Modal
+     ═══════════════════════════════════════════════════════════════════════ */
+  const origOpenChequeDetail = window.openChequeDetail;
+  
+  window.openChequeDetail = function(id) {
+    // 1. Call the original modal
+    origOpenChequeDetail(id);
+    
+    // 2. Wait a tick for the DOM to render, then inject the button
+    setTimeout(() => {
+      const footer = document.querySelector('#modalWrap .modal-foot');
+      if (footer && !document.getElementById('printChqBtn')) {
+         const btn = document.createElement('button');
+         btn.id = 'printChqBtn';
+         btn.className = 'btn primary';
+         btn.innerHTML = '🖨️ Print';
+         btn.onclick = () => { 
+           closeModal(); 
+           setTimeout(() => openChequePrint(id), 100); 
+         };
+         // Insert as the first button in the footer
+         footer.insertBefore(btn, footer.firstChild);
+      }
+    }, 50);
+  };
+
+  scriptLoaded('CHEQUE-PRINTER');
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PART 3: PREMIUM WHATSAPP ANALYTICS REPORT
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] PART 3: WHATSAPP REPORT loaded', 'color:#10b981;font-weight:bold');
+
+  // Ensure html2canvas is loaded for image generation
+  async function ensureHtml2Canvas() {
+    if (window.html2canvas) return;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  window.renderDailyReport = function() {
+    const tomorrowStr = shiftDate(today(), 1);
+    const todayStr = today();
+    
+    // ── 1. Data Aggregation ──
+    const tomorrowCheques = arr(state.data.cheques).filter(c => 
+      c.chequeDate === tomorrowStr && 
+      ['scheduled', 'approved', 'pending_approval'].includes(c.status)
+    );
+
+    const totalTomorrowAmount = tomorrowCheques.reduce((s, c) => s + num(c.amount), 0);
+    
+    const activeBanks = arr(state.data.banks).filter(b => b.active !== false);
+    const totalBankBalance = activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0);
+    
+    const isGlobalShortfall = totalTomorrowAmount > totalBankBalance;
+
+    // Group by bank
+    const bankData = activeBanks.map(b => {
+      const bCheques = tomorrowCheques.filter(c => c.bankId === b.id);
+      const bAmount = bCheques.reduce((s, c) => s + num(c.amount), 0);
+      const bal = bankBalances(b.id);
+      const isShort = bAmount > bal.bank;
+
+      return {
+        bank: b,
+        cheques: bCheques,
+        amount: bAmount,
+        balance: bal.bank,
+        shortfall: isShort ? (bAmount - bal.bank) : 0,
+        isShort: isShort
+      };
+    }).filter(b => b.cheques.length > 0); // Only show banks with activity tomorrow
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       2. The HTML View
+       ═══════════════════════════════════════════════════════════════════════ */
     return `
-      <div class="card no-print" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;background:var(--surface);">
+      <div class="card no-print" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface);">
         <div>
-          <h3 style="margin:0;font-size:18px;">📱 Premium WhatsApp Report</h3>
-          <div style="font-size:12px;color:var(--text-3);margin-top:4px;">Generates a high-res snapshot for your WhatsApp groups.</div>
+          <h3 style="margin:0; font-size:18px;">📱 Tomorrow's Cashflow Analytics</h3>
+          <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Generate a premium visual report for WhatsApp</div>
         </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn primary" onclick="window.downloadPremiumReport()">📥 Download Image</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn primary" onclick="window.downloadWAReport()">📥 Download Image</button>
           <button class="btn" onclick="window.print()">🖨️ Print</button>
         </div>
       </div>
-      
-      <div id="premiumReportCanvas" style="background:#f8fafc;padding:32px;border-radius:16px;max-width:1000px;margin:0 auto;border:1px solid #e2e8f0;">
-        ${reportHTML}
+
+      <!-- The Canvas that gets screenshotted -->
+      <div id="waReportCanvas" style="background:#f8fafc; padding:40px; border-radius:16px; max-width:900px; margin:0 auto; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; border:1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+        
+        <!-- HEADER -->
+        <div style="background:#0f172a; border-radius:16px; padding:28px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start; box-shadow: 0 10px 25px rgba(15,23,42,0.2);">
+          <div>
+            <div style="color:#94a3b8; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Cheque Payment Update</div>
+            <div style="color:#fff; font-size:28px; font-weight:800; line-height:1.2;">${new Date(tomorrowStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+            <div style="color:#38bdf8; font-size:14px; font-weight:600; margin-top:10px;">${state.settings?.business?.name || 'Lanka Shoe'}</div>
+          </div>
+          <div style="background:${isGlobalShortfall ? '#ef4444' : '#eab308'}; padding:20px 28px; border-radius:12px; text-align:right; min-width:240px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div style="color:rgba(0,0,0,0.7); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Total to Arrange</div>
+            <div style="color:#000; font-size:32px; font-weight:900; margin-top:4px; line-height:1;">${money(totalTomorrowAmount)}</div>
+            <div style="color:rgba(0,0,0,0.8); font-size:12px; font-weight:700; margin-top:8px;">${tomorrowCheques.length} cheque(s) clearing</div>
+          </div>
+        </div>
+
+        <!-- GLOBAL SUMMARY CARDS -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+          <div style="background:#fff; padding:20px; border-radius:12px; border:1px solid #e2e8f0;">
+            <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:8px;">Current Total Bank Balance</div>
+            <div style="font-size:28px; font-weight:900; color:#0f172a;">${money(totalBankBalance)}</div>
+          </div>
+          <div style="background:${isGlobalShortfall ? '#fef2f2' : '#ecfdf5'}; padding:20px; border-radius:12px; border:1px solid ${isGlobalShortfall ? '#f87171' : '#34d399'};">
+            <div style="font-size:12px; font-weight:800; color:${isGlobalShortfall ? '#b91c1c' : '#047857'}; text-transform:uppercase; margin-bottom:8px;">Status</div>
+            <div style="font-size:24px; font-weight:900; color:${isGlobalShortfall ? '#ef4444' : '#10b981'}; display:flex; align-items:center; gap:8px;">
+              ${isGlobalShortfall ? '⚠️ INSUFFICIENT FUNDS' : '✓ ENOUGH FUNDS'}
+            </div>
+          </div>
+        </div>
+
+        <!-- BANK BREAKDOWN -->
+        <div style="margin-bottom:24px;">
+          <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Where the funds go</div>
+          
+          ${bankData.length ? bankData.map(b => `
+            <div style="background:#fff; border-radius:16px; padding:24px; margin-bottom:16px; border:1px solid #e2e8f0; border-left:6px solid ${b.isShort ? '#ef4444' : '#3b82f6'};">
+              
+              <!-- Bank Header -->
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+                <div style="display:flex; gap:12px; align-items:center;">
+                  <div style="width:48px; height:48px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:900; color:#0f172a; font-size:11px; text-align:center;">
+                    ${esc((b.bank.bankName || b.bank.name).substring(0, 4).toUpperCase())}
+                  </div>
+                  <div>
+                    <div style="font-size:18px; font-weight:800; color:#0f172a;">${esc(b.bank.name)}</div>
+                    <div style="font-size:13px; color:#64748b; margin-top:2px;">${esc(b.bank.branch || 'Main Branch')}</div>
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:22px; font-weight:900; color:#0f172a;">${money(b.amount)}</div>
+                  <div style="font-size:12px; font-weight:800; color:${b.isShort ? '#ef4444' : '#10b981'}; margin-top:4px;">
+                    ${b.isShort ? `⚠ NEED DEPOSIT: ${money(b.shortfall)}` : '✓ FUNDS OK'}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Balance Progress Bar -->
+              <div style="margin-bottom:20px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#64748b; margin-bottom:6px;">
+                  <span>Required: ${money(b.amount)}</span>
+                  <span>Available: ${money(b.balance)}</span>
+                </div>
+                <div style="height:8px; background:#cbd5e1; border-radius:4px; overflow:hidden;">
+                  <div style="height:100%; width:${Math.min(100, (b.amount / (b.balance || 1)) * 100)}%; background:${b.isShort ? '#ef4444' : '#3b82f6'};"></div>
+                </div>
+              </div>
+
+              <!-- Cheque List -->
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${b.cheques.map(c => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;">
+                    <div>
+                      <div style="font-size:14px; font-weight:700; color:#0f172a;">${esc(c.payeeName)}</div>
+                      <div style="font-size:12px; color:#64748b; margin-top:2px; display:flex; align-items:center; gap:6px;">
+                        Chq #${esc(c.chequeNo)} · ${esc(c.memo || 'No memo')}
+                        ${c.status === 'pending_approval' ? '<span style="background:#fef3c7;color:#d97706;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">PENDING</span>' : ''}
+                      </div>
+                    </div>
+                    <div style="font-size:16px; font-weight:800; color:#0f172a;">${money(c.amount)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('') : `
+            <div style="background:#fff; border-radius:16px; padding:50px; text-align:center; border:1px solid #e2e8f0;">
+              <div style="font-size:48px; margin-bottom:16px;">🎉</div>
+              <div style="font-size:18px; font-weight:800; color:#0f172a;">All clear for tomorrow</div>
+              <div style="font-size:14px; color:#64748b; margin-top:8px;">No cheques are scheduled to clear.</div>
+            </div>
+          `}
+        </div>
+
+        <!-- FOOTER -->
+        <div style="text-align:center; font-size:12px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:20px;">
+          Generated by ${state.settings?.business?.name || 'Lanka Shoe'} · ${new Date().toLocaleString('en-GB')}
+        </div>
       </div>
     `;
   };
 
-  // Override route
-  __LS_addRoute('daily-report', 'Daily Report', window.renderDailyReport);
+  // Register Route
+  __LS_addRoute('daily-report', 'WhatsApp Report', window.renderDailyReport);
 
-  scriptLoaded('S17-MEGA');
+  /* ═══════════════════════════════════════════════════════════════════════
+     Image Download Logic
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.downloadWAReport = async function() {
+    const el = document.getElementById('waReportCanvas');
+    if (!el) return;
+    
+    toast('Generating high-res image...', 'info');
+    
+    try {
+      await ensureHtml2Canvas();
+      
+      const canvas = await window.html2canvas(el, {
+        scale: 3, // Ultra HD (Retina) resolution
+        backgroundColor: '#f8fafc',
+        useCORS: true,
+        logging: false
+      });
+      
+      const link = document.createElement('a');
+      link.download = `Cheque_Analytics_${today()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast('Image downloaded successfully! Ready for WhatsApp.', 'success', 5000);
+    } catch (e) {
+      dbg.err('Report generation failed: ' + e.message);
+      toast('Failed to generate image', 'error');
+    }
+  };
+
+  scriptLoaded('WHATSAPP-REPORT');
 })();
 </script>
 </body>

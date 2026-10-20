@@ -15404,7 +15404,7 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 2: PREMIUM ANALYTICS & WHATSAPP REPORT (Fixing Backlog Logic)
+     FEATURE 2: PREMIUM ANALYTICS & WHATSAPP REPORT (Fixed Calendar Logic)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -15426,11 +15426,11 @@ ${rawText.slice(0, 15000)}`;
     const dateLabel = dateFmt(targetDate);
     const businessName = state.settings?.business?.name || 'Lanka Shoe';
     
-    // --- ACCOUNTING LOGIC FIX ---
+    // --- ACCOUNTING LOGIC (Includes Backlog) ---
     const allCheques = arr(state.data.cheques);
     const allBanks = arr(state.data.banks).filter(b => b.active !== false);
 
-    // 1. Get ALL Pending Cheques UP TO the target date (Floating + New)
+    // 1. Get ALL Pending Cheques UP TO the target date (Backlog + New)
     const pendingCheques = allCheques.filter(c => 
       c.chequeDate <= targetDate && 
       ['scheduled', 'approved', 'pending_approval'].includes(c.status)
@@ -15439,10 +15439,10 @@ ${rawText.slice(0, 15000)}`;
     const totalRequired = pendingCheques.reduce((s, c) => s + num(c.amount), 0);
     
     // 2. Separate Backlog vs Target Date
-    const backlogCheques = pendingCheques.filter(c => c.chequeDate < targetDate);
+    const backlogCheques = pendingCheques.filter(c => c.chequeDate < today()); // Strictly past dates
     const backlogTotal = backlogCheques.reduce((s, c) => s + num(c.amount), 0);
 
-    const targetDateCheques = pendingCheques.filter(c => c.chequeDate === targetDate);
+    const targetDateCheques = pendingCheques.filter(c => c.chequeDate >= today() && c.chequeDate <= targetDate);
     const targetDateTotal = targetDateCheques.reduce((s, c) => s + num(c.amount), 0);
 
     // 3. Bank Breakdown for ALL pending cheques
@@ -15469,7 +15469,7 @@ ${rawText.slice(0, 15000)}`;
         needed: needed,
         payees: Object.keys(payees).map(name => ({ name, total: payees[name].total, cheques: payees[name].cheques }))
       };
-    }).filter(b => b.total > 0 || b.needed > 0); // Only show banks with activity or a shortfall
+    }).filter(b => b.total > 0 || b.needed > 0); 
 
     // 4. Top Payee
     let topPayee = { name: '', total: 0, count: 0 };
@@ -15485,12 +15485,17 @@ ${rawText.slice(0, 15000)}`;
       }
     });
 
-    // 5. Calendar View
+    // 5. Calendar View Data
     const calendarWeeks = [];
     for (let i = 0; i < 4; i++) {
       const start = shiftDate(today(), i * 7);
       const end = shiftDate(today(), (i * 7) + 6);
-      const wCheques = allCheques.filter(c => c.chequeDate >= start && c.chequeDate <= end && ['scheduled', 'approved', 'pending_approval'].includes(c.status));
+      // Strict week calculation for future weeks
+      const wCheques = allCheques.filter(c => 
+        c.chequeDate >= start && 
+        c.chequeDate <= end && 
+        ['scheduled', 'approved', 'pending_approval'].includes(c.status)
+      );
       calendarWeeks.push({
         label: i === 0 ? 'This Week' : i === 1 ? 'Next Week' : 'Week ' + (i + 1),
         dates: `${dateFmt(start)} - ${dateFmt(end)}`,
@@ -15507,9 +15512,9 @@ ${rawText.slice(0, 15000)}`;
           <div>
             <h2 style="color:#fff; font-size:24px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:-0.5px;">Cheque Payment Update</h2>
             <div style="color:#94a3b8; font-size:13px; display:flex; gap:8px;">
-              <span>Selected Date: ${new Date(targetDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <span>Target: ${new Date(targetDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span>•</span>
-              <span>Includes uncleared backlog</span>
+              <span>Includes backlog</span>
             </div>
             <div style="color:#38bdf8; font-size:13px; margin-top:8px; font-weight:500;">${businessName} · Live Data</div>
           </div>
@@ -15522,23 +15527,20 @@ ${rawText.slice(0, 15000)}`;
 
         <!-- TOP KPI CARDS -->
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
-          <!-- Backlog Card -->
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #ef4444; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Uncleared Backlog</div>
+            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Overdue Backlog</div>
             <div style="font-size:20px; font-weight:900; color:#ef4444; margin-top:4px;">${money(backlogTotal)}</div>
-            <div style="font-size:12px; color:#64748b; margin-top:2px;">${backlogCheques.length} cheques from past days</div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">${backlogCheques.length} cheques past date</div>
           </div>
-          <!-- Target Date Card -->
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #3b82f6; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Due on ${dateLabel}</div>
+            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Up to ${dateLabel}</div>
             <div style="font-size:20px; font-weight:900; color:#3b82f6; margin-top:4px;">${money(targetDateTotal)}</div>
-            <div style="font-size:12px; color:#64748b; margin-top:2px;">${targetDateCheques.length} cheques</div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">${targetDateCheques.length} upcoming cheques</div>
           </div>
-          <!-- Deposit Needed Card -->
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #f97316; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
             <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Deposit Needed</div>
             <div style="font-size:20px; font-weight:900; color:#f97316; margin-top:4px;">${money(bankData.reduce((s,b)=>s+b.needed,0))}</div>
-            <div style="font-size:12px; color:#64748b; margin-top:2px;">To cover all pending cheques</div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">To cover all pending</div>
           </div>
         </div>
 
@@ -15547,7 +15549,6 @@ ${rawText.slice(0, 15000)}`;
           const isShort = b.needed > 0;
           return `
             <div style="background:#fff; border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.05); border:1px solid #e2e8f0;">
-              
               <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:16px;">
                 <div style="display:flex; gap:12px; align-items:center;">
                   <div style="width:48px; height:48px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:900; color:#0f172a; font-size:10px; text-align:center;">
@@ -15555,7 +15556,7 @@ ${rawText.slice(0, 15000)}`;
                   </div>
                   <div>
                     <div style="font-weight:800; font-size:18px; color:#0f172a;">${esc(b.bank.name)}</div>
-                    <div style="font-size:13px; color:#64748b;">Bal: ${money(b.balance)} · Required: ${money(b.total)}</div>
+                    <div style="font-size:13px; color:#64748b;">Bal: ${money(b.balance)} · Req: ${money(b.total)}</div>
                   </div>
                 </div>
                 <div style="text-align:right;">
@@ -15613,8 +15614,23 @@ ${rawText.slice(0, 15000)}`;
 
     const renderCalendar = () => {
       let html = `<div style="background:#fff; border-radius:16px; padding:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-        <h3 style="font-size:18px; font-weight:800; margin-bottom:20px;">4-Week Cash Requirement Forecast</h3>
+        <h3 style="font-size:18px; font-weight:800; margin-bottom:20px;">Cash Requirement Forecast</h3>
         <div style="display:grid; gap:16px;">
+          
+          <!-- BACKLOG ALERT -->
+          ${backlog.length > 0 ? `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:#fef2f2; border-radius:12px; border-left:4px solid #ef4444;">
+            <div>
+              <div style="font-weight:800; font-size:16px; color:#991b1b;">⚠️ Overdue Backlog</div>
+              <div style="font-size:13px; color:#991b1b; opacity:0.8;">All pending cheques before today</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:900; font-size:20px; color:#ef4444;">${money(backlogTotal)}</div>
+              <div style="font-size:12px; color:#991b1b;">${backlog.length} cheques</div>
+            </div>
+          </div>` : ''}
+
+          <!-- 4 WEEKS -->
           ${calendarWeeks.map(w => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:#f8fafc; border-radius:12px; border-left:4px solid var(--accent);">
               <div>
@@ -15700,10 +15716,9 @@ ${rawText.slice(0, 15000)}`;
       box.style.display = 'block';
       txt.innerHTML = '<div style="color:var(--text-3);">🧠 Analyzing data with Gemini...</div>';
 
-      // Pass the new logic to AI
       const allCheques = arr(state.data.cheques);
       const pending = allCheques.filter(c => c.chequeDate <= dateStr && ['scheduled', 'approved', 'pending_approval'].includes(c.status));
-      const backlog = pending.filter(c => c.chequeDate < dateStr);
+      const backlog = pending.filter(c => c.chequeDate < today());
       
       const banks = arr(state.data.banks).map(b => ({
         name: b.name,

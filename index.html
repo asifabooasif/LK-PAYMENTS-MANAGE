@@ -15404,13 +15404,12 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 2: PREMIUM ANALYTICS & WHATSAPP REPORT HUB
+     FEATURE 2: PREMIUM ANALYTICS & WHATSAPP REPORT (Fixing Backlog Logic)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
 
-  // Ensure html2canvas is loaded for the image export
   if (!window.html2canvas) {
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
@@ -15421,34 +15420,38 @@ ${rawText.slice(0, 15000)}`;
 
   window.renderPremiumReport = function() {
     const f = state.filters.premiumReport || {};
-    const targetDate = f.date || shiftDate(today(), 1); // Default to tomorrow
-    const viewMode = f.viewMode || 'dashboard'; // dashboard | calendar
+    const targetDate = f.date || shiftDate(today(), 1); 
+    const viewMode = f.viewMode || 'dashboard'; 
 
     const dateLabel = dateFmt(targetDate);
     const businessName = state.settings?.business?.name || 'Lanka Shoe';
     
-    // --- DATA PROCESSING ---
+    // --- ACCOUNTING LOGIC FIX ---
     const allCheques = arr(state.data.cheques);
     const allBanks = arr(state.data.banks).filter(b => b.active !== false);
 
-    // 1. Uncleared / Overdue Cheques (Past date, not cleared)
-    const uncleared = allCheques.filter(c => 
-      c.chequeDate < today() && 
-      ['approved', 'pending_approval', 'scheduled'].includes(c.status)
-    );
-
-    // 2. Cheques for Target Date
-    const targetCheques = allCheques.filter(c => 
-      c.chequeDate === targetDate && 
+    // 1. Get ALL Pending Cheques UP TO the target date (Floating + New)
+    const pendingCheques = allCheques.filter(c => 
+      c.chequeDate <= targetDate && 
       ['scheduled', 'approved', 'pending_approval'].includes(c.status)
     );
-    const targetTotal = targetCheques.reduce((s, c) => s + num(c.amount), 0);
 
-    // 3. Bank Breakdown for Target Date
+    const totalRequired = pendingCheques.reduce((s, c) => s + num(c.amount), 0);
+    
+    // 2. Separate Backlog vs Target Date
+    const backlogCheques = pendingCheques.filter(c => c.chequeDate < targetDate);
+    const backlogTotal = backlogCheques.reduce((s, c) => s + num(c.amount), 0);
+
+    const targetDateCheques = pendingCheques.filter(c => c.chequeDate === targetDate);
+    const targetDateTotal = targetDateCheques.reduce((s, c) => s + num(c.amount), 0);
+
+    // 3. Bank Breakdown for ALL pending cheques
     const bankData = allBanks.map(b => {
-      const bCheques = targetCheques.filter(c => c.bankId === b.id);
+      const bCheques = pendingCheques.filter(c => c.bankId === b.id).sort((a,b) => a.chequeDate.localeCompare(b.chequeDate));
       const bTotal = bCheques.reduce((s, c) => s + num(c.amount), 0);
       const bal = bankBalances(b.id);
+      
+      // Formula: What we owe - What we have
       const needed = Math.max(0, bTotal - bal.bank);
       
       // Group by Payee
@@ -15461,18 +15464,17 @@ ${rawText.slice(0, 15000)}`;
 
       return {
         bank: b,
-        cheques: bCheques,
         total: bTotal,
         balance: bal.bank,
         needed: needed,
         payees: Object.keys(payees).map(name => ({ name, total: payees[name].total, cheques: payees[name].cheques }))
       };
-    }).filter(b => b.total > 0 || b.needed > 0);
+    }).filter(b => b.total > 0 || b.needed > 0); // Only show banks with activity or a shortfall
 
-    // 4. Top Payee Analysis
+    // 4. Top Payee
     let topPayee = { name: '', total: 0, count: 0 };
     const allPayees = {};
-    targetCheques.forEach(c => {
+    pendingCheques.forEach(c => {
       if (!allPayees[c.payeeName]) allPayees[c.payeeName] = { total: 0, count: 0 };
       allPayees[c.payeeName].total += num(c.amount);
       allPayees[c.payeeName].count++;
@@ -15483,7 +15485,7 @@ ${rawText.slice(0, 15000)}`;
       }
     });
 
-    // 5. Calendar View (Next 4 Weeks)
+    // 5. Calendar View
     const calendarWeeks = [];
     for (let i = 0; i < 4; i++) {
       const start = shiftDate(today(), i * 7);
@@ -15505,74 +15507,40 @@ ${rawText.slice(0, 15000)}`;
           <div>
             <h2 style="color:#fff; font-size:24px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:-0.5px;">Cheque Payment Update</h2>
             <div style="color:#94a3b8; font-size:13px; display:flex; gap:8px;">
-              <span>${new Date(targetDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <span>Selected Date: ${new Date(targetDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span>•</span>
-              <span>Funds required</span>
+              <span>Includes uncleared backlog</span>
             </div>
             <div style="color:#38bdf8; font-size:13px; margin-top:8px; font-weight:500;">${businessName} · Live Data</div>
           </div>
           <div style="background:#eab308; padding:16px 24px; border-radius:12px; text-align:right; min-width:220px; box-shadow:0 4px 12px rgba(234,179,8,0.3);">
             <div style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#422006;">Total to Arrange</div>
-            <div style="font-size:28px; font-weight:900; margin-top:4px; color:#000;">${money(targetTotal)}</div>
-            <div style="font-size:12px; font-weight:600; color:#422006; margin-top:2px;">${targetCheques.length} cheques</div>
+            <div style="font-size:28px; font-weight:900; margin-top:4px; color:#000;">${money(totalRequired)}</div>
+            <div style="font-size:12px; font-weight:600; color:#422006; margin-top:2px;">${pendingCheques.length} Total Cheques</div>
           </div>
         </div>
-
-        <!-- UNCLEARED ALERTS -->
-        ${uncleared.length ? `
-          <div style="background:#fef2f2; border:1px solid #f87171; border-radius:12px; padding:16px; margin-bottom:20px; display:flex; gap:12px; align-items:flex-start;">
-            <div style="font-size:24px;">⚠️</div>
-            <div>
-              <div style="font-weight:800; color:#991b1b; font-size:14px;">Uncleared Cheques Detected</div>
-              <div style="color:#991b1b; font-size:13px; margin-top:4px;">
-                You have <strong>${uncleared.length}</strong> cheque(s) from previous days totaling <strong>${money(uncleared.reduce((s,c)=>s+num(c.amount),0))}</strong> that have not been cleared yet.
-              </div>
-            </div>
-          </div>
-        ` : ''}
 
         <!-- TOP KPI CARDS -->
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+          <!-- Backlog Card -->
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #ef4444; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Top Payee</div>
-            <div style="font-size:20px; font-weight:900; color:#ef4444; margin-top:4px;">${money(topPayee.total)}</div>
-            <div style="font-size:12px; color:#64748b; margin-top:2px;">${esc(topPayee.name)} (${topPayee.count} chqs)</div>
+            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Uncleared Backlog</div>
+            <div style="font-size:20px; font-weight:900; color:#ef4444; margin-top:4px;">${money(backlogTotal)}</div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">${backlogCheques.length} cheques from past days</div>
           </div>
+          <!-- Target Date Card -->
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #3b82f6; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
             <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Due on ${dateLabel}</div>
-            <div style="font-size:20px; font-weight:900; color:#3b82f6; margin-top:4px;">${money(targetTotal)}</div>
-            <div style="font-size:12px; color:#64748b; margin-top:2px;">${targetCheques.length} cheques processing</div>
+            <div style="font-size:20px; font-weight:900; color:#3b82f6; margin-top:4px;">${money(targetDateTotal)}</div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">${targetDateCheques.length} cheques</div>
           </div>
+          <!-- Deposit Needed Card -->
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #f97316; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Total Deposit Needed</div>
+            <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Deposit Needed</div>
             <div style="font-size:20px; font-weight:900; color:#f97316; margin-top:4px;">${money(bankData.reduce((s,b)=>s+b.needed,0))}</div>
-            <div style="font-size:12px; color:#64748b; margin-top:2px;">Across ${bankData.filter(b=>b.needed>0).length} banks</div>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">To cover all pending cheques</div>
           </div>
         </div>
-
-        <!-- WHERE FUNDS GO BAR -->
-        ${bankData.length ? `
-        <div style="background:#fff; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-          <div style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:12px;">Where the funds go</div>
-          <div style="display:flex; height:16px; border-radius:8px; overflow:hidden; margin-bottom:12px; background:#f1f5f9;">
-            ${bankData.map((b, i) => {
-              const colors = ['#ef4444', '#3b82f6', '#f97316', '#10b981', '#8b5cf6'];
-              const pct = targetTotal > 0 ? (b.total / targetTotal) * 100 : 0;
-              return `<div style="width:${pct}%; background:${colors[i % colors.length]};" title="${esc(b.bank.name)}"></div>`;
-            }).join('')}
-          </div>
-          <div style="display:flex; flex-wrap:wrap; gap:16px;">
-            ${bankData.map((b, i) => {
-              const colors = ['#ef4444', '#3b82f6', '#f97316', '#10b981', '#8b5cf6'];
-              return `
-                <div style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#0f172a;">
-                  <div style="width:8px; height:8px; border-radius:50%; background:${colors[i % colors.length]};"></div>
-                  ${esc(b.bank.name)} <span style="color:#64748b; font-weight:400;">${money(b.total)}</span>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>` : ''}
 
         <!-- BANK BREAKDOWN -->
         ${bankData.map(b => {
@@ -15587,13 +15555,12 @@ ${rawText.slice(0, 15000)}`;
                   </div>
                   <div>
                     <div style="font-weight:800; font-size:18px; color:#0f172a;">${esc(b.bank.name)}</div>
-                    <div style="font-size:13px; color:#64748b;">${esc(b.bank.branch || 'Main Branch')} · Bal: ${money(b.balance)}</div>
+                    <div style="font-size:13px; color:#64748b;">Bal: ${money(b.balance)} · Required: ${money(b.total)}</div>
                   </div>
                 </div>
                 <div style="text-align:right;">
-                  <div style="font-size:24px; font-weight:900; color:#0f172a;">${money(b.total)}</div>
-                  <div style="font-size:11px; font-weight:700; color:${isShort ? '#ef4444' : '#10b981'}; text-transform:uppercase; margin-top:2px;">
-                    ${isShort ? `Need ${money(b.needed)}` : 'Funds OK'}
+                  <div style="font-size:11px; font-weight:700; color:${isShort ? '#ef4444' : '#10b981'}; text-transform:uppercase; margin-top:2px; background:${isShort ? '#fef2f2' : '#ecfdf5'}; padding:4px 10px; border-radius:6px;">
+                    ${isShort ? `DEPOSIT ${money(b.needed)}` : 'FUNDS OK'}
                   </div>
                 </div>
               </div>
@@ -15603,26 +15570,31 @@ ${rawText.slice(0, 15000)}`;
                   <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
                     <div style="width:6px; height:6px; border-radius:50%; background:${isShort ? '#ef4444' : '#3b82f6'};"></div>
                     <div style="font-size:11px; font-weight:800; color:${isShort ? '#ef4444' : '#3b82f6'}; text-transform:uppercase;">
-                      ${isShort ? 'DEPOSIT NEEDED FOR' : 'COMING TO THE BANK'} · ${esc(p.name)}
+                      ${esc(p.name)}
                     </div>
                     <div style="margin-left:auto; font-size:12px; font-weight:700; color:#0f172a;">${money(p.total)}</div>
                   </div>
                   
                   <div style="display:flex; flex-direction:column; gap:8px;">
                     ${p.cheques.map(c => {
+                      const isOverdue = c.chequeDate < today();
                       const isToday = c.chequeDate === today();
                       let badge = '';
-                      if (c.status === 'approved') badge = '<span style="background:#fef3c7; color:#b45309; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800;">PENDING CLEARANCE</span>';
-                      else if (isToday) badge = '<span style="background:#ef4444; color:#fff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800;">PAY TODAY</span>';
-                      else badge = '<span style="background:#3b82f6; color:#fff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800;">DUE ' + dateFmt(c.chequeDate).slice(0,6) + '</span>';
+                      
+                      if (isOverdue) {
+                        badge = '<span style="background:#fee2e2; color:#991b1b; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800; border:1px solid #fca5a5;">⚠️ OVERDUE: ' + dateFmt(c.chequeDate).slice(0,6) + '</span>';
+                      } else if (isToday) {
+                        badge = '<span style="background:#ef4444; color:#fff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800;">PAY TODAY</span>';
+                      } else {
+                        badge = '<span style="background:#3b82f6; color:#fff; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:800;">DUE ' + dateFmt(c.chequeDate).slice(0,6) + '</span>';
+                      }
 
                       return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:${isOverdue ? '#fff1f2' : '#f8fafc'}; border-radius:8px; border:1px solid ${isOverdue ? '#fecdd3' : '#e2e8f0'};">
                           <div>
                             <div style="font-weight:700; font-size:14px; color:#0f172a;">${esc(c.payeeName)}</div>
                             <div style="font-size:12px; color:#64748b; display:flex; align-items:center; gap:8px; margin-top:4px;">
-                              Chq ${esc(c.chequeNo)} · ${dateFmt(c.chequeDate).slice(0,6)}
-                              ${badge}
+                              Chq ${esc(c.chequeNo)} ${badge}
                             </div>
                           </div>
                           <div style="font-weight:800; font-size:15px; color:#0f172a;">${money(c.amount)}</div>
@@ -15665,17 +15637,12 @@ ${rawText.slice(0, 15000)}`;
       <div class="card no-print" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
         <div>
           <h3 style="margin:0; font-size:18px;">📱 Premium Report Hub</h3>
-          <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Generate visual reports, analyze trends, or use AI.</div>
+          <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Select a date. Includes all uncleared backlog.</div>
         </div>
         
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <select id="prDate" class="field" style="padding:8px; border-radius:8px; border:1px solid var(--border); font-weight:600;">
-            <option value="${shiftDate(today(), 1)}" ${targetDate === shiftDate(today(), 1) ? 'selected' : ''}>Tomorrow</option>
-            <option value="${today()}" ${targetDate === today() ? 'selected' : ''}>Today</option>
-            <option value="${shiftDate(today(), 7)}" ${targetDate === shiftDate(today(), 7) ? 'selected' : ''}>In 1 Week</option>
-            <option value="${targetDate}" ${!['1','0','7'].includes(shiftDate(today(), parseInt(targetDate.split('-')[2]) - parseInt(today().split('-')[2]))) ? 'selected' : ''}>Custom Date...</option>
-          </select>
-
+          <input type="date" id="prDate" class="field" style="padding:8px; border-radius:8px; border:1px solid var(--border); font-weight:600;" value="${targetDate}">
+          
           <select id="prViewMode" class="field" style="padding:8px; border-radius:8px; border:1px solid var(--border); font-weight:600;">
             <option value="dashboard" ${viewMode === 'dashboard' ? 'selected' : ''}>Dashboard View</option>
             <option value="calendar" ${viewMode === 'calendar' ? 'selected' : ''}>Calendar View</option>
@@ -15700,10 +15667,8 @@ ${rawText.slice(0, 15000)}`;
     `;
   };
 
-  // Override the route
   __LS_addRoute('daily-report', 'Daily Report', window.renderPremiumReport);
 
-  // --- LOGIC HANDLERS ---
   __LS_register('S09-PREMIUM', function () {
     const prevBind = window.bindView;
     window.bindView = function () {
@@ -15712,12 +15677,7 @@ ${rawText.slice(0, 15000)}`;
       const dSel = document.getElementById('prDate');
       if (dSel) {
         dSel.onchange = (e) => {
-          if (e.target.value === 'custom') {
-            const d = prompt('Enter date (YYYY-MM-DD):');
-            if (d) state.filters.premiumReport = { date: d, viewMode: 'dashboard' };
-          } else {
-            state.filters.premiumReport = Object.assign({}, state.filters.premiumReport, { date: e.target.value });
-          }
+          state.filters.premiumReport = Object.assign({}, state.filters.premiumReport, { date: e.target.value });
           renderApp();
         };
       }
@@ -15731,48 +15691,39 @@ ${rawText.slice(0, 15000)}`;
       }
     };
 
-    // --- AI GENERATION ---
     window.generateAIReport = async function (dateStr) {
       const apiKey = localStorage.getItem(GEMINI_KEY_STORAGE);
-      if (!apiKey) {
-        toast('Please enter a Gemini API Key in the AI Import settings first.', 'error');
-        return;
-      }
+      if (!apiKey) { toast('Please enter a Gemini API Key first.', 'error'); return; }
 
       const box = document.getElementById('aiResponseBox');
       const txt = document.getElementById('aiTextContent');
       box.style.display = 'block';
       txt.innerHTML = '<div style="color:var(--text-3);">🧠 Analyzing data with Gemini...</div>';
 
-      // Gather summary data
+      // Pass the new logic to AI
       const allCheques = arr(state.data.cheques);
-      const cheques = allCheques.filter(c => c.chequeDate === dateStr && ['scheduled', 'approved', 'pending_approval'].includes(c.status));
-      const uncleared = allCheques.filter(c => c.chequeDate < today() && ['approved', 'pending_approval'].includes(c.status));
+      const pending = allCheques.filter(c => c.chequeDate <= dateStr && ['scheduled', 'approved', 'pending_approval'].includes(c.status));
+      const backlog = pending.filter(c => c.chequeDate < dateStr);
       
       const banks = arr(state.data.banks).map(b => ({
         name: b.name,
         balance: bankBalances(b.id).bank,
-        due: cheques.filter(c => c.bankId === b.id).reduce((s,c) => s + num(c.amount), 0)
+        due: pending.filter(c => c.bankId === b.id).reduce((s,c) => s + num(c.amount), 0)
       })).filter(b => b.due > 0 || b.balance > 0);
 
       const prompt = `You are a financial assistant for a Sri Lankan business. Write a highly professional, WhatsApp-ready summary for the business owner.
-Here is the data for ${dateStr}:
-Cheques Due: ${cheques.length}
-Total Amount Due: Rs. ${cheques.reduce((s,c)=>s+num(c.amount),0)}
+Target Date: ${dateStr}.
+Total Pending Amount UP TO this date: Rs. ${pending.reduce((s,c)=>s+num(c.amount),0)}
+Note: This includes Rs. ${backlog.reduce((s,c)=>s+num(c.amount),0)} from PREVIOUS days that haven't cleared yet.
 Bank Breakdown: ${JSON.stringify(banks)}
-Uncleared/Overdue Cheques from previous days: ${uncleared.length} (Total: Rs. ${uncleared.reduce((s,c)=>s+num(c.amount),0)})
 
-Write a short, bulleted message using emojis. Warn them if they need to deposit money into any bank to cover the cheques. Mention the uncleared cheques. Keep it under 150 words.`;
+Write a short, bulleted message using emojis. Warn them if they need to deposit money into any bank to cover BOTH backlog and upcoming cheques. Keep it under 150 words.`;
 
       try {
         const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: 'gemini-3.8-flash',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.7
-          })
+          body: JSON.stringify({ model: 'gemini-3.8-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.7 })
         });
         
         if (!res.ok) throw new Error('API Error');
@@ -15783,24 +15734,14 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       }
     };
 
-    // --- PNG DOWNLOAD ---
     window.downloadReportPNG = async function () {
       const el = document.getElementById('reportCanvas') || document.getElementById('reportRenderArea');
       if (!el) return;
-      
-      if (!window.html2canvas) {
-        toast('Image library loading... please wait a second and click again.', 'info');
-        return;
-      }
+      if (!window.html2canvas) { toast('Image library loading... wait 1 sec.', 'info'); return; }
 
       toast('Generating high-res image...', 'info');
       try {
-        const canvas = await window.html2canvas(el, {
-          scale: 3, // High Resolution
-          useCORS: true,
-          backgroundColor: '#f8fafc'
-        });
-        
+        const canvas = await window.html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#f8fafc' });
         const link = document.createElement('a');
         link.download = `LankaShoe_Report_${today()}.png`;
         link.href = canvas.toDataURL('image/png');

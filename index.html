@@ -15764,5 +15764,255 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
   });
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     FEATURE 3: ADVANCED BANK ADJUSTMENTS & TRANSFERS
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // 1. Expand the Adjustment Types
+  window.ADJUSTMENT_TYPES = {
+    bank_charge: { label: 'Bank Charge',   ico: '🏦', sign: -1 },
+    interest:    { label: 'Interest Credit', ico: '💵', sign:  1 },
+    deposit:     { label: 'Cash/Cheque Deposit', ico: '📥', sign:  1 },
+    withdrawal:  { label: 'Cash Withdrawal', ico: '📤', sign: -1 },
+    transfer:    { label: 'Internal Bank Transfer', ico: '🔄', sign:  0 },
+    custom:      { label: 'Custom Category', ico: '🏷️', sign:  0 }
+  };
+
+  // 2. Override the openAdjustmentForm function
+  window.openAdjustmentForm = function(id) {
+    if (!state.perms.write) { toast('Read-only role', 'error'); return; }
+    const a = id ? adjObj(id) : null;
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
+
+    const isEdit = !!a;
+    const defaultType = a?.type || 'bank_charge';
+    
+    // Build Bank Options
+    const bankOpts = banks.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+    const bankOptsWithPlaceholder = `<option value="">— Select Destination Bank —</option>` + bankOpts;
+
+    // Type Options
+    const typeOpts = Object.keys(ADJUSTMENT_TYPES).map(k => 
+      `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${ADJUSTMENT_TYPES[k].ico} ${ADJUSTMENT_TYPES[k].label}</option>`
+    ).join('');
+
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field">Source Bank
+          <select id="adjBank" ${isEdit ? 'disabled' : ''}>
+            ${banks.map(b => `<option value="${b.id}" ${a?.bankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">Date
+          <input type="date" id="adjDate" value="${a?.date || today()}">
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Adjustment Type
+          <select id="adjType" ${isEdit ? 'disabled' : ''}>
+            ${typeOpts}
+          </select>
+        </label>
+        <label class="field" id="adjDirectionWrap">Direction
+          <select id="adjDirection">
+            <option value="debit" ${a?.direction === 'debit' ? 'selected' : ''}>− Debit (Money Out)</option>
+            <option value="credit" ${a?.direction === 'credit' ? 'selected' : ''}>+ Credit (Money In)</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Custom Category Field -->
+      <div style="margin-top:14px; display:none;" id="adjCustomWrap">
+        <label class="field">Custom Category Name
+          <input type="text" id="adjCustomName" placeholder="e.g. Loan Payment, Director Fee" value="${a?.customName || ''}">
+        </label>
+      </div>
+
+      <!-- Destination Bank (For Transfers) -->
+      <div style="margin-top:14px; display:none;" id="adjDestWrap">
+        <label class="field">Destination Bank (Transfer To)
+          <select id="adjDestBank">${bankOptsWithPlaceholder}</select>
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:14px">
+        <label class="field">Amount (Rs.)
+          <input type="number" id="adjAmount" value="${a ? num(a.amount).toFixed(2) : ''}" placeholder="0.00" step="0.01">
+        </label>
+        <label class="field">Reason / Reference
+          <input type="text" id="adjReason" value="${a?.reason || ''}" placeholder="e.g. Monthly service charge">
+        </label>
+      </div>
+
+      <div style="margin-top:14px">
+        <label class="field">Notes
+          <textarea id="adjNotes" rows="2">${a?.notes || ''}</textarea>
+        </label>
+      </div>
+
+      <div id="adjPreview" style="margin-top:16px;padding:14px;background:var(--surface-2);border-radius:8px;font-size:13px;display:none;">
+        <!-- Live preview -->
+      </div>
+    `;
+
+    openModal(isEdit ? '✏️ Edit Adjustment' : '＋ Advanced Adjustment', body, {
+      width: 680,
+      footer: `
+        <button class="btn" data-close-modal>Cancel</button>
+        <button class="btn primary" id="adjSaveBtn">${isEdit ? 'Update' : 'Save'}</button>
+      `
+    });
+
+    const typeSel = document.getElementById('adjType');
+    const bankSel = document.getElementById('adjBank');
+    const destWrap = document.getElementById('adjDestWrap');
+    const destSel = document.getElementById('adjDestBank');
+    const customWrap = document.getElementById('adjCustomWrap');
+    const dirWrap = document.getElementById('adjDirectionWrap');
+    const dirSel = document.getElementById('adjDirection');
+    const amtInp = document.getElementById('adjAmount');
+    const preview = document.getElementById('adjPreview');
+
+    // 3. Handle UI changes based on type
+    function updateUIForType() {
+      const t = typeSel.value;
+      
+      // Reset
+      destWrap.style.display = 'none';
+      customWrap.style.display = 'none';
+      dirWrap.style.display = 'block';
+
+      if (t === 'custom') {
+        customWrap.style.display = 'block';
+      } else if (t === 'transfer') {
+        destWrap.style.display = 'block';
+        dirWrap.style.display = 'none'; // Transfers automatically do Debit/ Credit
+      } else {
+        // Auto-set direction for standard types
+        const meta = ADJUSTMENT_TYPES[t];
+        if (meta && meta.sign === 1) dirSel.value = 'credit';
+        if (meta && meta.sign === -1) dirSel.value = 'debit';
+      }
+      updatePreview();
+    }
+
+    // 4. Live Preview
+    function updatePreview() {
+      const t = typeSel.value;
+      const amt = num(amtInp.value);
+      if (amt <= 0) { preview.style.display = 'none'; return; }
+      
+      preview.style.display = 'block';
+      
+      if (t === 'transfer') {
+        const fromBank = bankObj(bankSel.value);
+        const toBank = bankObj(destSel.value);
+        if (!fromBank || !toBank) {
+          preview.innerHTML = '<span style="color:var(--amber)">Select destination bank to preview transfer.</span>';
+          return;
+        }
+        preview.innerHTML = `
+          <div style="font-weight:700;margin-bottom:8px;">Transfer Preview</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:var(--red)">− ${esc(fromBank.name)}</span>
+            <strong>${money(amt)}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:var(--green)">+ ${esc(toBank.name)}</span>
+            <strong>${money(amt)}</strong>
+          </div>
+        `;
+      } else {
+        const isCredit = dirSel.value === 'credit';
+        preview.innerHTML = `
+          <div style="font-weight:700;margin-bottom:4px;">Impact on ${esc(bankObj(bankSel.value).name)}</div>
+          <div style="color:${isCredit ? 'var(--green)' : 'var(--red)'};font-size:16px;font-weight:700;">
+            ${isCredit ? '+' : '−'} ${money(amt)}
+          </div>
+        `;
+      }
+    }
+
+    typeSel.onchange = updateUIForType;
+    dirSel.onchange = updatePreview;
+    amtInp.oninput = updatePreview;
+    bankSel.onchange = updatePreview;
+    destSel.onchange = updatePreview;
+
+    updateUIForType(); // init
+
+    // 5. Save Logic
+    document.getElementById('adjSaveBtn').onclick = () => {
+      const bankId = bankSel.value;
+      const date = document.getElementById('adjDate').value || today();
+      const type = typeSel.value;
+      const direction = dirSel.value;
+      const amount = num(amtInp.value);
+      const reason = document.getElementById('adjReason').value.trim();
+      const notes = document.getElementById('adjNotes').value.trim();
+      const customName = document.getElementById('adjCustomName').value.trim();
+      const destBankId = destSel.value;
+
+      if (amount <= 0) { toast('Amount must be > 0', 'error'); return; }
+      if (!reason) { toast('Reason is required', 'error'); return; }
+
+      if (type === 'transfer') {
+        if (!destBankId) { toast('Please select destination bank', 'error'); return; }
+        if (destBankId === bankId) { toast('Cannot transfer to the same bank', 'error'); return; }
+        
+        // Create Transfer (Two linked records)
+        const transferGroupId = uid();
+        
+        // Outgoing
+        const outRecord = makeBankAdjustment({
+          bankId: bankId, date, type: 'transfer_out', direction: 'debit', amount,
+          reason: reason || 'Transfer Out', notes, transferGroupId
+        });
+        outRecord.customName = 'Transfer to ' + bankObj(destBankId).name;
+
+        // Incoming
+        const inRecord = makeBankAdjustment({
+          bankId: destBankId, date, type: 'transfer_in', direction: 'credit', amount,
+          reason: reason || 'Transfer In', notes, transferGroupId
+        });
+        inRecord.customName = 'Transfer from ' + bankObj(bankId).name;
+
+        state.data.bankAdjustments.push(outRecord, inRecord);
+        markDirty('bankAdjustments', outRecord.id);
+        markDirty('bankAdjustments', inRecord.id);
+        
+        toast('Transfer completed successfully', 'success');
+
+      } else {
+        // Standard Adjustment
+        const data = {
+          bankId, date, type, direction, amount, reason, notes
+        };
+        if (type === 'custom') data.customName = customName;
+
+        if (a) {
+          Object.assign(a, makeBankAdjustment(Object.assign({}, a, data, { id: a.id })));
+          a.updatedAt = nowISO();
+          markDirty('bankAdjustments', a.id);
+          toast('Adjustment updated', 'success');
+        } else {
+          const created = makeBankAdjustment(data);
+          state.data.bankAdjustments.push(created);
+          markDirty('bankAdjustments', created.id);
+          toast('Adjustment saved', 'success');
+        }
+      }
+
+      closeModal();
+      renderApp();
+    };
+  };
+})();
+</script>
 </body>
 </html>

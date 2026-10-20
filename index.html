@@ -17269,5 +17269,463 @@ Return ONLY a JSON array. Each object must have:
   scriptLoaded('S16-PART-3');
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     S17 MEGA PATCH: Full-Screen Cheque Designer + Pixel-Perfect Report
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+  console.log('%c[script] S17-MEGA loaded', 'color:#10b981;font-weight:bold');
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PART 1: FULL-SCREEN CHEQUE DESIGNER (Fixes the cut-off issue)
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.openChequePrint = function (id) {
+    const c = chequeObj(id);
+    if (!c) return;
+    
+    const bank = bankObj(c.bankId);
+    const bankName = bank ? bank.bankName || bank.name : 'Default';
+    
+    const DEFAULTS = {
+      'HNB':          { date: { x: 160, y: 12, fs: 14, bold: true }, payee: { x: 25, y: 28, fs: 16, bold: true }, amount: { x: 155, y: 28, fs: 16, bold: true }, words: { x: 12, y: 38, fs: 14, bold: false } },
+      'Commercial':   { date: { x: 165, y: 15, fs: 14, bold: true }, payee: { x: 30, y: 30, fs: 15, bold: true }, amount: { x: 160, y: 30, fs: 15, bold: true }, words: { x: 15, y: 40, fs: 14, bold: false } },
+      'Sampath':      { date: { x: 160, y: 14, fs: 14, bold: true }, payee: { x: 28, y: 29, fs: 15, bold: true }, amount: { x: 158, y: 29, fs: 15, bold: true }, words: { x: 15, y: 39, fs: 14, bold: false } },
+      'Default':      { date: { x: 160, y: 14, fs: 14, bold: true }, payee: { x: 25, y: 28, fs: 15, bold: true }, amount: { x: 160, y: 28, fs: 15, bold: true }, words: { x: 12, y: 38, fs: 14, bold: false } }
+    };
+
+    let presetKey = 'Default';
+    if (bankName.toLowerCase().includes('hnb')) presetKey = 'HNB';
+    else if (bankName.toLowerCase().includes('commercial')) presetKey = 'Commercial';
+    else if (bankName.toLowerCase().includes('sampath')) presetKey = 'Sampath';
+
+    const calKey = 'chq_pro_designer_' + presetKey;
+    let cal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(DEFAULTS[presetKey]));
+    let activeEl = 'payee';
+
+    // We use a custom full-screen modal for the designer
+    const body = `
+      <style>
+        .designer-fullscreen { display: flex; gap: 20px; height: calc(90vh - 60px); }
+        .designer-canvas-area { 
+          flex: 1; background: #e2e8f0; border-radius: 12px; padding: 40px; 
+          display: flex; align-items: center; justify-content: center; 
+          overflow: auto; position: relative; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        /* 190mm is approx 718px */
+        .cheque-paper { 
+          position: relative; width: 190mm; height: 85mm; background: #fff; flex-shrink: 0;
+          border-radius: 4px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); 
+          font-family: 'Courier New', Courier, monospace; overflow: hidden;
+          background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+          background-size: 5mm 5mm; /* Finer grid */
+        }
+        
+        .c-element { position: absolute; color: #000; white-space: nowrap; cursor: move; padding: 2px 6px; border: 1px dashed transparent; transition: border 0.1s, background 0.1s; user-select: none; }
+        .c-element:hover { border-color: rgba(124,58,237,0.5); background: rgba(124,58,237,0.05); }
+        .c-element.active { border-color: var(--accent); background: rgba(124,58,237,0.1); box-shadow: 0 0 0 2px rgba(124,58,237,0.2); z-index: 10; }
+        .c-words { width: 160mm; white-space: normal; line-height: 1.2; }
+        
+        .designer-panel { width: 320px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
+        .panel-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); border-radius: 12px 12px 0 0; }
+        .panel-body { flex: 1; overflow-y: auto; padding: 16px; }
+        
+        .prop-group { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-2); }
+        .prop-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .prop-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-3); display: flex; justify-content: space-between; cursor: pointer; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .prop-title.active { color: var(--accent); }
+        
+        .prop-row { display: grid; grid-template-columns: 50px 1fr 50px 1fr; gap: 6px; align-items: center; margin-bottom: 8px; }
+        .prop-row label { font-size: 11px; color: var(--text-2); font-weight: 700; text-align: right; }
+        .prop-row input[type="number"] { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-family: var(--mono); font-size: 13px; }
+        .prop-row input[type="number"]:focus { border-color: var(--accent); outline: none; }
+        
+        .align-btns { display: flex; gap: 4px; margin-top: 8px; }
+        .align-btn { flex: 1; padding: 6px; text-align: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .align-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        
+        @media print {
+          @page { size: auto; margin: 0mm; }
+          body * { visibility: hidden; }
+          .print-only-container, .print-only-container * { visibility: visible; }
+          .print-only-container { position: absolute; left: 0; top: 0; width: 210mm; height: 99mm; display: block !important; }
+          .c-element { border: none !important; background: transparent !important; box-shadow: none !important; }
+        }
+      </style>
+
+      <div class="designer-fullscreen">
+        <!-- CANVAS -->
+        <div class="designer-canvas-area">
+          <div class="cheque-paper" id="chequeCanvas">
+            <div class="c-element" data-k="date"   style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; font-weight:${cal.date.bold ? 'bold' : 'normal'}">${dateFmt(c.chequeDate)}</div>
+            <div class="c-element" data-k="payee"  style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; font-weight:${cal.payee.bold ? 'bold' : 'normal'}">${esc(c.payeeName)}</div>
+            <div class="c-element" data-k="amount" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; font-weight:${cal.amount.bold ? 'bold' : 'normal'}">${money(c.amount, {plain:true})}</div>
+            <div class="c-element c-words" data-k="words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; font-weight:${cal.words.bold ? 'bold' : 'normal'}">*** ${esc(c.amountWords)} ***</div>
+            <div class="c-element" data-k="micr" style="left:20mm; top:75mm; font-size:14px; color:#555; letter-spacing:2px;">⑈ ${c.chequeNo || '000000'} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
+          </div>
+        </div>
+
+        <!-- PROPERTIES -->
+        <div class="designer-panel">
+          <div class="panel-header">
+            <div style="font-weight: 800; font-size: 14px;">Designer Controls</div>
+            <button class="btn xs" id="resetCal">Reset</button>
+          </div>
+          <div class="panel-body">
+            <div style="font-size:12px; color:var(--text-3); margin-bottom:16px; line-height:1.5">
+              Click an element on the cheque to select it. Use <b>Arrow Keys</b> to nudge (Hold Shift for 5mm).
+            </div>
+
+            ${['payee', 'amount', 'words', 'date'].map(k => `
+              <div class="prop-group">
+                <div class="prop-title ${k === activeEl ? 'active' : ''}" data-target="${k}">
+                  <span>${k.toUpperCase()}</span>
+                  <span style="font-size:10px; opacity:0.5">▼</span>
+                </div>
+                <div class="prop-row">
+                  <label>X (mm)</label> <input type="number" step="1" data-k="${k}" data-p="x" value="${cal[k].x}">
+                  <label>Y (mm)</label> <input type="number" step="1" data-k="${k}" data-p="y" value="${cal[k].y}">
+                </div>
+                <div class="prop-row">
+                  <label>Size (px)</label> <input type="number" step="1" data-k="${k}" data-p="fs" value="${cal[k].fs}">
+                  <div class="align-btns">
+                    <div class="align-btn ${cal[k].bold ? 'active' : ''}" data-k="${k}" data-p="bold">B</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div style="padding: 16px; border-top: 1px solid var(--border); background: var(--surface-2); display:flex; gap:8px; border-radius: 0 0 12px 12px;">
+            <button class="btn" id="closeDesigner" style="flex:1">Close</button>
+            <button class="btn primary" id="executePrint" style="flex:2">🖨️ Print Cheque</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HIDDEN PRINT -->
+      <div class="print-only-container" id="printArea" style="display:none;">
+        <div class="c-element" style="left:${cal.date.x}mm; top:${cal.date.y}mm; font-size:${cal.date.fs}px; font-weight:${cal.date.bold ? 'bold' : 'normal'}">${dateFmt(c.chequeDate)}</div>
+        <div class="c-element" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm; font-size:${cal.payee.fs}px; font-weight:${cal.payee.bold ? 'bold' : 'normal'}">${esc(c.payeeName)}</div>
+        <div class="c-element" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm; font-size:${cal.amount.fs}px; font-weight:${cal.amount.bold ? 'bold' : 'normal'}">${money(c.amount, {plain:true})}</div>
+        <div class="c-element c-words" style="left:${cal.words.x}mm; top:${cal.words.y}mm; font-size:${cal.words.fs}px; font-weight:${cal.words.bold ? 'bold' : 'normal'}">*** ${esc(c.amountWords)} ***</div>
+      </div>
+    `;
+
+    // Use custom modal wrapper for 95vw width
+    const wrap = document.getElementById('modalWrap');
+    wrap.innerHTML = `
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal" style="max-width:95vw; width:95vw; height:95vh; margin:2.5vh auto; display:flex; flex-direction:column;">
+        <div class="modal-head">
+          <h3>🖨️ Pro Cheque Designer — ${esc(c.chequeNo)}</h3>
+          <button class="icon-btn" data-close-modal>✕</button>
+        </div>
+        <div class="modal-body" style="padding:0; flex:1; overflow:hidden;">
+          ${body}
+        </div>
+      </div>
+    `;
+    wrap.classList.add('open');
+
+    // --- LOGIC ---
+    const canvasEls = document.querySelectorAll('#chequeCanvas .c-element');
+    const printEls = document.querySelectorAll('#printArea .c-element');
+    const propInputs = document.querySelectorAll('.prop-row input[type="number"]');
+    const propTitles = document.querySelectorAll('.prop-title');
+    const boldBtns = document.querySelectorAll('.align-btn');
+
+    function syncUI() {
+      canvasEls.forEach(el => {
+        const k = el.dataset.k;
+        if (!cal[k]) return;
+        el.style.left = cal[k].x + 'mm';
+        el.style.top = cal[k].y + 'mm';
+        el.style.fontSize = cal[k].fs + 'px';
+        el.style.fontWeight = cal[k].bold ? 'bold' : 'normal';
+        el.classList.toggle('active', k === activeEl);
+      });
+      printEls.forEach(el => {
+        const keys = ['date', 'payee', 'amount', 'words'];
+        const key = keys[Array.from(printEls).indexOf(el)];
+        if (key && cal[key]) {
+           el.style.left = cal[key].x + 'mm';
+           el.style.top = cal[key].y + 'mm';
+           el.style.fontSize = cal[key].fs + 'px';
+           el.style.fontWeight = cal[key].bold ? 'bold' : 'normal';
+        }
+      });
+      propTitles.forEach(el => el.classList.toggle('active', el.dataset.target === activeEl));
+      propInputs.forEach(inp => { inp.value = cal[inp.dataset.k][inp.dataset.p]; });
+      boldBtns.forEach(btn => { if (btn.dataset.p === 'bold') btn.classList.toggle('active', cal[btn.dataset.k].bold); });
+      localStorage.setItem(calKey, JSON.stringify(cal));
+    }
+
+    canvasEls.forEach(el => el.onclick = (e) => { e.stopPropagation(); activeEl = el.dataset.k; syncUI(); });
+    propTitles.forEach(el => el.onclick = () => { activeEl = el.dataset.target; syncUI(); });
+    propInputs.forEach(inp => inp.oninput = (e) => { cal[inp.dataset.k][inp.dataset.p] = parseFloat(e.target.value) || 0; syncUI(); });
+    boldBtns.forEach(btn => btn.onclick = () => { cal[btn.dataset.k].bold = !cal[btn.dataset.k].bold; syncUI(); });
+
+    const handleKeys = (e) => {
+      if (!document.getElementById('chequeCanvas')) return;
+      const step = e.shiftKey ? 5 : 1;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        if (e.key === 'ArrowUp') cal[activeEl].y -= step;
+        if (e.key === 'ArrowDown') cal[activeEl].y += step;
+        if (e.key === 'ArrowLeft') cal[activeEl].x -= step;
+        if (e.key === 'ArrowRight') cal[activeEl].x += step;
+        syncUI();
+      }
+    };
+    document.addEventListener('keydown', handleKeys);
+
+    document.getElementById('resetCal').onclick = () => { if(confirm('Reset?')) { cal = JSON.parse(JSON.stringify(DEFAULTS[presetKey])); syncUI(); } };
+    document.getElementById('closeDesigner').onclick = () => { closeModal(); };
+    
+    document.getElementById('executePrint').onclick = () => {
+      syncUI();
+      document.getElementById('printArea').style.display = 'block';
+      setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 150);
+    };
+
+    const origClose = window.closeModal;
+    window.closeModal = function() { document.removeEventListener('keydown', handleKeys); window.closeModal = origClose; origClose.apply(this, arguments); };
+    syncUI();
+  };
+
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PART 2: PIXEL-PERFECT WHATSAPP REPORT (Matching your reference image)
+     ═══════════════════════════════════════════════════════════════════════ */
+  window.renderDailyReport = function() {
+    const todayStr = today();
+    const tomorrowStr = shiftDate(todayStr, 1);
+    
+    // 1. Fetch Data
+    const pending = arr(state.data.cheques).filter(c => c.status === 'scheduled' || c.status === 'pending_approval');
+    const totalAmount = pending.reduce((s, c) => s + num(c.amount), 0);
+    const totalCount = pending.length;
+    
+    // 2. Global Bank Analysis
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    let totalDepositNeeded = 0;
+
+    const bankAnalysis = banks.map(b => {
+      const bCheques = pending.filter(c => c.bankId === b.id).sort((a,b) => a.chequeDate.localeCompare(b.chequeDate));
+      const bTotal = bCheques.reduce((s, c) => s + num(c.amount), 0);
+      const bal = bankBalances(b.id);
+      
+      const needed = Math.max(0, bTotal - bal.bank);
+      if (needed > 0) totalDepositNeeded += needed;
+
+      // Group by payee to create the "Where funds go" sections
+      const byPayee = {};
+      bCheques.forEach(c => {
+        if (!byPayee[c.payeeName]) byPayee[c.payeeName] = { total: 0, cheques: [] };
+        byPayee[c.payeeName].total += num(c.amount);
+        byPayee[c.payeeName].cheques.push(c);
+      });
+
+      return {
+        bank: b,
+        cheques: bCheques,
+        total: bTotal,
+        balance: bal.bank,
+        needed: needed,
+        byPayee: Object.keys(byPayee).map(name => ({ name, total: byPayee[name].total, cheques: byPayee[name].cheques }))
+      };
+    }).filter(b => b.total > 0); // Only show banks with pending cheques
+
+    // 3. Top Summary Cards Data
+    let topGiveCard = null;
+    let topComeCard = null;
+    let topDepositCard = null;
+
+    // Find highest total payee
+    let maxPayee = { name: '', total: 0, count: 0 };
+    bankAnalysis.forEach(ba => {
+      ba.byPayee.forEach(p => {
+        if (p.total > maxPayee.total) maxPayee = { name: p.name, total: p.total, count: p.cheques.length };
+      });
+    });
+
+    // Find highest incoming/bank total
+    let maxBank = { name: '', total: 0, count: 0 };
+    bankAnalysis.forEach(ba => {
+      if (ba.total > maxBank.total) maxBank = { name: ba.bank.name, total: ba.total, count: ba.cheques.length };
+    });
+
+    // Find highest deposit needed
+    let maxDeposit = { name: '', needed: 0, count: 0 };
+    bankAnalysis.forEach(ba => {
+      if (ba.needed > maxDeposit.needed) maxDeposit = { name: ba.bank.name, needed: ba.needed, count: ba.cheques.length };
+    });
+
+    // 4. Build the HTML
+    const reportHTML = `
+      <!-- HEADER -->
+      <div style="background:#0f172a;border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 10px 25px rgba(0,0,0,0.2);position:relative;overflow:hidden;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1;">
+          <div>
+            <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px;color:#fff;text-transform:uppercase;">Cheque Payment Update</h2>
+            <div style="color:#94a3b8;font-size:13px;display:flex;gap:8px;align-items:center;">
+              <span>${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+              <span>•</span>
+              <span>Funds required for upcoming cheques</span>
+            </div>
+            <div style="color:#38bdf8;font-size:13px;margin-top:8px;font-weight:500;">
+              ${state.settings?.business?.name || 'Lanka Shoe'} · Live Snapshot
+            </div>
+          </div>
+          <div style="background:#eab308;color:#000;padding:16px 24px;border-radius:12px;text-align:right;min-width:220px;box-shadow:0 4px 12px rgba(234,179,8,0.3);">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#422006;">Total to Arrange</div>
+            <div style="font-size:28px;font-weight:900;margin-top:4px;">${money(totalAmount)}</div>
+            <div style="font-size:12px;font-weight:600;color:#422006;margin-top:2px;">${totalCount} cheque(s) pending</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP SUMMARY CARDS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
+        <!-- GIVE CARD -->
+        <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);border-left:4px solid #ef4444;">
+          <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Give to ${esc(maxPayee.name || 'Vendor')}</div>
+          <div style="font-size:22px;font-weight:900;color:#ef4444;">${money(maxPayee.total)}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${maxPayee.count} cheques</div>
+        </div>
+        <!-- COME CARD -->
+        <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);border-left:4px solid #3b82f6;">
+          <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Coming Tomorrow · ${esc(maxBank.name)}</div>
+          <div style="font-size:22px;font-weight:900;color:#3b82f6;">${money(maxBank.total)}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${maxBank.count} cheques</div>
+        </div>
+        <!-- DEPOSIT CARD -->
+        <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.02);border-left:4px solid #f97316;">
+          <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Deposit Needed · ${esc(maxDeposit.name)}</div>
+          <div style="font-size:22px;font-weight:900;color:#f97316;">${money(maxDeposit.needed)}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${maxDeposit.count} cheques</div>
+        </div>
+      </div>
+
+      <!-- WHERE FUNDS GO BAR -->
+      <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #e2e8f0;margin-bottom:24px;">
+        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Where the funds go</div>
+        <div style="display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#f1f5f9;">
+          ${bankAnalysis.map((ba, i) => {
+            const colors = ['#ef4444', '#3b82f6', '#f97316', '#10b981', '#8b5cf6'];
+            const pct = totalAmount > 0 ? (ba.total / totalAmount) * 100 : 0;
+            return `<div style="width:${pct}%;background:${colors[i % colors.length]};"></div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;">
+          ${bankAnalysis.map((ba, i) => {
+            const colors = ['#ef4444', '#3b82f6', '#f97316', '#10b981', '#8b5cf6'];
+            return `
+              <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#0f172a;">
+                <div style="width:8px;height:8px;border-radius:50%;background:${colors[i % colors.length]};"></div>
+                ${esc(ba.bank.name)} <span style="color:#64748b;font-weight:400;">${money(ba.total)}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- BANK DETAIL CARDS -->
+      ${bankAnalysis.map(ba => {
+        const isShort = ba.needed > 0;
+        return `
+          <div style="background:#fff;border-radius:16px;padding:24px;border:1px solid #e2e8f0;margin-bottom:24px;box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+            
+            <!-- Bank Header -->
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:1px solid #e2e8f0;padding-bottom:16px;">
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div style="width:48px;height:48px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#0f172a;font-size:10px;text-align:center;">
+                  ${esc((ba.bank.bankName || ba.bank.name).substring(0, 4).toUpperCase())}
+                </div>
+                <div>
+                  <div style="font-weight:800;font-size:18px;color:#0f172a;">${esc(ba.bank.name)}</div>
+                  <div style="font-size:13px;color:#64748b;">${esc(ba.bank.branch || 'Main Branch')}</div>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:24px;font-weight:900;color:#0f172a;">${money(ba.total)}</div>
+                <div style="font-size:11px;font-weight:700;color:${isShort ? '#ef4444' : '#10b981'};text-transform:uppercase;margin-top:2px;">
+                  ${isShort ? `Need ${money(ba.needed)}` : 'Funds OK'}
+                </div>
+              </div>
+            </div>
+
+            <!-- Payee Breakdown -->
+            ${ba.byPayee.map(p => `
+              <div style="margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                  <div style="width:6px;height:6px;border-radius:50%;background:${isShort ? '#ef4444' : '#3b82f6'};"></div>
+                  <div style="font-size:11px;font-weight:800;color:${isShort ? '#ef4444' : '#3b82f6'};text-transform:uppercase;letter-spacing:0.5px;">
+                    ${isShort ? 'DEPOSIT NEEDED FOR' : 'COMING TO THE BANK'} · ${esc(p.name)}
+                  </div>
+                  <div style="margin-left:auto;font-size:12px;font-weight:700;color:#0f172a;">${money(p.total)}</div>
+                </div>
+                
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  ${p.cheques.map(c => {
+                    const isToday = c.chequeDate === todayStr;
+                    const isTomorrow = c.chequeDate === tomorrowStr;
+                    let badge = '';
+                    if (isToday) badge = '<span style="background:#ef4444;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">PAY TODAY</span>';
+                    else if (isTomorrow) badge = '<span style="background:#3b82f6;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">DUE TOMORROW</span>';
+                    else if (isShort) badge = '<span style="background:#f97316;color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">DEPOSIT NEEDED</span>';
+
+                    return `
+                      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+                        <div>
+                          <div style="font-weight:700;font-size:14px;color:#0f172a;">${esc(c.payeeName)}</div>
+                          <div style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:8px;margin-top:2px;">
+                            Chq ${esc(c.chequeNo)} · ${dateFmt(c.chequeDate).slice(0, 6)}
+                            ${badge}
+                          </div>
+                        </div>
+                        <div style="font-weight:800;font-size:15px;color:#0f172a;">${money(c.amount)}</div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `).join('')}
+            
+            ${isShort ? `<div style="margin-top:16px;font-size:12px;font-weight:700;color:#ef4444;background:#fef2f2;padding:12px;border-radius:8px;text-align:center;">⚠️ Money not yet in the account. Please deposit before tomorrow.</div>` : ''}
+          </div>
+        `;
+      }).join('')}
+
+      <div style="text-align:center;font-size:12px;color:#94a3b8;margin-top:24px;font-weight:500;">
+        Passed cheques are not shown · Generated ${new Date().toLocaleString('en-GB')}
+      </div>
+    `;
+
+    return `
+      <div class="card no-print" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;background:var(--surface);">
+        <div>
+          <h3 style="margin:0;font-size:18px;">📱 Premium WhatsApp Report</h3>
+          <div style="font-size:12px;color:var(--text-3);margin-top:4px;">Generates a high-res snapshot for your WhatsApp groups.</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn primary" onclick="window.downloadPremiumReport()">📥 Download Image</button>
+          <button class="btn" onclick="window.print()">🖨️ Print</button>
+        </div>
+      </div>
+      
+      <div id="premiumReportCanvas" style="background:#f8fafc;padding:32px;border-radius:16px;max-width:1000px;margin:0 auto;border:1px solid #e2e8f0;">
+        ${reportHTML}
+      </div>
+    `;
+  };
+
+  // Override route
+  __LS_addRoute('daily-report', 'Daily Report', window.renderDailyReport);
+
+  scriptLoaded('S17-MEGA');
+})();
+</script>
 </body>
 </html>

@@ -15404,7 +15404,7 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 2: PREMIUM ANALYTICS & WHATSAPP REPORT (Fixed Calendar Logic)
+     FEATURE 2: PREMIUM ANALYTICS & WHATSAPP REPORT (Typo Fixed)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -15451,10 +15451,8 @@ ${rawText.slice(0, 15000)}`;
       const bTotal = bCheques.reduce((s, c) => s + num(c.amount), 0);
       const bal = bankBalances(b.id);
       
-      // Formula: What we owe - What we have
       const needed = Math.max(0, bTotal - bal.bank);
       
-      // Group by Payee
       const payees = {};
       bCheques.forEach(c => {
         if (!payees[c.payeeName]) payees[c.payeeName] = { total: 0, cheques: [] };
@@ -15490,7 +15488,6 @@ ${rawText.slice(0, 15000)}`;
     for (let i = 0; i < 4; i++) {
       const start = shiftDate(today(), i * 7);
       const end = shiftDate(today(), (i * 7) + 6);
-      // Strict week calculation for future weeks
       const wCheques = allCheques.filter(c => 
         c.chequeDate >= start && 
         c.chequeDate <= end && 
@@ -15507,7 +15504,6 @@ ${rawText.slice(0, 15000)}`;
     // --- UI BUILDING ---
     const renderDashboard = () => {
       let html = `
-        <!-- HEADER -->
         <div style="background:#0f172a; border-radius:16px; padding:24px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
             <h2 style="color:#fff; font-size:24px; font-weight:800; text-transform:uppercase; margin-bottom:6px; letter-spacing:-0.5px;">Cheque Payment Update</h2>
@@ -15525,7 +15521,6 @@ ${rawText.slice(0, 15000)}`;
           </div>
         </div>
 
-        <!-- TOP KPI CARDS -->
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
           <div style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #ef4444; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
             <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Overdue Backlog</div>
@@ -15544,7 +15539,6 @@ ${rawText.slice(0, 15000)}`;
           </div>
         </div>
 
-        <!-- BANK BREAKDOWN -->
         ${bankData.map(b => {
           const isShort = b.needed > 0;
           return `
@@ -15617,8 +15611,8 @@ ${rawText.slice(0, 15000)}`;
         <h3 style="font-size:18px; font-weight:800; margin-bottom:20px;">Cash Requirement Forecast</h3>
         <div style="display:grid; gap:16px;">
           
-          <!-- BACKLOG ALERT -->
-          ${backlog.length > 0 ? `
+          <!-- FIXED: changed backlog to backlogCheques -->
+          ${backlogCheques.length > 0 ? `
           <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:#fef2f2; border-radius:12px; border-left:4px solid #ef4444;">
             <div>
               <div style="font-weight:800; font-size:16px; color:#991b1b;">⚠️ Overdue Backlog</div>
@@ -15626,7 +15620,7 @@ ${rawText.slice(0, 15000)}`;
             </div>
             <div style="text-align:right;">
               <div style="font-weight:900; font-size:20px; color:#ef4444;">${money(backlogTotal)}</div>
-              <div style="font-size:12px; color:#991b1b;">${backlog.length} cheques</div>
+              <div style="font-size:12px; color:#991b1b;">${backlogCheques.length} cheques</div>
             </div>
           </div>` : ''}
 
@@ -15648,7 +15642,6 @@ ${rawText.slice(0, 15000)}`;
       return html;
     };
 
-    // --- MAIN RENDER ---
     return `
       <div class="card no-print" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
         <div>

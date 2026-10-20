@@ -15765,7 +15765,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 3: ADVANCED BANK ADJUSTMENTS & TRANSFERS
+     FEATURE 3: ADVANCED BANK ADJUSTMENTS & TRANSFERS (Fixed Binding)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -15781,8 +15781,8 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     custom:      { label: 'Custom Category', ico: '🏷️', sign:  0 }
   };
 
-  // 2. Override the openAdjustmentForm function
-  window.openAdjustmentForm = function(id) {
+  // 2. The New Advanced Form
+  window.openAdjustmentFormPro = function(id) {
     if (!state.perms.write) { toast('Read-only role', 'error'); return; }
     const a = id ? adjObj(id) : null;
     const banks = arr(state.data.banks).filter(b => b.active !== false);
@@ -16012,6 +16012,15 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       renderApp();
     };
   };
+
+  // 6. REDIRECT THE BUTTONS (The magic fix)
+  // Overwrite the actions so the "New Adjustment" button opens our new form
+  window.__LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
+  window.__LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
+
+  // Also override the global window function just in case
+  window.openAdjustmentForm = window.openAdjustmentFormPro;
+
 })();
 </script>
 </body>

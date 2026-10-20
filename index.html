@@ -14977,522 +14977,278 @@ ${rawText.slice(0, 15000)}`;
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     PART 1: PDC CALENDAR & CASHFLOW ENGINE
+     FEATURE 1: MASSIVE 3D CHEQUE PRINT DESIGNER
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
-  console.log('%c[script] PART 1: PDC CALENDAR loaded', 'color:#10b981;font-weight:bold');
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     1. The Calendar Renderer
-     ═══════════════════════════════════════════════════════════════════════ */
-  function renderPdcCalendar() {
-    // Default to current month and 'all' banks
-    const f = state.filters.pdcCalendar || {};
-    const currentYm = f.ym || today().slice(0, 7);
-    const filterBankId = f.bankId || 'all';
-    
-    // Date calculations
-    const [year, month] = currentYm.split('-').map(x => parseInt(x, 10));
-    const firstOfMonth = new Date(year, month - 1, 1);
-    const lastOfMonth = new Date(year, month, 0);
-    const startWeekday = firstOfMonth.getDay(); // 0 = Sunday
-    const daysInMonth = lastOfMonth.getDate();
-    const todayStr = today();
-
-    // ── Calculate Starting Balance ──
-    const activeBanks = filterBankId === 'all' 
-      ? arr(state.data.banks).filter(b => b.active !== false)
-      : [bankObj(filterBankId)].filter(Boolean);
-      
-    let runningBalance = activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0);
-
-    // ── Group Cheques by Day ──
-    const chequesByDay = {};
-    arr(state.data.cheques).forEach(c => {
-      // Only care about scheduled, approved, or pending
-      if (!['scheduled', 'approved', 'pending_approval'].includes(c.status)) return;
-      
-      // Bank filter
-      if (filterBankId !== 'all' && c.bankId !== filterBankId) return;
-
-      if (!chequesByDay[c.chequeDate]) chequesByDay[c.chequeDate] = [];
-      chequesByDay[c.chequeDate].push(c);
-    });
-
-    // ── Build the Calendar Grid Data ──
-    const cells = [];
-    
-    // Leading empty cells
-    for (let i = 0; i < startWeekday; i++) cells.push(null);
-    
-    // Days of the month
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dayCheques = chequesByDay[dateStr] || [];
-      const dailyTotal = dayCheques.reduce((s, c) => s + num(c.amount), 0);
-      
-      // Project running balance
-      const openingForDay = runningBalance;
-      runningBalance -= dailyTotal;
-      const closingForDay = runningBalance;
-
-      // Shortfall check
-      const isShortfall = closingForDay < 0 && dailyTotal > 0;
-      
-      cells.push({
-        date: dateStr,
-        dayNum: d,
-        isToday: dateStr === todayStr,
-        cheques: dayCheques,
-        dailyTotal: dailyTotal,
-        isShortfall: isShortfall,
-        opening: openingForDay,
-        closing: closingForDay
-      });
-    }
-
-    const monthLabel = firstOfMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-
-    // ── Bank Options for Filter ──
-    const bankOptions = arr(state.data.banks).filter(b => b.active !== false).map(b => 
-      `<option value="${esc(b.id)}" ${filterBankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`
-    ).join('');
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       2. The HTML View
-       ═══════════════════════════════════════════════════════════════════════ */
-    return `
-      <div class="card" style="margin-bottom:20px; background:var(--surface-2);">
-        <div style="display:grid; grid-template-columns:auto auto 1fr auto; gap:16px; align-items:center;">
-          <div style="display:flex; gap:6px;">
-            <button class="btn" data-action="pdc-prev">←</button>
-            <button class="btn" data-action="pdc-today">Today</button>
-            <button class="btn" data-action="pdc-next">→</button>
-          </div>
-          
-          <h3 style="margin:0; font-size:20px; font-weight:700;">${monthLabel}</h3>
-          
-          <div></div>
-          
-          <div style="display:flex; gap:12px; align-items:center;">
-            <label class="field" style="margin:0; flex-direction:row; align-items:center; gap:8px;">
-              <span style="font-size:12px; font-weight:600; color:var(--text-3);">Bank:</span>
-              <select id="pdcBankFilter" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:13px;">
-                <option value="all" ${filterBankId === 'all' ? 'selected' : ''}>All Banks</option>
-                ${bankOptions}
-              </select>
-            </label>
-            <div style="padding:8px 16px; background:var(--accent-soft); border-radius:8px; border:1px solid var(--accent); text-align:right;">
-              <div style="font-size:10px; text-transform:uppercase; font-weight:700; color:var(--accent-text);">Starting Balance</div>
-              <div style="font-size:16px; font-weight:800; color:var(--accent-text);">${money(activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0))}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="padding:0; overflow:hidden; border:1px solid var(--border-3);">
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:var(--border); gap:1px;">
-          <!-- Weekday Headers -->
-          ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `
-            <div style="background:var(--surface-3); padding:12px 0; text-align:center; font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-2); letter-spacing:0.5px;">${d}</div>
-          `).join('')}
-
-          <!-- Calendar Days -->
-          ${cells.map(c => {
-            if (!c) return '<div style="background:var(--surface); min-height:130px;"></div>';
-            
-            let bg = 'var(--surface)';
-            let badgeBg = 'var(--accent-soft)';
-            let badgeText = 'var(--accent-text)';
-            
-            if (c.isShortfall) {
-              bg = 'var(--red-soft)'; 
-              badgeBg = 'var(--red)'; 
-              badgeText = '#fff';
-            } else if (c.dailyTotal > 0) {
-              badgeBg = 'var(--blue-soft)';
-              badgeText = 'var(--blue)';
-            }
-
-            return `
-              <div style="background:${bg}; min-height:130px; padding:10px; position:relative; display:flex; flex-direction:column; ${c.isToday ? 'box-shadow:inset 0 0 0 2px var(--accent); z-index:1;' : ''}"
-                   data-action="pdc-day-click" data-date="${c.date}" data-cheques="${esc(JSON.stringify(c.cheques.map(x => x.id)))}">
-                
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                  <div style="font-weight:800; font-size:14px; color:${c.isToday ? 'var(--accent)' : 'var(--text-3)'};">${c.dayNum}</div>
-                  ${c.isToday ? '<span style="font-size:9px; font-weight:800; background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px;">TODAY</span>' : ''}
-                </div>
-                
-                <div style="flex:1;"></div>
-
-                ${c.dailyTotal > 0 ? `
-                  <div style="background:${badgeBg}; color:${badgeText}; padding:6px; border-radius:6px; font-weight:800; font-size:13px; text-align:center; margin-bottom:6px; box-shadow:var(--shadow-sm);">
-                    ${money(c.dailyTotal)}
-                  </div>
-                  <div style="font-size:11px; font-weight:600; color:var(--text-3); text-align:center;">
-                    ${c.cheques.length} chq
-                  </div>
-                  <div style="font-size:11px; font-weight:700; margin-top:4px; text-align:center; color:${c.isShortfall ? 'var(--red)' : 'var(--green)'};">
-                    Bal: ${money(c.closing)}
-                  </div>
-                  ${c.isShortfall ? `
-                    <div style="position:absolute; bottom:4px; left:4px; right:4px; text-align:center; font-size:9px; color:var(--red); font-weight:800; background:var(--red-soft); border-radius:4px; padding:2px;">
-                      ⚠ INSUFFICIENT
-                    </div>
-                  ` : ''}
-                ` : `
-                  <div style="font-size:11px; font-weight:600; color:var(--text-4); text-align:center; padding-bottom:4px;">
-                    Bal: ${money(c.closing)}
-                  </div>
-                `}
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-      
-      <div style="display:flex; gap:20px; margin-top:16px; font-size:12px; color:var(--text-3);">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="width:12px;height:12px;background:var(--blue-soft);border-radius:3px;border:1px solid var(--blue);"></span> Cheques Clearing
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="width:12px;height:12px;background:var(--red-soft);border-radius:3px;border:1px solid var(--red);"></span> Shortfall Risk
-        </div>
-        <div style="margin-left:auto; font-style:italic;">Click any day to see the exact cheques.</div>
-      </div>
-    `;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. Day Detail Modal (When clicking a day on the calendar)
-     ═══════════════════════════════════════════════════════════════════════ */
-  function openPdcDayModal(dateStr, chequeIdsJson) {
-    let ids = [];
-    try { ids = JSON.parse(chequeIdsJson); } catch(e) {}
-    if (!ids.length) return;
-
-    const cheques = ids.map(id => chequeObj(id)).filter(Boolean);
-    const total = cheques.reduce((s, c) => s + num(c.amount), 0);
-
-    const body = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <div>
-          <div style="font-size:20px; font-weight:800; color:var(--text);">${dateFmt(dateStr)}</div>
-          <div style="font-size:13px; color:var(--text-3); margin-top:2px;">${cheques.length} cheque(s) clearing</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="k-label">Total Amount</div>
-          <div style="font-size:24px; font-weight:800; color:var(--red);">${money(total)}</div>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Cheque #</th>
-              <th>Payee</th>
-              <th>Bank</th>
-              <th>Status</th>
-              <th class="num">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${cheques.map(c => `
-              <tr>
-                <td class="mono font-weight:600;">${esc(c.chequeNo)}</td>
-                <td><strong>${esc(c.payeeName)}</strong></td>
-                <td>${esc(bankName(c.bankId))}</td>
-                <td>${chequeStatusBadge(c.status)}</td>
-                <td class="num"><strong>${money(c.amount)}</strong></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    openModal('📅 Cheques Clearing', body, {
-      width: 700,
-      footer: '<button class="btn" data-close-modal>Close</button>'
-    });
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     4. Action & Route Registration
-     ═══════════════════════════════════════════════════════════════════════ */
-  
-  // Register Route & Nav
-  __LS_addRoute('pdc-calendar', 'PDC Calendar', renderPdcCalendar);
-  __LS_addNav({ group: 'Cheques', id: 'pdc-calendar', ico: '📅', label: 'PDC Calendar' });
-
-  // Register Actions
-  __LS_registerAction('pdc-prev', () => {
-    const f = state.filters.pdcCalendar || {};
-    const ym = f.ym || today().slice(0, 7);
-    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
-    const prev = new Date(y, m - 2, 1);
-    state.filters.pdcCalendar = Object.assign({}, f, { ym: prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0') });
-    renderApp();
-  });
-
-  __LS_registerAction('pdc-next', () => {
-    const f = state.filters.pdcCalendar || {};
-    const ym = f.ym || today().slice(0, 7);
-    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
-    const next = new Date(y, m, 1);
-    state.filters.pdcCalendar = Object.assign({}, f, { ym: next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') });
-    renderApp();
-  });
-
-  __LS_registerAction('pdc-today', () => {
-    const f = state.filters.pdcCalendar || {};
-    state.filters.pdcCalendar = Object.assign({}, f, { ym: today().slice(0, 7) });
-    renderApp();
-  });
-
-  __LS_registerAction('pdc-day-click', (ev, id) => {
-    const date = ev.target.closest('[data-date]').dataset.date;
-    const idsJson = ev.target.closest('[data-cheques]').dataset.cheques;
-    openPdcDayModal(date, idsJson);
-  });
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     5. Bindings (Runs once on boot)
-     ═══════════════════════════════════════════════════════════════════════ */
-  __LS_register('PDC-CALENDAR', function () {
-    const prevBind = window.bindView;
-    window.bindView = function () {
-      try { if (prevBind) prevBind(); } catch (e) {}
-
-      // Bank Filter Dropdown
-      const bankFilter = document.getElementById('pdcBankFilter');
-      if (bankFilter) {
-        bankFilter.onchange = () => {
-          const f = state.filters.pdcCalendar || {};
-          state.filters.pdcCalendar = Object.assign({}, f, { bankId: bankFilter.value });
-          renderApp();
-        };
-      }
-    };
-    
-    scriptLoaded('PDC-CALENDAR');
-  });
-
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     PART 2: ADVANCED CHEQUE PRINTING MODULE
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] PART 2: CHEQUE PRINTER loaded', 'color:#10b981;font-weight:bold');
-
-  // Default millimeter coordinates for Sri Lankan Banks
+  // Default Presets for Sri Lankan Banks (Values in Millimeters)
   const BANK_PRESETS = {
-    'HNB':        { date: {x: 165, y: 15}, payee: {x: 30, y: 27}, amount: {x: 160, y: 27}, words: {x: 15, y: 38} },
-    'Sampath':    { date: {x: 160, y: 14}, payee: {x: 28, y: 28}, amount: {x: 158, y: 28}, words: {x: 15, y: 39} },
-    'Commercial': { date: {x: 165, y: 16}, payee: {x: 32, y: 29}, amount: {x: 162, y: 29}, words: {x: 15, y: 41} },
-    'BOC':        { date: {x: 160, y: 15}, payee: {x: 30, y: 30}, amount: {x: 160, y: 30}, words: {x: 15, y: 40} },
-    'Default':    { date: {x: 160, y: 15}, payee: {x: 30, y: 28}, amount: {x: 160, y: 28}, words: {x: 15, y: 38} }
+    'HNB':        { date: { x: 155, y: 14, fs: 14 }, payee: { x: 25, y: 28, fs: 15 }, amount: { x: 160, y: 28, fs: 15 }, words: { x: 12, y: 38, fs: 14 } },
+    'Sampath':    { date: { x: 158, y: 15, fs: 14 }, payee: { x: 28, y: 29, fs: 15 }, amount: { x: 158, y: 29, fs: 15 }, words: { x: 15, y: 39, fs: 14 } },
+    'Commercial': { date: { x: 160, y: 15, fs: 14 }, payee: { x: 30, y: 30, fs: 15 }, amount: { x: 160, y: 30, fs: 15 }, words: { x: 15, y: 40, fs: 14 } },
+    'BOC':        { date: { x: 155, y: 14, fs: 14 }, payee: { x: 25, y: 28, fs: 15 }, amount: { x: 155, y: 28, fs: 15 }, words: { x: 12, y: 38, fs: 14 } },
+    'Seylan':     { date: { x: 155, y: 15, fs: 14 }, payee: { x: 25, y: 30, fs: 15 }, amount: { x: 160, y: 30, fs: 15 }, words: { x: 15, y: 40, fs: 14 } },
+    'NDB':        { date: { x: 160, y: 15, fs: 14 }, payee: { x: 25, y: 30, fs: 15 }, amount: { x: 160, y: 30, fs: 15 }, words: { x: 15, y: 40, fs: 14 } }
   };
 
-  function openChequePrint(id) {
+  // 1. Inject the Print Button into the existing Cheque Detail Modal
+  const origOpenChequeDetail = window.openChequeDetail;
+  window.openChequeDetail = function (id) {
+    origOpenChequeDetail(id); // Call original S03 function
+    
+    // Inject Print button safely
+    setTimeout(() => {
+      const footer = document.querySelector('.modal-foot');
+      if (footer && !document.getElementById('masterPrintBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'masterPrintBtn';
+        btn.className = 'btn primary';
+        btn.innerHTML = '🖨️ Print Designer';
+        btn.style.marginRight = 'auto'; // Push to the left side of the footer
+        btn.onclick = () => { closeModal(); setTimeout(() => openChequePrint(id), 100); };
+        footer.insertBefore(btn, footer.firstChild);
+      }
+    }, 50);
+  };
+
+  // 2. The Massive 3D Designer Function
+  window.openChequePrint = function (id) {
     const c = chequeObj(id);
     if (!c) return;
-    
-    const bank = bankObj(c.bankId);
-    const bankName = bank ? bank.bankName || bank.name : 'Default';
-    
-    let presetKey = 'Default';
-    if (bankName.toLowerCase().includes('hnb')) presetKey = 'HNB';
-    else if (bankName.toLowerCase().includes('sampath')) presetKey = 'Sampath';
-    else if (bankName.toLowerCase().includes('commercial')) presetKey = 'Commercial';
-    else if (bankName.toLowerCase().includes('boc') || bankName.toLowerCase().includes('ceylon')) presetKey = 'BOC';
 
-    const calKey = 'chq_print_cal_v2_' + presetKey;
+    const bank = bankObj(c.bankId);
+    const bankName = bank ? (bank.bankName || bank.name) : 'HNB';
+    
+    // Determine which preset to use
+    let presetKey = 'HNB';
+    for (const key in BANK_PRESETS) {
+      if (bankName.toLowerCase().includes(key.toLowerCase())) { presetKey = key; break; }
+    }
+
+    // Load saved calibration for this bank, or default preset
+    const calKey = 'chq_mm_cal_' + presetKey;
     let cal = JSON.parse(localStorage.getItem(calKey) || JSON.stringify(BANK_PRESETS[presetKey]));
     
-    let activeEl = 'payee';
-    let customPayee = c.payeeName; // Payee Override variable
+    // Settings
+    let settings = {
+      dateFormat: 'DD/MM/YYYY',
+      payeeCaps: true,
+      wordsStar: true,
+      showMicr: false
+    };
 
+    // Helper to format date
+    const getFormattedDate = () => {
+      if (settings.dateFormat === 'DD/MM/YYYY') return dateFmt(c.chequeDate).replace(/[a-zA-Z]/g, '').replace(/\s+/g, '');
+      if (settings.dateFormat === 'MM/DD/YYYY') {
+         const d = new Date(c.chequeDate);
+         return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+      }
+      return dateFmt(c.chequeDate); // Default
+    };
+
+    // Helper for words
+    const getWords = () => {
+      let w = c.amountWords;
+      if (settings.wordsStar) w = '*** ' + w + ' ***';
+      return w;
+    };
+
+    // 3D Cheque HTML
     const body = `
       <style>
-        /* ── Visual Designer Styles ── */
-        .print-container { display: flex; gap: 24px; height: 60vh; min-height: 450px; }
-        .cheque-workspace { flex: 1; background: #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 20px; position: relative; }
+        .chq-designer-wrap { display: flex; gap: 20px; height: 70vh; }
         
-        /* Real physical cheque dimensions: 190mm x 85mm */
-        .cheque-canvas { 
-          position: relative; width: 190mm; height: 85mm; background: #fff; 
-          border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden;
-          /* Grid background to help alignment */
-          background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
-          background-size: 5mm 5mm;
+        /* 3D Paper Effect */
+        .chq-paper-3d {
+          position: relative; flex: 1; background: #fff; 
+          border-radius: 4px; box-shadow: 
+            0 10px 30px rgba(0,0,0,0.15), 
+            0 2px 10px rgba(0,0,0,0.1),
+            inset 0 0 40px rgba(0,0,0,0.02);
+          width: 190mm; height: 85mm; overflow: hidden;
+          margin: 20px auto; flex-shrink: 0;
+          background-image: 
+            repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.01) 10px, rgba(0,0,0,0.01) 20px);
         }
         
-        .chq-el { 
-          position: absolute; font-family: 'Courier New', Courier, monospace; 
-          font-size: 15px; font-weight: 700; color: #000; cursor: move; 
-          padding: 2px 4px; border: 1px dashed transparent; white-space: nowrap;
-          user-select: none;
+        /* Grid overlay for alignment */
+        .chq-grid-overlay {
+          position: absolute; inset: 0; pointer-events: none; opacity: 0.3;
+          background-size: 10mm 10mm;
+          background-image: 
+            linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px);
         }
+
+        .chq-el { position: absolute; color: #000; font-family: 'Courier New', monospace; cursor: move; padding: 2px; border: 1px dashed transparent; transition: border 0.1s; white-space: nowrap; }
         .chq-el:hover { border-color: rgba(124,58,237,0.5); background: rgba(124,58,237,0.05); }
         .chq-el.active { border-color: var(--accent); background: rgba(124,58,237,0.1); z-index: 10; }
-        .chq-el.words { width: 160mm; white-space: normal; line-height: 1.2; font-size: 13px; }
         
-        /* ── Controls Sidebar ── */
-        .print-controls { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 4px; }
-        .ctrl-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
-        .ctrl-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .chq-words-box { width: 160mm; white-space: normal; line-height: 1.2; }
+
+        /* Control Panel */
+        .chq-controls { width: 350px; flex-shrink: 0; background: var(--surface-2); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; border: 1px solid var(--border); }
+        .chq-group { background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border-2); }
+        .chq-group h4 { font-size: 12px; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .mm-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .mm-inputs label { font-size: 10px; color: var(--text-3); display: block; margin-bottom: 2px; }
+        .mm-inputs input { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-family: var(--mono); font-size: 12px; }
         
-        .coord-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-        .coord-inputs input { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; text-align: center; font-family: var(--mono); font-size: 13px; }
-        
-        /* ── Print-Only Layout ── */
         @media print {
-          @page { size: 210mm 99mm; margin: 0; } /* Sri Lankan standard landscape */
+          @page { size: auto; margin: 0; }
           body * { visibility: hidden; }
-          #chq-print-area, #chq-print-area * { visibility: visible; }
-          #chq-print-area { position: absolute; left: 0; top: 0; width: 190mm; height: 85mm; display: block !important; }
-          .chq-print-el { border: none !important; background: transparent !important; }
+          #chqPrintArea, #chqPrintArea * { visibility: visible; }
+          #chqPrintArea { position: absolute; left: 0; top: 0; display: block !important; width: 190mm; height: 85mm; box-shadow: none; background: transparent; }
+          .chq-el { border: none !important; background: transparent !important; }
         }
       </style>
 
-      <div class="print-container">
-        <!-- Left: Visual Canvas -->
-        <div class="cheque-workspace">
-          <div class="cheque-canvas" id="chqCanvas">
-            <div class="chq-el" data-k="date" style="left:${cal.date.x}mm; top:${cal.date.y}mm;">${dateFmt(c.chequeDate)}</div>
-            <div class="chq-el" data-k="payee" id="visualPayee" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm;">${esc(customPayee)}</div>
-            <div class="chq-el" data-k="amount" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm;">${money(c.amount, {plain:true})}</div>
-            <div class="chq-el words" data-k="words" style="left:${cal.words.x}mm; top:${cal.words.y}mm;">*** ${esc(c.amountWords)} ***</div>
+      <div class="chq-designer-wrap">
+        <!-- PAPER PREVIEW -->
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; background: #e2e8f0; border-radius: 12px; overflow: hidden;">
+          <div class="chq-paper-3d" id="chqVisualArea">
+            <div class="chq-grid-overlay"></div>
+            <div class="chq-el" data-k="date"   id="el-date">   ${getFormattedDate()} </div>
+            <div class="chq-el" data-k="payee"  id="el-payee">  ${settings.payeeCaps ? c.payeeName.toUpperCase() : c.payeeName} </div>
+            <div class="chq-el" data-k="amount" id="el-amount"> ${money(c.amount, {plain:true})} </div>
+            <div class="chq-el chq-words-box" data-k="words" id="el-words"> ${getWords()} </div>
+            <div class="chq-el" data-k="micr"   id="el-micr" style="letter-spacing:2px; font-size:12px; bottom:10mm; left:20mm; display:none;">
+               ⑈ ${c.chequeNo} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈
+            </div>
           </div>
         </div>
 
-        <!-- Right: Controls -->
-        <div class="print-controls">
-          
-          <div class="ctrl-box" style="background:var(--accent-soft); border-color:var(--accent);">
-            <div class="ctrl-title" style="color:var(--accent-text);">1. Custom Payee Override</div>
-            <label class="field" style="margin:0;">
-              <input type="text" id="payeeOverrideInput" value="${esc(customPayee)}" placeholder="Type exact payee name to print..." style="font-weight:600; color:var(--accent-text);">
-            </label>
-            <div class="small muted" style="margin-top:6px;">Changes the printed name only. Your database remains untouched.</div>
-          </div>
-
-          <div class="ctrl-box">
-            <div class="ctrl-title">2. Bank Template</div>
-            <select id="presetSelect" class="field" style="padding:8px; border-radius:6px; border:1px solid var(--border); width:100%;">
-              ${Object.keys(BANK_PRESETS).map(k => `<option value="${k}" ${k === presetKey ? 'selected' : ''}>${k} Layout</option>`).join('')}
+        <!-- CONTROLS -->
+        <div class="chq-controls">
+          <div class="chq-group">
+            <h4>Bank Preset <span class="badge purple">${presetKey}</span></h4>
+            <select id="chqBankSelect" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border);">
+              ${Object.keys(BANK_PRESETS).map(k => `<option value="${k}" ${k===presetKey?'selected':''}>${k}</option>`).join('')}
             </select>
+            <div style="font-size:11px; color:var(--text-3); margin-top:8px;">Use Arrow keys to nudge selected element.</div>
           </div>
 
-          <div class="ctrl-box" style="flex:1;">
-            <div class="ctrl-title">3. Millmeter Alignment</div>
-            <div class="small muted" style="margin-bottom:12px; line-height:1.5;">Click an element on the paper. Use <b>Arrow Keys</b> to nudge (Hold Shift for 5mm).</div>
-            
-            ${['payee', 'amount', 'words', 'date'].map(k => `
-              <div style="margin-bottom:12px; padding:8px; border-radius:6px; border:1px solid ${activeEl === k ? 'var(--accent)' : 'var(--border)'}; cursor:pointer; transition:all 0.2s;" class="ctrl-group" data-k="${k}">
-                <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:${activeEl === k ? 'var(--accent)' : 'var(--text-2)'};">${k}</div>
-                <div class="coord-inputs">
-                  <label style="display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text-3);">X <input type="number" class="coord-input" data-k="${k}" data-p="x" value="${cal[k].x}"></label>
-                  <label style="display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text-3);">Y <input type="number" class="coord-input" data-k="${k}" data-p="y" value="${cal[k].y}"></label>
-                </div>
+          <div class="chq-group">
+            <h4>Formatting Options</h4>
+            <label class="field" style="margin-bottom:10px;">
+              Date Format
+              <select id="chqDateFmt" style="padding:6px;">
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="DD MMM YYYY">DD MMM YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+              </select>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px;">
+              <input type="checkbox" id="chqCaps" ${settings.payeeCaps?'checked':''}> Payee in ALL CAPS
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:8px;">
+              <input type="checkbox" id="chqStars" ${settings.wordsStar?'checked':''}> Add *** around Amount in Words
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px;">
+              <input type="checkbox" id="chqMicr" ${settings.showMicr?'checked':''}> Show MICR Line (Bottom)
+            </label>
+          </div>
+
+          <!-- Alignment Controls -->
+          ${['payee','amount','words','date'].map(k => `
+            <div class="chq-group">
+              <h4 style="cursor:pointer" data-target="${k}">${k} Alignment (mm)</h4>
+              <div class="mm-inputs">
+                <div><label>X</label><input type="number" data-k="${k}" data-p="x" value="${cal[k].x}"></div>
+                <div><label>Y</label><input type="number" data-k="${k}" data-p="y" value="${cal[k].y}"></div>
+                <div><label>Size</label><input type="number" data-k="${k}" data-p="fs" value="${cal[k].fs}"></div>
               </div>
-            `).join('')}
-            
-            <button class="btn" id="resetCalBtn" style="width:100%; color:var(--red); border-color:var(--red); margin-top:8px;">↺ Reset to Defaults</button>
-          </div>
-
+            </div>
+          `).join('')}
         </div>
       </div>
 
-      <!-- Hidden Print Area -->
-      <div id="chq-print-area" style="display:none;">
-        <div class="chq-el chq-print-el" style="left:${cal.date.x}mm; top:${cal.date.y}mm;">${dateFmt(c.chequeDate)}</div>
-        <div class="chq-el chq-print-el" id="printPayee" style="left:${cal.payee.x}mm; top:${cal.payee.y}mm;">${esc(customPayee)}</div>
-        <div class="chq-el chq-print-el" style="left:${cal.amount.x}mm; top:${cal.amount.y}mm;">${money(c.amount, {plain:true})}</div>
-        <div class="chq-el chq-print-el words" style="left:${cal.words.x}mm; top:${cal.words.y}mm;">*** ${esc(c.amountWords)} ***</div>
+      <!-- HIDDEN PRINT AREA -->
+      <div id="chqPrintArea" style="display:none; position:absolute; left:0; top:0; width:190mm; height:85mm; background:#fff; z-index:99999;">
+        <div class="chq-el" id="print-date" style="font-family:'Courier New',monospace; color:#000; font-weight:bold;">${getFormattedDate()}</div>
+        <div class="chq-el" id="print-payee" style="font-family:'Courier New',monospace; color:#000; font-weight:bold;">${settings.payeeCaps ? c.payeeName.toUpperCase() : c.payeeName}</div>
+        <div class="chq-el" id="print-amount" style="font-family:'Courier New',monospace; color:#000; font-weight:bold;">${money(c.amount, {plain:true})}</div>
+        <div class="chq-el chq-words-box" id="print-words" style="font-family:'Courier New',monospace; color:#000; font-weight:bold; width:160mm; white-space:normal;">${getWords()}</div>
+        <div class="chq-el" id="print-micr" style="font-family:'Courier New',monospace; color:#000; letter-spacing:2px; font-size:12px; display:none;">⑈ ${c.chequeNo} ⑈ ${bank ? bank.accountNo : '123456789'} ⑈</div>
       </div>
     `;
 
-    openModal('🖨️ Cheque Print Designer', body, {
-      width: 1100,
+    // Open massive full screen modal
+    openModal('🖨️ 3D Cheque Designer — ' + c.chequeNo, body, {
+      width: 1200,
       footer: `
-        <button class="btn" data-close-modal>Cancel</button>
-        <button class="btn primary" id="executePrintBtn" style="padding:10px 24px; font-size:14px;">🖨️ Print Cheque</button>
+        <button class="btn" data-close-modal>Close</button>
+        <button class="btn primary" id="chqPrintBtn" style="background:var(--accent); border-color:var(--accent);">🖨️ Print Cheque</button>
       `
     });
 
-    // ── Logic ──
-    const q = (sel) => document.querySelector(sel);
-    const qa = (sel) => document.querySelectorAll(sel);
+    // Manual resize of modal to fit screen
+    document.querySelector('#modalWrap .modal').style.maxWidth = '95vw';
+    document.querySelector('#modalWrap .modal').style.width = '95vw';
 
+    let activeEl = 'payee';
+
+    // Render/Update visuals
     const updateUI = () => {
-      // Update Canvas Visuals
-      qa('#chqCanvas .chq-el').forEach(el => {
+      // Update text based on toggles
+      document.getElementById('el-date').textContent = getFormattedDate();
+      document.getElementById('el-payee').textContent = settings.payeeCaps ? c.payeeName.toUpperCase() : c.payeeName;
+      document.getElementById('el-words').textContent = getWords();
+      document.getElementById('el-micr').style.display = settings.showMicr ? 'block' : 'none';
+
+      // Apply mm coordinates to visual
+      document.querySelectorAll('#chqVisualArea .chq-el').forEach(el => {
         const k = el.dataset.k;
+        if (!cal[k]) return;
         el.style.left = cal[k].x + 'mm';
         el.style.top = cal[k].y + 'mm';
+        el.style.fontSize = cal[k].fs + 'px';
         el.classList.toggle('active', k === activeEl);
       });
-      
-      // Update Sidebar Highlights
-      qa('.ctrl-group').forEach(el => {
-        const isActive = el.dataset.k === activeEl;
-        el.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
-        el.querySelector('div').style.color = isActive ? 'var(--accent)' : 'var(--text-2)';
-      });
 
-      // Save to LocalStorage
+      // Save calibration
       localStorage.setItem(calKey, JSON.stringify(cal));
     };
 
-    // 1. Payee Override Logic
-    q('#payeeOverrideInput').oninput = (e) => {
-      customPayee = e.target.value;
-      q('#visualPayee').textContent = customPayee || '—';
-      q('#printPayee').textContent = customPayee || '—';
-    };
-
-    // 2. Bank Preset Logic
-    q('#presetSelect').onchange = (e) => {
-      const newKey = e.target.value;
-      cal = JSON.parse(localStorage.getItem('chq_print_cal_v2_' + newKey) || JSON.stringify(BANK_PRESETS[newKey]));
-      
-      // Update inputs
-      qa('.coord-input').forEach(inp => {
-        inp.value = cal[inp.dataset.k][inp.dataset.p];
-      });
-      updateUI();
-    };
-
-    // 3. Element Selection
-    qa('#chqCanvas .chq-el').forEach(el => {
-      el.onclick = (e) => { e.stopPropagation(); activeEl = el.dataset.k; updateUI(); };
-    });
-    qa('.ctrl-group').forEach(el => {
-      el.onclick = () => { activeEl = el.dataset.k; updateUI(); };
+    // Wire up element selection
+    document.querySelectorAll('#chqVisualArea .chq-el').forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); activeEl = e.target.dataset.k; updateUI(); };
     });
 
-    // 4. Manual Coordinate Inputs
-    qa('.coord-input').forEach(inp => {
+    // Wire up toggles
+    document.getElementById('chqDateFmt').onchange = (e) => { settings.dateFormat = e.target.value; updateUI(); };
+    document.getElementById('chqCaps').onchange = (e) => { settings.payeeCaps = e.target.checked; updateUI(); };
+    document.getElementById('chqStars').onchange = (e) => { settings.wordsStar = e.target.checked; updateUI(); };
+    document.getElementById('chqMicr').onchange = (e) => { settings.showMicr = e.target.checked; updateUI(); };
+
+    // Wire up mm inputs
+    document.querySelectorAll('.mm-inputs input').forEach(inp => {
       inp.onchange = (e) => {
-        const k = inp.dataset.k, p = inp.dataset.p;
+        const k = e.target.dataset.k;
+        const p = e.target.dataset.p;
         cal[k][p] = parseFloat(e.target.value) || 0;
         updateUI();
       };
     });
 
-    // 5. Keyboard Nudging (Arrows)
+    // Bank dropdown change
+    document.getElementById('chqBankSelect').onchange = (e) => {
+      const newPreset = e.target.value;
+      const newCal = JSON.parse(localStorage.getItem('chq_mm_cal_' + newPreset) || JSON.stringify(BANK_PRESETS[newPreset]));
+      Object.assign(cal, newCal);
+      document.querySelectorAll('.mm-inputs input').forEach(inp => {
+        inp.value = cal[inp.dataset.k][inp.dataset.p];
+      });
+      updateUI();
+    };
+
+    // Keyboard arrow nudge
     const handleKeys = (e) => {
-      if (!document.getElementById('chqCanvas')) return;
-      const step = e.shiftKey ? 5 : 1;
-      
+      if (!document.getElementById('chqVisualArea')) return;
+      const step = e.shiftKey ? 5 : 1; // shift for fast nudge
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         if (e.key === 'ArrowUp') cal[activeEl].y -= step;
@@ -15501,42 +15257,15 @@ ${rawText.slice(0, 15000)}`;
         if (e.key === 'ArrowRight') cal[activeEl].x += step;
         
         // Sync inputs
-        const inputX = q(`.coord-input[data-k="${activeEl}"][data-p="x"]`);
-        const inputY = q(`.coord-input[data-k="${activeEl}"][data-p="y"]`);
-        if (inputX) inputX.value = cal[activeEl].x;
-        if (inputY) inputY.value = cal[activeEl].y;
-        
+        document.querySelectorAll('.mm-inputs input').forEach(inp => {
+          if (inp.dataset.k === activeEl) inp.value = cal[activeEl][inp.dataset.p];
+        });
         updateUI();
       }
     };
     document.addEventListener('keydown', handleKeys);
 
-    // 6. Reset Button
-    q('#resetCalBtn').onclick = () => {
-      if (!confirm('Reset alignment for ' + q('#presetSelect').value + ' to defaults?')) return;
-      cal = JSON.parse(JSON.stringify(BANK_PRESETS[q('#presetSelect').value]));
-      qa('.coord-input').forEach(inp => {
-        inp.value = cal[inp.dataset.k][inp.dataset.p];
-      });
-      updateUI();
-    };
-
-    // 7. Execute Print
-    q('#executePrintBtn').onclick = () => {
-      // Sync Hidden Print Area
-      const printArea = document.getElementById('chq-print-area');
-      const pEls = printArea.querySelectorAll('.chq-el');
-      
-      pEls[0].style.left = cal.date.x + 'mm';   pEls[0].style.top = cal.date.y + 'mm';
-      pEls[1].style.left = cal.payee.x + 'mm';  pEls[1].style.top = cal.payee.y + 'mm';
-      pEls[2].style.left = cal.amount.x + 'mm'; pEls[2].style.top = cal.amount.y + 'mm';
-      pEls[3].style.left = cal.words.x + 'mm';  pEls[3].style.top = cal.words.y + 'mm';
-
-      // Trigger browser print
-      window.print();
-    };
-
-    // Cleanup keyboard listener on close
+    // Cleanup listener on close
     const origClose = window.closeModal;
     window.closeModal = function() {
       document.removeEventListener('keydown', handleKeys);
@@ -15544,1156 +15273,27 @@ ${rawText.slice(0, 15000)}`;
       origClose.apply(this, arguments);
     };
 
-    // Initialize
+    // Print execution
+    document.getElementById('chqPrintBtn').onclick = () => {
+      // Sync hidden print area
+      ['date', 'payee', 'amount', 'words', 'micr'].forEach(k => {
+        const el = document.getElementById('print-' + k);
+        el.style.left = cal[k].x + 'mm';
+        el.style.top = cal[k].y + 'mm';
+        el.style.fontSize = cal[k].fs + 'px';
+      });
+      document.getElementById('print-micr').style.display = settings.showMicr ? 'block' : 'none';
+
+      // Trigger native print
+      document.getElementById('chqPrintArea').style.display = 'block';
+      setTimeout(() => {
+        window.print();
+        document.getElementById('chqPrintArea').style.display = 'none';
+      }, 150);
+    };
+
     updateUI();
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     Inject Print Button into existing Cheque Details Modal
-     ═══════════════════════════════════════════════════════════════════════ */
-  const origOpenChequeDetail = window.openChequeDetail;
-  
-  window.openChequeDetail = function(id) {
-    // 1. Call the original modal
-    origOpenChequeDetail(id);
-    
-    // 2. Wait a tick for the DOM to render, then inject the button
-    setTimeout(() => {
-      const footer = document.querySelector('#modalWrap .modal-foot');
-      if (footer && !document.getElementById('printChqBtn')) {
-         const btn = document.createElement('button');
-         btn.id = 'printChqBtn';
-         btn.className = 'btn primary';
-         btn.innerHTML = '🖨️ Print';
-         btn.onclick = () => { 
-           closeModal(); 
-           setTimeout(() => openChequePrint(id), 100); 
-         };
-         // Insert as the first button in the footer
-         footer.insertBefore(btn, footer.firstChild);
-      }
-    }, 50);
   };
-
-  scriptLoaded('CHEQUE-PRINTER');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     HOTFIX: Force Print Button into Cheque Details
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  
-  // We wrap the existing openChequeDetail function
-  const origOpenChequeDetail = window.openChequeDetail;
-  
-  window.openChequeDetail = function(id) {
-    // 1. Temporarily hijack the openModal function to intercept the footer
-    const origOpenModal = window.openModal;
-    
-    window.openModal = function(title, body, opts) {
-      if (title.includes('Cheque Details') && opts && opts.footer) {
-        // Inject our Print button at the very beginning of the footer
-        opts.footer = `
-          <button class="btn primary" onclick="window.closeModal(); setTimeout(() => window.openChequePrint('${id}'), 150)">🖨️ Print</button>
-          ${opts.footer}
-        `;
-      }
-      // Call the original openModal with the modified footer
-      origOpenModal(title, body, opts);
-    };
-    
-    // 2. Call the original Cheque Detail function
-    origOpenChequeDetail(id);
-    
-    // 3. Restore the original openModal so we don't break other modals
-    window.openModal = origOpenModal;
-  };
-  
-  console.log('✅ Print button hotfix applied');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     PART 3: PREMIUM WHATSAPP ANALYTICS REPORT
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] PART 3: WHATSAPP REPORT loaded', 'color:#10b981;font-weight:bold');
-
-  // Ensure html2canvas is loaded for image generation
-  async function ensureHtml2Canvas() {
-    if (window.html2canvas) return;
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-
-  window.renderDailyReport = function() {
-    const tomorrowStr = shiftDate(today(), 1);
-    const todayStr = today();
-    
-    // ── 1. Data Aggregation ──
-    const tomorrowCheques = arr(state.data.cheques).filter(c => 
-      c.chequeDate === tomorrowStr && 
-      ['scheduled', 'approved', 'pending_approval'].includes(c.status)
-    );
-
-    const totalTomorrowAmount = tomorrowCheques.reduce((s, c) => s + num(c.amount), 0);
-    
-    const activeBanks = arr(state.data.banks).filter(b => b.active !== false);
-    const totalBankBalance = activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0);
-    
-    const isGlobalShortfall = totalTomorrowAmount > totalBankBalance;
-
-    // Group by bank
-    const bankData = activeBanks.map(b => {
-      const bCheques = tomorrowCheques.filter(c => c.bankId === b.id);
-      const bAmount = bCheques.reduce((s, c) => s + num(c.amount), 0);
-      const bal = bankBalances(b.id);
-      const isShort = bAmount > bal.bank;
-
-      return {
-        bank: b,
-        cheques: bCheques,
-        amount: bAmount,
-        balance: bal.bank,
-        shortfall: isShort ? (bAmount - bal.bank) : 0,
-        isShort: isShort
-      };
-    }).filter(b => b.cheques.length > 0); // Only show banks with activity tomorrow
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       2. The HTML View
-       ═══════════════════════════════════════════════════════════════════════ */
-    return `
-      <div class="card no-print" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface);">
-        <div>
-          <h3 style="margin:0; font-size:18px;">📱 Tomorrow's Cashflow Analytics</h3>
-          <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Generate a premium visual report for WhatsApp</div>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn primary" onclick="window.downloadWAReport()">📥 Download Image</button>
-          <button class="btn" onclick="window.print()">🖨️ Print</button>
-        </div>
-      </div>
-
-      <!-- The Canvas that gets screenshotted -->
-      <div id="waReportCanvas" style="background:#f8fafc; padding:40px; border-radius:16px; max-width:900px; margin:0 auto; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; border:1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-        
-        <!-- HEADER -->
-        <div style="background:#0f172a; border-radius:16px; padding:28px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start; box-shadow: 0 10px 25px rgba(15,23,42,0.2);">
-          <div>
-            <div style="color:#94a3b8; font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Cheque Payment Update</div>
-            <div style="color:#fff; font-size:28px; font-weight:800; line-height:1.2;">${new Date(tomorrowStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-            <div style="color:#38bdf8; font-size:14px; font-weight:600; margin-top:10px;">${state.settings?.business?.name || 'Lanka Shoe'}</div>
-          </div>
-          <div style="background:${isGlobalShortfall ? '#ef4444' : '#eab308'}; padding:20px 28px; border-radius:12px; text-align:right; min-width:240px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-            <div style="color:rgba(0,0,0,0.7); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Total to Arrange</div>
-            <div style="color:#000; font-size:32px; font-weight:900; margin-top:4px; line-height:1;">${money(totalTomorrowAmount)}</div>
-            <div style="color:rgba(0,0,0,0.8); font-size:12px; font-weight:700; margin-top:8px;">${tomorrowCheques.length} cheque(s) clearing</div>
-          </div>
-        </div>
-
-        <!-- GLOBAL SUMMARY CARDS -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
-          <div style="background:#fff; padding:20px; border-radius:12px; border:1px solid #e2e8f0;">
-            <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:8px;">Current Total Bank Balance</div>
-            <div style="font-size:28px; font-weight:900; color:#0f172a;">${money(totalBankBalance)}</div>
-          </div>
-          <div style="background:${isGlobalShortfall ? '#fef2f2' : '#ecfdf5'}; padding:20px; border-radius:12px; border:1px solid ${isGlobalShortfall ? '#f87171' : '#34d399'};">
-            <div style="font-size:12px; font-weight:800; color:${isGlobalShortfall ? '#b91c1c' : '#047857'}; text-transform:uppercase; margin-bottom:8px;">Status</div>
-            <div style="font-size:24px; font-weight:900; color:${isGlobalShortfall ? '#ef4444' : '#10b981'}; display:flex; align-items:center; gap:8px;">
-              ${isGlobalShortfall ? '⚠️ INSUFFICIENT FUNDS' : '✓ ENOUGH FUNDS'}
-            </div>
-          </div>
-        </div>
-
-        <!-- BANK BREAKDOWN -->
-        <div style="margin-bottom:24px;">
-          <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Where the funds go</div>
-          
-          ${bankData.length ? bankData.map(b => `
-            <div style="background:#fff; border-radius:16px; padding:24px; margin-bottom:16px; border:1px solid #e2e8f0; border-left:6px solid ${b.isShort ? '#ef4444' : '#3b82f6'};">
-              
-              <!-- Bank Header -->
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
-                <div style="display:flex; gap:12px; align-items:center;">
-                  <div style="width:48px; height:48px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:900; color:#0f172a; font-size:11px; text-align:center;">
-                    ${esc((b.bank.bankName || b.bank.name).substring(0, 4).toUpperCase())}
-                  </div>
-                  <div>
-                    <div style="font-size:18px; font-weight:800; color:#0f172a;">${esc(b.bank.name)}</div>
-                    <div style="font-size:13px; color:#64748b; margin-top:2px;">${esc(b.bank.branch || 'Main Branch')}</div>
-                  </div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-size:22px; font-weight:900; color:#0f172a;">${money(b.amount)}</div>
-                  <div style="font-size:12px; font-weight:800; color:${b.isShort ? '#ef4444' : '#10b981'}; margin-top:4px;">
-                    ${b.isShort ? `⚠ NEED DEPOSIT: ${money(b.shortfall)}` : '✓ FUNDS OK'}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Balance Progress Bar -->
-              <div style="margin-bottom:20px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
-                <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#64748b; margin-bottom:6px;">
-                  <span>Required: ${money(b.amount)}</span>
-                  <span>Available: ${money(b.balance)}</span>
-                </div>
-                <div style="height:8px; background:#cbd5e1; border-radius:4px; overflow:hidden;">
-                  <div style="height:100%; width:${Math.min(100, (b.amount / (b.balance || 1)) * 100)}%; background:${b.isShort ? '#ef4444' : '#3b82f6'};"></div>
-                </div>
-              </div>
-
-              <!-- Cheque List -->
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                ${b.cheques.map(c => `
-                  <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;">
-                    <div>
-                      <div style="font-size:14px; font-weight:700; color:#0f172a;">${esc(c.payeeName)}</div>
-                      <div style="font-size:12px; color:#64748b; margin-top:2px; display:flex; align-items:center; gap:6px;">
-                        Chq #${esc(c.chequeNo)} · ${esc(c.memo || 'No memo')}
-                        ${c.status === 'pending_approval' ? '<span style="background:#fef3c7;color:#d97706;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:800;">PENDING</span>' : ''}
-                      </div>
-                    </div>
-                    <div style="font-size:16px; font-weight:800; color:#0f172a;">${money(c.amount)}</div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `).join('') : `
-            <div style="background:#fff; border-radius:16px; padding:50px; text-align:center; border:1px solid #e2e8f0;">
-              <div style="font-size:48px; margin-bottom:16px;">🎉</div>
-              <div style="font-size:18px; font-weight:800; color:#0f172a;">All clear for tomorrow</div>
-              <div style="font-size:14px; color:#64748b; margin-top:8px;">No cheques are scheduled to clear.</div>
-            </div>
-          `}
-        </div>
-
-        <!-- FOOTER -->
-        <div style="text-align:center; font-size:12px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:20px;">
-          Generated by ${state.settings?.business?.name || 'Lanka Shoe'} · ${new Date().toLocaleString('en-GB')}
-        </div>
-      </div>
-    `;
-  };
-
-  // Register Route
-  __LS_addRoute('daily-report', 'WhatsApp Report', window.renderDailyReport);
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     Image Download Logic
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.downloadWAReport = async function() {
-    const el = document.getElementById('waReportCanvas');
-    if (!el) return;
-    
-    toast('Generating high-res image...', 'info');
-    
-    try {
-      await ensureHtml2Canvas();
-      
-      const canvas = await window.html2canvas(el, {
-        scale: 3, // Ultra HD (Retina) resolution
-        backgroundColor: '#f8fafc',
-        useCORS: true,
-        logging: false
-      });
-      
-      const link = document.createElement('a');
-      link.download = `Cheque_Analytics_${today()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      
-      toast('Image downloaded successfully! Ready for WhatsApp.', 'success', 5000);
-    } catch (e) {
-      dbg.err('Report generation failed: ' + e.message);
-      toast('Failed to generate image', 'error');
-    }
-  };
-
-  scriptLoaded('WHATSAPP-REPORT');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     PART 3: ULTIMATE WHATSAPP REPORT & PRINT BUTTON HOTFIX
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] PART 3: ULTIMATE REPORT loaded', 'color:#10b981;font-weight:bold');
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     HOTFIX: FORCE PRINT BUTTON INTO CHEQUE DETAILS
-     ═══════════════════════════════════════════════════════════════════════ */
-  const origOpenChequeDetail = window.openChequeDetail;
-  window.openChequeDetail = function(id) {
-    const origOpenModal = window.openModal;
-    window.openModal = function(title, body, opts) {
-      if (title.includes('Cheque Details') && opts && opts.footer) {
-        // Inject Print button safely using string replacement
-        opts.footer = `<button class="btn primary" onclick="window.closeModal(); setTimeout(() => window.openChequePrint('${id}'), 150)">🖨️ Print</button> ` + opts.footer;
-      }
-      origOpenModal(title, body, opts);
-    };
-    origOpenChequeDetail(id);
-    window.openModal = origOpenModal; // Restore
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     DYNAMIC LIBRARY LOADER (Chart.js & html2canvas)
-     ═══════════════════════════════════════════════════════════════════════ */
-  async function ensureLibraries() {
-    const loadScript = (src, check) => new Promise((res, rej) => {
-      if (window[check]) return res();
-      const s = document.createElement('script');
-      s.src = src; s.async = true;
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    });
-    try {
-      await Promise.all([
-        loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js', 'Chart'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas')
-      ]);
-    } catch (e) {
-      console.warn('Libraries failed to load', e);
-    }
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     REPORT CONFIGURATION & TOGGLES
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.reportConfig = {
-    showSummary: true,
-    showActionItems: true,
-    showChart: true,
-    showBankBreakdown: true,
-    showTopPayees: true
-  };
-
-  // Load saved config from local storage if exists
-  try {
-    const saved = localStorage.getItem('lankashoe_report_config');
-    if (saved) Object.assign(window.reportConfig, JSON.parse(saved));
-  } catch(e) {}
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     THE REPORT RENDERER
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.renderDailyReport = function() {
-    ensureLibraries(); // Load Chart.js in background
-    
-    const tomorrowStr = shiftDate(today(), 1);
-    const cfg = window.reportConfig;
-    
-    // ── 1. DATA CALCULATION ──
-    const tomorrowCheques = arr(state.data.cheques).filter(c => 
-      c.chequeDate === tomorrowStr && ['scheduled', 'approved', 'pending_approval'].includes(c.status)
-    );
-
-    const totalTomorrowAmount = tomorrowCheques.reduce((s, c) => s + num(c.amount), 0);
-    const activeBanks = arr(state.data.banks).filter(b => b.active !== false);
-    const totalBankBalance = activeBanks.reduce((s, b) => s + bankBalances(b.id).bank, 0);
-    
-    const isGlobalShortfall = totalTomorrowAmount > totalBankBalance;
-
-    // Bank Data
-    const bankData = activeBanks.map(b => {
-      const bCheques = tomorrowCheques.filter(c => c.bankId === b.id);
-      const bAmount = bCheques.reduce((s, c) => s + num(c.amount), 0);
-      const bal = bankBalances(b.id);
-      const isShort = bAmount > bal.bank;
-
-      return {
-        bank: b, cheques: bCheques, amount: bAmount, balance: bal.bank,
-        shortfall: isShort ? (bAmount - bal.bank) : 0, isShort: isShort
-      };
-    }).filter(b => b.cheques.length > 0);
-
-    // Top Payees
-    const payeeTotals = {};
-    tomorrowCheques.forEach(c => {
-      payeeTotals[c.payeeName] = (payeeTotals[c.payeeName] || 0) + num(c.amount);
-    });
-    const topPayees = Object.keys(payeeTotals)
-      .map(name => ({ name, total: payeeTotals[name] }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-
-    // 7-Day Forecast Data
-    const next7Days = [];
-    const next7Labels = [];
-    const next7Data = [];
-    for (let i = 1; i <= 7; i++) {
-      const d = shiftDate(today(), i);
-      next7Labels.push(new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }));
-      const dayTotal = arr(state.data.cheques)
-        .filter(c => c.chequeDate === d && ['scheduled', 'approved', 'pending_approval'].includes(c.status))
-        .reduce((s, c) => s + num(c.amount), 0);
-      next7Data.push(dayTotal);
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       2. RENDER HTML
-       ═══════════════════════════════════════════════════════════════════════ */
-    return `
-      <!-- CONTROLS BAR -->
-      <div class="card no-print" style="display:flex; flex-direction:column; gap:16px; background:var(--surface); border-left:4px solid var(--accent);">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <h3 style="margin:0; font-size:18px;">📱 Ultimate Cashflow Report</h3>
-            <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Customize and export high-res analytics for WhatsApp</div>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn primary" onclick="window.downloadWAReport()">📥 Download Image</button>
-          </div>
-        </div>
-        
-        <!-- Toggles -->
-        <div style="display:flex; gap:16px; flex-wrap:wrap; background:var(--surface-2); padding:12px; border-radius:8px; border:1px solid var(--border);">
-          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" onchange="window.toggleRepCfg('showSummary', this.checked)" ${cfg.showSummary ? 'checked' : ''}> Global Summary
-          </label>
-          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" onchange="window.toggleRepCfg('showActionItems', this.checked)" ${cfg.showActionItems ? 'checked' : ''}> Action Alerts
-          </label>
-          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" onchange="window.toggleRepCfg('showChart', this.checked)" ${cfg.showChart ? 'checked' : ''}> 7-Day Chart
-          </label>
-          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" onchange="window.toggleRepCfg('showBankBreakdown', this.checked)" ${cfg.showBankBreakdown ? 'checked' : ''}> Bank Breakdown
-          </label>
-          <label style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" onchange="window.toggleRepCfg('showTopPayees', this.checked)" ${cfg.showTopPayees ? 'checked' : ''}> Top Payees
-          </label>
-        </div>
-      </div>
-
-      <!-- THE CANVAS TO EXPORT -->
-      <div id="waReportCanvas" style="background:#f8fafc; padding:36px; border-radius:16px; max-width:950px; margin:0 auto; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; border:1px solid #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
-        
-        <!-- HEADER -->
-        <div style="background:#0f172a; border-radius:16px; padding:28px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-start; box-shadow: 0 10px 25px rgba(15,23,42,0.2);">
-          <div>
-            <div style="color:#94a3b8; font-size:12px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px;">Cheque Payment Forecast</div>
-            <div style="color:#fff; font-size:30px; font-weight:900; line-height:1.2;">${new Date(tomorrowStr).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-            <div style="color:#38bdf8; font-size:14px; font-weight:600; margin-top:10px;">${state.settings?.business?.name || 'Lanka Shoe'}</div>
-          </div>
-          <div style="background:${isGlobalShortfall ? '#ef4444' : '#eab308'}; padding:20px 24px; border-radius:12px; text-align:right; min-width:250px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-            <div style="color:rgba(0,0,0,0.7); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;">Total to Arrange</div>
-            <div style="color:#000; font-size:32px; font-weight:900; margin-top:4px; line-height:1;">${money(totalTomorrowAmount)}</div>
-            <div style="color:rgba(0,0,0,0.8); font-size:12px; font-weight:700; margin-top:8px;">${tomorrowCheques.length} cheque(s) clearing</div>
-          </div>
-        </div>
-
-        <!-- SUMMARY CARDS -->
-        ${cfg.showSummary ? `
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
-            <div style="background:#fff; padding:20px; border-radius:12px; border:1px solid #e2e8f0; border-top:4px solid #3b82f6;">
-              <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:8px;">Total Bank Balance</div>
-              <div style="font-size:28px; font-weight:900; color:#0f172a;">${money(totalBankBalance)}</div>
-            </div>
-            <div style="background:${isGlobalShortfall ? '#fef2f2' : '#ecfdf5'}; padding:20px; border-radius:12px; border:1px solid ${isGlobalShortfall ? '#f87171' : '#34d399'}; border-top:4px solid ${isGlobalShortfall ? '#ef4444' : '#10b981'};">
-              <div style="font-size:12px; font-weight:800; color:${isGlobalShortfall ? '#b91c1c' : '#047857'}; text-transform:uppercase; margin-bottom:8px;">Status</div>
-              <div style="font-size:24px; font-weight:900; color:${isGlobalShortfall ? '#ef4444' : '#10b981'}; display:flex; align-items:center; gap:8px;">
-                ${isGlobalShortfall ? '⚠️ INSUFFICIENT FUNDS' : '✓ SUFFICIENT FUNDS'}
-              </div>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- ACTION ALERTS -->
-        ${cfg.showActionItems && bankData.some(b => b.isShort) ? `
-          <div style="background:#fef2f2; border:1px solid #f87171; border-radius:12px; padding:20px; margin-bottom:24px; border-left:6px solid #ef4444;">
-            <div style="font-size:14px; font-weight:800; color:#b91c1c; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">🚨 Action Required: Deposit Funds</div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              ${bankData.filter(b => b.isShort).map(b => `
-                <div style="background:#fff; padding:12px 16px; border-radius:8px; border:1px solid #fecaca; display:flex; justify-content:space-between; align-items:center;">
-                  <div style="font-weight:700; color:#0f172a;">${esc(b.bank.name)}</div>
-                  <div style="font-weight:900; color:#ef4444; font-size:16px;">Deposit ${money(b.shortfall)}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- 7-DAY CHART -->
-        ${cfg.showChart ? `
-          <div style="background:#fff; border-radius:12px; padding:24px; margin-bottom:24px; border:1px solid #e2e8f0;">
-            <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Next 7 Days Cashflow Projection</div>
-            <div style="height:180px; width:100%; position:relative;">
-              <canvas id="waChartCanvas"></canvas>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- BANK BREAKDOWN -->
-        ${cfg.showBankBreakdown ? `
-          <div style="margin-bottom:24px;">
-            <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Bank-by-Bank Breakdown</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-              ${bankData.length ? bankData.map(b => `
-                <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; border-left:4px solid ${b.isShort ? '#ef4444' : '#3b82f6'};">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
-                    <div style="font-size:16px; font-weight:800; color:#0f172a;">${esc(b.bank.name)}</div>
-                    <div style="text-align:right;">
-                      <div style="font-size:18px; font-weight:900; color:#0f172a;">${money(b.amount)}</div>
-                      <div style="font-size:11px; font-weight:800; color:${b.isShort ? '#ef4444' : '#10b981'}; margin-top:2px;">
-                        ${b.isShort ? `SHORT ${money(b.shortfall)}` : 'OK'}
-                      </div>
-                    </div>
-                  </div>
-                  <!-- Balance Bar -->
-                  <div style="margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:#64748b; margin-bottom:4px;">
-                      <span>Required: ${money(b.amount)}</span>
-                      <span>Bal: ${money(b.balance)}</span>
-                    </div>
-                    <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
-                      <div style="height:100%; width:${Math.min(100, (b.amount / (b.balance || 1)) * 100)}%; background:${b.isShort ? '#ef4444' : '#3b82f6'};"></div>
-                    </div>
-                  </div>
-                  <!-- Cheques list -->
-                  <div style="display:flex; flex-direction:column; gap:6px;">
-                    ${b.cheques.slice(0,3).map(c => `
-                      <div style="display:flex; justify-content:space-between; font-size:12px; padding:6px 8px; background:#f8fafc; border-radius:4px;">
-                        <span style="font-weight:600; color:#334155;">${esc(c.payeeName)}</span>
-                        <span style="font-weight:800; color:#0f172a;">${money(c.amount)}</span>
-                      </div>
-                    `).join('')}
-                    ${b.cheques.length > 3 ? `<div style="font-size:11px; color:#64748b; text-align:center; font-weight:600;">+ ${b.cheques.length - 3} more...</div>` : ''}
-                  </div>
-                </div>
-              `).join('') : '<div style="grid-column:1/-1; text-align:center; padding:20px; color:#64748b;">No cheques clearing tomorrow.</div>'}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- TOP PAYEES -->
-        ${cfg.showTopPayees && topPayees.length ? `
-          <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0;">
-            <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Top Payees Tomorrow</div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              ${topPayees.map((p, i) => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                  <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="background:#f1f5f9; color:#64748b; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${i+1}</span>
-                    <span style="font-weight:600; color:#334155;">${esc(p.name)}</span>
-                  </div>
-                  <span style="font-weight:800; color:#0f172a;">${money(p.total)}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- FOOTER -->
-        <div style="text-align:center; font-size:12px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:20px; margin-top:24px;">
-          Generated by ${state.settings?.business?.name || 'Lanka Shoe'} · ${new Date().toLocaleString('en-GB')}
-        </div>
-      </div>
-    `;
-  };
-
-  // Register Route
-  __LS_addRoute('daily-report', 'WhatsApp Report', window.renderDailyReport);
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     INTERACTIVITY & CHART RENDERING
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.toggleRepCfg = function(key, val) {
-    window.reportConfig[key] = val;
-    localStorage.setItem('lankashoe_report_config', JSON.stringify(window.reportConfig));
-    renderApp();
-  };
-
-  // Chart Rendering Hook
-  __LS_register('WA-CHART-RENDER', function () {
-    const prevBind = window.bindView;
-    window.bindView = function () {
-      try { if (prevBind) prevBind(); } catch(e){}
-      
-      if (state.view === 'daily-report' && window.reportConfig.showChart) {
-        // We must wait for the canvas to exist in the DOM
-        setTimeout(() => {
-          const ctx = document.getElementById('waChartCanvas');
-          if (!ctx) return;
-          
-          // Destroy existing chart if it exists
-          if (window._waChartInstance) {
-            try { window._waChartInstance.destroy(); } catch(e){}
-          }
-
-          // Calculate data again for the chart
-          const labels = [];
-          const data = [];
-          for (let i = 1; i <= 7; i++) {
-            const d = shiftDate(today(), i);
-            labels.push(new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }));
-            const dayTotal = arr(state.data.cheques)
-              .filter(c => c.chequeDate === d && ['scheduled', 'approved', 'pending_approval'].includes(c.status))
-              .reduce((s, c) => s + num(c.amount), 0);
-            data.push(dayTotal);
-          }
-
-          window._waChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: 'Cheques Clearing (Rs.)',
-                data: data,
-                backgroundColor: data.map(val => val > 0 ? '#3b82f6' : '#e2e8f0'),
-                borderRadius: 6,
-                borderWidth: 0
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    label: (ctx) => 'Rs. ' + ctx.parsed.y.toLocaleString('en-LK')
-                  }
-                }
-              },
-              scales: {
-                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { color: '#64748b', font: {size: 11} } },
-                x: { grid: { display: false }, ticks: { color: '#64748b', font: {size: 11} } }
-              }
-            }
-          });
-        }, 100);
-      }
-    };
-  });
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     IMAGE DOWNLOAD LOGIC (ULTRA HD)
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.downloadWAReport = async function() {
-    const el = document.getElementById('waReportCanvas');
-    if (!el) return;
-    
-    toast('Generating high-res image...', 'info');
-    
-    try {
-      await ensureLibraries(); // Ensure html2canvas is ready
-      
-      // Create a clone of the element to ensure the chart is perfectly rendered
-      // html2canvas sometimes struggles with canvas elements directly
-      const canvas = await window.html2canvas(el, {
-        scale: 3, // Ultra HD
-        backgroundColor: '#f8fafc',
-        useCORS: true,
-        logging: false,
-        // If the chart is visible, it will capture it natively
-      });
-      
-      const link = document.createElement('a');
-      link.download = `Cashflow_Forecast_${today()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      
-      toast('Image downloaded successfully!', 'success', 4000);
-    } catch (e) {
-      dbg.err('Report generation failed: ' + e.message);
-      toast('Failed to generate image. Check console.', 'error');
-    }
-  };
-
-  scriptLoaded('ULTIMATE-REPORT');
-})();
-</script>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     MASTER CASHFLOW ENGINE — ACCURATE ARREARS & BANK INTERCONNECT
-     ═══════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-  'use strict';
-  console.log('%c[script] MASTER CASHFLOW ENGINE loaded', 'color:#ef4444;font-weight:bold');
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     CORE CALCULATION FUNCTION (Used by Calendar & Reports)
-     ═══════════════════════════════════════════════════════════════════════ */
-  function calculateCashflow(bankId, targetDate) {
-    // 1. Get exact Bank Balance from Accounting Engine
-    let currentBankBal = 0;
-    if (bankId === 'all') {
-      currentBankBal = arr(state.data.banks).filter(b => b.active !== false).reduce((s, b) => s + bankBalances(b.id).bank, 0);
-    } else {
-      currentBankBal = bankBalances(bankId).bank;
-    }
-
-    // 2. Gather ALL pending liabilities (scheduled, approved, pending_approval)
-    let pendingCheques = arr(state.data.cheques).filter(c => 
-      ['scheduled', 'approved', 'pending_approval'].includes(c.status)
-    );
-    
-    if (bankId !== 'all') {
-      pendingCheques = pendingCheques.filter(c => c.bankId === bankId);
-    }
-
-    // 3. Separate Arrears from Future
-    const todayStr = today();
-    let arrearsTotal = 0;
-    let arrearsList = [];
-    
-    // We only calculate arrears for *today's* projected balance if we are looking at today or future
-    pendingCheques.forEach(c => {
-      if (c.chequeDate <= todayStr) {
-        arrearsList.push(c);
-        arrearsTotal += num(c.amount);
-      }
-    });
-
-    // 4. Build Timeline
-    const timeline = [];
-    // Starting from today, project forward
-    let runningBalance = currentBankBal;
-    
-    // First, hit today with the arrears
-    runningBalance -= arrearsTotal;
-    timeline.push({
-      date: todayStr,
-      isToday: true,
-      arrears: arrearsList,
-      cheques: pendingCheques.filter(c => c.chequeDate === todayStr && c.status !== 'cleared'),
-      totalDue: arrearsTotal,
-      opening: currentBankBal,
-      closing: runningBalance
-    });
-
-    // Then project future days
-    for (let i = 1; i <= 60; i++) { // 60-day projection
-      const d = shiftDate(todayStr, i);
-      const dayCheques = pendingCheques.filter(c => c.chequeDate === d);
-      const dayTotal = dayCheques.reduce((s, c) => s + num(c.amount), 0);
-      
-      const opening = runningBalance;
-      runningBalance -= dayTotal;
-      
-      timeline.push({
-        date: d,
-        isToday: false,
-        arrears: [], // Arrears are only kept in today's bucket for projection purposes
-        cheques: dayCheques,
-        totalDue: dayTotal,
-        opening: opening,
-        closing: runningBalance
-      });
-    }
-
-    return {
-      currentBankBal,
-      arrearsTotal,
-      arrearsList,
-      timeline
-    };
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     MODULE 1: ACCURATE PDC CALENDAR
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.renderPdcCalendar = function() {
-    const f = state.filters.pdcCalendar || {};
-    const currentYm = f.ym || today().slice(0, 7);
-    const filterBankId = f.bankId || 'all';
-    
-    const [year, month] = currentYm.split('-').map(x => parseInt(x, 10));
-    const firstOfMonth = new Date(year, month - 1, 1);
-    const lastOfMonth = new Date(year, month, 0);
-    const startWeekday = firstOfMonth.getDay();
-    const daysInMonth = lastOfMonth.getDate();
-    const todayStr = today();
-
-    // Calculate the exact timeline
-    const data = calculateCashflow(filterBankId, currentYm);
-    
-    // Map timeline to a dictionary for easy calendar lookup
-    const timelineMap = {};
-    data.timeline.forEach(t => { timelineMap[t.date] = t; });
-
-    const cells = [];
-    for (let i = 0; i < startWeekday; i++) cells.push(null);
-    
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      
-      // Find if we have data for this day
-      // If the day is in the past, we show arrears (if any) and actual cleared balance
-      // If it's today or future, we show the projection
-      let tData = timelineMap[dateStr];
-      
-      // If it's a past day (before today), we don't have a projected timeline for it
-      if (dateStr < todayStr) {
-        // Just show what was scheduled for that day
-        const pastCheques = arr(state.data.cheques).filter(c => 
-          c.chequeDate === dateStr && 
-          ['scheduled', 'approved', 'pending_approval', 'cleared', 'bounced'].includes(c.status) &&
-          (filterBankId === 'all' || c.bankId === filterBankId)
-        );
-        const pastTotal = pastCheques.filter(c => c.status !== 'bounced').reduce((s, c) => s + num(c.amount), 0);
-        tData = { totalDue: pastTotal, cheques: pastCheques, closing: 0, arrears: [] };
-      }
-
-      if (!tData) tData = { totalDue: 0, cheques: [], closing: 0, arrears: [] };
-
-      // Is this day a shortfall?
-      const isShortfall = tData.closing < 0 && tData.totalDue > 0;
-
-      cells.push({
-        date: dateStr,
-        dayNum: d,
-        isToday: dateStr === todayStr,
-        data: tData,
-        isShortfall
-      });
-    }
-
-    const monthLabel = firstOfMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-    const bankOptions = arr(state.data.banks).filter(b => b.active !== false).map(b => 
-      `<option value="${esc(b.id)}" ${filterBankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`
-    ).join('');
-
-    return `
-      <div class="card" style="margin-bottom:20px; background:var(--surface-2);">
-        <div style="display:grid; grid-template-columns:auto auto 1fr auto; gap:16px; align-items:center;">
-          <div style="display:flex; gap:6px;">
-            <button class="btn" data-action="pdc-prev">←</button>
-            <button class="btn" data-action="pdc-today">Today</button>
-            <button class="btn" data-action="pdc-next">→</button>
-          </div>
-          <h3 style="margin:0; font-size:20px; font-weight:700;">${monthLabel}</h3>
-          <div></div>
-          <div style="display:flex; gap:12px; align-items:center;">
-            <label class="field" style="margin:0; flex-direction:row; align-items:center; gap:8px;">
-              <span style="font-size:12px; font-weight:600; color:var(--text-3);">Bank:</span>
-              <select id="pdcBankFilter" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:13px;">
-                <option value="all" ${filterBankId === 'all' ? 'selected' : ''}>All Banks</option>
-                ${bankOptions}
-              </select>
-            </label>
-            <div style="padding:8px 16px; background:var(--accent-soft); border-radius:8px; border:1px solid var(--accent); text-align:right;">
-              <div style="font-size:10px; text-transform:uppercase; font-weight:700; color:var(--accent-text);">Exact Bank Bal</div>
-              <div style="font-size:16px; font-weight:800; color:var(--accent-text);">${money(data.currentBankBal)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ARREARS WARNING BANNER -->
-      ${data.arrearsTotal > 0 ? `
-        <div class="alert" style="background:var(--red-soft); border:1px solid var(--red); color:var(--red); margin-bottom:16px; font-weight:600;">
-          ⚠️ <strong>Arrears Alert:</strong> There are ${data.arrearsList.length} cheques from previous days totaling <strong>${money(data.arrearsTotal)}</strong> that have NOT been cleared. This has been deducted from today's starting balance.
-        </div>
-      ` : ''}
-
-      <div class="card" style="padding:0; overflow:hidden; border:1px solid var(--border-3);">
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); background:var(--border); gap:1px;">
-          ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div style="background:var(--surface-3); padding:12px 0; text-align:center; font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-2);">${d}</div>`).join('')}
-
-          ${cells.map(c => {
-            if (!c) return '<div style="background:var(--surface); min-height:130px;"></div>';
-            
-            let bg = 'var(--surface)';
-            let badgeBg = 'var(--accent-soft)';
-            let badgeText = 'var(--accent-text)';
-            
-            if (c.isShortfall) {
-              bg = 'var(--red-soft)'; badgeBg = 'var(--red)'; badgeText = '#fff';
-            } else if (c.data.totalDue > 0) {
-              badgeBg = 'var(--blue-soft)'; badgeText = 'var(--blue)';
-            }
-
-            return `
-              <div style="background:${bg}; min-height:130px; padding:10px; position:relative; display:flex; flex-direction:column; ${c.isToday ? 'box-shadow:inset 0 0 0 2px var(--accent); z-index:1;' : ''}"
-                   data-action="pdc-day-click" data-date="${c.date}">
-                
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                  <div style="font-weight:800; font-size:14px; color:${c.isToday ? 'var(--accent)' : 'var(--text-3)'};">${c.dayNum}</div>
-                  ${c.isToday ? '<span style="font-size:9px; font-weight:800; background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px;">TODAY</span>' : ''}
-                </div>
-                
-                <div style="flex:1;"></div>
-
-                ${c.data.totalDue > 0 ? `
-                  <div style="background:${badgeBg}; color:${badgeText}; padding:6px; border-radius:6px; font-weight:800; font-size:13px; text-align:center; margin-bottom:6px;">
-                    ${money(c.data.totalDue)}
-                  </div>
-                  <div style="font-size:11px; font-weight:600; color:var(--text-3); text-align:center;">
-                    ${c.data.cheques.length + (c.data.arrears ? c.data.arrears.length : 0)} chq
-                  </div>
-                  <div style="font-size:11px; font-weight:700; margin-top:4px; text-align:center; color:${c.isShortfall ? 'var(--red)' : 'var(--green)'};">
-                    Bal: ${money(c.data.closing)}
-                  </div>
-                ` : `
-                  <div style="font-size:11px; font-weight:600; color:var(--text-4); text-align:center; padding-bottom:4px;">
-                    ${c.date < todayStr ? 'Past' : 'Bal: ' + money(c.data.closing)}
-                  </div>
-                `}
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `;
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     MODULE 2: DAY CLICK MODAL
-     ═══════════════════════════════════════════════════════════════════════ */
-  function openPdcDayModal(dateStr) {
-    const filterBankId = state.filters.pdcCalendar?.bankId || 'all';
-    let list = [];
-
-    if (dateStr === today()) {
-       // Show both arrears and today's cheques
-       list = arr(state.data.cheques).filter(c => 
-         (c.chequeDate <= today() || c.chequeDate === today()) && 
-         ['scheduled', 'approved', 'pending_approval'].includes(c.status) &&
-         (filterBankId === 'all' || c.bankId === filterBankId)
-       );
-    } else {
-       list = arr(state.data.cheques).filter(c => 
-         c.chequeDate === dateStr && 
-         ['scheduled', 'approved', 'pending_approval', 'cleared'].includes(c.status) &&
-         (filterBankId === 'all' || c.bankId === filterBankId)
-       );
-    }
-
-    if (!list.length) {
-      openModal('📅 Day Details', `<div class="empty">No cheques on ${dateFmt(dateStr)}</div>`, { width: 500 });
-      return;
-    }
-
-    const total = list.reduce((s, c) => s + num(c.amount), 0);
-
-    const body = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <div>
-          <div style="font-size:20px; font-weight:800; color:var(--text);">${dateFmt(dateStr)}</div>
-          <div style="font-size:13px; color:var(--text-3); margin-top:2px;">${list.length} cheque(s)</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="k-label">Total</div>
-          <div style="font-size:24px; font-weight:800; color:var(--red);">${money(total)}</div>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date</th><th>Cheque #</th><th>Payee</th><th>Bank</th><th>Status</th><th class="num">Amount</th></tr></thead>
-          <tbody>
-            ${list.map(c => `
-              <tr>
-                <td>${dateFmt(c.chequeDate)}</td>
-                <td class="mono">${esc(c.chequeNo)}</td>
-                <td><strong>${esc(c.payeeName)}</strong></td>
-                <td>${esc(bankName(c.bankId))}</td>
-                <td>${chequeStatusBadge(c.status)}</td>
-                <td class="num"><strong>${money(c.amount)}</strong></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    openModal('📅 Cheques for ' + dateFmt(dateStr), body, { width: 800, footer: '<button class="btn" data-close-modal>Close</button>' });
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     MODULE 3: ACCURATE WHATSAPP REPORT (Interconnected with Arrears)
-     ═══════════════════════════════════════════════════════════════════════ */
-  window.renderDailyReport = function() {
-    // Force Chart.js to load
-    if (!window.Chart) {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-      document.head.appendChild(s);
-    }
-    if (!window.html2canvas) {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      document.head.appendChild(s);
-    }
-
-    const tomorrowStr = shiftDate(today(), 1);
-    const cfg = window.reportConfig || { showSummary: true, showActionItems: true, showChart: true, showBankBreakdown: true, showTopPayees: true };
-
-    // 1. Get Accurate Cashflow for TOMORROW
-    const flow = calculateCashflow('all', tomorrowStr);
-    const tomorrowData = flow.timeline.find(t => t.date === tomorrowStr);
-    
-    // Calculate total due tomorrow (Arrears + Tomorrow's cheques)
-    const tomorrowArrears = flow.arrearsList; // From today
-    const tomorrowCheques = tomorrowData ? tomorrowData.cheques : [];
-    
-    // Wait, the flow logic puts arrears in TODAY. So for tomorrow's report, we must show:
-    // 1. The Un-cleared Arrears from before tomorrow
-    // 2. The cheques scheduled FOR tomorrow
-    const relevantCheques = [...tomorrowArrears, ...tomorrowCheques];
-    const totalDue = relevantCheques.reduce((s, c) => s + num(c.amount), 0);
-
-    // Exact Bank Balance Today
-    const exactBankBal = flow.currentBankBal;
-    const isShortfall = totalDue > exactBankBal;
-
-    return `
-      <div class="card no-print" style="display:flex; flex-direction:column; gap:16px; border-left:4px solid var(--accent);">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <h3 style="margin:0; font-size:18px;">📱 Ultimate Cashflow Report</h3>
-            <div style="font-size:12px; color:var(--text-3); margin-top:4px;">Accurate forecasting with Arrears & Bank Interconnect</div>
-          </div>
-          <button class="btn primary" onclick="window.downloadWAReport()">📥 Download Image</button>
-        </div>
-      </div>
-
-      <!-- CANVAS TO EXPORT -->
-      <div id="waReportCanvas" style="background:#f8fafc; padding:36px; border-radius:16px; max-width:950px; margin:0 auto; font-family:'Segoe UI', Roboto, sans-serif; border:1px solid #e2e8f0;">
-        
-        <!-- HEADER -->
-        <div style="background:#0f172a; border-radius:16px; padding:28px; margin-bottom:24px; display:flex; justify-content:space-between;">
-          <div>
-            <div style="color:#94a3b8; font-size:12px; font-weight:800; text-transform:uppercase;">Tomorrow's Forecast (${dateFmt(tomorrowStr)})</div>
-            <div style="color:#fff; font-size:28px; font-weight:900;">${state.settings?.business?.name || 'Lanka Shoe'}</div>
-          </div>
-          <div style="background:${isShortfall ? '#ef4444' : '#eab308'}; padding:20px; border-radius:12px; text-align:right; min-width:240px;">
-            <div style="color:rgba(0,0,0,0.7); font-size:11px; font-weight:800; text-transform:uppercase;">Total Due (Incl Arrears)</div>
-            <div style="color:#000; font-size:32px; font-weight:900;">${money(totalDue)}</div>
-          </div>
-        </div>
-
-        <!-- SUMMARY -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
-          <div style="background:#fff; padding:20px; border-radius:12px; border:1px solid #e2e8f0; border-top:4px solid #3b82f6;">
-            <div style="font-size:12px; font-weight:800; color:#64748b; text-transform:uppercase;">Exact Bank Balance</div>
-            <div style="font-size:28px; font-weight:900; color:#0f172a;">${money(exactBankBal)}</div>
-          </div>
-          <div style="background:${isShortfall ? '#fef2f2' : '#ecfdf5'}; padding:20px; border-radius:12px; border:1px solid ${isShortfall ? '#f87171' : '#34d399'};">
-            <div style="font-size:12px; font-weight:800; color:${isShortfall ? '#b91c1c' : '#047857'}; text-transform:uppercase;">Status</div>
-            <div style="font-size:24px; font-weight:900; color:${isShortfall ? '#ef4444' : '#10b981'};">
-              ${isShortfall ? '⚠️ INSUFFICIENT' : '✓ SUFFICIENT'}
-            </div>
-          </div>
-        </div>
-
-        <!-- ARREARS WARNING -->
-        ${tomorrowArrears.length > 0 ? `
-          <div style="background:#fef2f2; border:1px solid #f87171; border-radius:12px; padding:20px; margin-bottom:24px; border-left:6px solid #ef4444;">
-            <div style="font-size:14px; font-weight:800; color:#b91c1c; text-transform:uppercase; margin-bottom:8px;">🚨 ARREARS ROLLING OVER</div>
-            <div style="font-size:13px; color:#7f1d1d; margin-bottom:12px;">These cheques are from previous days and have NOT cleared. They will hit the bank tomorrow.</div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              ${tomorrowArrears.map(c => `
-                <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #fecaca; display:flex; justify-content:space-between;">
-                  <div><strong>${esc(c.payeeName)}</strong> (Date: ${dateFmt(c.chequeDate)})</div>
-                  <div style="font-weight:900; color:#ef4444;">${money(c.amount)}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- TOMORROW'S CHEQUES -->
-        <div style="margin-bottom:24px;">
-          <div style="font-size:14px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:16px;">Cheques Due Tomorrow</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-            ${tomorrowCheques.length ? tomorrowCheques.map(c => `
-              <div style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                  <div style="font-weight:800; color:#0f172a;">${esc(c.payeeName)}</div>
-                  <div style="font-weight:900; color:#0f172a;">${money(c.amount)}</div>
-                </div>
-                <div style="font-size:12px; color:#64748b;">Chq #${esc(c.chequeNo)} · ${esc(bankName(c.bankId))}</div>
-              </div>
-            `).join('') : '<div style="color:#64748b; font-size:13px;">No new cheques for tomorrow.</div>'}
-          </div>
-        </div>
-
-        <!-- FOOTER -->
-        <div style="text-align:center; font-size:12px; color:#94a3b8; font-weight:600; border-top:1px solid #e2e8f0; padding-top:20px;">
-          Generated by ${state.settings?.business?.name || 'Lanka Shoe'} · ${new Date().toLocaleString('en-GB')}
-        </div>
-      </div>
-    `;
-  };
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     ACTIONS & BINDINGS
-     ═══════════════════════════════════════════════════════════════════════ */
-  __LS_addRoute('pdc-calendar', 'PDC Calendar', window.renderPdcCalendar);
-  __LS_addNav({ group: 'Cheques', id: 'pdc-calendar', ico: '📅', label: 'PDC Calendar' });
-  __LS_addRoute('daily-report', 'WhatsApp Report', window.renderDailyReport);
-
-  __LS_registerAction('pdc-prev', () => {
-    const f = state.filters.pdcCalendar || {};
-    const ym = f.ym || today().slice(0, 7);
-    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
-    const prev = new Date(y, m - 2, 1);
-    state.filters.pdcCalendar = Object.assign({}, f, { ym: prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0') });
-    renderApp();
-  });
-  __LS_registerAction('pdc-next', () => {
-    const f = state.filters.pdcCalendar || {};
-    const ym = f.ym || today().slice(0, 7);
-    const [y, m] = ym.split('-').map(x => parseInt(x, 10));
-    const next = new Date(y, m, 1);
-    state.filters.pdcCalendar = Object.assign({}, f, { ym: next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') });
-    renderApp();
-  });
-  __LS_registerAction('pdc-today', () => {
-    const f = state.filters.pdcCalendar || {};
-    state.filters.pdcCalendar = Object.assign({}, f, { ym: today().slice(0, 7) });
-    renderApp();
-  });
-  __LS_registerAction('pdc-day-click', (ev) => {
-    const date = ev.target.closest('[data-date]').dataset.date;
-    openPdcDayModal(date);
-  });
-
-  window.downloadWAReport = async function() {
-    const el = document.getElementById('waReportCanvas');
-    if (!el) return;
-    toast('Generating high-res image...', 'info');
-    try {
-      const canvas = await window.html2canvas(el, { scale: 3, backgroundColor: '#f8fafc', useCORS: true });
-      const link = document.createElement('a');
-      link.download = `Cashflow_Forecast_${today()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      toast('Image downloaded successfully!', 'success');
-    } catch (e) {
-      toast('Failed to generate image', 'error');
-    }
-  };
-
-  __LS_register('MASTER-CASHFLOW', function () {
-    const prevBind = window.bindView;
-    window.bindView = function () {
-      try { if (prevBind) prevBind(); } catch(e){}
-      const bankFilter = document.getElementById('pdcBankFilter');
-      if (bankFilter) {
-        bankFilter.onchange = () => {
-          const f = state.filters.pdcCalendar || {};
-          state.filters.pdcCalendar = Object.assign({}, f, { bankId: bankFilter.value });
-          renderApp();
-        };
-      }
-    };
-    scriptLoaded('MASTER-CASHFLOW');
-  });
-
 })();
 </script>
 </body>

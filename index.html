@@ -16197,5 +16197,354 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     FEATURE 5: NEXT-LEVEL BATCH CHEQUE WRITER
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  window.openBatchChequeFormPro = function() {
+    if (!state.perms.write) { toast('Read-only role', 'error'); return; }
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
+
+    const body = `
+      <style>
+        .bw-wrap { display: flex; flex-direction: column; height: 75vh; background: #f8fafc; margin: -22px; }
+        
+        /* Top Dashboard */
+        .bw-header { background: #0f172a; color: #fff; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--accent); }
+        .bw-kpi-box { display: flex; gap: 30px; align-items: center; }
+        .bw-kpi .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-weight: 700; margin-bottom: 4px; }
+        .bw-kpi .val { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+        
+        /* Grid Area */
+        .bw-grid-wrap { flex: 1; overflow: auto; padding: 20px; }
+        .bw-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        
+        .bw-table th { 
+          text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; 
+          color: #64748b; font-weight: 800; letter-spacing: 0.5px; background: #fff; 
+          border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10;
+        }
+        .bw-table td { 
+          background: #fff; padding: 8px 14px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+        }
+        .bw-table tr td:first-child { border-left: 1px solid #e2e8f0; border-radius: 8px 0 0 8px; }
+        .bw-table tr td:last-child { border-right: 1px solid #e2e8f0; border-radius: 0 8px 8px 0; }
+        
+        .bw-input { width: 100%; border: 1px solid transparent; padding: 8px 10px; border-radius: 6px; font-size: 13px; background: transparent; transition: 0.15s; }
+        .bw-input:focus { border-color: var(--accent); background: #fff; outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+        .bw-input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; }
+        
+        .bw-num { text-align: right; font-variant-numeric: tabular-nums; }
+        
+        /* Footer Bar */
+        .bw-footer { background: #fff; border-top: 1px solid #e2e8f0; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+      </style>
+
+      <div class="bw-wrap">
+        <!-- TOP DASHBOARD -->
+        <div class="bw-header">
+          <div>
+            <h2 style="font-size: 18px; font-weight: 800; margin-bottom: 4px;">Batch Cheque Writer</h2>
+            <div style="font-size: 12px; color: #94a3b8;">Write up to 50 cheques at once. Auto-saves to ledger.</div>
+          </div>
+          
+          <div class="bw-kpi-box">
+            <div class="bw-kpi">
+              <div class="lbl">Total Batch Amount</div>
+              <div class="val" id="bwTotalAmount" style="color: #eab308;">Rs. 0.00</div>
+            </div>
+            <div class="bw-kpi">
+              <div class="lbl">Book Balance (After Batch)</div>
+              <div class="val" id="bwBookAfter">Rs. 0.00</div>
+            </div>
+            <div class="bw-kpi">
+              <div class="lbl">Cheques</div>
+              <div class="val" id="bwRowCount">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div style="padding: 16px 24px; background: #fff; border-bottom: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+          <label class="field" style="margin: 0;">Source Bank
+            <select id="bwBank" style="font-weight: 600;">
+              ${banks.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('')}
+            </select>
+          </label>
+          <label class="field" style="margin: 0;">Cheque Book
+            <select id="bwBook" style="font-weight: 600;">
+              <option value="">— Manual / No book —</option>
+            </select>
+          </label>
+          <div style="display: flex; align-items: flex-end;">
+            <button class="btn" id="bwAddRow" style="width: 100%; border-style: dashed;">＋ Add 1 Row</button>
+          </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="bw-grid-wrap">
+          <table class="bw-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">#</th>
+                <th style="width: 25%;">Payee Name</th>
+                <th style="width: 120px;">Cheque No.</th>
+                <th style="width: 150px;">Amount</th>
+                <th style="width: 150px;">Cheque Date</th>
+                <th>Memo</th>
+                <th style="width: 50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="bwRows"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    openModal('📝 Write Batch Cheques', body, {
+      width: 1200,
+      footer: `
+        <button class="btn" data-close-modal>Cancel</button>
+        <button class="btn primary" id="bwSaveAllBtn" style="padding: 10px 24px;">💾 Save All Cheques</button>
+      `
+    });
+
+    // Maximize modal
+    document.querySelector('#modalWrap .modal').style.maxWidth = '96vw';
+    document.querySelector('#modalWrap .modal').style.width = '96vw';
+    document.querySelector('#modalWrap .modal-body').style.padding = '0';
+    document.querySelector('#modalWrap .modal-body').style.overflow = 'hidden';
+
+    // State
+    let rows = [];
+    let rowCounter = 0;
+
+    const bankSel = document.getElementById('bwBank');
+    const bookSel = document.getElementById('bwBook');
+    const rowsContainer = document.getElementById('bwRows');
+    const totalEl = document.getElementById('bwTotalAmount');
+    const bookAfterEl = document.getElementById('bwBookAfter');
+    const rowCountEl = document.getElementById('bwRowCount');
+
+    // Update Books Dropdown
+    function refreshBooks() {
+      const bid = bankSel.value;
+      const books = arr(state.data.chequeBooks).filter(b => b.bankId === bid && b.active !== false);
+      bookSel.innerHTML = '<option value="">— Manual / No book —</option>' + 
+        books.map(b => `<option value="${b.id}">${esc(b.bookNo)} (${b.serialStart} - ${b.serialEnd})</option>`).join('');
+      if (books.length) bookSel.value = books[0].id;
+      reassignLeaves();
+    }
+
+    // Auto-assign next available leaves to rows without a manual number
+    function reassignLeaves() {
+      const bkid = bookSel.value;
+      const book = bkid ? bookObj(bkid) : null;
+      
+      const availLeaves = book ? arr(book.leaves).filter(l => l.status === 'available') : [];
+      let leafIdx = 0;
+
+      rows.forEach(r => {
+        if (!r.isManualNo && book) {
+          if (leafIdx < availLeaves.length) {
+            const leaf = availLeaves[leafIdx];
+            const realIdx = arr(book.leaves).indexOf(leaf);
+            r.leafId = realIdx;
+            r.chequeNo = leaf.serial;
+            leafIdx++;
+          } else {
+            r.leafId = null;
+            r.chequeNo = '';
+          }
+        }
+      });
+      renderGrid();
+    }
+
+    // Add Row
+    function addRow() {
+      if (rows.length >= 50) { toast('Max 50 rows per batch', 'warn'); return; }
+      rowCounter++;
+      rows.push({
+        id: 'r' + rowCounter,
+        payeeId: null,
+        payeeName: '',
+        payeeType: 'supplier',
+        chequeNo: '',
+        isManualNo: false,
+        amount: 0,
+        date: today(),
+        memo: '',
+        leafId: null
+      });
+      reassignLeaves();
+    }
+
+    // Render Grid
+    function renderGrid() {
+      rowsContainer.innerHTML = rows.map((r, i) => `
+        <tr data-row-id="${r.id}">
+          <td style="text-align: center; font-weight: 700; color: #94a3b8;">${i + 1}</td>
+          
+          <td>
+            <input type="text" class="bw-input bw-payee" value="${esc(r.payeeName)}" placeholder="Search payee..." autocomplete="off">
+          </td>
+          
+          <td>
+            <input type="text" class="bw-input bw-no ${r.isManualNo ? '' : 'bg-slate-50'}" value="${esc(r.chequeNo)}" placeholder="Manual #">
+          </td>
+          
+          <td>
+            <input type="number" class="bw-input bw-num bw-amt" value="${r.amount > 0 ? r.amount : ''}" placeholder="0.00" step="0.01">
+          </td>
+          
+          <td>
+            <input type="date" class="bw-input bw-date" value="${r.date}">
+          </td>
+          
+          <td>
+            <input type="text" class="bw-input bw-memo" value="${esc(r.memo)}" placeholder="Optional note">
+          </td>
+          
+          <td style="text-align: center;">
+            <button class="icon-btn bw-del" style="color: var(--red);">✕</button>
+          </td>
+        </tr>
+      `).join('');
+
+      bindRowEvents();
+      recalc();
+    }
+
+    // Recalculate Totals & Balances
+    function recalc() {
+      const total = rows.reduce((s, r) => s + num(r.amount), 0);
+      const bid = bankSel.value;
+      const bal = bankBalances(bid);
+      const afterBook = bal.book - total;
+
+      totalEl.textContent = money(total);
+      bookAfterEl.textContent = money(afterBook);
+      rowCountEl.textContent = rows.length;
+
+      bookAfterEl.style.color = afterBook < 0 ? '#ef4444' : '#10b981';
+    }
+
+    // Bind Grid Events
+    function bindRowEvents() {
+      document.querySelectorAll('#bwRows tr').forEach(tr => {
+        const rid = tr.dataset.rowId;
+        const row = rows.find(x => x.id === rid);
+        if (!row) return;
+
+        // Payee
+        const payeeInp = tr.querySelector('.bw-payee');
+        payeeInp.oninput = (e) => { row.payeeName = e.target.value; row.payeeId = null; };
+        // Simple auto-fill payee logic could be added here
+
+        // Cheque No (Manual override)
+        const noInp = tr.querySelector('.bw-no');
+        noInp.oninput = (e) => {
+          row.chequeNo = e.target.value;
+          row.isManualNo = true; // User typed, so stop auto-assigning
+          row.leafId = null;
+          noInp.classList.remove('bg-slate-50');
+        };
+
+        // Amount
+        tr.querySelector('.bw-amt').oninput = (e) => { row.amount = num(e.target.value); recalc(); };
+
+        // Date
+        tr.querySelector('.bw-date').onchange = (e) => { row.date = e.target.value; };
+
+        // Memo
+        tr.querySelector('.bw-memo').oninput = (e) => { row.memo = e.target.value; };
+
+        // Delete
+        tr.querySelector('.bw-del').onclick = () => {
+          rows = rows.filter(x => x.id !== rid);
+          reassignLeaves(); // Re-assign leaves to remaining rows
+        };
+      });
+    }
+
+    // Save Logic
+    document.getElementById('bwSaveAllBtn').onclick = () => {
+      const validRows = rows.filter(r => r.payeeName.trim() && num(r.amount) > 0 && r.chequeNo.trim());
+      if (validRows.length === 0) { toast('No valid rows to save', 'warn'); return; }
+      if (validRows.length !== rows.length) {
+        if (!confirm('Some rows are missing Payee, Amount, or Cheque #. They will be skipped. Continue?')) return;
+      }
+
+      const total = validRows.reduce((s, r) => s + num(r.amount), 0);
+      const bal = bankBalances(bankSel.value);
+      if (bal.book - total < 0) {
+        if (!confirm('⚠ Warning: This batch exceeds your Book Balance by ' + money(Math.abs(bal.book - total)) + '. Continue?')) return;
+      }
+
+      let savedCount = 0;
+      validRows.forEach(r => {
+        // Find payee ID
+        let pid = null;
+        const match = arr(state.data.payees).find(p => p.name.toLowerCase() === r.payeeName.toLowerCase());
+        if (match) pid = match.id;
+
+        const isFuture = r.date > today();
+        const status = isFuture ? 'scheduled' : 'pending_approval';
+
+        const newCheque = makeCheque({
+          chequeNo: r.chequeNo,
+          bankId: bankSel.value,
+          bookId: bookSel.value || '',
+          leafId: r.leafId,
+          payeeId: pid,
+          payeeName: r.payeeName,
+          amount: num(r.amount),
+          chequeDate: r.date,
+          writtenDate: today(),
+          status: status,
+          memo: r.memo,
+          notes: 'Created via Batch Writer'
+        });
+
+        state.data.cheques.push(newCheque);
+        markDirty('cheques', newCheque.id);
+        
+        // Reserve leaf
+        if (r.leafId !== null && bookSel.value) {
+          const book = bookObj(bookSel.value);
+          if (book) {
+            book.leaves[r.leafId].status = 'used';
+            book.leaves[r.leafId].chequeId = newCheque.id;
+            markDirty('chequeBooks', book.id);
+          }
+        }
+        savedCount++;
+      });
+
+      toast(`Successfully saved ${savedCount} cheques!`, 'success');
+      closeModal();
+      renderApp();
+    };
+
+    // Init
+    bankSel.onchange = refreshBooks;
+    bookSel.onchange = reassignLeaves;
+    document.getElementById('bwAddRow').onclick = addRow;
+
+    // Add initial 5 rows
+    refreshBooks();
+    for (let i = 0; i < 5; i++) addRow();
+  };
+
+  // Override the button action
+  window.__LS_registerAction('cheque-batch-new', () => window.openBatchChequeFormPro());
+
+})();
+</script>
 </body>
 </html>

@@ -16198,7 +16198,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     FEATURE 5: BATCH CHEQUE WRITER (Full Smart Features)
+     FEATURE 5: MASSIVE BATCH CHEQUE WRITER (With ALL Fields)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
@@ -16209,7 +16209,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     const banks = arr(state.data.banks).filter(b => b.active !== false);
     if (!banks.length) { toast('Add a bank first', 'warn'); return; }
 
-    // Inject CSS for the payee dropdown inside the table
     const style = document.createElement('style');
     style.innerHTML = `
       .bw-wrap { display: flex; flex-direction: column; height: 75vh; background: #f8fafc; margin: -22px; }
@@ -16219,19 +16218,18 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       .bw-kpi .val { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
       
       .bw-grid-wrap { flex: 1; overflow: auto; padding: 20px; }
-      .bw-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+      .bw-table { width: 100%; min-width: 1600px; border-collapse: separate; border-spacing: 0 8px; }
       
-      .bw-table th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.5px; background: #fff; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; }
+      .bw-table th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.5px; background: #fff; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
       .bw-table td { background: #fff; padding: 8px 14px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; vertical-align: middle; position: relative; }
       .bw-table tr td:first-child { border-left: 1px solid #e2e8f0; border-radius: 8px 0 0 8px; }
       .bw-table tr td:last-child { border-right: 1px solid #e2e8f0; border-radius: 0 8px 8px 0; }
       
       .bw-input { width: 100%; border: 1px solid transparent; padding: 8px 10px; border-radius: 6px; font-size: 13px; background: transparent; transition: 0.15s; font-family: var(--font); }
       .bw-input:focus { border-color: var(--accent); background: #fff; outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
-      .bw-input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; }
+      .bw-input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; font-size: 11px; }
       .bw-num { text-align: right; font-variant-numeric: tabular-nums; }
       
-      /* Payee Dropdown inside Table */
       .bw-suggestions { position: absolute; top: 100%; left: 14px; right: 14px; background: #fff; border: 1px solid var(--border); border-radius: 6px; margin-top: 4px; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: var(--shadow-lg); display: none; }
       .bw-suggestions.open { display: block; }
       .bw-suggest-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-2); font-size: 13px; }
@@ -16245,7 +16243,7 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         <div class="bw-header">
           <div>
             <h2 style="font-size: 18px; font-weight: 800; margin-bottom: 4px;">Batch Cheque Writer</h2>
-            <div style="font-size: 12px; color: #94a3b8;">Write up to 50 cheques at once. Auto-saves to ledger.</div>
+            <div style="font-size: 12px; color: #94a3b8;">Complete data entry for multiple cheques.</div>
           </div>
           <div class="bw-kpi-box">
             <div class="bw-kpi">
@@ -16279,13 +16277,17 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
           <table class="bw-table">
             <thead>
               <tr>
-                <th style="width: 50px; text-align: center;">#</th>
-                <th style="width: 25%;">Payee Name</th>
-                <th style="width: 120px;">Cheque No.</th>
-                <th style="width: 150px;">Amount</th>
-                <th style="width: 150px;">Cheque Date</th>
-                <th>Memo</th>
-                <th style="width: 50px;"></th>
+                <th style="width: 40px; text-align: center;">#</th>
+                <th style="width: 200px;">Payee Name</th>
+                <th style="width: 120px;">Payee Type</th>
+                <th style="width: 110px;">Cheque No.</th>
+                <th style="width: 120px;">Amount (Rs.)</th>
+                <th style="width: 220px;">Amount in Words</th>
+                <th style="width: 130px;">Cheque Date</th>
+                <th style="width: 130px;">Written Date</th>
+                <th style="width: 150px;">Memo</th>
+                <th style="width: 150px;">Notes</th>
+                <th style="width: 40px;"></th>
               </tr>
             </thead>
             <tbody id="bwRows"></tbody>
@@ -16295,12 +16297,12 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     `;
 
     openModal('📝 Write Batch Cheques', body, {
-      width: 1200,
+      width: 1400,
       footer: `<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="bwSaveAllBtn" style="padding: 10px 24px;">💾 Save All Cheques</button>`
     });
 
-    document.querySelector('#modalWrap .modal').style.maxWidth = '96vw';
-    document.querySelector('#modalWrap .modal').style.width = '96vw';
+    document.querySelector('#modalWrap .modal').style.maxWidth = '98vw';
+    document.querySelector('#modalWrap .modal').style.width = '98vw';
     document.querySelector('#modalWrap .modal-body').style.padding = '0';
     document.querySelector('#modalWrap .modal-body').style.overflow = 'hidden';
 
@@ -16348,7 +16350,21 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     function addRow() {
       if (rows.length >= 50) { toast('Max 50 rows per batch', 'warn'); return; }
       rowCounter++;
-      rows.push({ id: 'r' + rowCounter, payeeId: null, payeeName: '', chequeNo: '', isManualNo: false, amount: 0, date: today(), memo: '', leafId: null });
+      rows.push({ 
+        id: 'r' + rowCounter, 
+        payeeId: null, 
+        payeeName: '', 
+        payeeType: 'supplier',
+        chequeNo: '', 
+        isManualNo: false, 
+        amount: 0, 
+        amountWords: '',
+        date: today(), 
+        writtenDate: today(),
+        memo: '', 
+        notes: '',
+        leafId: null 
+      });
       reassignLeaves();
     }
 
@@ -16358,16 +16374,30 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
           <td style="text-align: center; font-weight: 700; color: #94a3b8;">${i + 1}</td>
           
           <td>
-            <!-- Payee Search Input -->
             <input type="text" class="bw-input bw-payee" value="${esc(r.payeeName)}" placeholder="Search saved payee..." autocomplete="off" data-id="${r.id}">
-            <!-- Dropdown container -->
             <div class="bw-suggestions" id="sug-${r.id}"></div>
           </td>
           
+          <td>
+            <select class="bw-input bw-type">
+              ${Object.keys(PAYEE_TYPES).map(k => `<option value="${k}" ${r.payeeType === k ? 'selected' : ''}>${PAYEE_TYPES[k].label}</option>`).join('')}
+            </select>
+          </td>
+          
           <td><input type="text" class="bw-input bw-no ${r.isManualNo ? '' : 'bg-slate-50'}" value="${esc(r.chequeNo)}" placeholder="Manual #"></td>
+          
           <td><input type="number" class="bw-input bw-num bw-amt" value="${r.amount > 0 ? r.amount : ''}" placeholder="0.00" step="0.01"></td>
+          
+          <td><input type="text" class="bw-input bw-words" value="${esc(r.amountWords)}" readonly placeholder="Auto-generated"></td>
+          
           <td><input type="date" class="bw-input bw-date" value="${r.date}"></td>
+          
+          <td><input type="date" class="bw-input bw-wdate" value="${r.writtenDate}"></td>
+          
           <td><input type="text" class="bw-input bw-memo" value="${esc(r.memo)}" placeholder="Optional"></td>
+          
+          <td><input type="text" class="bw-input bw-notes" value="${esc(r.notes)}" placeholder="Optional"></td>
+          
           <td style="text-align: center;"><button class="icon-btn bw-del" style="color: var(--red);">✕</button></td>
         </tr>
       `).join('');
@@ -16393,26 +16423,21 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         const row = rows.find(x => x.id === rid);
         if (!row) return;
 
-        // --- 1. PAYEE AUTOCOMPLETE LOGIC ---
         const payeeInp = tr.querySelector('.bw-payee');
         const sugBox = document.getElementById('sug-' + rid);
 
         payeeInp.oninput = (e) => {
           row.payeeName = e.target.value;
-          row.payeeId = null; // Reset ID until they pick from dropdown
+          row.payeeId = null;
           
           const q = e.target.value.trim().toLowerCase();
           if (!q) { sugBox.classList.remove('open'); return; }
 
-          const matches = arr(state.data.payees)
-            .filter(p => p.active !== false)
-            .filter(p => (p.name || '').toLowerCase().indexOf(q) !== -1)
-            .slice(0, 5);
+          const matches = arr(state.data.payees).filter(p => p.active !== false && (p.name || '').toLowerCase().indexOf(q) !== -1).slice(0, 5);
 
           if (!matches.length) {
             sugBox.innerHTML = '<div class="bw-suggest-item" style="color:var(--accent); font-weight:600;">＋ Add new payee: ' + esc(e.target.value) + '</div>';
             sugBox.classList.add('open');
-            // Quick add logic could go here
             return;
           }
 
@@ -16425,9 +16450,8 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
           sugBox.classList.add('open');
         };
 
-        // Handle dropdown click
         sugBox.onmousedown = (e) => {
-          e.preventDefault(); // Prevent blur
+          e.preventDefault(); 
           const item = e.target.closest('.bw-suggest-item');
           if (!item) return;
           
@@ -16438,11 +16462,17 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
               row.payeeId = p.id;
               row.payeeName = p.name;
               
-              // Auto-fill amount if empty
+              // Auto-fill type
+              tr.querySelector('.bw-type').value = p.type;
+              row.payeeType = p.type;
+
+              // Auto-fill amount
               const amtInp = tr.querySelector('.bw-amt');
               if (num(p.lastChequeAmount) > 0 && !num(amtInp.value)) {
                 amtInp.value = num(p.lastChequeAmount).toFixed(2);
                 row.amount = num(p.lastChequeAmount);
+                row.amountWords = numberToWords(row.amount);
+                tr.querySelector('.bw-words').value = row.amountWords;
                 recalc();
               }
             }
@@ -16450,11 +16480,12 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
           sugBox.classList.remove('open');
         };
 
-        payeeInp.onblur = () => {
-          setTimeout(() => sugBox.classList.remove('open'), 200);
-        };
+        payeeInp.onblur = () => { setTimeout(() => sugBox.classList.remove('open'), 200); };
 
-        // --- 2. CHEQUE NO (MANUAL OVERRIDE) ---
+        // Payee Type
+        tr.querySelector('.bw-type').onchange = (e) => { row.payeeType = e.target.value; };
+
+        // Cheque No
         const noInp = tr.querySelector('.bw-no');
         noInp.oninput = (e) => {
           row.chequeNo = e.target.value;
@@ -16463,12 +16494,21 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
           noInp.classList.remove('bg-slate-50');
         };
 
-        // --- 3. AMOUNT, DATE, MEMO ---
-        tr.querySelector('.bw-amt').oninput = (e) => { row.amount = num(e.target.value); recalc(); };
-        tr.querySelector('.bw-date').onchange = (e) => { row.date = e.target.value; };
-        tr.querySelector('.bw-memo').oninput = (e) => { row.memo = e.target.value; };
+        // Amount & Words
+        tr.querySelector('.bw-amt').oninput = (e) => { 
+          row.amount = num(e.target.value); 
+          row.amountWords = numberToWords(row.amount);
+          tr.querySelector('.bw-words').value = row.amountWords;
+          recalc(); 
+        };
 
-        // --- 4. DELETE ROW ---
+        // Dates & Memo & Notes
+        tr.querySelector('.bw-date').onchange = (e) => { row.date = e.target.value; };
+        tr.querySelector('.bw-wdate').onchange = (e) => { row.writtenDate = e.target.value; };
+        tr.querySelector('.bw-memo').oninput = (e) => { row.memo = e.target.value; };
+        tr.querySelector('.bw-notes').oninput = (e) => { row.notes = e.target.value; };
+
+        // Delete
         tr.querySelector('.bw-del').onclick = () => {
           rows = rows.filter(x => x.id !== rid);
           reassignLeaves();
@@ -16491,7 +16531,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
       let savedCount = 0;
       validRows.forEach(r => {
-        // Find payee ID if not explicitly set (e.g. typed name that matches)
         let pid = r.payeeId;
         if (!pid) {
           const match = arr(state.data.payees).find(p => p.name.toLowerCase() === r.payeeName.toLowerCase());
@@ -16507,19 +16546,20 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
           bookId: bookSel.value || '',
           leafId: r.leafId,
           payeeId: pid,
+          payeeType: r.payeeType,
           payeeName: r.payeeName,
           amount: num(r.amount),
+          amountWords: r.amountWords,
           chequeDate: r.date,
-          writtenDate: today(),
+          writtenDate: r.writtenDate || today(),
           status: status,
           memo: r.memo,
-          notes: 'Created via Batch Writer'
+          notes: r.notes || 'Created via Batch Writer'
         });
 
         state.data.cheques.push(newCheque);
         markDirty('cheques', newCheque.id);
         
-        // Reserve leaf
         if (r.leafId !== null && bookSel.value) {
           const book = bookObj(bookSel.value);
           if (book) {
@@ -16540,9 +16580,8 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     bookSel.onchange = reassignLeaves;
     document.getElementById('bwAddRow').onclick = addRow;
 
-    // Add initial 5 rows
     refreshBooks();
-    for (let i = 0; i < 5; i++) addRow();
+    for (let i = 0; i < 3; i++) addRow();
   };
 
   window.__LS_registerAction('cheque-batch-new', () => window.openBatchChequeFormPro());

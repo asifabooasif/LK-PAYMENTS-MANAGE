@@ -16835,5 +16835,94 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ULTIMATE PAYEE DATABASE SYNC & REPAIR
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // 1. The Core Sync Engine
+  window.syncAllPayees = function(silent) {
+    let createdCount = 0;
+    let linkedCount = 0;
+
+    arr(state.data.cheques).forEach(c => {
+      if (!c.payeeName || !c.payeeName.trim()) return;
+
+      const normalizedName = c.payeeName.replace(/\s+/g, ' ').trim().toLowerCase();
+
+      // Try to find existing payee by ID first
+      let payee = arr(state.data.payees).find(p => p.id === c.payeeId);
+
+      // If ID fails, try to find by Name
+      if (!payee) {
+        payee = arr(state.data.payees).find(p => 
+          p.name.replace(/\s+/g, ' ').trim().toLowerCase() === normalizedName
+        );
+      }
+
+      // If no payee exists, create them instantly!
+      if (!payee) {
+        payee = makePayee({ 
+          name: c.payeeName.trim(), 
+          type: c.payeeType || 'supplier' 
+        });
+        state.data.payees.push(payee);
+        markDirty('payees', payee.id);
+        createdCount++;
+      }
+
+      // Link the cheque to the payee ID
+      if (c.payeeId !== payee.id) {
+        c.payeeId = payee.id;
+        markDirty('cheques', c.id);
+        linkedCount++;
+      }
+    });
+
+    if (!silent && (createdCount > 0 || linkedCount > 0)) {
+      toast(`Sync Complete: Created ${createdCount} new payees, linked ${linkedCount} cheques.`, 'success');
+      renderApp();
+    } else if (!silent) {
+      toast('All payees are perfectly linked. No fixes needed.', 'info');
+    }
+  };
+
+  // 2. Run the Sync Automatically on Boot (Silent mode)
+  __LS_register('PAYEE-SYNC-BOOT', function() {
+    setTimeout(() => {
+      syncAllPayees(true); // Silent fix in background
+    }, 1000);
+  });
+
+  // 3. Add a manual "Sync & Repair" button to the Payees page
+  const origRenderPayees = window.renderPayees;
+  window.renderPayees = function() {
+    // Run the sync right before rendering to ensure 100% accuracy
+    syncAllPayees(true); 
+    
+    // Render the original Payees page (which will now have the correct data)
+    let html = origRenderPayees();
+    
+    // Inject the repair button into the header
+    html = html.replace(
+      '<button class="btn primary" data-action="payee-new">＋ New Payee</button>',
+      '<div style="display:flex; gap:8px;">' +
+        '<button class="btn" data-action="payee-force-sync" style="color:var(--accent); border-color:var(--accent)">🔄 Sync Links</button>' +
+        '<button class="btn primary" data-action="payee-new">＋ New Payee</button>' +
+      '</div>'
+    );
+    
+    return html;
+  };
+
+  // 4. Action handler for the manual button
+  window.__LS_registerAction('payee-force-sync', () => {
+    syncAllPayees(false);
+  });
+
+})();
+</script>
 </body>
 </html>

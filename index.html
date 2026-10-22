@@ -17185,5 +17185,146 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     UPCOMING CHEQUES REPORT — FINAL ROUTE OVERRIDE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  function renderUpcomingFixed() {
+    const f = state.filters.rptUpcoming || {};
+    // Default to 'all' so you see everything immediately
+    const days = f.days || 'all';
+    const bankId = f.bankId || 'all';
+
+    const start = today();
+    const end = shiftDate(start, num(days));
+
+    // INCLUDE 'approved' status here!
+    let list = arr(state.data.cheques).filter(c => 
+      ['scheduled', 'pending_approval', 'approved'].includes(c.status)
+    );
+
+    // Filter by Date (ONLY if not 'all')
+    if (days !== 'all') {
+      list = list.filter(c => c.chequeDate >= start && c.chequeDate <= end);
+    }
+
+    if (bankId !== 'all') list = list.filter(c => c.bankId === bankId);
+
+    list.sort((a, b) => a.chequeDate.localeCompare(b.chequeDate));
+    const total = list.reduce((s, c) => s + num(c.amount), 0);
+
+    // Group by date
+    const byDate = {};
+    list.forEach(c => {
+      if (!byDate[c.chequeDate]) byDate[c.chequeDate] = [];
+      byDate[c.chequeDate].push(c);
+    });
+    const dates = Object.keys(byDate).sort();
+
+    return '' +
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>📅 Upcoming Cheques ' + (days === 'all' ? '(All Time)' : '(next ' + days + ' days)') + '</h3>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+            '<label class="field" style="min-width:140px">Days' +
+              '<select id="upDays">' +
+                '<option value="all"' + (days === 'all' ? ' selected' : '') + '>All Upcoming</option>' +
+                [7, 14, 30, 90, 180].map(d =>
+                  '<option value="' + d + '"' + (String(days) === String(d) ? ' selected' : '') + '>Next ' + d + ' days</option>'
+                ).join('') +
+              '</select>' +
+            '</label>' +
+            '<label class="field" style="min-width:160px">Bank' +
+              '<select id="upBank">' +
+                '<option value="all"' + (bankId === 'all' ? ' selected' : '') + '>All banks</option>' +
+                arr(state.data.banks).map(b =>
+                  '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>'
+                ).join('') +
+              '</select>' +
+            '</label>' +
+            '<button class="btn" data-action="rpt-print">🖨 Print</button>' +
+            '<button class="btn primary" data-action="rpt-upcoming-export">⬇ CSV</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="kpi-strip">' +
+          '<div class="kpi"><div class="k-label">Cheques</div><div class="k-value">' + list.length + '</div></div>' +
+          '<div class="kpi"><div class="k-label">Total Value</div>' +
+            '<div class="k-value" style="font-size:18px">' + money(total) + '</div></div>' +
+          '<div class="kpi"><div class="k-label">Days Covered</div><div class="k-value">' + (days === 'all' ? '∞' : days) + '</div></div>' +
+          '<div class="kpi"><div class="k-label">Distinct Dates</div><div class="k-value">' + dates.length + '</div></div>' +
+        '</div>' +
+
+        (list.length
+          ? dates.map(d => {
+              const cheques = byDate[d];
+              const dayTotal = cheques.reduce((s, c) => s + num(c.amount), 0);
+              return '<div class="card" style="margin-top:16px;">' +
+                '<div class="card-head" style="margin-bottom:10px">' +
+                  '<h3 style="font-size:14px">' + dateFmt(d) +
+                    ' <span class="badge blue" style="margin-left:8px">' +
+                      (diffDays(today(), d) === 0 ? 'Today' : (diffDays(today(), d) < 0 ? diffDays(today(), d) + ' days ago' : diffDays(today(), d) + ' days')) +
+                    '</span>' +
+                  '</h3>' +
+                  '<strong>' + money(dayTotal) + '</strong>' +
+                '</div>' +
+                '<div class="table-wrap"><table>' +
+                  '<thead><tr>' +
+                    '<th>Cheque #</th><th>Payee</th><th>Bank</th><th>Status</th>' +
+                    '<th class="num">Amount</th><th class="actions-cell"></th>' +
+                  '</tr></thead><tbody>' +
+                  cheques.map(c =>
+                    '<tr>' +
+                      '<td class="mono"><strong>' + esc(c.chequeNo) + '</strong></td>' +
+                      '<td>' + esc(c.payeeName || '—') + '</td>' +
+                      '<td>' + esc(bankName(c.bankId)) + '</td>' +
+                      '<td>' + (c.status === 'approved' ? '<span class="badge green">Approved</span>' : '<span class="badge purple">Scheduled</span>') + '</td>' +
+                      '<td class="num">' + money(c.amount) + '</td>' +
+                      '<td class="actions-cell">' +
+                        '<button class="btn xs" data-action="cheque-open" data-id="' + esc(c.id) + '">Open</button>' +
+                      '</td>' +
+                    '</tr>'
+                  ).join('') +
+                '</tbody></table></div>' +
+              '</div>';
+            }).join('') +
+            '<div class="card" style="text-align:right; margin-top:16px;">' +
+              '<strong>Grand Total: ' + money(total) + '</strong>' +
+            '</div>'
+          : '<div class="card"><div class="empty"><span class="big">📅</span>' +
+            'No upcoming cheques found for this filter.</div></div>') +
+      '</div>';
+  }
+
+  // CRITICAL FIX: This line registers the new function with the router!
+  __LS_addRoute('rpt-upcoming', 'Upcoming Cheques', renderUpcomingFixed);
+
+  // Bind the dropdown to update the filter correctly
+  const prevBind = window.bindView;
+  window.bindView = function() {
+    try { if (prevBind) prevBind(); } catch (e) {}
+    const upDays = document.getElementById('upDays');
+    if (upDays) {
+      upDays.onchange = () => {
+        state.filters.rptUpcoming = Object.assign({}, state.filters.rptUpcoming, { 
+            days: upDays.value === 'all' ? 'all' : num(upDays.value) 
+        });
+        renderApp();
+      };
+    }
+    const upBank = document.getElementById('upBank');
+    if (upBank) {
+      upBank.onchange = () => {
+        state.filters.rptUpcoming = Object.assign({}, state.filters.rptUpcoming, { bankId: upBank.value });
+        renderApp();
+      };
+    }
+  };
+
+})();
+</script>
 </body>
 </html>

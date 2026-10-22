@@ -17326,5 +17326,218 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ULTIMATE TRASH & INSTANT SYNC FIX
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // Ensure trash collection is registered
+  __LS_addCollection('trash');
+
+  // 1. The Core Move-to-Trash Function
+  function forceMoveToTrash(collection, id) {
+    const item = arr(state.data[collection]).find(x => x.id === id);
+    if (!item) return;
+
+    // Create Trash Entry
+    const trashEntry = {
+      id: uid(),
+      collection: collection,
+      recordId: id,
+      label: item.name || item.chequeNo || item.bookNo || item.reason || 'Record',
+      item: JSON.parse(JSON.stringify(item)),
+      deletedAt: nowISO(),
+      deletedBy: state.user?.email || 'system'
+    };
+
+    if (!Array.isArray(state.data.trash)) state.data.trash = [];
+    state.data.trash.unshift(trashEntry);
+    markDirty('trash', trashEntry.id);
+
+    // Remove from main collection
+    state.data[collection] = state.data[collection].filter(x => x.id !== id);
+    
+    // Mark as dirty for sync
+    _dirty.add(collection + ':' + id);
+    delete _snapshot[collection + ':' + id];
+    
+    // Save to local cache immediately (so reload doesn't lose the deletion)
+    if (typeof saveCache === 'function') saveCache();
+
+    // Force immediate Firestore push (no debounce)
+    if (typeof sync !== 'undefined' && sync.push) {
+      sync.push(true).catch(e => dbg.err('Force delete sync failed: ' + e.message));
+    }
+  }
+
+  // 2. Override all core delete functions
+  window.deleteChequeById = function(id) {
+    if (!state.perms.delete) { toast('No permission', 'error'); return; }
+    const c = chequeObj(id);
+    if (!c) return;
+    if (!['draft', 'cancelled', 'void'].includes(c.status)) {
+      if(!confirm('This cheque is ' + c.status + '. Move to Trash anyway?')) return;
+    } else {
+      if (!confirm('Move cheque ' + c.chequeNo + ' to Trash?')) return;
+    }
+    
+    // Release leaf if attached
+    if (window.releaseLeaf) window.releaseLeaf(c);
+    
+    forceMoveToTrash('cheques', id);
+    closeModal();
+    toast('Cheque moved to Trash', 'success');
+    renderApp();
+  };
+
+  window.deletePayeeById = function(id) {
+    if (!state.perms.delete) { toast('No permission', 'error'); return; }
+    const p = payeeObj(id);
+    if (!p) return;
+    if (!confirm('Move payee "' + p.name + '" to Trash?')) return;
+    
+    forceMoveToTrash('payees', id);
+    closeModal();
+    toast('Payee moved to Trash', 'success');
+    renderApp();
+  };
+
+  window.deleteBankById = function(id) {
+    if (!state.perms.delete) { toast('No permission', 'error'); return; }
+    const b = bankObj(id);
+    if (!b) return;
+    
+    const linkedBooks = arr(state.data.chequeBooks).filter(bk => bk.bankId === id);
+    if (linkedBooks.length) { toast('Cannot delete — cheque books are linked.', 'error'); return; }
+    
+    if (!confirm('Move bank "' + b.name + '" to Trash?')) return;
+    forceMoveToTrash('banks', id);
+    closeModal();
+    toast('Bank moved to Trash', 'success');
+    renderApp();
+  };
+
+  window.deleteBookById = function(id) {
+    if (!state.perms.delete) { toast('No permission', 'error'); return; }
+    const bk = bookObj(id);
+    if (!bk) return;
+    if (!confirm('Move book "' + (bk.bookNo || '') + '" to Trash?')) return;
+    
+    forceMoveToTrash('chequeBooks', id);
+    closeModal();
+    toast('Book moved to Trash', 'success');
+    renderApp();
+  };
+
+  window.deleteAdjustmentById = function(id) {
+    if (!state.perms.delete) { toast('No permission', 'error'); return; }
+    const a = adjObj(id);
+    if (!a) return;
+    if (!confirm('Move this adjustment to Trash?')) return;
+    
+    forceMoveToTrash('bankAdjustments', id);
+    closeModal();
+    toast('Adjustment moved to Trash', 'success');
+    renderApp();
+  };
+
+  // 3. The Trash Page Renderer
+  window.renderTrashFixed = function() {
+    const all = arr(state.data.trash).slice().sort((a, b) => String(b.deletedAt).localeCompare(String(a.deletedAt)));
+
+    return '' +
+      '<div class="kpi-strip">' +
+        '<div class="kpi"><div class="k-label">Items in Trash</div><div class="k-value">' + all.length + '</div></div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>🗑 Trash</h3>' +
+          (all.length ? '<button class="btn danger" data-action="trash-empty-fixed">🗑 Empty Trash</button>' : '') +
+        '</div>' +
+        (all.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr><th>Date Deleted</th><th>Type</th><th>Label</th><th>Deleted By</th><th class="actions-cell"></th></tr></thead><tbody>' +
+              all.map(t => 
+                '<tr>' +
+                  '<td>' + dateTimeFmt(t.deletedAt) + '</td>' +
+                  '<td><span class="badge gray">' + esc(t.collection) + '</span></td>' +
+                  '<td><strong>' + esc(t.label) + '</strong></td>' +
+                  '<td class="small">' + esc(t.deletedBy) + '</td>' +
+                  '<td class="actions-cell">' +
+                    '<button class="btn xs primary" data-action="trash-restore-fixed" data-id="' + esc(t.id) + '">Restore</button>' +
+                    ' <button class="btn xs danger" data-action="trash-perm-delete-fixed" data-id="' + esc(t.id) + '">Delete Forever</button>' +
+                  '</td>' +
+                '</tr>'
+              ).join('') +
+            '</tbody></table></div>'
+          : '<div class="empty"><span class="big">🗑</span>Trash is empty.</div>') +
+      '</div>';
+  };
+
+  // Override the Trash Route
+  __LS_addRoute('trash', 'Trash', window.renderTrashFixed);
+
+  // 4. Restore & Delete Handlers
+  window.__LS_registerAction('trash-restore-fixed', (ev, id) => {
+    ev.stopPropagation();
+    const t = arr(state.data.trash).find(x => x.id === id);
+    if (!t || !t.item) return;
+
+    // Check if item already exists in the collection (safety)
+    if (arr(state.data[t.collection]).some(x => x.id === t.recordId)) {
+      toast('Record already exists in ' + t.collection, 'warn');
+      return;
+    }
+
+    // Put item back
+    state.data[t.collection].push(t.item);
+    markDirty(t.collection, t.recordId);
+
+    // Remove from trash
+    state.data.trash = state.data.trash.filter(x => x.id !== id);
+    _dirty.add('trash:' + id);
+    delete _snapshot['trash:' + id];
+
+    if (typeof saveCache === 'function') saveCache();
+    if (typeof sync !== 'undefined' && sync.push) sync.push(true);
+
+    toast('Record restored successfully!', 'success');
+    renderApp();
+  });
+
+  window.__LS_registerAction('trash-perm-delete-fixed', (ev, id) => {
+    ev.stopPropagation();
+    if (!confirm('Permanently delete this item? This cannot be undone.')) return;
+
+    state.data.trash = state.data.trash.filter(x => x.id !== id);
+    _dirty.add('trash:' + id);
+    delete _snapshot['trash:' + id];
+    
+    if (typeof saveCache === 'function') saveCache();
+    if (typeof sync !== 'undefined' && sync.push) sync.push(true);
+
+    toast('Permanently deleted', 'success');
+    renderApp();
+  });
+
+  window.__LS_registerAction('trash-empty-fixed', () => {
+    if (!confirm('Permanently delete ALL items in Trash?')) return;
+    state.data.trash.forEach(t => {
+      _dirty.add('trash:' + t.id);
+      delete _snapshot['trash:' + t.id];
+    });
+    state.data.trash = [];
+    
+    if (typeof saveCache === 'function') saveCache();
+    if (typeof sync !== 'undefined' && sync.push) sync.push(true);
+
+    toast('Trash emptied', 'success');
+    renderApp();
+  });
+
+})();
+</script>
 </body>
 </html>

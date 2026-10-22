@@ -16979,5 +16979,61 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CHEQUE BOOK AUTO-NUMBERING (Fills Gaps Automatically)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // Intercept the openBookForm function
+  const origOpenBookForm = window.openBookForm;
+  
+  window.openBookForm = function(id) {
+    // If creating a new book (no ID)
+    if (!id) {
+      // 1. Get all existing book numbers
+      const books = arr(state.data.chequeBooks);
+      
+      // 2. Extract just the numbers from the strings (e.g. "BK-001" becomes 1)
+      const existingNumbers = books.map(b => {
+        const match = String(b.bookNo).match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : null;
+      }).filter(n => n !== null).sort((a, b) => a - b);
+      
+      // 3. Find the first available gap
+      let nextNumber = 1;
+      for (let i = 0; i < existingNumbers.length; i++) {
+        if (existingNumbers[i] === nextNumber) {
+          nextNumber++; // This number is taken, try the next one
+        } else if (existingNumbers[i] > nextNumber) {
+          break; // We found a gap!
+        }
+      }
+      
+      // 4. Format as "001", "002", etc. (3 digits)
+      const autoBookNo = String(nextNumber).padStart(3, '0');
+      
+      // 5. Call the original form to open the modal
+      origOpenBookForm(id);
+      
+      // 6. Inject the auto-generated number into the input field
+      setTimeout(() => {
+        const input = document.getElementById('kBookNo');
+        if (input) {
+          input.value = autoBookNo;
+          // Highlight the text so the user knows it's auto-filled (optional)
+          input.select(); 
+        }
+      }, 50);
+      
+    } else {
+      // If editing an existing book, just open it normally
+      origOpenBookForm(id);
+    }
+  };
+
+})();
+</script>
 </body>
 </html>

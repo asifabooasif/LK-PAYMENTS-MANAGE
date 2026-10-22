@@ -16700,5 +16700,140 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAYEE LINK FIX & LIVE RECALCULATION
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // 1. Auto-Repair Broken Links in the background
+  function repairPayeeLinks() {
+    let fixed = 0;
+    const payees = arr(state.data.payees);
+    
+    arr(state.data.cheques).forEach(c => {
+      // If cheque has a name but no ID, try to find the matching payee
+      if (!c.payeeId && c.payeeName) {
+        const cleanName = c.payeeName.trim().toLowerCase();
+        const match = payees.find(p => p.name.trim().toLowerCase() === cleanName);
+        if (match) {
+          c.payeeId = match.id;
+          markDirty('cheques', c.id);
+          fixed++;
+        }
+      }
+    });
+
+    if (fixed > 0) {
+      dbg.ok('Auto-repaired ' + fixed + ' cheque links to payees.');
+      renderApp(); // Re-render if we fixed something
+    }
+  }
+
+  // 2. Override the Payee View to calculate totals LIVE
+  window.renderPayees = function() {
+    const all = arr(state.data.payees).slice();
+    const filter = state.filters.payees || {};
+    const q = (filter.q || '').toLowerCase();
+    const type = filter.type || 'all';
+
+    // Calculate real stats from cheques
+    const stats = {};
+    arr(state.data.cheques).forEach(c => {
+      if (!c.payeeId) return;
+      if (!stats[c.payeeId]) {
+        stats[c.payeeId] = { count: 0, total: 0, lastAmt: 0, lastDate: null };
+      }
+      const s = stats[c.payeeId];
+      s.count++;
+      s.total += num(c.amount);
+      
+      // Find the most recent cheque for "Last Amount"
+      if (!s.lastDate || c.chequeDate > s.lastDate) {
+        s.lastDate = c.chequeDate;
+        s.lastAmt = num(c.amount);
+      }
+    });
+
+    let list = all;
+    if (q) {
+      list = list.filter(p => (p.name || '').toLowerCase().indexOf(q) !== -1 || (p.phone || '').toLowerCase().indexOf(q) !== -1);
+    }
+    if (type !== 'all') list = list.filter(p => p.type === type);
+    list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const counts = { supplier: 0, customer: 0, employee: 0, other: 0 };
+    all.forEach(p => { if (counts[p.type] !== undefined) counts[p.type]++; });
+
+    return '' +
+      '<div class="kpi-strip">' +
+        '<div class="kpi"><div class="k-label">Total Payees</div><div class="k-value">' + all.length + '</div></div>' +
+        '<div class="kpi"><div class="k-label">🏭 Suppliers</div><div class="k-value">' + counts.supplier + '</div></div>' +
+        '<div class="kpi"><div class="k-label">👤 Customers</div><div class="k-value">' + counts.customer + '</div></div>' +
+        '<div class="kpi"><div class="k-label">💼 Employees</div><div class="k-value">' + counts.employee + '</div></div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>👥 Payees (' + list.length + ')</h3>' +
+          '<div style="display:flex; gap:8px;">' +
+            '<button class="btn" data-action="payee-repair">🔧 Repair Links</button>' +
+            '<button class="btn primary" data-action="payee-new">＋ New Payee</button>' +
+          '</div>' +
+        '</div>' +
+        
+        '<div class="md-filter">' +
+          '<label class="field">Search<input type="search" id="paySearch" value="' + esc(filter.q || '') + '" placeholder="Name, phone, email…"></label>' +
+          '<label class="field">Type<select id="payType">' +
+            '<option value="all">All types</option>' +
+            Object.keys(PAYEE_TYPES).map(k => '<option value="' + k + '" ' + (type === k ? 'selected' : '') + '>' + PAYEE_TYPES[k].label + '</option>').join('') +
+          '</select></label>' +
+          '<div></div><div></div>' +
+        '</div>' +
+
+        (list.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr>' +
+                '<th>Type</th><th>Name</th><th>Phone</th><th>Email</th>' +
+                '<th class="num">Last Amount</th><th class="num">Cheques</th>' +
+                '<th class="num">Total Paid</th><th class="actions-cell"></th>' +
+              '</tr></thead><tbody>' +
+              list.map(p => {
+                // Use Live Stats
+                const s = stats[p.id] || { count: 0, total: 0, lastAmt: 0 };
+                return '<tr>' +
+                  '<td><span class="badge ' + PAYEE_TYPES[p.type].color + '">' + PAYEE_TYPES[p.type].ico + ' ' + PAYEE_TYPES[p.type].label + '</span></td>' +
+                  '<td><strong>' + esc(p.name) + '</strong>' + (p.active === false ? ' <span class="badge gray">Inactive</span>' : '') + '</td>' +
+                  '<td>' + esc(p.phone || '—') + '</td>' +
+                  '<td>' + esc(p.email || '—') + '</td>' +
+                  '<td class="num">' + (s.lastAmt > 0 ? money(s.lastAmt) : '—') + '</td>' +
+                  '<td class="num"><span class="badge blue">' + s.count + '</span></td>' +
+                  '<td class="num" style="font-weight:600;">' + money(s.total) + '</td>' +
+                  '<td class="actions-cell">' +
+                    '<button class="btn xs" data-action="payee-edit" data-id="' + esc(p.id) + '">Edit</button>' +
+                    ' <button class="btn xs danger" data-action="payee-delete" data-id="' + esc(p.id) + '">🗑</button>' +
+                  '</td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody></table></div>'
+          : '<div class="empty"><span class="big">👥</span>No payees found.</div>') +
+      '</div>';
+  };
+
+  // 3. Add the Repair Button Action
+  window.__LS_registerAction('payee-repair', () => {
+    if (!confirm('This will scan all your cheques and reconnect any missing payee links. Proceed?')) return;
+    repairPayeeLinks();
+    toast('Payee links repaired successfully!', 'success');
+  });
+
+  // 4. Run the repair automatically on boot (just in case)
+  __LS_register('PAYEE-FIX-BOOT', function() {
+    setTimeout(repairPayeeLinks, 2000);
+  });
+
+})();
+</script>
 </body>
 </html>

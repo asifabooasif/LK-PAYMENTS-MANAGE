@@ -16588,5 +16588,117 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     APPROVALS UPGRADE — Show All Scheduled Cheques
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  window.renderApprovals = function() {
+    // Read filter state (default to 'due')
+    const filterMode = state.filters.approvalsMode || 'due';
+
+    // Get ALL pending cheques (scheduled, pending_approval)
+    let allPending = arr(state.data.cheques).filter(c => 
+      c.status === 'scheduled' || c.status === 'pending_approval'
+    );
+
+    // Apply filter based on mode
+    let list = [];
+    if (filterMode === 'all') {
+      list = allPending;
+    } else {
+      // 'due' mode (today or overdue)
+      list = allPending.filter(c => c.chequeDate <= today() || c.status === 'pending_approval');
+    }
+
+    // Remove snoozed (only from 'due' mode, 'all' mode shows everything)
+    if (filterMode === 'due') {
+      list = list.filter(c => !isSnoozed(c.id));
+    }
+
+    // Sort by date
+    list.sort((a, b) => String(a.chequeDate).localeCompare(String(b.chequeDate)));
+
+    const totalDue = list.reduce((s, c) => s + num(c.amount), 0);
+    const todayCount = list.filter(c => c.chequeDate === today()).length;
+    const overdue = list.filter(c => c.chequeDate < today()).length;
+
+    return '' +
+      '<div class="kpi-strip">' +
+        '<div class="kpi ' + (list.length ? 'danger' : '') + '">' +
+          '<div class="k-label">' + (filterMode === 'all' ? 'Total Scheduled' : 'Due Now') + '</div>' +
+          '<div class="k-value">' + list.length + '</div>' +
+        '</div>' +
+        '<div class="kpi ' + (list.length ? 'danger' : '') + '">' +
+          '<div class="k-label">Total Value</div>' +
+          '<div class="k-value" style="font-size:18px">' + money(totalDue) + '</div>' +
+        '</div>' +
+        '<div class="kpi"><div class="k-label">Today</div><div class="k-value">' + todayCount + '</div></div>' +
+        '<div class="kpi ' + (overdue ? 'warn' : '') + '">' +
+          '<div class="k-label">Overdue</div>' +
+          '<div class="k-value" style="color:' + (overdue ? 'var(--amber)' : 'var(--text-4)') + '">' + overdue + '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>⏰ Cheques Awaiting Approval</h3>' +
+          '<div style="display:flex; gap:6px;">' +
+            '<button class="btn sm ' + (filterMode === 'due' ? 'primary' : '') + '" data-action="approvals-view-due">Due Now</button>' +
+            '<button class="btn sm ' + (filterMode === 'all' ? 'primary' : '') + '" data-action="approvals-view-all">All Scheduled</button>' +
+          '</div>' +
+        '</div>' +
+        (list.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr>' +
+                '<th>Cheque #</th><th>Cheque Date</th><th>Days</th><th>Payee</th><th>Bank</th>' +
+                '<th class="num">Amount</th><th class="actions-cell"></th>' +
+              '</tr></thead><tbody>' +
+              list.map(c => {
+                const days = diffDays(c.chequeDate, today());
+                let daysLabel = '';
+                if (days === 0) daysLabel = '<span class="badge amber">Today</span>';
+                else if (days > 0) daysLabel = '<span class="badge red">' + days + 'd overdue</span>';
+                else daysLabel = '<span class="badge blue">In ' + (-days) + 'd</span>';
+
+                return '<tr>' +
+                  '<td class="mono"><strong>' + esc(c.chequeNo) + '</strong></td>' +
+                  '<td>' + dateFmt(c.chequeDate) + '</td>' +
+                  '<td>' + daysLabel + '</td>' +
+                  '<td>' + esc(c.payeeName || '—') + '</td>' +
+                  '<td>' + esc(bankName(c.bankId)) + '</td>' +
+                  '<td class="num"><strong>' + money(c.amount) + '</strong></td>' +
+                  '<td class="actions-cell">' +
+                    '<button class="btn xs primary" data-action="cheque-approve" data-id="' + esc(c.id) + '">Approve</button> ' +
+                    '<button class="btn xs" data-action="cheque-reject" data-id="' + esc(c.id) + '">Reject</button> ' +
+                    '<button class="btn xs" data-action="cheque-open" data-id="' + esc(c.id) + '">Open</button>' +
+                  '</td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody></table></div>'
+          : '<div class="empty"><span class="big">✓</span>' +
+            (filterMode === 'all' ? 'No scheduled cheques found.' : 'All clear. Nothing waiting for approval right now.') +
+            '</div>') +
+      '</div>';
+  };
+
+  // Add action handlers for the toggles
+  window.__LS_registerAction('approvals-view-due', () => {
+    state.filters.approvalsMode = 'due';
+    renderApp();
+  });
+  
+  window.__LS_registerAction('approvals-view-all', () => {
+    state.filters.approvalsMode = 'all';
+    renderApp();
+  });
+
+  // Override the route to use the new function
+  __LS_addRoute('approvals', 'Approvals', window.renderApprovals);
+
+})();
+</script>
 </body>
 </html>

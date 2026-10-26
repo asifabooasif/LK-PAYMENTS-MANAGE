@@ -18250,5 +18250,185 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BULLETPROOF BANK STATEMENT (Excludes Floating from Running Balance)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  window.renderRptBankStatement = function() {
+    const f = state.filters.rptBankStatement || {};
+    const bankId = f.bankId || (arr(state.data.banks)[0]?.id || '');
+    const from = f.from || shiftDate(today(), -30);
+    const to = f.to || today();
+
+    const bank = bankId ? bankObj(bankId) : null;
+    if (!bank) {
+      return '<div class="card"><div class="empty">Select a bank to view its statement.</div></div>';
+    }
+
+    /* 1. Opening Balance Calculation */
+    let opening = num(bank.openingBalance);
+    arr(state.data.bankAdjustments).forEach(a => {
+      if (String(a.bankId) !== String(bankId)) return;
+      if (a.date >= from) return;
+      if (a.status === 'floating' || a.status === 'bounced') return; // EXCLUDE floating from opening
+      opening += num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
+    });
+    arr(state.data.cheques).forEach(c => {
+      if (c.bankId !== bankId) return;
+      if (c.status !== 'cleared') return;
+      const clearedOn = c.clearedAt ? c.clearedAt.slice(0, 10) : c.chequeDate;
+      if (clearedOn >= from) return;
+      opening -= num(c.amount);
+    });
+
+    /* 2. Build Movements */
+    const rows = [];
+
+    // Cleared cheques
+    arr(state.data.cheques).forEach(c => {
+      if (c.bankId !== bankId) return;
+      if (c.status !== 'cleared') return;
+      const on = c.clearedAt ? c.clearedAt.slice(0, 10) : c.chequeDate;
+      if (on < from || on > to) return;
+      rows.push({
+        date: on, type: 'Cheque Cleared', ico: '✓', ref: c.chequeNo, desc: 'Cheque — ' + (c.payeeName || ''),
+        debit: num(c.amount), credit: 0, source: 'cheque', sourceId: c.id, sortOrder: 1
+      });
+    });
+
+    // Adjustments (CRITICAL FIX HERE)
+    arr(state.data.bankAdjustments).forEach(a => {
+      if (String(a.bankId) !== String(bankId)) return;
+      if (a.date < from || a.date > to) return;
+      if (a.status === 'bounced') return;
+
+      const isFloating = a.status === 'floating';
+      const signed = num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
+      
+      rows.push({
+        date: a.date, 
+        type: isFloating ? 'Floating Adj' : 'Adjustment', 
+        ico: isFloating ? '⏳' : '🔧',
+        ref: a.reference || '',
+        desc: a.reason || 'Adjustment',
+        debit: !isFloating && signed < 0 ? Math.abs(signed) : 0,
+        credit: !isFloating && signed > 0 ? signed : 0,
+        source: 'adjustment', 
+        sourceId: a.id,
+        isInfo: isFloating, // <--- THIS IS THE MAGIC FIX
+        sortOrder: 2
+      });
+    });
+
+    // Pending Cheques
+    arr(state.data.cheques).forEach(c => {
+      if (c.bankId !== bankId) return;
+      if (c.status !== 'scheduled' && c.status !== 'approved') return;
+      if (c.chequeDate < from || c.chequeDate > to) return;
+      rows.push({
+        date: c.chequeDate, type: c.status === 'approved' ? 'Approved' : 'Scheduled',
+        ico: c.status === 'approved' ? '⏳' : '📅', ref: c.chequeNo, desc: 'Cheque ' + c.status + ' — ' + (c.payeeName || ''),
+        debit: num(c.amount), credit: 0, source: 'cheque', sourceId: c.id, isInfo: true, sortOrder: 3
+      });
+    });
+
+    // Sort
+    rows.sort((a, b) => {
+      const d = a.date.localeCompare(b.date);
+      if (d) return d;
+      return a.sortOrder - b.sortOrder;
+    });
+
+    /* 3. Running Balance (Ignores isInfo rows) */
+    let running = opening;
+    rows.forEach(r => {
+      if (!r.isInfo) {
+        running += r.credit - r.debit;
+      }
+      r.balance = running;
+    });
+
+    const totalDebit  = rows.filter(r => !r.isInfo).reduce((s, r) => s + r.debit, 0);
+    const totalCredit = rows.filter(r => !r.isInfo).reduce((s, r) => s + r.credit, 0);
+    const closing = running;
+
+    return '' +
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>🏦 Bank Statement — ' + esc(bank.name) + '</h3>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+            '<select id="stBank" class="field" style="padding:8px;border-radius:8px;border:1px solid var(--border);">' +
+              arr(state.data.banks).map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') +
+            '</select>' +
+            '<input type="date" id="stFrom" class="field" style="padding:8px;border-radius:8px;border:1px solid var(--border);" value="' + esc(from) + '">' +
+            '<input type="date" id="stTo" class="field" style="padding:8px;border-radius:8px;border:1px solid var(--border);" value="' + esc(to) + '">' +
+            '<button class="btn primary" data-action="rpt-statement-export">⬇ CSV</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="kpi-strip">' +
+          '<div class="kpi"><div class="k-label">Opening</div><div class="k-value" style="font-size:18px">' + money(opening) + '</div></div>' +
+          '<div class="kpi"><div class="k-label">Debits</div><div class="k-value" style="font-size:18px;color:var(--red)">' + money(totalDebit) + '</div></div>' +
+          '<div class="kpi"><div class="k-label">Credits</div><div class="k-value" style="font-size:18px;color:var(--green)">' + money(totalCredit) + '</div></div>' +
+          '<div class="kpi"><div class="k-label">Closing</div><div class="k-value" style="font-size:18px;color:' + (closing < 0 ? 'var(--red)' : 'var(--text)') + '">' + money(closing) + '</div></div>' +
+        '</div>' +
+
+        (rows.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead><tbody>' +
+              '<tr style="background:var(--surface-2)"><td colspan="6"><strong>Opening Balance</strong></td><td class="num"><strong>' + money(opening) + '</strong></td></tr>' +
+              rows.map(r =>
+                '<tr' + (r.isInfo ? ' style="opacity:.6"' : '') + '>' +
+                  '<td>' + dateFmt(r.date) + '</td>' +
+                  '<td><span class="small">' + r.ico + ' ' + esc(r.type) + '</span>' +
+                    (r.isInfo ? ' <span class="badge amber">Pending</span>' : '') + '</td>' +
+                  '<td class="mono small">' + esc(r.ref || '—') + '</td>' +
+                  '<td>' + esc(r.desc) + '</td>' +
+                  '<td class="num" style="color:var(--red)">' + (r.debit ? money(r.debit) : '') + '</td>' +
+                  '<td class="num" style="color:var(--green)">' + (r.credit ? money(r.credit) : '') + '</td>' +
+                  '<td class="num"><strong>' + money(r.balance) + '</strong></td>' +
+                '</tr>'
+              ).join('') +
+            '</tbody>' +
+            '<tfoot><tr>' +
+              '<td colspan="4" style="text-align:right">MOVEMENT</td>' +
+              '<td class="num">' + money(totalDebit) + '</td>' +
+              '<td class="num">' + money(totalCredit) + '</td>' +
+              '<td class="num">' + money(closing) + '</td>' +
+            '</tr></tfoot></table></div>'
+          : '<div class="empty">No movements in this range.</div>') +
+      '</div>';
+  };
+
+  // Force the route to use this new bulletproof function
+  __LS_addRoute('rpt-bank-statement', 'Bank Statement', window.renderRptBankStatement);
+
+  // Bind the filters safely without breaking the page
+  const prevBind = window.bindView;
+  window.bindView = function() {
+    try { if (prevBind) prevBind(); } catch (e) {}
+    
+    const stBank = document.getElementById('stBank');
+    if (stBank) stBank.onchange = () => {
+      state.filters.rptBankStatement = Object.assign({}, state.filters.rptBankStatement, { bankId: stBank.value });
+      renderApp();
+    };
+    const stFrom = document.getElementById('stFrom');
+    if (stFrom) stFrom.onchange = () => {
+      state.filters.rptBankStatement = Object.assign({}, state.filters.rptBankStatement, { from: stFrom.value });
+      renderApp();
+    };
+    const stTo = document.getElementById('stTo');
+    if (stTo) stTo.onchange = () => {
+      state.filters.rptBankStatement = Object.assign({}, state.filters.rptBankStatement, { to: stTo.value });
+      renderApp();
+    };
+  };
+
+})();
+</script>
 </body>
 </html>

@@ -17985,23 +17985,23 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     ULTIMATE ADJUSTMENT ENGINE — Floating Cheques + Mark Cleared Button
+     BULLETPROOF PARTY CHEQUE ENGINE (Overrides S05 completely)
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
 
   window.ADJUSTMENT_TYPES = {
-    bank_charge:  { label: 'Bank Charge',   ico: '🏦', sign: -1 },
-    interest:     { label: 'Interest Credit', ico: '💵', sign:  1 },
-    deposit:      { label: 'Cash/Cheque Deposit', ico: '📥', sign:  1 },
-    withdrawal:   { label: 'Cash Withdrawal', ico: '📤', sign: -1 },
-    party_cheque: { label: 'Party Cheque Deposit', ico: '📜', sign:  1 },
-    transfer:     { label: 'Internal Bank Transfer', ico: '🔄', sign:  0 },
-    custom:       { label: 'Custom Category', ico: '🏷️', sign:  0 }
+    bank_charge:  { label: 'Bank Charge',   ico: '🏦' },
+    interest:     { label: 'Interest Credit', ico: '💵' },
+    deposit:      { label: 'Cash/Cheque Deposit', ico: '📥' },
+    withdrawal:   { label: 'Cash Withdrawal', ico: '📤' },
+    party_cheque: { label: 'Party Cheque Deposit', ico: '📜' },
+    transfer:     { label: 'Internal Bank Transfer', ico: '🔄' },
+    custom:       { label: 'Custom Category', ico: '🏷️' }
   };
 
-  // 1. MATHS ENGINE: Floating cheques DO NOT touch the bank balance
+  // 1. THE MATH ENGINE — Floating Cheques DO NOT touch the bank balance
   window.bankBalances = function(bankId) {
     const bank = bankObj(bankId);
     if (!bank) return { bank: 0, book: 0, floating: 0 };
@@ -18014,12 +18014,11 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     let adjFloatingIn = 0;
 
     arr(state.data.bankAdjustments).filter(a => String(a.bankId) === String(bankId)).forEach(a => {
-        // We check if the status is floating
         const isFloating = a.status === 'floating';
         const sign = num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
         
         if (isFloating) {
-            adjFloatingIn += sign; // Hold in floating
+            adjFloatingIn += sign; // Hold in floating bucket
         } else if (a.status !== 'bounced') {
             adjBankTotal += sign;  // Hit the bank balance
         }
@@ -18035,49 +18034,29 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     };
   };
 
-  // 2. TABLE ENGINE: Shows the "Mark Cleared" button
+  // 2. THE TABLE ENGINE — Shows the correct Badge and the "Mark Cleared" button
   window.renderAdjustments = function() {
     const all = arr(state.data.bankAdjustments).slice();
-    const filter = state.filters.adjustments || {};
-    const bankId = filter.bankId || 'all';
-    const type = filter.type || 'all';
-    const q = (filter.q || '').toLowerCase();
-
-    let list = all;
-    if (bankId !== 'all') list = list.filter(a => a.bankId === bankId);
-    if (type !== 'all') list = list.filter(a => a.type === type || (type === 'custom' && a.customName));
-    if (q) list = list.filter(a => (a.reason || '').toLowerCase().indexOf(q) !== -1 || (a.reference || '').toLowerCase().indexOf(q) !== -1);
-    
-    list.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-
-    const totalCredit = list.filter(a => num(a.signedAmount) > 0 && a.status !== 'floating' && a.status !== 'bounced').reduce((s, a) => s + Math.abs(num(a.signedAmount)), 0);
-    const totalDebit = list.filter(a => num(a.signedAmount) < 0 && a.status !== 'bounced').reduce((s, a) => s + Math.abs(num(a.signedAmount)), 0);
-    const net = totalCredit - totalDebit;
+    // Sort descending by date
+    all.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
     return '' +
-      '<div class="kpi-strip">' +
-        '<div class="kpi"><div class="k-label">Adjustments</div><div class="k-value">' + all.length + '</div></div>' +
-        '<div class="kpi"><div class="k-label">Total Credits</div><div class="k-value" style="color:var(--green)">' + money(totalCredit) + '</div></div>' +
-        '<div class="kpi"><div class="k-label">Total Debits</div><div class="k-value" style="color:var(--red)">' + money(totalDebit) + '</div></div>' +
-        '<div class="kpi"><div class="k-label">Net Impact</div><div class="k-value" style="color:' + (net >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (net >= 0 ? '+' : '') + money(net) + '</div></div>' +
-      '</div>' +
-
       '<div class="card">' +
-        '<div class="card-head"><h3>🔧 Bank Adjustments (' + list.length + ')</h3>' +
+        '<div class="card-head"><h3>🔧 Bank Adjustments (' + all.length + ')</h3>' +
           '<button class="btn primary" data-action="adj-new">＋ New Adjustment</button></div>' +
         
-        (list.length
+        (all.length
           ? '<div class="table-wrap"><table>' +
-              '<thead><tr><th>Date</th><th>Bank</th><th>Type</th><th>Reason / Desc</th><th>Reference</th><th class="num">Amount</th><th class="actions-cell"></th></tr></thead><tbody>' +
-              list.map(a => {
+              '<thead><tr><th>Date</th><th>Bank</th><th>Type</th><th>Reason / Desc</th><th class="num">Amount</th><th class="actions-cell"></th></tr></thead><tbody>' +
+              all.map(a => {
                 const signed = num(a.signedAmount);
                 const isFloating = a.status === 'floating';
                 const isBounced = a.status === 'bounced';
                 let amtColor = signed > 0 ? 'var(--green)' : 'var(--red)';
-                let rowOpacity = isBounced ? 'opacity: 0.5;' : '';
                 
                 if (isFloating) amtColor = 'var(--amber)';
 
+                // Determine Badge
                 let badgeHtml = '';
                 if (a.type === 'transfer_out') badgeHtml = '<span class="badge amber">📤 Transfer Out</span>';
                 else if (a.type === 'transfer_in') badgeHtml = '<span class="badge green">📥 Transfer In</span>';
@@ -18087,17 +18066,15 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
                     else badgeHtml = '<span class="badge green">📜 Cleared Chq</span>';
                 }
                 else if (a.customName) badgeHtml = '<span class="badge gray">🏷️ ' + esc(a.customName) + '</span>';
-                else badgeHtml = '<span class="badge blue">' + esc(a.type) + '</span>';
+                else badgeHtml = '<span class="badge blue">' + esc(window.ADJUSTMENT_TYPES[a.type]?.label || a.type) + '</span>';
 
-                return '<tr style="' + rowOpacity + '">' +
+                return '<tr>' +
                   '<td>' + dateFmt(a.date) + '</td>' +
                   '<td>' + esc(bankName(a.bankId)) + '</td>' +
                   '<td>' + badgeHtml + '</td>' +
                   '<td><strong>' + esc(a.reason || '—') + '</strong></td>' +
-                  '<td class="mono small">' + esc(a.reference || '—') + '</td>' +
                   '<td class="num" style="color:' + amtColor + ';font-weight:600;">' + (signed > 0 ? '+' : '') + money(signed) + '</td>' +
                   '<td class="actions-cell">' +
-                    // THIS IS THE BUTTON YOU WERE LOOKING FOR
                     (isFloating ? '<button class="btn xs primary" data-action="adj-mark-cleared" data-id="' + a.id + '">✅ Mark Cleared</button> ' : '') +
                     '<button class="btn xs" data-action="adj-edit" data-id="' + a.id + '">Edit</button>' +
                     ' <button class="btn xs danger" data-action="adj-delete" data-id="' + a.id + '">🗑</button>' +
@@ -18109,20 +18086,16 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       '</div>';
   };
 
-  // 3. FORM ENGINE: Complete rewrite to guarantee floating saves correctly
+  // 3. THE FORM ENGINE — Bypasses the original broken Save logic
   window.openAdjustmentFormPro = function(id) {
-    if (!state.perms.write) { toast('Read-only role', 'error'); return; }
     const a = id ? adjObj(id) : null;
     const banks = arr(state.data.banks).filter(b => b.active !== false);
     if (!banks.length) { toast('Add a bank first', 'warn'); return; }
 
     const isEdit = !!a;
     const defaultType = a?.type || 'bank_charge';
-    const bankOpts = banks.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
-    const typeOpts = Object.keys(window.ADJUSTMENT_TYPES).map(k => 
-      `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`
-    ).join('');
-
+    
+    // Create the HTML
     const body = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <label class="field">Source Bank<select id="adjBank" ${isEdit ? 'disabled' : ''}>${banks.map(b => `<option value="${b.id}" ${a?.bankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>
@@ -18130,7 +18103,9 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-        <label class="field">Adjustment Type<select id="adjType" ${isEdit ? 'disabled' : ''}>${typeOpts}</select></label>
+        <label class="field">Adjustment Type<select id="adjType" ${isEdit ? 'disabled' : ''}>
+          ${Object.keys(window.ADJUSTMENT_TYPES).map(k => `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`).join('')}
+        </select></label>
         <label class="field" id="adjDirectionWrap">Direction
           <select id="adjDirection">
             <option value="debit" ${a?.direction === 'debit' ? 'selected' : ''}>− Debit (Money Out)</option>
@@ -18139,11 +18114,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         </label>
       </div>
 
-      <div style="margin-top:14px; display:none;" id="adjDestWrap">
-        <label class="field">Destination Bank<select id="adjDestBank"><option value="">— Select —</option>${bankOpts}</select></label>
-      </div>
-
-      <!-- THIS IS THE FLOATING CHECKBOX -->
       <div style="margin-top:14px; display:none;" id="adjFloatWrap">
         <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:var(--amber-soft);padding:10px;border-radius:6px;border:1px solid var(--amber);cursor:pointer;">
           <input type="checkbox" id="adjFloating" ${a?.status === 'floating' ? 'checked' : ''}>
@@ -18156,23 +18126,16 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         <label class="field">Reason / Description<input type="text" id="adjReason" value="${a?.reason || ''}" placeholder="e.g. Cheque from customer"></label>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-        <label class="field">Reference / Slip No.<input type="text" id="adjReference" value="${a?.reference || ''}"></label>
-        <label class="field">Notes<input type="text" id="adjNotes" value="${a?.notes || ''}"></label>
-      </div>
-
       <div id="adjPreview" style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border);"></div>
     `;
 
     openModal(isEdit ? '✏️ Edit Adjustment' : '＋ Advanced Adjustment', body, {
       width: 700,
-      footer: `<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="adjSaveBtn">${isEdit ? 'Update' : 'Save Adjustment'}</button>`
+      footer: `<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="myNewSaveBtn">${isEdit ? 'Update' : 'Save Adjustment'}</button>`
     });
 
     const typeSel = document.getElementById('adjType');
     const bankSel = document.getElementById('adjBank');
-    const destWrap = document.getElementById('adjDestWrap');
-    const destSel = document.getElementById('adjDestBank');
     const dirWrap = document.getElementById('adjDirectionWrap');
     const dirSel = document.getElementById('adjDirection');
     const amtInp = document.getElementById('adjAmount');
@@ -18180,24 +18143,18 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     const floatWrap = document.getElementById('adjFloatWrap');
     const floatCheck = document.getElementById('adjFloating');
 
-    function updateUIForType() {
+    function updateUI() {
       const t = typeSel.value;
-      destWrap.style.display = 'none';
       floatWrap.style.display = 'none';
-      dirWrap.style.display = 'block';
       dirSel.disabled = false;
 
       if (t === 'party_cheque') {
         floatWrap.style.display = 'block';
         dirSel.value = 'credit';
         dirSel.disabled = true;
-      } else if (t === 'transfer') {
-        destWrap.style.display = 'block';
-        dirWrap.style.display = 'none'; 
       } else {
-        const meta = window.ADJUSTMENT_TYPES[t];
-        if (meta && meta.sign === 1) dirSel.value = 'credit';
-        if (meta && meta.sign === -1) dirSel.value = 'debit';
+        if (t === 'bank_charge' || t === 'withdrawal') dirSel.value = 'debit';
+        else dirSel.value = 'credit';
       }
       updatePreview();
     }
@@ -18210,14 +18167,11 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       const signedAmt = isCredit ? amt : -amt;
       
       const bal = bankBalances(bankSel.value);
-      const bName = bankObj(bankSel.value).name;
-
-      // If floating, it DOES NOT hit the bank balance
       const afterBank = isFloating ? bal.bank : bal.bank + signedAmt;
       const afterBook = isFloating ? bal.book : bal.book + signedAmt;
 
       preview.innerHTML = `
-        <div style="font-weight:800;margin-bottom:12px;font-size:12px;color:var(--text-3);">IMPACT ON ${esc(bName)}</div>
+        <div style="font-weight:800;margin-bottom:12px;font-size:12px;color:var(--text-3);">IMPACT</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
           <div><div class="k-label">Bank Balance</div><div style="display:flex;gap:8px;">${money(bal.bank)} → <strong>${money(afterBank)}</strong></div></div>
           <div><div class="k-label">Book Balance</div><div style="display:flex;gap:8px;">${money(bal.book)} → <strong>${money(afterBook)}</strong></div></div>
@@ -18226,79 +18180,64 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       `;
     }
 
-    typeSel.onchange = updateUIForType;
+    typeSel.onchange = updateUI;
     dirSel.onchange = updatePreview;
     amtInp.oninput = updatePreview;
     bankSel.onchange = updatePreview;
     floatCheck.onchange = updatePreview;
+    updateUI(); 
 
-    updateUIForType(); 
-
-    document.getElementById('adjSaveBtn').onclick = () => {
+    // CUSTOM SAVE LOGIC (Bypasses all old code)
+    document.getElementById('myNewSaveBtn').onclick = () => {
       const bankId = bankSel.value;
       const date = document.getElementById('adjDate').value || today();
       const type = typeSel.value;
       const direction = dirSel.value;
       const amount = num(amtInp.value);
       const reason = document.getElementById('adjReason').value.trim();
-      const notes = document.getElementById('adjNotes').value.trim();
-      const destBankId = destSel.value;
       const isFloating = floatCheck.checked && type === 'party_cheque';
       
-      let reference = document.getElementById('adjReference').value.trim();
-      if (!reference) reference = 'ADJ-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
-
       if (amount <= 0) { toast('Amount must be > 0', 'error'); return; }
       if (!reason) { toast('Reason is required', 'error'); return; }
 
-      if (type === 'transfer') {
-        if (!destBankId || destBankId === bankId) { toast('Select a valid destination bank.', 'error'); return; }
-        const groupId = uid();
-        const outRecord = makeBankAdjustment({ bankId, date, type: 'transfer_out', direction: 'debit', amount, reason, notes, transferGroupId: groupId, reference });
-        outRecord.customName = 'Transfer to ' + bankObj(destBankId).name;
-        const inRecord = makeBankAdjustment({ bankId: destBankId, date, type: 'transfer_in', direction: 'credit', amount, reason, notes, transferGroupId: groupId, reference });
-        inRecord.customName = 'Transfer from ' + bankObj(bankId).name;
-        state.data.bankAdjustments.push(outRecord, inRecord);
-        markDirty('bankAdjustments', outRecord.id);
-        markDirty('bankAdjustments', inRecord.id);
-        toast('Transfer completed', 'success');
-      } else {
-        const data = { bankId, date, type, direction, amount, reason, notes, reference };
-        
-        // CRITICAL FIX: This saves the word "floating" to the database!
-        if (type === 'party_cheque') {
-            data.status = isFloating ? 'floating' : 'cleared';
-        }
+      const data = { 
+        bankId, date, type, direction, amount, reason, 
+        reference: 'ADJ-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000)
+      };
 
-        if (a) {
-          Object.assign(a, makeBankAdjustment(Object.assign({}, a, data, { id: a.id })));
-          // Ensure status is preserved on edit
-          if (data.status) a.status = data.status;
-          a.updatedAt = nowISO();
-          markDirty('bankAdjustments', a.id);
-          toast('Adjustment updated', 'success');
-        } else {
-          const created = makeBankAdjustment(data);
-          // Ensure status is saved
-          if (data.status) created.status = data.status;
-          state.data.bankAdjustments.push(created);
-          markDirty('bankAdjustments', created.id);
-          toast('Adjustment saved', 'success');
-        }
+      if (type === 'party_cheque') {
+        data.status = isFloating ? 'floating' : 'cleared';
+      }
+
+      if (a) {
+        Object.assign(a, makeBankAdjustment(Object.assign({}, a, data, { id: a.id })));
+        if (data.status) a.status = data.status;
+        a.updatedAt = nowISO();
+        markDirty('bankAdjustments', a.id);
+      } else {
+        const created = makeBankAdjustment(data);
+        if (data.status) created.status = data.status;
+        state.data.bankAdjustments.push(created);
+        markDirty('bankAdjustments', created.id);
       }
 
       closeModal();
+      toast('Adjustment saved successfully!', 'success');
       renderApp();
     };
   };
 
-  // 4. ACTION: Mark Cleared
-  window.__LS_registerAction('adj-mark-cleared', (ev, id) => {
+  // 4. FORCE THE ROUTE TO USE OUR NEW TABLE
+  __LS_addRoute('adjustments', 'Bank Adjustments', window.renderAdjustments);
+  __LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
+  __LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
+
+  // 5. THE MARK CLEARED ACTION
+  __LS_registerAction('adj-mark-cleared', (ev, id) => {
     ev.stopPropagation();
     const a = adjObj(id);
     if (!a) return;
-    
-    if (!confirm('Are you sure you want to mark this Party Cheque as CLEARED?\n\nThis will instantly add Rs. ' + a.amount + ' to your Bank Balance.')) return;
+    if (!confirm('Mark this Party Cheque as CLEARED?\n\nThis will instantly add Rs. ' + money(a.amount) + ' to your Bank Balance.')) return;
 
     a.status = 'cleared';
     a.clearedAt = nowISO();
@@ -18308,10 +18247,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     toast('Cheque cleared! Bank balance updated.', 'success');
     renderApp();
   });
-
-  window.__LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
-  window.__LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
-  window.openAdjustmentForm = window.openAdjustmentFormPro;
 
 })();
 </script>

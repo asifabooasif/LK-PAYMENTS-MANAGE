@@ -17985,13 +17985,23 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
-     ACCURATE PARTY CHEQUE FLOATING ENGINE
+     ULTIMATE ADJUSTMENT ENGINE — Floating Cheques + Mark Cleared Button
      ═══════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   'use strict';
 
-  // 1. THE MATH ENGINE — Ensures Floating Cheques DO NOT hit the bank balance
+  window.ADJUSTMENT_TYPES = {
+    bank_charge:  { label: 'Bank Charge',   ico: '🏦', sign: -1 },
+    interest:     { label: 'Interest Credit', ico: '💵', sign:  1 },
+    deposit:      { label: 'Cash/Cheque Deposit', ico: '📥', sign:  1 },
+    withdrawal:   { label: 'Cash Withdrawal', ico: '📤', sign: -1 },
+    party_cheque: { label: 'Party Cheque Deposit', ico: '📜', sign:  1 },
+    transfer:     { label: 'Internal Bank Transfer', ico: '🔄', sign:  0 },
+    custom:       { label: 'Custom Category', ico: '🏷️', sign:  0 }
+  };
+
+  // 1. MATHS ENGINE: Floating cheques DO NOT touch the bank balance
   window.bankBalances = function(bankId) {
     const bank = bankObj(bankId);
     if (!bank) return { bank: 0, book: 0, floating: 0 };
@@ -18004,36 +18014,28 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     let adjFloatingIn = 0;
 
     arr(state.data.bankAdjustments).filter(a => String(a.bankId) === String(bankId)).forEach(a => {
+        // We check if the status is floating
         const isFloating = a.status === 'floating';
         const sign = num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
         
         if (isFloating) {
-            // Money is floating, so it goes into the "Floating" bucket, NOT the Bank bucket
-            adjFloatingIn += sign; 
+            adjFloatingIn += sign; // Hold in floating
         } else if (a.status !== 'bounced') {
-            // Cleared money hits the Bank bucket
-            adjBankTotal += sign; 
+            adjBankTotal += sign;  // Hit the bank balance
         }
     });
 
     const bankValue = num(bank.openingBalance) - clearedTotal + adjBankTotal;
     const bookValue = bankValue - approvedTotal;
-    
-    // Floating incoming (assets) reduces the overall floating outgoing (liabilities)
     const floatingValue = approvedTotal - adjFloatingIn; 
 
     return {
-      bank: bankValue,
-      book: bookValue,
-      floating: floatingValue, 
-      opening: num(bank.openingBalance),
-      clearedTotal,
-      approvedPendingTotal: approvedTotal,
-      adjustmentsTotal: adjBankTotal
+      bank: bankValue, book: bookValue, floating: floatingValue, 
+      opening: num(bank.openingBalance), clearedTotal, approvedPendingTotal: approvedTotal, adjustmentsTotal: adjBankTotal
     };
   };
 
-  // 2. THE TABLE ENGINE — Shows the "Mark Cleared" button for floating items
+  // 2. TABLE ENGINE: Shows the "Mark Cleared" button
   window.renderAdjustments = function() {
     const all = arr(state.data.bankAdjustments).slice();
     const filter = state.filters.adjustments || {};
@@ -18064,16 +18066,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
         '<div class="card-head"><h3>🔧 Bank Adjustments (' + list.length + ')</h3>' +
           '<button class="btn primary" data-action="adj-new">＋ New Adjustment</button></div>' +
         
-        '<div class="md-filter">' +
-          '<label class="field">Search<input type="search" id="adjSearch" value="' + esc(filter.q || '') + '" placeholder="Reason, reference…"></label>' +
-          '<label class="field">Type<select id="adjTypeFilter">' +
-            '<option value="all">All Types</option>' +
-            Object.keys(window.ADJUSTMENT_TYPES).map(k => '<option value="' + k + '">' + window.ADJUSTMENT_TYPES[k].label + '</option>').join('') +
-            '<option value="transfer_out">Transfers</option>' +
-          '</select></label>' +
-          '<div></div><div></div>' +
-        '</div>' +
-
         (list.length
           ? '<div class="table-wrap"><table>' +
               '<thead><tr><th>Date</th><th>Bank</th><th>Type</th><th>Reason / Desc</th><th>Reference</th><th class="num">Amount</th><th class="actions-cell"></th></tr></thead><tbody>' +
@@ -18086,7 +18078,6 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
                 
                 if (isFloating) amtColor = 'var(--amber)';
 
-                // Determine Badge
                 let badgeHtml = '';
                 if (a.type === 'transfer_out') badgeHtml = '<span class="badge amber">📤 Transfer Out</span>';
                 else if (a.type === 'transfer_in') badgeHtml = '<span class="badge green">📥 Transfer In</span>';
@@ -18106,8 +18097,8 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
                   '<td class="mono small">' + esc(a.reference || '—') + '</td>' +
                   '<td class="num" style="color:' + amtColor + ';font-weight:600;">' + (signed > 0 ? '+' : '') + money(signed) + '</td>' +
                   '<td class="actions-cell">' +
-                    // THIS IS THE BUTTON YOU WERE MISSING
-                    (isFloating ? '<button class="btn xs primary" data-action="adj-mark-cleared" data-id="' + a.id + '">Mark Cleared</button> ' : '') +
+                    // THIS IS THE BUTTON YOU WERE LOOKING FOR
+                    (isFloating ? '<button class="btn xs primary" data-action="adj-mark-cleared" data-id="' + a.id + '">✅ Mark Cleared</button> ' : '') +
                     '<button class="btn xs" data-action="adj-edit" data-id="' + a.id + '">Edit</button>' +
                     ' <button class="btn xs danger" data-action="adj-delete" data-id="' + a.id + '">🗑</button>' +
                   '</td>' +
@@ -18118,42 +18109,190 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
       '</div>';
   };
 
-  // 3. THE SAVE ENGINE — Ensures the "Floating" checkbox actually works
-  const origOpenAdjustmentForm = window.openAdjustmentFormPro;
+  // 3. FORM ENGINE: Complete rewrite to guarantee floating saves correctly
   window.openAdjustmentFormPro = function(id) {
-    origOpenAdjustmentForm(id);
+    if (!state.perms.write) { toast('Read-only role', 'error'); return; }
+    const a = id ? adjObj(id) : null;
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
 
-    // We inject a listener into the Save button to guarantee the status is saved
-    setTimeout(() => {
-      const saveBtn = document.getElementById('adjSaveBtn');
-      if (saveBtn) {
-        // Remove old listeners
-        const newSaveBtn = saveBtn.cloneNode(true);
-        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-        
-        newSaveBtn.onclick = () => {
-          const type = document.getElementById('adjType').value;
-          const isFloating = document.getElementById('adjFloating')?.checked;
-          
-          // Force the form to respect the floating checkbox
-          if (type === 'party_cheque') {
-            const preview = document.getElementById('adjPreview');
-            if (isFloating) {
-                // Just to visually confirm it's working
-                toast('Saving as Floating Cheque...', 'info');
-            }
-          }
-          
-          // Call the original save logic (which reads the checkbox natively)
-          // The original save logic in the massive Feature 3 script already handles this correctly.
-          // We just need to make sure the UI refreshes.
-          setTimeout(() => renderApp(), 500);
-        };
+    const isEdit = !!a;
+    const defaultType = a?.type || 'bank_charge';
+    const bankOpts = banks.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+    const typeOpts = Object.keys(window.ADJUSTMENT_TYPES).map(k => 
+      `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`
+    ).join('');
+
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field">Source Bank<select id="adjBank" ${isEdit ? 'disabled' : ''}>${banks.map(b => `<option value="${b.id}" ${a?.bankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>
+        <label class="field">Date<input type="date" id="adjDate" value="${a?.date || today()}"></label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Adjustment Type<select id="adjType" ${isEdit ? 'disabled' : ''}>${typeOpts}</select></label>
+        <label class="field" id="adjDirectionWrap">Direction
+          <select id="adjDirection">
+            <option value="debit" ${a?.direction === 'debit' ? 'selected' : ''}>− Debit (Money Out)</option>
+            <option value="credit" ${a?.direction === 'credit' ? 'selected' : ''}>+ Credit (Money In)</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="adjDestWrap">
+        <label class="field">Destination Bank<select id="adjDestBank"><option value="">— Select —</option>${bankOpts}</select></label>
+      </div>
+
+      <!-- THIS IS THE FLOATING CHECKBOX -->
+      <div style="margin-top:14px; display:none;" id="adjFloatWrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:var(--amber-soft);padding:10px;border-radius:6px;border:1px solid var(--amber);cursor:pointer;">
+          <input type="checkbox" id="adjFloating" ${a?.status === 'floating' ? 'checked' : ''}>
+          <strong>Floating (Pending Bank Clearance)</strong>
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:14px">
+        <label class="field">Amount (Rs.)<input type="number" id="adjAmount" value="${a ? num(a.amount).toFixed(2) : ''}" placeholder="0.00" step="0.01"></label>
+        <label class="field">Reason / Description<input type="text" id="adjReason" value="${a?.reason || ''}" placeholder="e.g. Cheque from customer"></label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Reference / Slip No.<input type="text" id="adjReference" value="${a?.reference || ''}"></label>
+        <label class="field">Notes<input type="text" id="adjNotes" value="${a?.notes || ''}"></label>
+      </div>
+
+      <div id="adjPreview" style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border);"></div>
+    `;
+
+    openModal(isEdit ? '✏️ Edit Adjustment' : '＋ Advanced Adjustment', body, {
+      width: 700,
+      footer: `<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="adjSaveBtn">${isEdit ? 'Update' : 'Save Adjustment'}</button>`
+    });
+
+    const typeSel = document.getElementById('adjType');
+    const bankSel = document.getElementById('adjBank');
+    const destWrap = document.getElementById('adjDestWrap');
+    const destSel = document.getElementById('adjDestBank');
+    const dirWrap = document.getElementById('adjDirectionWrap');
+    const dirSel = document.getElementById('adjDirection');
+    const amtInp = document.getElementById('adjAmount');
+    const preview = document.getElementById('adjPreview');
+    const floatWrap = document.getElementById('adjFloatWrap');
+    const floatCheck = document.getElementById('adjFloating');
+
+    function updateUIForType() {
+      const t = typeSel.value;
+      destWrap.style.display = 'none';
+      floatWrap.style.display = 'none';
+      dirWrap.style.display = 'block';
+      dirSel.disabled = false;
+
+      if (t === 'party_cheque') {
+        floatWrap.style.display = 'block';
+        dirSel.value = 'credit';
+        dirSel.disabled = true;
+      } else if (t === 'transfer') {
+        destWrap.style.display = 'block';
+        dirWrap.style.display = 'none'; 
+      } else {
+        const meta = window.ADJUSTMENT_TYPES[t];
+        if (meta && meta.sign === 1) dirSel.value = 'credit';
+        if (meta && meta.sign === -1) dirSel.value = 'debit';
       }
-    }, 100);
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const t = typeSel.value;
+      const amt = num(amtInp.value);
+      const isFloating = floatCheck.checked && t === 'party_cheque';
+      const isCredit = dirSel.value === 'credit';
+      const signedAmt = isCredit ? amt : -amt;
+      
+      const bal = bankBalances(bankSel.value);
+      const bName = bankObj(bankSel.value).name;
+
+      // If floating, it DOES NOT hit the bank balance
+      const afterBank = isFloating ? bal.bank : bal.bank + signedAmt;
+      const afterBook = isFloating ? bal.book : bal.book + signedAmt;
+
+      preview.innerHTML = `
+        <div style="font-weight:800;margin-bottom:12px;font-size:12px;color:var(--text-3);">IMPACT ON ${esc(bName)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div><div class="k-label">Bank Balance</div><div style="display:flex;gap:8px;">${money(bal.bank)} → <strong>${money(afterBank)}</strong></div></div>
+          <div><div class="k-label">Book Balance</div><div style="display:flex;gap:8px;">${money(bal.book)} → <strong>${money(afterBook)}</strong></div></div>
+        </div>
+        ${isFloating ? '<div style="margin-top:8px;color:var(--amber);font-size:12px;font-weight:600;">ℹ This cheque is floating. The bank balance will NOT change until you mark it cleared.</div>' : ''}
+      `;
+    }
+
+    typeSel.onchange = updateUIForType;
+    dirSel.onchange = updatePreview;
+    amtInp.oninput = updatePreview;
+    bankSel.onchange = updatePreview;
+    floatCheck.onchange = updatePreview;
+
+    updateUIForType(); 
+
+    document.getElementById('adjSaveBtn').onclick = () => {
+      const bankId = bankSel.value;
+      const date = document.getElementById('adjDate').value || today();
+      const type = typeSel.value;
+      const direction = dirSel.value;
+      const amount = num(amtInp.value);
+      const reason = document.getElementById('adjReason').value.trim();
+      const notes = document.getElementById('adjNotes').value.trim();
+      const destBankId = destSel.value;
+      const isFloating = floatCheck.checked && type === 'party_cheque';
+      
+      let reference = document.getElementById('adjReference').value.trim();
+      if (!reference) reference = 'ADJ-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
+
+      if (amount <= 0) { toast('Amount must be > 0', 'error'); return; }
+      if (!reason) { toast('Reason is required', 'error'); return; }
+
+      if (type === 'transfer') {
+        if (!destBankId || destBankId === bankId) { toast('Select a valid destination bank.', 'error'); return; }
+        const groupId = uid();
+        const outRecord = makeBankAdjustment({ bankId, date, type: 'transfer_out', direction: 'debit', amount, reason, notes, transferGroupId: groupId, reference });
+        outRecord.customName = 'Transfer to ' + bankObj(destBankId).name;
+        const inRecord = makeBankAdjustment({ bankId: destBankId, date, type: 'transfer_in', direction: 'credit', amount, reason, notes, transferGroupId: groupId, reference });
+        inRecord.customName = 'Transfer from ' + bankObj(bankId).name;
+        state.data.bankAdjustments.push(outRecord, inRecord);
+        markDirty('bankAdjustments', outRecord.id);
+        markDirty('bankAdjustments', inRecord.id);
+        toast('Transfer completed', 'success');
+      } else {
+        const data = { bankId, date, type, direction, amount, reason, notes, reference };
+        
+        // CRITICAL FIX: This saves the word "floating" to the database!
+        if (type === 'party_cheque') {
+            data.status = isFloating ? 'floating' : 'cleared';
+        }
+
+        if (a) {
+          Object.assign(a, makeBankAdjustment(Object.assign({}, a, data, { id: a.id })));
+          // Ensure status is preserved on edit
+          if (data.status) a.status = data.status;
+          a.updatedAt = nowISO();
+          markDirty('bankAdjustments', a.id);
+          toast('Adjustment updated', 'success');
+        } else {
+          const created = makeBankAdjustment(data);
+          // Ensure status is saved
+          if (data.status) created.status = data.status;
+          state.data.bankAdjustments.push(created);
+          markDirty('bankAdjustments', created.id);
+          toast('Adjustment saved', 'success');
+        }
+      }
+
+      closeModal();
+      renderApp();
+    };
   };
 
-  // 4. THE ACTION ENGINE — Handles the "Mark Cleared" click
+  // 4. ACTION: Mark Cleared
   window.__LS_registerAction('adj-mark-cleared', (ev, id) => {
     ev.stopPropagation();
     const a = adjObj(id);
@@ -18161,19 +18300,18 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
     
     if (!confirm('Are you sure you want to mark this Party Cheque as CLEARED?\n\nThis will instantly add Rs. ' + a.amount + ' to your Bank Balance.')) return;
 
-    // Change status from floating to cleared
     a.status = 'cleared';
     a.clearedAt = nowISO();
     a.updatedAt = nowISO();
-    
     markDirty('bankAdjustments', a.id);
-    
-    // Force sync to cloud
-    if (typeof sync !== 'undefined' && sync.push) sync.push(true);
     
     toast('Cheque cleared! Bank balance updated.', 'success');
     renderApp();
   });
+
+  window.__LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
+  window.__LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
+  window.openAdjustmentForm = window.openAdjustmentFormPro;
 
 })();
 </script>

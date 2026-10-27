@@ -18430,5 +18430,357 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ULTIMATE ADJUSTMENTS (Filters + Floating Cheques + Mark Cleared)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  window.ADJUSTMENT_TYPES = {
+    bank_charge:  { label: 'Bank Charge',   ico: '🏦' },
+    interest:     { label: 'Interest Credit', ico: '💵' },
+    deposit:      { label: 'Cash/Cheque Deposit', ico: '📥' },
+    withdrawal:   { label: 'Cash Withdrawal', ico: '📤' },
+    party_cheque: { label: 'Party Cheque Deposit', ico: '📜' },
+    transfer:     { label: 'Internal Bank Transfer', ico: '🔄' },
+    custom:       { label: 'Custom Category', ico: '🏷️' }
+  };
+
+  // 1. THE MATH ENGINE — Floating Cheques DO NOT touch the bank balance
+  window.bankBalances = function(bankId) {
+    const bank = bankObj(bankId);
+    if (!bank) return { bank: 0, book: 0, floating: 0 };
+
+    const cheques = arr(state.data.cheques).filter(c => c.bankId === bankId);
+    const clearedTotal = cheques.filter(c => c.status === 'cleared').reduce((s, c) => s + num(c.amount), 0);
+    const approvedTotal = cheques.filter(c => c.status === 'approved').reduce((s, c) => s + num(c.amount), 0);
+
+    let adjBankTotal = 0;
+    let adjFloatingIn = 0;
+
+    arr(state.data.bankAdjustments).filter(a => String(a.bankId) === String(bankId)).forEach(a => {
+        const isFloating = a.status === 'floating';
+        const sign = num(a.signedAmount !== undefined ? a.signedAmount : a.amount);
+        
+        if (isFloating) {
+            adjFloatingIn += sign; 
+        } else if (a.status !== 'bounced') {
+            adjBankTotal += sign;  
+        }
+    });
+
+    const bankValue = num(bank.openingBalance) - clearedTotal + adjBankTotal;
+    const bookValue = bankValue - approvedTotal;
+    const floatingValue = approvedTotal - adjFloatingIn; 
+
+    return {
+      bank: bankValue, book: bookValue, floating: floatingValue, 
+      opening: num(bank.openingBalance), clearedTotal, approvedPendingTotal: approvedTotal, adjustmentsTotal: adjBankTotal
+    };
+  };
+
+  // 2. THE TABLE ENGINE — Restored Filters + Floating Button
+  window.renderAdjustments = function() {
+    const all = arr(state.data.bankAdjustments).slice();
+    const filter = state.filters.adjustments || {};
+    const bankId = filter.bankId || 'all';
+    const type = filter.type || 'all';
+    const from = filter.from || '';
+    const to = filter.to || '';
+    const q = (filter.q || '').toLowerCase();
+
+    let list = all;
+    if (bankId !== 'all') list = list.filter(a => a.bankId === bankId);
+    if (type !== 'all') list = list.filter(a => a.type === type || (type === 'custom' && a.customName));
+    if (from) list = list.filter(a => a.date >= from);
+    if (to) list = list.filter(a => a.date <= to);
+    if (q) list = list.filter(a => (a.reason || '').toLowerCase().indexOf(q) !== -1 || (a.reference || '').toLowerCase().indexOf(q) !== -1);
+    
+    list.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+    const totalCredit = list.filter(a => num(a.signedAmount) > 0 && a.status !== 'floating' && a.status !== 'bounced').reduce((s, a) => s + Math.abs(num(a.signedAmount)), 0);
+    const totalDebit = list.filter(a => num(a.signedAmount) < 0 && a.status !== 'bounced').reduce((s, a) => s + Math.abs(num(a.signedAmount)), 0);
+    const net = totalCredit - totalDebit;
+
+    return '' +
+      '<div class="kpi-strip">' +
+        '<div class="kpi"><div class="k-label">Adjustments</div><div class="k-value">' + all.length + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Total Credits</div><div class="k-value" style="color:var(--green)">' + money(totalCredit) + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Total Debits</div><div class="k-value" style="color:var(--red)">' + money(totalDebit) + '</div></div>' +
+        '<div class="kpi"><div class="k-label">Net Impact</div><div class="k-value" style="color:' + (net >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (net >= 0 ? '+' : '') + money(net) + '</div></div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<div class="card-head"><h3>🔧 Bank Adjustments (' + list.length + ')</h3>' +
+          '<button class="btn primary" data-action="adj-new">＋ New Adjustment</button></div>' +
+        
+        <!-- RESTORED FILTER BAR -->
+        '<div class="md-filter">' +
+          '<label class="field">Search' +
+            '<input type="search" id="adjSearch" value="' + esc(filter.q || '') + '" placeholder="Reason, reference…">' +
+          '</label>' +
+          '<label class="field">Bank' +
+            '<select id="adjFilterBank">' +
+              '<option value="all"' + (bankId === 'all' ? ' selected' : '') + '>All banks</option>' +
+              arr(state.data.banks).map(b => '<option value="' + esc(b.id) + '"' + (bankId === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>').join('') +
+            '</select>' +
+          '</label>' +
+          '<label class="field">Type' +
+            '<select id="adjFilterType">' +
+              '<option value="all"' + (type === 'all' ? ' selected' : '') + '>All types</option>' +
+              Object.keys(window.ADJUSTMENT_TYPES).map(k => '<option value="' + k + '"' + (type === k ? ' selected' : '') + '>' + window.ADJUSTMENT_TYPES[k].label + '</option>').join('') +
+              '<option value="transfer_out"' + (type === 'transfer_out' ? ' selected' : '') + '>Transfers</option>' +
+            '</select>' +
+          '</label>' +
+          '<div style="display:flex;gap:6px;align-items:end">' +
+            '<label class="field" style="flex:1">From' +
+              '<input type="date" id="adjFilterFrom" value="' + esc(from) + '">' +
+            '</label>' +
+            '<label class="field" style="flex:1">To' +
+              '<input type="date" id="adjFilterTo" value="' + esc(to) + '">' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
+
+        (list.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr><th>Date</th><th>Bank</th><th>Type</th><th>Reason / Desc</th><th>Reference</th><th class="num">Amount</th><th class="actions-cell"></th></tr></thead><tbody>' +
+              list.map(a => {
+                const signed = num(a.signedAmount);
+                const isFloating = a.status === 'floating';
+                const isBounced = a.status === 'bounced';
+                let amtColor = signed > 0 ? 'var(--green)' : 'var(--red)';
+                let rowOpacity = isBounced ? 'opacity: 0.5;' : '';
+                
+                if (isFloating) amtColor = 'var(--amber)';
+
+                let badgeHtml = '';
+                if (a.type === 'transfer_out') badgeHtml = '<span class="badge amber">📤 Transfer Out</span>';
+                else if (a.type === 'transfer_in') badgeHtml = '<span class="badge green">📥 Transfer In</span>';
+                else if (a.type === 'party_cheque') {
+                    if (isFloating) badgeHtml = '<span class="badge amber">📜 Floating Chq</span>';
+                    else if (isBounced) badgeHtml = '<span class="badge red">❌ Bounced Chq</span>';
+                    else badgeHtml = '<span class="badge green">📜 Cleared Chq</span>';
+                }
+                else if (a.customName) badgeHtml = '<span class="badge gray">🏷️ ' + esc(a.customName) + '</span>';
+                else badgeHtml = '<span class="badge blue">' + esc(window.ADJUSTMENT_TYPES[a.type]?.label || a.type) + '</span>';
+
+                return '<tr style="' + rowOpacity + '">' +
+                  '<td>' + dateFmt(a.date) + '</td>' +
+                  '<td>' + esc(bankName(a.bankId)) + '</td>' +
+                  '<td>' + badgeHtml + '</td>' +
+                  '<td><strong>' + esc(a.reason || '—') + '</strong></td>' +
+                  '<td class="mono small">' + esc(a.reference || '—') + '</td>' +
+                  '<td class="num" style="color:' + amtColor + ';font-weight:600;">' + (signed > 0 ? '+' : '') + money(signed) + '</td>' +
+                  '<td class="actions-cell">' +
+                    (isFloating ? '<button class="btn xs primary" data-action="adj-mark-cleared" data-id="' + a.id + '">✅ Mark Cleared</button> ' : '') +
+                    '<button class="btn xs" data-action="adj-edit" data-id="' + a.id + '">Edit</button>' +
+                    ' <button class="btn xs danger" data-action="adj-delete" data-id="' + a.id + '">🗑</button>' +
+                  '</td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody></table></div>'
+          : '<div class="empty"><span class="big">🔧</span>No adjustments found matching filters.</div>') +
+      '</div>';
+  };
+
+  // 3. FORM ENGINE (No changes needed here, just copied from previous working version)
+  window.openAdjustmentFormPro = function(id) {
+    const a = id ? adjObj(id) : null;
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
+
+    const isEdit = !!a;
+    const defaultType = a?.type || 'bank_charge';
+    
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field">Source Bank<select id="adjBank" ${isEdit ? 'disabled' : ''}>${banks.map(b => `<option value="${b.id}" ${a?.bankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>
+        <label class="field">Date<input type="date" id="adjDate" value="${a?.date || today()}"></label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Adjustment Type<select id="adjType" ${isEdit ? 'disabled' : ''}>
+          ${Object.keys(window.ADJUSTMENT_TYPES).map(k => `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`).join('')}
+        </select></label>
+        <label class="field" id="adjDirectionWrap">Direction
+          <select id="adjDirection">
+            <option value="debit" ${a?.direction === 'debit' ? 'selected' : ''}>− Debit (Money Out)</option>
+            <option value="credit" ${a?.direction === 'credit' ? 'selected' : ''}>+ Credit (Money In)</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="adjFloatWrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:var(--amber-soft);padding:10px;border-radius:6px;border:1px solid var(--amber);cursor:pointer;">
+          <input type="checkbox" id="adjFloating" ${a?.status === 'floating' ? 'checked' : ''}>
+          <strong>Floating (Pending Bank Clearance)</strong>
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:14px">
+        <label class="field">Amount (Rs.)<input type="number" id="adjAmount" value="${a ? num(a.amount).toFixed(2) : ''}" placeholder="0.00" step="0.01"></label>
+        <label class="field">Reason / Description<input type="text" id="adjReason" value="${a?.reason || ''}" placeholder="e.g. Cheque from customer"></label>
+      </div>
+
+      <div id="adjPreview" style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border);"></div>
+    `;
+
+    openModal(isEdit ? '✏️ Edit Adjustment' : '＋ Advanced Adjustment', body, {
+      width: 700,
+      footer: `<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="myNewSaveBtn">${isEdit ? 'Update' : 'Save Adjustment'}</button>`
+    });
+
+    const typeSel = document.getElementById('adjType');
+    const bankSel = document.getElementById('adjBank');
+    const dirSel = document.getElementById('adjDirection');
+    const amtInp = document.getElementById('adjAmount');
+    const preview = document.getElementById('adjPreview');
+    const floatWrap = document.getElementById('adjFloatWrap');
+    const floatCheck = document.getElementById('adjFloating');
+
+    function updateUI() {
+      const t = typeSel.value;
+      floatWrap.style.display = 'none';
+      dirSel.disabled = false;
+
+      if (t === 'party_cheque') {
+        floatWrap.style.display = 'block';
+        dirSel.value = 'credit';
+        dirSel.disabled = true;
+      } else {
+        if (t === 'bank_charge' || t === 'withdrawal') dirSel.value = 'debit';
+        else dirSel.value = 'credit';
+      }
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const t = typeSel.value;
+      const amt = num(amtInp.value);
+      const isFloating = floatCheck.checked && t === 'party_cheque';
+      const isCredit = dirSel.value === 'credit';
+      const signedAmt = isCredit ? amt : -amt;
+      
+      const bal = bankBalances(bankSel.value);
+      const afterBank = isFloating ? bal.bank : bal.bank + signedAmt;
+      const afterBook = isFloating ? bal.book : bal.book + signedAmt;
+
+      preview.innerHTML = `
+        <div style="font-weight:800;margin-bottom:12px;font-size:12px;color:var(--text-3);">IMPACT</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div><div class="k-label">Bank Balance</div><div style="display:flex;gap:8px;">${money(bal.bank)} → <strong>${money(afterBank)}</strong></div></div>
+          <div><div class="k-label">Book Balance</div><div style="display:flex;gap:8px;">${money(bal.book)} → <strong>${money(afterBook)}</strong></div></div>
+        </div>
+        ${isFloating ? '<div style="margin-top:8px;color:var(--amber);font-size:12px;font-weight:600;">ℹ This cheque is floating. The bank balance will NOT change until you mark it cleared.</div>' : ''}
+      `;
+    }
+
+    typeSel.onchange = updateUI;
+    dirSel.onchange = updatePreview;
+    amtInp.oninput = updatePreview;
+    bankSel.onchange = updatePreview;
+    floatCheck.onchange = updatePreview;
+    updateUI(); 
+
+    document.getElementById('myNewSaveBtn').onclick = () => {
+      const bankId = bankSel.value;
+      const date = document.getElementById('adjDate').value || today();
+      const type = typeSel.value;
+      const direction = dirSel.value;
+      const amount = num(amtInp.value);
+      const reason = document.getElementById('adjReason').value.trim();
+      const isFloating = floatCheck.checked && type === 'party_cheque';
+      
+      if (amount <= 0) { toast('Amount must be > 0', 'error'); return; }
+      if (!reason) { toast('Reason is required', 'error'); return; }
+
+      const data = { 
+        bankId, date, type, direction, amount, reason, 
+        reference: 'ADJ-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000)
+      };
+
+      if (type === 'party_cheque') data.status = isFloating ? 'floating' : 'cleared';
+
+      if (a) {
+        Object.assign(a, makeBankAdjustment(Object.assign({}, a, data, { id: a.id })));
+        if (data.status) a.status = data.status;
+        a.updatedAt = nowISO();
+        markDirty('bankAdjustments', a.id);
+      } else {
+        const created = makeBankAdjustment(data);
+        if (data.status) created.status = data.status;
+        state.data.bankAdjustments.push(created);
+        markDirty('bankAdjustments', created.id);
+      }
+
+      closeModal();
+      toast('Adjustment saved successfully!', 'success');
+      renderApp();
+    };
+  };
+
+  // 4. FORCE ROUTE & ACTIONS
+  __LS_addRoute('adjustments', 'Bank Adjustments', window.renderAdjustments);
+  __LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
+  __LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
+
+  __LS_registerAction('adj-mark-cleared', (ev, id) => {
+    ev.stopPropagation();
+    const a = adjObj(id);
+    if (!a) return;
+    if (!confirm('Mark this Party Cheque as CLEARED?\n\nThis will instantly add Rs. ' + money(a.amount) + ' to your Bank Balance.')) return;
+
+    a.status = 'cleared';
+    a.clearedAt = nowISO();
+    a.updatedAt = nowISO();
+    markDirty('bankAdjustments', a.id);
+    
+    toast('Cheque cleared! Bank balance updated.', 'success');
+    renderApp();
+  });
+
+  // 5. BIND THE FILTERS
+  const prevBind = window.bindView;
+  window.bindView = function() {
+    try { if (prevBind) prevBind(); } catch (e) {}
+    
+    const s = document.getElementById('adjSearch');
+    if (s) s.oninput = () => {
+      clearTimeout(s._t);
+      s._t = setTimeout(() => {
+        state.filters.adjustments = Object.assign({}, state.filters.adjustments, { q: s.value });
+        renderApp();
+      }, 220);
+    };
+    
+    const b = document.getElementById('adjFilterBank');
+    if (b) b.onchange = () => {
+      state.filters.adjustments = Object.assign({}, state.filters.adjustments, { bankId: b.value });
+      renderApp();
+    };
+    
+    const t = document.getElementById('adjFilterType');
+    if (t) t.onchange = () => {
+      state.filters.adjustments = Object.assign({}, state.filters.adjustments, { type: t.value });
+      renderApp();
+    };
+
+    const f = document.getElementById('adjFilterFrom');
+    if (f) f.onchange = () => {
+      state.filters.adjustments = Object.assign({}, state.filters.adjustments, { from: f.value });
+      renderApp();
+    };
+
+    const to = document.getElementById('adjFilterTo');
+    if (to) to.onchange = () => {
+      state.filters.adjustments = Object.assign({}, state.filters.adjustments, { to: to.value });
+      renderApp();
+    };
+  };
+
+})();
+</script>
 </body>
 </html>

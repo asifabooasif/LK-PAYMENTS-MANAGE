@@ -18782,5 +18782,224 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     UPCOMING CHEQUES — EXCEL SPREADSHEET VIEW
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  window.renderRptUpcoming = function () {
+    const f = state.filters.rptUpcoming || {};
+    const days = f.days || 'all';
+    const bankId = f.bankId || 'all';
+    const viewMode = f.viewMode || 'spreadsheet'; // 'list' or 'spreadsheet'
+
+    const start = today();
+    const end = shiftDate(start, num(days));
+
+    let list = arr(state.data.cheques).filter(c => 
+      ['scheduled', 'pending_approval', 'approved'].includes(c.status)
+    );
+
+    if (days !== 'all') list = list.filter(c => c.chequeDate >= start && c.chequeDate <= end);
+    if (bankId !== 'all') list = list.filter(c => c.bankId === bankId);
+
+    list.sort((a, b) => a.chequeDate.localeCompare(b.chequeDate));
+    const total = list.reduce((s, c) => s + num(c.amount), 0);
+
+    // Get month name for the header (based on the first cheque, or current month)
+    const headerMonth = list.length > 0 
+      ? new Date(list[0].chequeDate).toLocaleString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase()
+      : new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase();
+
+    // --- SPREADSHEET UI ---
+    const renderSpreadsheet = () => {
+      let rowsHtml = '';
+      
+      list.forEach((c, i) => {
+        const bank = bankObj(c.bankId);
+        const bankName = bank ? (bank.bankName || bank.name) : '—';
+        const branch = bank ? bank.branch : '—';
+        const isNdb = bankName.toLowerCase().includes('ndb');
+        const isHnb = bankName.toLowerCase().includes('hnb');
+        
+        // Bank name highlight logic based on your image
+        let bankCellStyle = '';
+        if (isNdb) bankCellStyle = 'background: #e9d5ff; color: #4c1d95; font-weight: 600;'; // Purple
+        else if (isHnb) bankCellStyle = 'background: #f1f5f9; color: #334155; font-weight: 600;'; // Gray
+
+        rowsHtml += `
+          <tr style="background: #ffff00;">
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px; ${bankCellStyle}">${esc(bankName)}</td>
+            <td style="border: 1px solid #000; padding: 4px;">${esc(branch || '—')}</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${esc(c.chequeNo || '—')}</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${dateFmt(c.chequeDate).replace(/ /g, '-')}</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: right; font-variant-numeric: tabular-nums;">${money(c.amount, {plain: true})}</td>
+            <td style="border: 1px solid #000; padding: 4px; font-weight: 600;">${esc(c.payeeName)}</td>
+            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${dateFmt(c.writtenDate || c.createdAt).replace(/ /g, '-')}</td>
+            <td style="border: 1px solid #000; padding: 4px; font-size: 11px;">${esc(c.memo || '')}</td>
+          </tr>
+        `;
+      });
+
+      // Fill empty rows to make it look like a full A4 sheet
+      for (let i = list.length; i < 25; i++) {
+        rowsHtml += `
+          <tr style="background: #ffff00;">
+            <td style="border: 1px solid #000; padding: 4px; height: 24px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+            <td style="border: 1px solid #000; padding: 4px;"></td>
+          </tr>
+        `;
+      }
+
+      return `
+        <div style="background: #fff; padding: 20px; border-radius: 8px; overflow-x: auto;">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 10px; font-family: sans-serif;">
+            MONTH: ${headerMonth}
+          </div>
+          
+          <div style="display: flex; gap: 10px;">
+            <table style="border-collapse: collapse; font-family: 'Times New Roman', Times, serif; font-size: 12px; width: 100%; min-width: 1000px;">
+              <thead>
+                <tr style="background: #b8860b; color: #fff;">
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 30px;">DATE</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left;">NAME OF CUSTOMER</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left;">NAME OF BANK</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left;">BRANCH</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 90px;">CHEQUE NO</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 90px;">DATE OF CHEQUE</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: right; width: 110px;">AMOUNT</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left;">TO WHOM GIVEN</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left; width: 80px;">DATE OF ISSUE</th>
+                  <th style="border: 1px solid #000; padding: 8px; text-align: left;">REMARKS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+
+            <!-- TOTAL BOX -->
+            <div style="width: 200px; flex-shrink: 0; background: #fff5e6; border: 1px solid #ccc; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 20px; text-align: center; height: fit-content;">
+              <div style="font-size: 16px; font-weight: 700; color: #333; margin-bottom: 8px;">TOTAL</div>
+              <div style="font-size: 20px; font-weight: 700; color: #000;">${money(total)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    // --- LIST UI (Standard Card View) ---
+    const renderList = () => {
+      const byDate = {};
+      list.forEach(c => {
+        if (!byDate[c.chequeDate]) byDate[c.chequeDate] = [];
+        byDate[c.chequeDate].push(c);
+      });
+      const dates = Object.keys(byDate).sort();
+
+      return `
+        <div class="kpi-strip">
+          <div class="kpi"><div class="k-label">Cheques</div><div class="k-value">${list.length}</div></div>
+          <div class="kpi"><div class="k-label">Total Value</div><div class="k-value" style="font-size:18px">${money(total)}</div></div>
+          <div class="kpi"><div class="k-label">Days Covered</div><div class="k-value">${days === 'all' ? '∞' : days}</div></div>
+          <div class="kpi"><div class="k-label">Distinct Dates</div><div class="k-value">${dates.length}</div></div>
+        </div>
+        ${list.length
+          ? dates.map(d => {
+              const cheques = byDate[d];
+              const dayTotal = cheques.reduce((s, c) => s + num(c.amount), 0);
+              return `<div class="card" style="margin-top:16px;">
+                <div class="card-head" style="margin-bottom:10px">
+                  <h3 style="font-size:14px">${dateFmt(d)} <span class="badge blue" style="margin-left:8px">${diffDays(today(), d) === 0 ? 'Today' : diffDays(today(), d) + ' days'}</span></h3>
+                  <strong>${money(dayTotal)}</strong>
+                </div>
+                <div class="table-wrap"><table>
+                  <thead><tr><th>Cheque #</th><th>Payee</th><th>Bank</th><th>Status</th><th class="num">Amount</th><th class="actions-cell"></th></tr></thead>
+                  <tbody>${cheques.map(c => `
+                    <tr>
+                      <td class="mono"><strong>${esc(c.chequeNo)}</strong></td>
+                      <td>${esc(c.payeeName || '—')}</td>
+                      <td>${esc(bankName(c.bankId))}</td>
+                      <td>${c.status === 'approved' ? '<span class="badge green">Approved</span>' : '<span class="badge blue">Scheduled</span>'}</td>
+                      <td class="num">${money(c.amount)}</td>
+                      <td class="actions-cell"><button class="btn xs" data-action="cheque-open" data-id="${esc(c.id)}">Open</button></td>
+                    </tr>
+                  `).join('')}</tbody>
+                </table></div>
+              </div>`;
+            }).join('')
+          : '<div class="card"><div class="empty"><span class="big">📅</span>No upcoming cheques found.</div></div>'}
+      `;
+    };
+
+    return '' +
+      '<div class="card no-print" style="margin-bottom:20px;">' +
+        '<div class="card-head">' +
+          '<h3>📅 Upcoming Cheques</h3>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+            
+            // View Mode Toggle
+            '<div style="display:flex;background:var(--surface-2);border-radius:8px;padding:4px;border:1px solid var(--border);">' +
+              '<button class="btn sm ' + (viewMode === 'list' ? 'primary' : '') + '" data-action="up-view-list" style="border:none;background:' + (viewMode === 'list' ? 'var(--accent)' : 'transparent') + ';color:' + (viewMode === 'list' ? '#fff' : 'var(--text-3)') + ';">List View</button>' +
+              '<button class="btn sm ' + (viewMode === 'spreadsheet' ? 'primary' : '') + '" data-action="up-view-sheet" style="border:none;background:' + (viewMode === 'spreadsheet' ? 'var(--accent)' : 'transparent') + ';color:' + (viewMode === 'spreadsheet' ? '#fff' : 'var(--text-3)') + ';">Spreadsheet</button>' +
+            '</div>' +
+
+            '<label class="field" style="min-width:140px;margin:0;">Days' +
+              '<select id="upDays" style="padding:8px;border-radius:8px;border:1px solid var(--border);">' +
+                '<option value="all"' + (days === 'all' ? ' selected' : '') + '>All Upcoming</option>' +
+                [7, 14, 30, 90, 180].map(d => '<option value="' + d + '"' + (String(days) === String(d) ? ' selected' : '') + '>Next ' + d + ' days</option>').join('') +
+              '</select>' +
+            '</label>' +
+            
+            '<button class="btn" data-action="rpt-print">🖨 Print</button>' +
+            '<button class="btn primary" data-action="rpt-upcoming-export">⬇ CSV</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      (viewMode === 'spreadsheet' ? renderSpreadsheet() : '<div class="card">' + renderList() + '</div>');
+  };
+
+  // Route
+  __LS_addRoute('rpt-upcoming', 'Upcoming Cheques', window.renderRptUpcoming);
+
+  // Actions & Bindings
+  const prevBind = window.bindView;
+  window.bindView = function() {
+    try { if (prevBind) prevBind(); } catch (e) {}
+    
+    const upDays = document.getElementById('upDays');
+    if (upDays) upDays.onchange = () => {
+      state.filters.rptUpcoming = Object.assign({}, state.filters.rptUpcoming, { days: upDays.value === 'all' ? 'all' : num(upDays.value) });
+      renderApp();
+    };
+  };
+
+  window.__LS_registerAction('up-view-list', () => {
+    state.filters.rptUpcoming = Object.assign({}, state.filters.rptUpcoming, { viewMode: 'list' });
+    renderApp();
+  });
+
+  window.__LS_registerAction('up-view-sheet', () => {
+    state.filters.rptUpcoming = Object.assign({}, state.filters.rptUpcoming, { viewMode: 'spreadsheet' });
+    renderApp();
+  });
+
+})();
+</script>
 </body>
 </html>

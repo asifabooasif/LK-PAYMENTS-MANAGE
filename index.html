@@ -19001,5 +19001,374 @@ Write a short, bulleted message using emojis. Warn them if they need to deposit 
 
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ROCK SOLID FIXES: Bank Transfer & Monthly Cheque Drill-Down
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PART 1: BULLETPROOF ADJUSTMENT FORM (Internal Bank Transfer)
+  // ═══════════════════════════════════════════════════════════════════════
+  window.openAdjustmentFormPro = function(id) {
+    const a = id ? adjObj(id) : null;
+    const banks = arr(state.data.banks).filter(b => b.active !== false);
+    if (!banks.length) { toast('Add a bank first', 'warn'); return; }
+
+    const isEdit = !!a;
+    const defaultType = a?.type || 'bank_charge';
+    const bankOpts = banks.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+    
+    const typeOpts = Object.keys(window.ADJUSTMENT_TYPES || {}).map(k => 
+      `<option value="${k}" ${defaultType === k ? 'selected' : ''}>${window.ADJUSTMENT_TYPES[k].ico} ${window.ADJUSTMENT_TYPES[k].label}</option>`
+    ).join('');
+
+    const body = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label class="field">Source Bank<select id="adjBank" ${isEdit ? 'disabled' : ''}>${banks.map(b => `<option value="${b.id}" ${a?.bankId === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>
+        <label class="field">Date<input type="date" id="adjDate" value="${a?.date || today()}"></label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Adjustment Type<select id="adjType" ${isEdit ? 'disabled' : ''}>${typeOpts}</select></label>
+        <label class="field" id="adjDirectionWrap">Direction
+          <select id="adjDirection">
+            <option value="debit" ${a?.direction === 'debit' ? 'selected' : ''}>− Debit (Money Out)</option>
+            <option value="credit" ${a?.direction === 'credit' ? 'selected' : ''}>+ Credit (Money In)</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- DESTINATION BANK (Hidden by default, shows on Transfer) -->
+      <div style="margin-top:14px; display:none;" id="adjDestWrap">
+        <label class="field">Destination Bank (Transfer To)
+          <select id="adjDestBank">
+            <option value="">— Select Destination Bank —</option>
+            ${bankOpts}
+          </select>
+        </label>
+      </div>
+
+      <div style="margin-top:14px; display:none;" id="adjFloatWrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:var(--amber-soft);padding:10px;border-radius:6px;border:1px solid var(--amber);cursor:pointer;">
+          <input type="checkbox" id="adjFloating" ${a?.status === 'floating' ? 'checked' : ''}>
+          <strong>Floating (Pending Bank Clearance)</strong>
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-top:14px">
+        <label class="field">Amount (Rs.)<input type="number" id="adjAmount" value="${a ? num(a.amount).toFixed(2) : ''}" placeholder="0.00" step="0.01"></label>
+        <label class="field">Reason / Description<input type="text" id="adjReason" value="${a?.reason || ''}" placeholder="e.g. Cheque from customer"></label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px">
+        <label class="field">Reference / Slip No.<input type="text" id="adjReference" value="${a?.reference || ''}" placeholder="Leave blank to auto-generate"></label>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px;padding-top:24px;">
+          <input type="checkbox" id="adjRecurring" ${a?.isRecurring ? 'checked' : ''}><span style="font-weight:600;font-size:12.5px;">Recurring?</span>
+        </label>
+      </div>
+
+      <div id="adjPreview" style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:10px; border:1px solid var(--border);"></div>
+    `;
+
+    openModal(isEdit ? '✏️ Edit Adjustment' : '＋ Advanced Adjustment', body, {
+      width: 700,
+      footer: `<button class="btn" data-close-modal>Cancel</button><button class="btn primary" id="myNewSaveBtn">${isEdit ? 'Update' : 'Save Adjustment'}</button>`
+    });
+
+    const typeSel = document.getElementById('adjType');
+    const bankSel = document.getElementById('adjBank');
+    const destWrap = document.getElementById('adjDestWrap');
+    const destSel = document.getElementById('adjDestBank');
+    const dirSel = document.getElementById('adjDirection');
+    const dirWrap = document.getElementById('adjDirectionWrap');
+    const amtInp = document.getElementById('adjAmount');
+    const preview = document.getElementById('adjPreview');
+    const floatWrap = document.getElementById('adjFloatWrap');
+    const floatCheck = document.getElementById('adjFloating');
+
+    function updateUI() {
+      const t = typeSel.value;
+      destWrap.style.display = 'none';
+      floatWrap.style.display = 'none';
+      dirWrap.style.display = 'block';
+      dirSel.disabled = false;
+
+      if (t === 'transfer') {
+        destWrap.style.display = 'block'; // Show Destination Bank
+        dirWrap.style.display = 'none';    // Hide direction (handled by source/dest logic)
+      } else if (t === 'party_cheque') {
+        floatWrap.style.display = 'block';
+        dirSel.value = 'credit';
+        dirSel.disabled = true;
+      } else {
+        if (t === 'bank_charge' || t === 'withdrawal') dirSel.value = 'debit';
+        else dirSel.value = 'credit';
+      }
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const t = typeSel.value;
+      const amt = num(amtInp.value);
+      if (amt <= 0) { preview.innerHTML = '<div class="muted">Enter amount to see impact.</div>'; return; }
+
+      if (t === 'transfer') {
+        const fromBank = bankObj(bankSel.value);
+        const toBank = bankObj(destSel.value);
+        if (!fromBank || !toBank) {
+           preview.innerHTML = '<div class="muted" style="color:var(--amber)">Select a destination bank to preview transfer.</div>';
+           return;
+        }
+        preview.innerHTML = `
+          <div style="font-weight:800;margin-bottom:12px;font-size:12px;color:var(--text-3);">TRANSFER IMPACT</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div><div style="font-weight:600;color:var(--red);">− ${esc(fromBank.name)}</div><div>Bank: ${money(bankBalances(fromBank.id).bank)} → <strong>${money(bankBalances(fromBank.id).bank - amt)}</strong></div></div>
+            <div><div style="font-weight:600;color:var(--green);">+ ${esc(toBank.name)}</div><div>Bank: ${money(bankBalances(toBank.id).bank)} → <strong>${money(bankBalances(toBank.id).bank + amt)}</strong></div></div>
+          </div>
+        `;
+      } else {
+        const isFloating = floatCheck.checked && t === 'party_cheque';
+        const isCredit = dirSel.value === 'credit';
+        const signedAmt = isCredit ? amt : -amt;
+        
+        const bal = bankBalances(bankSel.value);
+        const afterBank = isFloating ? bal.bank : bal.bank + signedAmt;
+        const afterBook = isFloating ? bal.book : bal.book + signedAmt;
+
+        preview.innerHTML = `
+          <div style="font-weight:800;margin-bottom:12px;font-size:12px;color:var(--text-3);">IMPACT</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div><div class="k-label">Bank Balance</div><div style="display:flex;gap:8px;">${money(bal.bank)} → <strong>${money(afterBank)}</strong></div></div>
+            <div><div class="k-label">Book Balance</div><div style="display:flex;gap:8px;">${money(bal.book)} → <strong>${money(afterBook)}</strong></div></div>
+          </div>
+          ${isFloating ? '<div style="margin-top:8px;color:var(--amber);font-size:12px;font-weight:600;">ℹ This cheque is floating. The bank balance will NOT change until cleared.</div>' : ''}
+        `;
+      }
+    }
+
+    typeSel.onchange = updateUI;
+    dirSel.onchange = updatePreview;
+    amtInp.oninput = updatePreview;
+    bankSel.onchange = updatePreview;
+    destSel.onchange = updatePreview;
+    floatCheck.onchange = updatePreview;
+    updateUI(); 
+
+    document.getElementById('myNewSaveBtn').onclick = () => {
+      const bankId = bankSel.value;
+      const destBankId = destSel.value;
+      const date = document.getElementById('adjDate').value || today();
+      const type = typeSel.value;
+      const direction = dirSel.value;
+      const amount = num(amtInp.value);
+      const reason = document.getElementById('adjReason').value.trim();
+      const notes = document.getElementById('adjNotes')?.value || '';
+      const isFloating = floatCheck.checked && type === 'party_cheque';
+      
+      let reference = document.getElementById('adjReference').value.trim();
+      if (!reference) reference = 'ADJ-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
+
+      if (amount <= 0) { toast('Amount must be > 0', 'error'); return; }
+      if (!reason) { toast('Reason is required', 'error'); return; }
+
+      if (type === 'transfer') {
+        if (!destBankId || destBankId === bankId) { toast('Select a valid destination bank.', 'error'); return; }
+        
+        const groupId = uid();
+        const outRecord = makeBankAdjustment({ bankId, date, type: 'transfer_out', direction: 'debit', amount, reason, notes, transferGroupId: groupId, reference });
+        outRecord.customName = 'Transfer to ' + bankObj(destBankId).name;
+        
+        const inRecord = makeBankAdjustment({ bankId: destBankId, date, type: 'transfer_in', direction: 'credit', amount, reason, notes, transferGroupId: groupId, reference });
+        inRecord.customName = 'Transfer from ' + bankObj(bankId).name;
+
+        state.data.bankAdjustments.push(outRecord, inRecord);
+        markDirty('bankAdjustments', outRecord.id);
+        markDirty('bankAdjustments', inRecord.id);
+        toast('Transfer completed successfully', 'success');
+      } else {
+        const data = { bankId, date, type, direction, amount, reason, reference };
+        if (type === 'party_cheque') data.status = isFloating ? 'floating' : 'cleared';
+
+        if (a) {
+          Object.assign(a, makeBankAdjustment(Object.assign({}, a, data, { id: a.id })));
+          if (data.status) a.status = data.status;
+          a.updatedAt = nowISO();
+          markDirty('bankAdjustments', a.id);
+        } else {
+          const created = makeBankAdjustment(data);
+          if (data.status) created.status = data.status;
+          state.data.bankAdjustments.push(created);
+          markDirty('bankAdjustments', created.id);
+        }
+        toast('Adjustment saved', 'success');
+      }
+
+      closeModal();
+      renderApp();
+    };
+  };
+
+  window.__LS_registerAction('adj-new', () => window.openAdjustmentFormPro(null));
+  window.__LS_registerAction('adj-edit', (ev, id) => { ev.stopPropagation(); window.openAdjustmentFormPro(id); });
+  window.openAdjustmentForm = window.openAdjustmentFormPro;
+
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PART 2: MONTHLY SUMMARY (Future Cheques + Click to Drill-Down)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  window.renderRptMonthly = function() {
+    const allCheques = arr(state.data.cheques);
+    
+    // Group by Month (YYYY-MM)
+    const monthsMap = {};
+    
+    allCheques.forEach(c => {
+      // We include ALL statuses except cancelled/void for the summary
+      if (['cancelled', 'void'].includes(c.status)) return; 
+      
+      const ym = String(c.chequeDate).slice(0, 7);
+      if (!ym || ym.length !== 7) return;
+      
+      if (!monthsMap[ym]) {
+        monthsMap[ym] = { 
+          ym, 
+          writtenCount: 0, writtenTotal: 0,
+          clearedCount: 0, clearedTotal: 0,
+          bouncedCount: 0, bouncedTotal: 0,
+          cancelledCount: 0
+        };
+      }
+      
+      const m = monthsMap[ym];
+      m.writtenCount++;
+      m.writtenTotal += num(c.amount);
+      
+      if (c.status === 'cleared') { m.clearedCount++; m.clearedTotal += num(c.amount); }
+      else if (c.status === 'bounced') { m.bouncedCount++; m.bouncedTotal += num(c.amount); }
+    });
+
+    // Also count cancelled/void for the stats
+    allCheques.forEach(c => {
+      if (!['cancelled', 'void'].includes(c.status)) return;
+      const ym = String(c.chequeDate).slice(0, 7);
+      if (!ym || ym.length !== 7) return;
+      if (!monthsMap[ym]) return;
+      monthsMap[ym].cancelledCount++;
+    });
+
+    // Sort descending (newest/future months first)
+    const sortedMonths = Object.values(monthsMap).sort((a, b) => b.ym.localeCompare(a.ym));
+
+    const grandTotals = sortedMonths.reduce((acc, m) => {
+      acc.writtenCount += m.writtenCount;
+      acc.writtenTotal += m.writtenTotal;
+      acc.clearedCount += m.clearedCount;
+      acc.clearedTotal += m.clearedTotal;
+      acc.bouncedCount += m.bouncedCount;
+      acc.bouncedTotal += m.bouncedTotal;
+      acc.cancelledCount += m.cancelledCount;
+      return acc;
+    }, { writtenCount: 0, writtenTotal: 0, clearedCount: 0, clearedTotal: 0, bouncedCount: 0, bouncedTotal: 0, cancelledCount: 0 });
+
+    return '' +
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<h3>📊 Monthly Cheque Summary</h3>' +
+          '<div class="small muted">Click any row to view detailed cheques.</div>' +
+        '</div>' +
+        
+        (sortedMonths.length
+          ? '<div class="table-wrap"><table>' +
+              '<thead><tr>' +
+                '<th>Month</th>' +
+                '<th class="num">Written</th><th class="num">Value</th>' +
+                '<th class="num">Cleared</th><th class="num">Cleared Value</th>' +
+                '<th class="num">Bounced</th><th class="num">Cancelled</th>' +
+                '<th class="actions-cell"></th>' +
+              '</tr></thead><tbody>' +
+              sortedMonths.map(m => {
+                // Format "2026-12" to "Dec 2026"
+                const d = new Date(m.ym + '-01T00:00:00');
+                const label = d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+                
+                return '<tr data-action="month-drill-down" data-id="' + m.ym + '" style="cursor:pointer;">' +
+                  '<td><strong>' + esc(label) + '</strong></td>' +
+                  '<td class="num">' + m.writtenCount + '</td>' +
+                  '<td class="num"><strong>' + money(m.writtenTotal) + '</strong></td>' +
+                  '<td class="num" style="color:var(--green)">' + m.clearedCount + '</td>' +
+                  '<td class="num" style="color:var(--green)">' + money(m.clearedTotal) + '</td>' +
+                  '<td class="num" style="color:' + (m.bouncedCount ? 'var(--red)' : 'var(--text-4)') + '">' + (m.bouncedCount || '—') + '</td>' +
+                  '<td class="num" style="color:var(--text-3)">' + (m.cancelledCount || '—') + '</td>' +
+                  '<td class="actions-cell"><button class="btn xs">View →</button></td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody>' +
+            '<tfoot><tr>' +
+              '<td style="text-align:right">GRAND TOTAL</td>' +
+              '<td class="num">' + grandTotals.writtenCount + '</td>' +
+              '<td class="num">' + money(grandTotals.writtenTotal) + '</td>' +
+              '<td class="num">' + grandTotals.clearedCount + '</td>' +
+              '<td class="num">' + money(grandTotals.clearedTotal) + '</td>' +
+              '<td class="num">' + grandTotals.bouncedCount + '</td>' +
+              '<td class="num">' + grandTotals.cancelledCount + '</td>' +
+              '<td></td>' +
+            '</tr></tfoot></table></div>'
+          : '<div class="empty"><span class="big">📊</span>No cheques found.</div>') +
+      '</div>';
+  };
+
+  // Route
+  __LS_addRoute('rpt-monthly', 'Monthly Summary', window.renderRptMonthly);
+
+  // Drill-down Action
+  window.__LS_registerAction('month-drill-down', (ev, ym) => {
+    ev.stopPropagation();
+    
+    // Filter cheques for this specific month
+    const cheques = arr(state.data.cheques).filter(c => String(c.chequeDate).startsWith(ym)).sort((a, b) => a.chequeDate.localeCompare(b.chequeDate));
+    const total = cheques.reduce((s, c) => s + num(c.amount), 0);
+    
+    const d = new Date(ym + '-01T00:00:00');
+    const monthLabel = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+    const body = `
+      <div class="kpi-strip" style="margin-bottom:20px;">
+        <div class="kpi"><div class="k-label">Total Cheques</div><div class="k-value">${cheques.length}</div></div>
+        <div class="kpi"><div class="k-label">Total Value</div><div class="k-value" style="color:var(--accent);">${money(total)}</div></div>
+      </div>
+      <div class="table-wrap" style="max-height:400px; overflow:auto;">
+        <table>
+          <thead><tr><th>Date</th><th>Cheque #</th><th>Payee</th><th>Bank</th><th>Status</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            ${cheques.map(c => {
+              let badge = '';
+              if (c.status === 'cleared') badge = '<span class="badge green">Cleared</span>';
+              else if (c.status === 'approved') badge = '<span class="badge blue">Approved</span>';
+              else if (c.status === 'bounced') badge = '<span class="badge red">Bounced</span>';
+              else if (c.status === 'scheduled') badge = '<span class="badge purple">Scheduled</span>';
+              else badge = '<span class="badge gray">' + esc(c.status) + '</span>';
+
+              return `<tr>
+                <td>${dateFmt(c.chequeDate)}</td>
+                <td class="mono">${esc(c.chequeNo)}</td>
+                <td><strong>${esc(c.payeeName)}</strong></td>
+                <td>${esc(bankName(c.bankId))}</td>
+                <td>${badge}</td>
+                <td class="num"><strong>${money(c.amount)}</strong></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    openModal('📅 Cheques for ' + monthLabel, body, { width: 800, footer: '<button class="btn" data-close-modal>Close</button>' });
+  });
+
+})();
+</script>
 </body>
 </html>
